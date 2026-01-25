@@ -1,0 +1,50 @@
+[
+  {
+    "content": "Phase 1 POC: Create libs/event_bus.py (in-memory event bus with Mongo persistence)",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 1 POC: Create libs/schemas.py (event envelope and topic constants)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement identity-service (register/login/refresh/me with pending approval)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement RBAC-service (roles/permissions/departments CRUD)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement ETL-control-service (connections/mappings/pipelines/run commands)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement ETL-runner-service (execute runs, write canonical, emit events)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement canonical-query-service (list/filter canonical data)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Implement event-gateway-service (SSE for run lifecycle)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Create test_core.py and verify POC flows",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Full backend implementation with all services",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Full frontend implementation (ETL + CRM UIs)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: End to end testing using Testing Agent",
+    "status": "pending"
+  }
+]
