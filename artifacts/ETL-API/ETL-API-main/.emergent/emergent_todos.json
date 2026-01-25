@@ -1,0 +1,66 @@
+[
+  {
+    "content": "Phase 1: Set up dual MongoDB architecture (canonical + app DBs)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Create canonical data adapter (supports both layouts)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Implement JWT auth with pending approval flow",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Build override merge logic for opportunities",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Implement APScheduler for serving cache rebuild",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Create core API endpoints (auth, data-lake, opportunities)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Generate receiving connector details document",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: End to End Testing using Testing Agent",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: All user stories covered in Development and testing",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Implement full RBAC + Admin module",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Build Config module (widgets, navigation, stages, targets)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Complete Sales Domain (accounts, activities, dashboard, KPIs)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Implement Goals/Teams/Portfolios/Initiatives",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Add comprehensive data lake browsing and search",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: End to End Testing using Testing Agent",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: All user stories covered in Development and testing",
+    "status": "completed"
+  }
+]

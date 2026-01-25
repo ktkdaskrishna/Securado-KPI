@@ -1,0 +1,160 @@
+/* App-specific styles */
+.App {
+  min-height: 100vh;
+  background: hsl(var(--background));
+}
+
+/* Pipeline canvas grid background */
+.canvas-grid {
+  background-image: 
+    linear-gradient(transparent 31px, hsl(var(--border) / 0.35) 32px),
+    linear-gradient(90deg, transparent 31px, hsl(var(--border) / 0.35) 32px);
+  background-size: 32px 32px;
+}
+
+/* Sidebar navigation */
+.sidebar-link {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.sidebar-link.active {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-left: 2px solid hsl(var(--primary));
+}
+
+/* Health indicator dots */
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.health-dot.healthy {
+  background-color: hsl(var(--success));
+  box-shadow: 0 0 6px hsl(var(--success) / 0.5);
+}
+
+.health-dot.degraded, .health-dot.warning {
+  background-color: hsl(var(--warning));
+  box-shadow: 0 0 6px hsl(var(--warning) / 0.5);
+}
+
+.health-dot.unhealthy, .health-dot.failed {
+  background-color: hsl(var(--danger));
+  box-shadow: 0 0 6px hsl(var(--danger) / 0.5);
+}
+
+.health-dot.unknown {
+  background-color: hsl(var(--muted-foreground));
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.running {
+  background-color: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+.status-badge.completed {
+  background-color: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+}
+
+.status-badge.failed {
+  background-color: hsl(var(--danger) / 0.15);
+  color: hsl(var(--danger));
+}
+
+.status-badge.pending, .status-badge.idle {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+/* Log viewer */
+.log-entry {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.log-entry.error {
+  color: hsl(var(--danger));
+}
+
+.log-entry.success {
+  color: hsl(var(--success));
+}
+
+.log-entry.warning {
+  color: hsl(var(--warning));
+}
+
+/* Mapping connector lines */
+.mapping-line {
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
+  fill: none;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px hsl(var(--primary) / 0.5);
+  }
+}
+
+.running-indicator {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Tabular numbers for data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

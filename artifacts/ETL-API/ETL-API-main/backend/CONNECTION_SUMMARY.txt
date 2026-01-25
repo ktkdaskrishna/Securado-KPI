@@ -1,0 +1,168 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  PLATFORM 2 - MONGODB CONNECTION DETAILS                     ║
+║                         (Emergent Platform)                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📍 CURRENT SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment: Emergent Kubernetes Cluster
+Preview URL: https://crm-api-gateway.preview.emergentagent.com
+API Docs UI: https://crm-api-gateway.preview.emergentagent.com (Live & Interactive)
+
+MongoDB Location: Inside Kubernetes cluster
+Current Access: localhost:27017 (internal only)
+
+
+🔌 FOR PLATFORM 1 CONNECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  IMPORTANT: MongoDB is NOT publicly accessible by default on Emergent platform
+
+✅ RECOMMENDED SOLUTION: Use MongoDB Atlas (FREE tier available)
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OPTION 1: MongoDB Atlas (RECOMMENDED) ⭐                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. Create free cluster at: https://www.mongodb.com/cloud/atlas            │
+│  2. Create database: platform1_canonical                                    │
+│  3. Create users:                                                           │
+│     • platform1_writer (readWrite permission)                               │
+│     • platform2_reader (read permission)                                    │
+│  4. Get connection string:                                                  │
+│     mongodb+srv://username:password@cluster.mongodb.net/                    │
+│                                                                              │
+│  5. Update Platform 2 .env:                                                 │
+│     CANONICAL_MONGO_URL="mongodb+srv://platform2_reader:pass@cluster..."   │
+│     CANONICAL_DB_NAME="platform1_canonical"                                 │
+│                                                                              │
+│  6. Platform 1 connects with:                                               │
+│     mongodb+srv://platform1_writer:pass@cluster.../platform1_canonical     │
+│                                                                              │
+│  ✅ Benefits:                                                                │
+│     • Free tier (512MB storage)                                             │
+│     • Accessible from anywhere                                              │
+│     • SSL/TLS enabled                                                       │
+│     • Automated backups                                                     │
+│     • No infrastructure management                                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OPTION 2: Internal Kubernetes Connection                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ⚠️  Only works if Platform 1 is deployed in same K8s cluster               │
+│                                                                              │
+│  Connection String: mongodb://localhost:27017                               │
+│  Database: platform1_canonical                                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OPTION 3: Public MongoDB Exposure (Requires Emergent Support)              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Contact Emergent support to:                                               │
+│  • Expose MongoDB via LoadBalancer                                          │
+│  • Set up authentication                                                    │
+│  • Configure SSL/TLS                                                        │
+│  • Provide public endpoint                                                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+📊 DATABASE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Database 1: platform1_canonical (Platform 1 writes, Platform 2 reads)
+  Layout Option A: Single Collection
+    └── data_lake_canonical (envelope format with entity_type field)
+  
+  Layout Option B: Per-Entity Collections
+    ├── silver_opportunities
+    ├── silver_accounts
+    ├── silver_contacts
+    └── silver_activities
+
+Database 2: platform2_app (Platform 2 operational data)
+    ├── users, roles, permissions, departments
+    ├── overrides_opportunities, overrides_accounts
+    ├── goals, teams, portfolios, initiatives
+    ├── activities, kpis, serving_cache
+    └── admin_logs_*
+
+
+🧪 TESTING THE CONNECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Check Platform 2 health
+  curl https://crm-api-gateway.preview.emergentagent.com/api/data-lake/health
+
+  ✅ Expected: {"status":"healthy","canonical_db":"connected"}
+
+Step 2: Platform 1 writes test data
+  MongoDB insert to platform1_canonical database
+
+Step 3: Verify in Platform 2
+  # Login first
+  TOKEN=$(curl -s -X POST \
+    https://crm-api-gateway.preview.emergentagent.com/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@platform2.com","password":"admin123"}' \
+    | jq -r '.access_token')
+  
+  # Browse data
+  curl -H "Authorization: Bearer $TOKEN" \
+    "https://crm-api-gateway.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
+
+
+📚 DOCUMENTATION FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Location: /app/backend/
+
+1. EMERGENT_MONGODB_CONNECTION.md  - Complete connection guide (this document)
+2. USER_MANAGEMENT_AND_DB_SETUP.md - User management + DB setup
+3. QUICK_START.md                  - Quick reference guide
+4. PLATFORM2_COMPLETE.md           - Full technical documentation
+5. RECEIVING_CONNECTOR.md          - Platform 1 integration specs
+
+
+🔒 DEFAULT CREDENTIALS (CHANGE IN PRODUCTION!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Superadmin:
+  Email: admin@platform2.com
+  Password: admin123
+
+
+🚀 NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ✅ Try the API Documentation UI:
+   https://crm-api-gateway.preview.emergentagent.com
+
+2. ✅ Set up MongoDB Atlas (recommended):
+   - Create free cluster
+   - Get connection string
+   - Update Platform 2 .env
+   - Test connection
+
+3. ✅ Configure Platform 1:
+   - Use Atlas connection string
+   - Choose layout (single_collection or per_entity)
+   - Start writing data
+
+4. ✅ User Management:
+   - Use API UI to approve users
+   - Assign roles via UI
+   - Create departments
+
+
+Need help? Check EMERGENT_MONGODB_CONNECTION.md for detailed setup instructions!
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  Platform 2 is ready! Start by exploring the API UI and setting up MongoDB  ║
+╚══════════════════════════════════════════════════════════════════════════════╝

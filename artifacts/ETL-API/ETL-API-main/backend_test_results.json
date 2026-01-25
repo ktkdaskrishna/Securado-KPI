@@ -1,0 +1,289 @@
+{
+  "timestamp": "2026-01-25T22:59:06.064430",
+  "total_tests": 56,
+  "passed_tests": 54,
+  "failed_tests": 2,
+  "success_rate": "96.4%",
+  "test_results": [
+    {
+      "test": "Health Check",
+      "passed": true,
+      "details": "Service: Platform 2 Backend"
+    },
+    {
+      "test": "Register User (Pending Status)",
+      "passed": true,
+      "details": "User: test_user_20260125_225833@test.com, Status: pending"
+    },
+    {
+      "test": "Login Superadmin",
+      "passed": true,
+      "details": "Tokens received"
+    },
+    {
+      "test": "Login Pending User (Should Fail)",
+      "passed": true,
+      "details": "Correctly rejected pending user"
+    },
+    {
+      "test": "Refresh Token",
+      "passed": true,
+      "details": "New tokens received"
+    },
+    {
+      "test": "Get Current User (/auth/me)",
+      "passed": true,
+      "details": "User: admin@platform2.com, Status: approved"
+    },
+    {
+      "test": "Data Lake Health Check",
+      "passed": true,
+      "details": "Canonical DB: connected"
+    },
+    {
+      "test": "Browse Canonical Data (Opportunities)",
+      "passed": true,
+      "details": "Found 0 records (empty is expected initially)"
+    },
+    {
+      "test": "List Opportunities",
+      "passed": true,
+      "details": "Found 0 opportunities (empty is expected)"
+    },
+    {
+      "test": "Opportunities Kanban View",
+      "passed": true,
+      "details": "Stages: []"
+    },
+    {
+      "test": "Opportunity Stage Override",
+      "passed": true,
+      "details": "Override stored for test_opp_123"
+    },
+    {
+      "test": "Dashboard Stats",
+      "passed": true,
+      "details": "Total: 0, Value: 0"
+    },
+    {
+      "test": "Dashboard Refresh",
+      "passed": true,
+      "details": "Cache rebuild triggered"
+    },
+    {
+      "test": "Sync Status",
+      "passed": true,
+      "details": "Sync needed: False, Last canonical: None"
+    },
+    {
+      "test": "List Activities",
+      "passed": true,
+      "details": "Found 2 activities"
+    },
+    {
+      "test": "Create Activity",
+      "passed": true,
+      "details": "Activity created: 30886446-5d6c-4cfa-b9ce-5aaa20e51730"
+    },
+    {
+      "test": "Update Activity Status",
+      "passed": true,
+      "details": "Status: 200 (Updated)"
+    },
+    {
+      "test": "Admin: List Permissions",
+      "passed": true,
+      "details": "Found 0 permissions"
+    },
+    {
+      "test": "Admin: List Roles",
+      "passed": true,
+      "details": "Found 4 roles"
+    },
+    {
+      "test": "Admin: Create Role",
+      "passed": true,
+      "details": "Role created: test_role_20260125_225835"
+    },
+    {
+      "test": "Admin: List Departments",
+      "passed": true,
+      "details": "Found 1 departments"
+    },
+    {
+      "test": "Admin: Create Department",
+      "passed": true,
+      "details": "Department created: Test Dept 20260125_225835"
+    },
+    {
+      "test": "Admin: List Users",
+      "passed": true,
+      "details": "Found 1 users"
+    },
+    {
+      "test": "Admin: Assign Role to User",
+      "passed": true,
+      "details": "Role 'sales_rep' assigned"
+    },
+    {
+      "test": "Admin: Bulk Assign Role",
+      "passed": true,
+      "details": "Role assigned to 0 users"
+    },
+    {
+      "test": "Admin: Get My Permissions",
+      "passed": true,
+      "details": "User has 4 permissions"
+    },
+    {
+      "test": "Admin: Get Log Stats",
+      "passed": true,
+      "details": "Errors: 0, Sessions: 0"
+    },
+    {
+      "test": "Config: Get Widgets",
+      "passed": true,
+      "details": "Found 5 widgets"
+    },
+    {
+      "test": "Config: Get Navigation Items",
+      "passed": true,
+      "details": "Found 8 navigation items"
+    },
+    {
+      "test": "Config: Get Pipeline Stages",
+      "passed": true,
+      "details": "Found 6 stages"
+    },
+    {
+      "test": "Config: Create Service Line",
+      "passed": true,
+      "details": "Service line created: Test Service Line 20260125_225835"
+    },
+    {
+      "test": "Config: Get Bluesheet Weights",
+      "passed": true,
+      "details": "Weights: ['need', 'budget', 'timeline', 'authority', 'competition', 'fit']"
+    },
+    {
+      "test": "Config: Create Target",
+      "passed": true,
+      "details": "Target created: Test Target 20260125_225835"
+    },
+    {
+      "test": "Config: Get User Dashboard Config",
+      "passed": true,
+      "details": "Widgets: 3"
+    },
+    {
+      "test": "Sales: List Accounts",
+      "passed": true,
+      "details": "Found 0 accounts"
+    },
+    {
+      "test": "Sales: Create Account",
+      "passed": true,
+      "details": "Account created: Test Account 20260125_225835"
+    },
+    {
+      "test": "Sales: Get Account 360 View",
+      "passed": true,
+      "details": "Not found (expected for test ID)"
+    },
+    {
+      "test": "Sales: List KPIs",
+      "passed": true,
+      "details": "Found 0 KPIs"
+    },
+    {
+      "test": "Sales: Create KPI",
+      "passed": true,
+      "details": "KPI created: Test KPI 20260125_225836"
+    },
+    {
+      "test": "Sales: List Receivables (Stub)",
+      "passed": true,
+      "details": "Stub endpoint working"
+    },
+    {
+      "test": "Sales: Get Sales Metrics",
+      "passed": true,
+      "details": "Total opps: 0, Value: 0"
+    },
+    {
+      "test": "Sales: Search",
+      "passed": true,
+      "details": "Found opps: 0, accounts: 0"
+    },
+    {
+      "test": "Goals: Create Goal",
+      "passed": true,
+      "details": "Goal created: Test Goal 20260125_225836"
+    },
+    {
+      "test": "Goals: List Goals",
+      "passed": true,
+      "details": "Found 1 goals"
+    },
+    {
+      "test": "Goals: Update Goal Progress",
+      "passed": true,
+      "details": "Status: 200 (Updated)"
+    },
+    {
+      "test": "Goals: Get Summary Stats",
+      "passed": true,
+      "details": "Total: 1, Completed: 0"
+    },
+    {
+      "test": "Teams: Create Team",
+      "passed": true,
+      "details": "Team created: Test Team 20260125_225836"
+    },
+    {
+      "test": "Teams: List Teams",
+      "passed": true,
+      "details": "Found 2 teams"
+    },
+    {
+      "test": "Teams: Add Team Member",
+      "passed": true,
+      "details": "Status: 200 (Added)"
+    },
+    {
+      "test": "Teams: Get My Teams",
+      "passed": false,
+      "details": "Status: 0, Data: {'error': \"HTTPSConnectionPool(host='crm-api-gateway.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/teams/my-teams (Caused by ConnectTimeoutError(<HTTPSConnection(host='crm-api-gateway.preview.emergentagent.com', port=443) at 0xfd5d114c9b90>, 'Connection to crm-api-gateway.preview.emergentagent.com timed out. (connect timeout=10)'))\"}"
+    },
+    {
+      "test": "Portfolios: Create Portfolio",
+      "passed": false,
+      "details": "Could not get current user"
+    },
+    {
+      "test": "Portfolios: List Portfolios",
+      "passed": true,
+      "details": "Found 0 portfolios"
+    },
+    {
+      "test": "Portfolios: Get Portfolio Dashboard",
+      "passed": true,
+      "details": "Not found (expected for test ID)"
+    },
+    {
+      "test": "Initiatives: Create Initiative",
+      "passed": true,
+      "details": "Initiative created: Test Initiative 20260125_225903"
+    },
+    {
+      "test": "Initiatives: List Initiatives",
+      "passed": true,
+      "details": "Found 2 initiatives"
+    },
+    {
+      "test": "Initiatives: Update Initiative Status",
+      "passed": true,
+      "details": "Status: 200 (Updated)"
+    }
+  ]
+}

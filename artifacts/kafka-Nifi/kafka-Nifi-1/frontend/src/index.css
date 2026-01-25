@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 25% 7%;
+    --foreground: 0 0% 98%;
+    --card: 222 24% 9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 222 24% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 186 78% 45%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 220 10% 18%;
+    --muted-foreground: 220 12% 65%;
+    --accent: 199 80% 52%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 10% 20%;
+    --input: 220 10% 20%;
+    --ring: 186 78% 45%;
+    --radius: 0.5rem;
+    --success: 157 66% 41%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --chart-1: 199 80% 52%;
+    --chart-2: 157 66% 41%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 186 78% 45%;
+    --chart-5: 210 16% 72%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  }
+  code, pre, .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
