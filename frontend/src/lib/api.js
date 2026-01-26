@@ -73,6 +73,12 @@ export const etlAPI = {
   getSchema: (id) => api.get(`/integrations/${id}/schema`),
   getModelFields: (connId, modelName) => api.get(`/integrations/${connId}/schema/${modelName}/fields`),
   
+  // Templates
+  listTemplates: () => api.get('/templates'),
+  getTemplate: (id) => api.get(`/templates/${id}`),
+  createConnectionFromTemplate: (templateId, data) => api.post(`/templates/${templateId}/create-connection`, data),
+  getTemplateDefaultMappings: (templateId, sourceModel) => api.get(`/templates/${templateId}/default-mappings/${sourceModel}`),
+  
   // Mappings
   listMappings: (connectionId) => api.get('/mappings', { params: { connection_id: connectionId } }),
   getMapping: (id) => api.get(`/mappings/${id}`),
@@ -80,6 +86,9 @@ export const etlAPI = {
   updateMapping: (id, data) => api.put(`/mappings/${id}`, data),
   deleteMapping: (id) => api.delete(`/mappings/${id}`),
   previewMapping: (id, limit) => api.post(`/mappings/${id}/preview`, null, { params: { limit } }),
+  autoSuggestMappings: (connectionId, sourceModel, targetEntity) => 
+    api.post('/mappings/auto-suggest', null, { params: { connection_id: connectionId, source_model: sourceModel, target_entity: targetEntity } }),
+  verifyMapping: (id) => api.post(`/mappings/${id}/verify`),
   
   // Pipelines
   listPipelines: () => api.get('/pipelines'),
