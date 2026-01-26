@@ -277,6 +277,8 @@ export function MappingsPage() {
     }
 
     setAutoSuggesting(true);
+    console.log(`[ETL] Auto-suggesting mappings for ${sourceModel} -> ${formData.target_entity}`);
+    
     try {
       const res = await etlAPI.autoSuggestMappings(
         formData.connection_id,
@@ -284,10 +286,17 @@ export function MappingsPage() {
         formData.target_entity
       );
       
+      console.log(`[ETL] Auto-suggest response:`, res.data);
       const suggestions = res.data.suggestions || [];
       const targetEntity = res.data.target_entity || formData.target_entity;
       
       if (suggestions.length > 0) {
+        // Check if canonical_id is mapped
+        const hasCanonicalId = suggestions.some(s => s.target_field === 'canonical_id');
+        if (!hasCanonicalId) {
+          console.warn('[ETL] Warning: canonical_id not in suggestions');
+        }
+        
         // Convert suggestions to mapping rules
         const mappingRules = suggestions.map(s => ({
           source_field: s.source_field,
