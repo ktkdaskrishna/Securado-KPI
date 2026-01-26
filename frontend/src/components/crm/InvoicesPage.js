@@ -121,10 +121,24 @@ export function InvoicesPage() {
           <h1 className="text-2xl font-bold text-foreground">Invoices & Receivables</h1>
           <p className="text-muted-foreground">Track payments and manage invoices</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" data-testid="create-invoice-btn">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Invoice
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+            <SelectTrigger className="w-[140px]" data-testid="currency-selector">
+              <SelectValue placeholder="Currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {getCurrencyOptions().map((curr) => (
+                <SelectItem key={curr.code} value={curr.code}>
+                  {curr.symbol} {curr.code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button className="bg-primary hover:bg-primary/90" data-testid="create-invoice-btn">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -134,7 +148,7 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Invoiced</p>
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalInvoiced)}</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalInvoiced, selectedCurrency)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <FileText className="h-6 w-6 text-primary" />
@@ -147,7 +161,7 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-amber-600">{formatCurrency(stats.totalPending)}</p>
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(stats.totalPending, selectedCurrency)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-amber-600" />
