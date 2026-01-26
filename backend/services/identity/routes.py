@@ -8,6 +8,7 @@ Handles:
 - User approval workflow
 """
 from fastapi import APIRouter, HTTPException, Depends, Header
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import logging
