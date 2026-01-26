@@ -70,6 +70,7 @@ export function CurrencyProvider({ children }) {
     formatCurrency,
     getCurrencySymbol,
     loading,
+    reloadCurrency: loadCurrency,
   };
 
   return (
