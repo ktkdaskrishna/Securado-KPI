@@ -274,7 +274,7 @@ export function InvoicesPage() {
                         {invoice.account}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono font-medium">{formatCurrency(invoice.amount)}</TableCell>
+                    <TableCell className="font-mono font-medium">{formatCurrency(invoice.amount, selectedCurrency)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
