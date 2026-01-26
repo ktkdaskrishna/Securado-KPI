@@ -14,6 +14,7 @@ export function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { formatCurrency, currency } = useCurrency();
 
   const loadStats = async () => {
     try {
