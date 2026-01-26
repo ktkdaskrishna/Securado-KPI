@@ -550,7 +550,30 @@ export function MappingsPage() {
                   </div>
                 ) : discoveredModels.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>2. Select Source Model</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>2. Select Source Model(s)</Label>
+                      <Button
+                        variant={multiModelMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMultiModelMode(!multiModelMode)}
+                        className="h-7 text-xs"
+                      >
+                        <Boxes className="h-3 w-3 mr-1" />
+                        {multiModelMode ? 'Multi' : 'Single'}
+                      </Button>
+                    </div>
+                    
+                    {multiModelMode && selectedModels.length > 0 && (
+                      <div className="flex flex-wrap gap-1 p-2 bg-muted rounded-md">
+                        {selectedModels.map(m => (
+                          <Badge key={m} variant="secondary" className="text-xs">
+                            {m}
+                            <button onClick={() => toggleModelSelection(m)} className="ml-1 hover:text-red-500">×</button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input 
@@ -561,27 +584,62 @@ export function MappingsPage() {
                         data-testid="model-search-input"
                       />
                     </div>
-                    <ScrollArea className="h-[300px] border rounded-md">
-                      <div className="p-2 space-y-1">
-                        {filteredModels.map((model) => (
-                          <button
-                            key={model.model}
-                            onClick={() => handleModelSelect(model.model)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                              formData.source_model === model.model 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'hover:bg-muted'
-                            }`}
-                            data-testid={`model-item-${model.model}`}
-                          >
-                            <div className="font-medium">{model.model}</div>
-                            <div className="text-xs opacity-70">{model.name}</div>
-                          </button>
-                        ))}
+                    <ScrollArea className="h-[250px] border rounded-md">
+                      <div className="p-2">
+                        {/* Group models by category */}
+                        {Object.entries(groupedModels).map(([categoryName, category]) => {
+                          const categoryModels = category.models.filter(m => 
+                            !modelSearchQuery || 
+                            m.model?.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+                            m.name?.toLowerCase().includes(modelSearchQuery.toLowerCase())
+                          );
+                          
+                          if (categoryModels.length === 0) return null;
+                          
+                          return (
+                            <div key={categoryName} className="mb-3">
+                              <div className="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                <span>{category.icon}</span>
+                                <span>{categoryName}</span>
+                                <Badge variant="outline" className="text-xs h-4">{categoryModels.length}</Badge>
+                              </div>
+                              <div className="space-y-0.5">
+                                {categoryModels.map((model) => (
+                                  <button
+                                    key={model.model}
+                                    onClick={() => handleModelSelect(model.model)}
+                                    className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                                      multiModelMode 
+                                        ? selectedModels.includes(model.model)
+                                          ? 'bg-primary/10 text-primary border border-primary/30'
+                                          : 'hover:bg-muted'
+                                        : formData.source_model === model.model 
+                                          ? 'bg-primary text-primary-foreground' 
+                                          : 'hover:bg-muted'
+                                    }`}
+                                    data-testid={`model-item-${model.model}`}
+                                  >
+                                    {multiModelMode && (
+                                      <Checkbox 
+                                        checked={selectedModels.includes(model.model)}
+                                        className="h-3.5 w-3.5"
+                                      />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-xs truncate">{model.model}</div>
+                                      <div className="text-xs opacity-60 truncate">{model.name}</div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </ScrollArea>
-                    <div className="text-xs text-muted-foreground">
-                      {filteredModels.length} of {discoveredModels.length} models
+                    <div className="text-xs text-muted-foreground flex justify-between">
+                      <span>{filteredModels.length} of {discoveredModels.length} models</span>
+                      {multiModelMode && <span className="text-primary">{selectedModels.length} selected</span>}
                     </div>
                   </div>
                 ) : selectedConnection ? (
