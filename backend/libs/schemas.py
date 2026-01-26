@@ -16,6 +16,7 @@ class Topics:
     USER_REGISTERED = "user.registered.v1"
     USER_APPROVED = "user.approved.v1"
     USER_REJECTED = "user.rejected.v1"
+    USER_UPDATED = "user.updated.v1"
     
     # RBAC
     RBAC_ROLE_UPDATED = "rbac.role.updated.v1"
