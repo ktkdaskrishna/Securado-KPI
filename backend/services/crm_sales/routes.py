@@ -3,7 +3,9 @@
 Handles:
 - Opportunity listing with canonical + overrides merged
 - Stage/probability overrides (never touch canonical)
+- Bluesheet probability assessment
 - Activities CRUD
+- Notes under opportunities
 - Accounts with 360 view
 - KPIs tracking
 """
@@ -18,7 +20,11 @@ from libs.schemas import Topics
 from services.identity.routes import get_current_user
 from services.crm_sales.models import (
     StageUpdate, ProbabilityUpdate, ActivityCreate, ActivityUpdate,
-    AccountCreate, KPICreate
+    AccountCreate, KPICreate, BluesheetUpdate, NoteCreate
+)
+from services.crm_sales.bluesheet import (
+    calculate_bluesheet_probability, get_bluesheet_form_options,
+    BUYING_INFLUENCES, COMPETITION_STATUS, BUDGET_STATUS
 )
 
 logger = logging.getLogger(__name__)
