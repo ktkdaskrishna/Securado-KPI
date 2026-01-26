@@ -15,7 +15,7 @@ export function CurrencyProvider({ children }) {
     const loadCurrency = async () => {
       try {
         // Only attempt to load settings if user is likely logged in (has token)
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
         if (token) {
           const res = await adminAPI.getSettings();
           if (res.data?.default_currency) {
