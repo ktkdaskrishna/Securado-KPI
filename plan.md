@@ -154,9 +154,10 @@ Unified microservices platform combining ETL, CRM backend, and CRM frontend with
 ---
 
 ## Test Credentials
-- Email: admin@test.com
+- Email: test@securado.com
 - Password: test123456
 - Status: Approved
+- Roles: admin
 
 ---
 
