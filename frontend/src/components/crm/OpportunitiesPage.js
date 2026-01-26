@@ -293,7 +293,7 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                       <span className="text-sm text-gray-500">Amount</span>
                     </div>
                     <p className="text-2xl font-bold mt-1">
-                      ${(opportunity.amount || 0).toLocaleString()}
+                      {formatCurrency(opportunity.amount || 0)}
                     </p>
                   </CardContent>
                 </Card>
