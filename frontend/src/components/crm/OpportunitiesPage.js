@@ -827,7 +827,7 @@ export function OpportunitiesPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          ${(opp.amount || 0).toLocaleString()}
+                          {formatCurrency(opp.amount || 0)}
                         </TableCell>
                         <TableCell>{opp.owner_name || '-'}</TableCell>
                         <TableCell>
