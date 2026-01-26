@@ -72,6 +72,10 @@ export function SettingsPage() {
     setSaving(true);
     try {
       await adminAPI.updateSettings(settings);
+      // Update global currency context when settings are saved
+      if (settings.default_currency) {
+        setGlobalCurrency(settings.default_currency);
+      }
       toast.success('Settings saved successfully');
     } catch (error) {
       toast.error('Failed to save settings');
@@ -82,6 +86,10 @@ export function SettingsPage() {
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    // Immediately update global currency when it changes
+    if (key === 'default_currency') {
+      setGlobalCurrency(value);
+    }
   };
 
   if (loading) {
