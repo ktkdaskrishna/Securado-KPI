@@ -273,6 +273,10 @@ This document tracks the feature parity between the current Securado implementat
 | 2026-01-26 | Initial feature gap analysis completed |
 | 2026-01-26 | Fixed org_id KeyError in identity routes |
 | 2026-01-26 | Verified Kanban view code exists (was not a regression) |
+| 2026-01-26 | Implemented ProfilePage with tabs (Profile, Notifications, Security) |
+| 2026-01-26 | Implemented InvoicesPage with stats, filters, and detail sheet |
+| 2026-01-26 | Implemented ActivityTimelinePage with visual timeline and grouping |
+| 2026-01-26 | Added new navigation items (Timeline, Invoices, My Profile) |
 
 ---
 
