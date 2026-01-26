@@ -90,6 +90,7 @@ const defaultNavigation = {
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
     { id: 'roles', name: 'Roles', href: '/admin/roles', icon: 'Shield', default: true },
     { id: 'departments', name: 'Departments', href: '/admin/departments', icon: 'Building', default: false },
+    { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
   ],
 };
 
