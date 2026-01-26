@@ -80,7 +80,7 @@ INTEGRATION_TEMPLATES = {
             "Opportunity": {
                 "target_entity": "opportunity",
                 "fields": [
-                    {"source_field": "Id", "target_field": "source_id", "transform": "direct"},
+                    {"source_field": "Id", "target_field": "canonical_id", "transform": "direct"},
                     {"source_field": "Name", "target_field": "name", "transform": "direct"},
                     {"source_field": "Amount", "target_field": "amount", "transform": "to_float"},
                     {"source_field": "Probability", "target_field": "probability", "transform": "to_float"},
@@ -95,7 +95,7 @@ INTEGRATION_TEMPLATES = {
             "Account": {
                 "target_entity": "account",
                 "fields": [
-                    {"source_field": "Id", "target_field": "source_id", "transform": "direct"},
+                    {"source_field": "Id", "target_field": "canonical_id", "transform": "direct"},
                     {"source_field": "Name", "target_field": "name", "transform": "direct"},
                     {"source_field": "Industry", "target_field": "industry", "transform": "direct"},
                     {"source_field": "Phone", "target_field": "phone", "transform": "direct"},
