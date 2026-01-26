@@ -62,7 +62,8 @@ from services.etl_control.routes import (
     connections_router, 
     mappings_router, 
     pipelines_router,
-    runs_router
+    runs_router,
+    templates_router
 )
 from services.etl_runner.runner import etl_runner
 from services.canonical_query.routes import router as canonical_router, search_router
@@ -176,6 +177,7 @@ app.include_router(connections_router, prefix="/api")
 app.include_router(mappings_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(runs_router, prefix="/api")
+app.include_router(templates_router, prefix="/api")
 
 # Canonical/Data Lake
 app.include_router(canonical_router, prefix="/api")
