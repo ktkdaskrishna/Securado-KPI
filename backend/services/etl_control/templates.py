@@ -288,7 +288,38 @@ def auto_suggest_mappings(source_fields: List[str], target_entity: str) -> List[
     suggestions = []
     used_targets = set()
     
+    # ALWAYS add canonical_id mapping first (required field)
+    # Map 'id' from source to 'canonical_id' in target
+    id_field_candidates = ['id', 'Id', 'ID', '_id', 'hs_object_id', 'record_id']
+    canonical_id_mapped = False
+    
     for field in source_fields:
+        if field.lower() in [c.lower() for c in id_field_candidates]:
+            suggestions.append({
+                "source_field": field,
+                "target_field": "canonical_id",
+                "transform": "direct",
+                "confidence": 1.0  # Highest confidence - required field
+            })
+            used_targets.add("canonical_id")
+            canonical_id_mapped = True
+            break
+    
+    # If no ID field found, add a warning suggestion
+    if not canonical_id_mapped:
+        suggestions.append({
+            "source_field": "id",  # Placeholder
+            "target_field": "canonical_id",
+            "transform": "direct",
+            "confidence": 0.1,  # Low confidence - needs user attention
+            "warning": "No ID field found - please map a unique identifier to canonical_id"
+        })
+    
+    for field in source_fields:
+        # Skip if already mapped to canonical_id
+        if field.lower() in [c.lower() for c in id_field_candidates] and canonical_id_mapped:
+            continue
+            
         suggestion = suggest_mapping(field, target_entity)
         # Avoid duplicate target mappings
         if suggestion["target_field"] not in used_targets or suggestion["confidence"] > 0.5:
