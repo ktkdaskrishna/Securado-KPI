@@ -285,7 +285,7 @@ async def approve_user(
     result = await db.users.update_one(
         {
             "id": user_id,
-            "org_id": current_user["org_id"],
+            "org_id": current_user.get("org_id", "default"),
             "status": UserStatus.PENDING
         },
         {
@@ -308,7 +308,7 @@ async def approve_user(
             "approved_by": current_user["id"]
         },
         producer="identity-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     logger.info(f"User approved: {user_id} by {current_user['id']}")
@@ -328,7 +328,7 @@ async def reject_user(
     result = await db.users.update_one(
         {
             "id": user_id,
-            "org_id": current_user["org_id"],
+            "org_id": current_user.get("org_id", "default"),
             "status": UserStatus.PENDING
         },
         {
@@ -353,7 +353,7 @@ async def reject_user(
             "reason": reason
         },
         producer="identity-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     logger.info(f"User rejected: {user_id} by {current_user['id']}")
@@ -374,7 +374,7 @@ async def update_user(
     update_data["updated_at"] = now_utc()
     
     result = await db.users.update_one(
-        {"id": user_id, "org_id": current_user["org_id"]},
+        {"id": user_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_data}
     )
     
@@ -397,7 +397,7 @@ async def delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     
     result = await db.users.delete_one(
-        {"id": user_id, "org_id": current_user["org_id"]}
+        {"id": user_id, "org_id": current_user.get("org_id", "default")}
     )
     
     if result.deleted_count == 0:
@@ -416,7 +416,7 @@ async def assign_role_to_user(
     db = get_app_db()
     
     result = await db.users.update_one(
-        {"id": user_id, "org_id": current_user["org_id"]},
+        {"id": user_id, "org_id": current_user.get("org_id", "default")},
         {"$addToSet": {"roles": role_id}}
     )
     
@@ -436,7 +436,7 @@ async def remove_role_from_user(
     db = get_app_db()
     
     result = await db.users.update_one(
-        {"id": user_id, "org_id": current_user["org_id"]},
+        {"id": user_id, "org_id": current_user.get("org_id", "default")},
         {"$pull": {"roles": role_id}}
     )
     
@@ -460,7 +460,7 @@ async def update_user_roles(
     db = get_app_db()
     
     result = await db.users.update_one(
-        {"id": user_id, "org_id": current_user["org_id"]},
+        {"id": user_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {"roles": roles_data.roles, "updated_at": now_utc()}}
     )
     
@@ -476,7 +476,7 @@ async def update_user_roles(
             "roles": roles_data.roles
         },
         producer="identity-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     logger.info(f"User roles updated: {user_id} - {roles_data.roles}")
