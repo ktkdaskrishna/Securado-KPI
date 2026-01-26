@@ -228,7 +228,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         email=current_user["email"],
         name=current_user["name"],
         status=current_user["status"],
-        org_id=current_user["org_id"],
+        org_id=current_user.get("org_id", "default"),
         roles=current_user.get("roles", []),
         permissions=current_user.get("permissions", []),
         created_at=current_user.get("created_at")
@@ -247,7 +247,7 @@ async def list_users(
     """List all users in org"""
     db = get_app_db()
     
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if status:
         query["status"] = status
     
@@ -264,7 +264,7 @@ async def get_user(
     db = get_app_db()
     
     user = await db.users.find_one(
-        {"id": user_id, "org_id": current_user["org_id"]},
+        {"id": user_id, "org_id": current_user.get("org_id", "default")},
         {"password_hash": 0}
     )
     
