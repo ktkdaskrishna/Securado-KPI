@@ -114,11 +114,14 @@ function AppRoutes() {
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/activities" element={<ActivitiesPage />} />
+        <Route path="/activity-timeline" element={<ActivityTimelinePage />} />
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/initiatives" element={<InitiativesPage />} />
         <Route path="/kpis" element={<KPIsPage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* ETL Platform */}
         <Route path="/etl/connections" element={<ConnectionsPage />} />
