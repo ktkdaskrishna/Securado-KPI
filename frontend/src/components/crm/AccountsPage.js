@@ -73,14 +73,18 @@ export function AccountsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-gray-500">Manage customer accounts</p>
+          <h1 className="text-2xl font-bold text-foreground">Accounts</h1>
+          <p className="text-muted-foreground">Manage customer accounts</p>
         </div>
+        <Button className="bg-primary hover:bg-primary/90" data-testid="add-account-btn">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Account
+        </Button>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search accounts..."
             value={searchQuery}
@@ -97,8 +101,9 @@ export function AccountsPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Industry</TableHead>
+              <TableHead>Currency</TableHead>
+              <TableHead>Revenue</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Website</TableHead>
               <TableHead>Owner</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -106,7 +111,7 @@ export function AccountsPage() {
           <TableBody>
             {filteredAccounts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No accounts found. Run an ETL pipeline to import data.
                 </TableCell>
               </TableRow>
@@ -115,7 +120,7 @@ export function AccountsPage() {
                 <TableRow key={account.canonical_id || account.id} data-testid={`account-row-${account.canonical_id || account.id}`}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-gray-400" />
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
                       {account.name}
                     </div>
                   </TableCell>
@@ -124,14 +129,15 @@ export function AccountsPage() {
                       <Badge variant="outline">{account.industry}</Badge>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>{account.phone || '-'}</TableCell>
                   <TableCell>
-                    {account.website ? (
-                      <a href={account.website} target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">
-                        {account.website}
-                      </a>
-                    ) : '-'}
+                    <Badge variant="secondary" className="font-mono">
+                      {account.currency || DEFAULT_CURRENCY}
+                    </Badge>
                   </TableCell>
+                  <TableCell className="font-mono">
+                    {account.revenue ? formatCurrency(account.revenue, account.currency || DEFAULT_CURRENCY) : '-'}
+                  </TableCell>
+                  <TableCell>{account.phone || '-'}</TableCell>
                   <TableCell>{account.owner_name || '-'}</TableCell>
                   <TableCell className="text-right">
                     <Button
