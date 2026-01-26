@@ -58,6 +58,9 @@ const iconMap = {
   Shield,
   Building,
   Rocket,
+  FileText,
+  Clock,
+  User,
 };
 
 const defaultNavigation = {
