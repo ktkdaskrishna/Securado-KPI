@@ -30,7 +30,10 @@ import {
   Settings,
   LogOut,
   Rocket,
-  Menu
+  Menu,
+  FileText,
+  Clock,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 
