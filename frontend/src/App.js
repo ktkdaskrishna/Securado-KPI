@@ -150,8 +150,10 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
-        <Toaster position="top-right" richColors closeButton />
+        <CurrencyProvider>
+          <AppRoutes />
+          <Toaster position="top-right" richColors closeButton />
+        </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>
   );
