@@ -709,7 +709,9 @@ class APITester:
         self.test_kpis()
         
         # ETL modules
+        self.test_etl_templates()
         self.test_etl_connections()
+        self.test_etl_mappings()
         self.test_etl_pipelines()
         
         # Admin modules
