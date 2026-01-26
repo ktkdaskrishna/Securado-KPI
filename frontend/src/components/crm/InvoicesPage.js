@@ -174,7 +174,7 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalOverdue)}</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalOverdue, selectedCurrency)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
@@ -187,7 +187,7 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Paid</p>
-                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.totalPaid)}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.totalPaid, selectedCurrency)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-emerald-600" />
@@ -209,7 +209,7 @@ export function InvoicesPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Collected this month</span>
-              <span className="font-medium">{formatCurrency(stats.totalPaid)} / {formatCurrency(stats.totalInvoiced)}</span>
+              <span className="font-medium">{formatCurrency(stats.totalPaid, selectedCurrency)} / {formatCurrency(stats.totalInvoiced, selectedCurrency)}</span>
             </div>
             <Progress value={stats.totalInvoiced > 0 ? (stats.totalPaid / stats.totalInvoiced) * 100 : 0} className="h-2" />
           </div>
