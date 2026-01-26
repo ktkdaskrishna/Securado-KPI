@@ -459,8 +459,13 @@ async def update_user_roles(
     """Update all roles for a user (replaces existing roles)"""
     db = get_app_db()
     
+    # First check if user exists (without org_id filter to handle users without org_id)
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     result = await db.users.update_one(
-        {"id": user_id, "org_id": current_user.get("org_id", "default")},
+        {"id": user_id},
         {"$set": {"roles": roles_data.roles, "updated_at": now_utc()}}
     )
     
