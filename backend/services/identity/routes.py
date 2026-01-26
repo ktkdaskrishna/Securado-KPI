@@ -247,7 +247,8 @@ async def list_users(
     """List all users in org"""
     db = get_app_db()
     
-    query = {"org_id": current_user.get("org_id", "default")}
+    # For now, list all users (can add org_id filter later when multi-tenancy is properly implemented)
+    query = {}
     if status:
         query["status"] = status
     
