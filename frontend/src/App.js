@@ -20,6 +20,9 @@ import { TeamsPage } from './components/crm/TeamsPage';
 import { PortfoliosPage } from './components/crm/PortfoliosPage';
 import { InitiativesPage } from './components/crm/InitiativesPage';
 import { KPIsPage } from './components/crm/KPIsPage';
+import { ProfilePage } from './components/crm/ProfilePage';
+import { InvoicesPage } from './components/crm/InvoicesPage';
+import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
