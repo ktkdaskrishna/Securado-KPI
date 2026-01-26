@@ -14,9 +14,13 @@ export function CurrencyProvider({ children }) {
   useEffect(() => {
     const loadCurrency = async () => {
       try {
-        const res = await adminAPI.getSettings();
-        if (res.data?.default_currency) {
-          setCurrency(res.data.default_currency);
+        // Only attempt to load settings if user is likely logged in (has token)
+        const token = localStorage.getItem('token');
+        if (token) {
+          const res = await adminAPI.getSettings();
+          if (res.data?.default_currency) {
+            setCurrency(res.data.default_currency);
+          }
         }
       } catch (error) {
         // Use default currency if settings not available
