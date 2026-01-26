@@ -5,8 +5,10 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import { Shield } from 'lucide-react';
+import { getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 
 const SECURADO_LOGO_PRIMARY = "https://customer-assets.emergentagent.com/job_streamhub-crm/artifacts/39apig25_Securado%20Logo-01.jpg";
 
@@ -16,6 +18,7 @@ export function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    default_currency: DEFAULT_CURRENCY,
   });
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -35,6 +38,7 @@ export function RegisterPage() {
         name: formData.name,
         email: formData.email,
         password: formData.password,
+        default_currency: formData.default_currency,
       });
       toast.success('Registration successful! Please wait for admin approval.');
       navigate('/login');
@@ -103,6 +107,24 @@ export function RegisterPage() {
                 className="border-gray-300 focus:border-[#800000] focus:ring-[#800000]/20"
                 data-testid="register-email-input"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency" className="text-[#333333]">Default Currency</Label>
+              <Select 
+                value={formData.default_currency} 
+                onValueChange={(v) => setFormData({ ...formData, default_currency: v })}
+              >
+                <SelectTrigger className="border-gray-300 focus:border-[#800000] focus:ring-[#800000]/20" data-testid="register-currency-select">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getCurrencyOptions().map((curr) => (
+                    <SelectItem key={curr.code} value={curr.code}>
+                      {curr.symbol} {curr.code} - {curr.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-[#333333]">Password</Label>
