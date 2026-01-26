@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmAPI } from '../../lib/api';
-import { formatCurrency, getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
+import { useCurrency } from '../../lib/CurrencyContext';
+import { getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
