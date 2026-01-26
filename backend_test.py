@@ -482,14 +482,14 @@ class APITester:
             print(f"   Found {len(data)} pipelines")
 
     def test_admin_users(self):
-        """Test admin users endpoints"""
+        """Test admin users endpoints including role assignment"""
         print("\n" + "="*60)
-        print("TEST: Admin - Users")
+        print("TEST: Admin - Users (with Role Assignment)")
         print("="*60)
         
         if not self.token:
             self.log("No token available, skipping admin users tests", False)
-            return
+            return None, None
         
         # List users
         status, data = self.make_request(
@@ -499,10 +499,54 @@ class APITester:
             description="List users"
         )
         
-        if data and isinstance(data, list):
-            print(f"   Found {len(data)} users")
-            for user in data[:3]:  # Show first 3 users
-                print(f"   - {user.get('email')} ({user.get('status')})")
+        users = data if isinstance(data, list) else []
+        print(f"   Found {len(users)} users")
+        for user in users[:3]:  # Show first 3 users
+            print(f"   - {user.get('email')} ({user.get('status')})")
+        
+        # Get roles for role assignment test
+        status, roles_data = self.make_request(
+            'GET',
+            'admin/roles',
+            expected_status=200,
+            description="List roles"
+        )
+        
+        roles = roles_data if isinstance(roles_data, list) else []
+        print(f"   Found {len(roles)} roles")
+        
+        # Test role assignment if we have users and roles
+        if users and roles:
+            # Find an approved user (not the current user)
+            test_user = None
+            for user in users:
+                if user.get('status') == 'approved' and user.get('id') != self.user_id:
+                    test_user = user
+                    break
+            
+            if test_user and len(roles) > 0:
+                user_id = test_user.get('id')
+                role_ids = [roles[0].get('id')] if roles else []
+                
+                print(f"\n   Testing role assignment for user: {test_user.get('email')}")
+                print(f"   Assigning roles: {role_ids}")
+                
+                status, update_result = self.make_request(
+                    'PUT',
+                    f'admin/users/{user_id}/roles',
+                    data={"roles": role_ids},
+                    expected_status=200,
+                    description="PUT /api/admin/users/{id}/roles - Update user roles"
+                )
+                
+                if update_result and isinstance(update_result, dict):
+                    print(f"   Role assignment result: {update_result.get('message')}")
+            else:
+                self.log("No suitable user found for role assignment test", False)
+        else:
+            self.log("No users or roles available for role assignment test", False)
+        
+        return users, roles
 
     def test_admin_roles(self):
         """Test admin roles endpoints"""
