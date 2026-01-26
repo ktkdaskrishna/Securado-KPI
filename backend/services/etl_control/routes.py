@@ -6,6 +6,9 @@ Handles:
 - Mapping CRUD with versioning
 - Pipeline CRUD with scheduling
 - Run command publishing
+- Integration templates
+- Auto-mapping suggestions
+- Schema verification
 """
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import Optional, List
@@ -21,6 +24,9 @@ from services.etl_control.models import (
     ConnectionCreate, ConnectionUpdate, MappingCreate, MappingUpdate,
     PipelineCreate, PipelineUpdate, CANONICAL_ENTITIES
 )
+from services.etl_control.templates import (
+    INTEGRATION_TEMPLATES, auto_suggest_mappings, suggest_mapping
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +35,7 @@ connections_router = APIRouter(prefix="/integrations", tags=["connections"])
 mappings_router = APIRouter(prefix="/mappings", tags=["mappings"])
 pipelines_router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 runs_router = APIRouter(prefix="/runs", tags=["runs"])
+templates_router = APIRouter(prefix="/templates", tags=["templates"])
 
 
 # ==================== CONNECTIONS ====================
