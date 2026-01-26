@@ -317,6 +317,74 @@ class APITester:
         
         return data
 
+    def test_etl_mappings(self):
+        """Test ETL mappings with auto-suggest and verification"""
+        print("\n" + "="*60)
+        print("TEST: ETL Mappings (Auto-Suggest & Verification)")
+        print("="*60)
+        
+        if not self.token:
+            self.log("No token available, skipping ETL mappings tests", False)
+            return None, None
+        
+        # List mappings
+        status, data = self.make_request(
+            'GET',
+            'mappings',
+            expected_status=200,
+            description="List ETL mappings"
+        )
+        
+        mappings = data if isinstance(data, list) else []
+        print(f"   Found {len(mappings)} mappings")
+        
+        # Test auto-suggest (requires a connection)
+        connections = self.test_etl_connections()
+        if connections and len(connections) > 0:
+            conn_id = connections[0].get('id')
+            print(f"\n   Testing auto-suggest with connection: {conn_id}")
+            
+            status, suggest_data = self.make_request(
+                'POST',
+                f'mappings/auto-suggest?connection_id={conn_id}&source_model=crm.lead&target_entity=opportunity',
+                expected_status=200,
+                description="POST /api/mappings/auto-suggest - Auto-suggest field mappings"
+            )
+            
+            if suggest_data and isinstance(suggest_data, dict):
+                suggestions = suggest_data.get('suggestions', [])
+                print(f"   Auto-suggest returned {len(suggestions)} suggestions")
+                print(f"   Source: {suggest_data.get('source')}")
+                print(f"   Confidence: {suggest_data.get('confidence')}")
+                if suggestions:
+                    print(f"   Sample suggestion: {suggestions[0]}")
+        else:
+            self.log("No connections available for auto-suggest test", False)
+        
+        # Test schema verification (requires a mapping)
+        if mappings and len(mappings) > 0:
+            mapping_id = mappings[0].get('id')
+            print(f"\n   Testing schema verification with mapping: {mapping_id}")
+            
+            status, verify_data = self.make_request(
+                'POST',
+                f'mappings/{mapping_id}/verify',
+                expected_status=200,
+                description="POST /api/mappings/{id}/verify - Verify mapping schema"
+            )
+            
+            if verify_data and isinstance(verify_data, dict):
+                print(f"   Verification status: {verify_data.get('status')}")
+                print(f"   Errors: {len(verify_data.get('errors', []))}")
+                print(f"   Warnings: {len(verify_data.get('warnings', []))}")
+                if verify_data.get('summary'):
+                    summary = verify_data['summary']
+                    print(f"   Summary: {summary.get('valid')}/{summary.get('total_fields')} fields valid")
+        else:
+            self.log("No mappings available for verification test", False)
+        
+        return mappings
+
     def test_etl_pipelines(self):
         """Test ETL pipelines endpoints"""
         print("\n" + "="*60)
