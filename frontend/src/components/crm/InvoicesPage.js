@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { crmAPI } from '../../lib/api';
+import { formatCurrency, getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -9,19 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Progress } from '../ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
   FileText, Search, Eye, DollarSign, Calendar, Clock, AlertTriangle,
   CheckCircle, TrendingUp, Building2, Download, Send, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0
-  }).format(amount || 0);
-};
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -39,8 +33,9 @@ export function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [selectedCurrency, setSelectedCurrency] = useState(DEFAULT_CURRENCY);
 
-  // Mock stats for demonstration
+  // Stats with currency support
   const stats = {
     totalInvoiced: invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
     totalPending: invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + (inv.amount || 0), 0),
