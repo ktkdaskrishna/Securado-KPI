@@ -6,7 +6,10 @@ import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Users, CheckCircle, XCircle, Clock, Trash2, UserCheck, UserX } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
+import { Users, CheckCircle, XCircle, Clock, Trash2, UserCheck, UserX, Shield, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusColors = {
@@ -24,19 +27,27 @@ const statusIcons = {
 
 export function UsersPage() {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedRoles, setSelectedRoles] = useState([]);
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     try {
-      const res = await adminAPI.listUsers();
-      setUsers(res.data);
+      const [usersRes, rolesRes] = await Promise.all([
+        adminAPI.listUsers(),
+        adminAPI.listRoles()
+      ]);
+      setUsers(usersRes.data);
+      setRoles(rolesRes.data);
     } catch (error) {
-      toast.error('Failed to load users');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -46,7 +57,7 @@ export function UsersPage() {
     try {
       await adminAPI.approveUser(id);
       toast.success('User approved');
-      loadUsers();
+      loadData();
     } catch (error) {
       toast.error('Failed to approve user');
     }
@@ -57,7 +68,7 @@ export function UsersPage() {
     try {
       await adminAPI.rejectUser(id, reason);
       toast.success('User rejected');
-      loadUsers();
+      loadData();
     } catch (error) {
       toast.error('Failed to reject user');
     }
@@ -68,9 +79,34 @@ export function UsersPage() {
     try {
       await adminAPI.deleteUser(id);
       toast.success('User deleted');
-      loadUsers();
+      loadData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete user');
+    }
+  };
+
+  const openRoleDialog = (user) => {
+    setSelectedUser(user);
+    setSelectedRoles(user.roles || []);
+    setRoleDialogOpen(true);
+  };
+
+  const toggleRole = (roleId) => {
+    setSelectedRoles(prev => 
+      prev.includes(roleId)
+        ? prev.filter(r => r !== roleId)
+        : [...prev, roleId]
+    );
+  };
+
+  const handleSaveRoles = async () => {
+    try {
+      await adminAPI.updateUserRoles(selectedUser.id, selectedRoles);
+      toast.success('User roles updated');
+      setRoleDialogOpen(false);
+      loadData();
+    } catch (error) {
+      toast.error('Failed to update roles');
     }
   };
 
@@ -94,7 +130,7 @@ export function UsersPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-500">Manage user accounts and approvals</p>
+          <p className="text-gray-500">Manage user accounts, approvals, and roles</p>
         </div>
         {pendingCount > 0 && (
           <Badge className="bg-amber-100 text-amber-700" data-testid="users-pending-pill">
@@ -111,6 +147,53 @@ export function UsersPage() {
           <TabsTrigger value="rejected">Rejected ({users.filter(u => u.status === 'rejected').length})</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* Role Assignment Dialog */}
+      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Roles</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Select roles for ${selectedUser.name || selectedUser.email}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              {roles.map((role) => (
+                <div 
+                  key={role.id} 
+                  className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                    selectedRoles.includes(role.id) ? 'border-cyan-500 bg-cyan-50' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => toggleRole(role.id)}
+                >
+                  <Checkbox 
+                    checked={selectedRoles.includes(role.id)}
+                    onCheckedChange={() => toggleRole(role.id)}
+                    data-testid={`user-role-checkbox-${role.id}`}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-cyan-500" />
+                      <span className="font-medium text-sm">{role.name}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{role.description}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {role.permissions?.length || 0} permissions
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveRoles} data-testid="save-user-roles-button">Save Roles</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <Table>
@@ -133,7 +216,7 @@ export function UsersPage() {
               </TableRow>
             ) : (
               filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-sm font-medium">
@@ -154,9 +237,14 @@ export function UsersPage() {
                   <TableCell>
                     {user.roles?.length > 0 ? (
                       <div className="flex gap-1 flex-wrap">
-                        {user.roles.map((role, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{role}</Badge>
-                        ))}
+                        {user.roles.map((roleId, i) => {
+                          const role = roles.find(r => r.id === roleId);
+                          return (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {role?.name || roleId}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span className="text-gray-400">No roles</span>
@@ -167,6 +255,17 @@ export function UsersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {user.status === 'approved' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRoleDialog(user)}
+                          data-testid={`users-manage-roles-button-${user.id}`}
+                        >
+                          <Settings className="h-4 w-4 mr-1" />
+                          Roles
+                        </Button>
+                      )}
                       {user.status === 'pending' && (
                         <>
                           <Button
