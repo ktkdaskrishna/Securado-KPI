@@ -115,6 +115,9 @@ export function MappingsPage() {
     setSelectedConnection(connectionId);
     setDiscoveredModels([]);
     setSelectedModelFields(null);
+    setSelectedModels([]);
+    setModelMappings({});
+    setActiveModelTab(null);
     
     if (!connectionId) return;
     
@@ -143,8 +146,53 @@ export function MappingsPage() {
     }
   };
 
-  // When model is selected, get its fields and auto-suggest mappings
+  // Toggle model selection for multi-model mode
+  const toggleModelSelection = (modelName) => {
+    setSelectedModels(prev => {
+      if (prev.includes(modelName)) {
+        // Remove model
+        const newModels = prev.filter(m => m !== modelName);
+        const newMappings = { ...modelMappings };
+        delete newMappings[modelName];
+        setModelMappings(newMappings);
+        if (activeModelTab === modelName && newModels.length > 0) {
+          setActiveModelTab(newModels[0]);
+        }
+        return newModels;
+      } else {
+        // Add model and initialize its mappings
+        const newModels = [...prev, modelName];
+        setModelMappings(prevMappings => ({
+          ...prevMappings,
+          [modelName]: {
+            target_entity: guessTargetEntity(modelName),
+            mappings: [{ source_field: '', target_field: '', transform: 'direct' }]
+          }
+        }));
+        if (!activeModelTab) setActiveModelTab(modelName);
+        return newModels;
+      }
+    });
+  };
+
+  // Guess target entity based on model name
+  const guessTargetEntity = (modelName) => {
+    if (modelName.includes('crm.lead')) return 'opportunity';
+    if (modelName.includes('partner')) return 'account';
+    if (modelName.includes('account.move') || modelName.includes('invoice')) return 'invoice';
+    if (modelName.includes('product')) return 'product';
+    if (modelName.includes('sale.order')) return 'order';
+    if (modelName.includes('user')) return 'user';
+    return 'account';
+  };
+
+  // When model is selected (single mode), get its fields and auto-suggest mappings
   const handleModelSelect = async (modelName) => {
+    if (multiModelMode) {
+      toggleModelSelection(modelName);
+      return;
+    }
+    
     setFormData({ ...formData, source_model: modelName });
     setSelectedModelFields(null);
     
@@ -163,6 +211,63 @@ export function MappingsPage() {
     } finally {
       setLoadingFields(false);
     }
+  };
+
+  // Load fields for a model in multi-model mode
+  const loadModelFields = async (modelName) => {
+    if (!formData.connection_id) return;
+    
+    setLoadingFields(true);
+    try {
+      const fieldsRes = await etlAPI.getModelFields(formData.connection_id, modelName);
+      setSelectedModelFields(fieldsRes.data);
+      
+      // Also auto-suggest mappings for this model
+      const res = await etlAPI.autoSuggestMappings(
+        formData.connection_id,
+        modelName,
+        modelMappings[modelName]?.target_entity || 'account'
+      );
+      
+      const suggestions = res.data.suggestions || [];
+      if (suggestions.length > 0) {
+        const mappingRules = suggestions.map(s => ({
+          source_field: s.source_field,
+          target_field: s.target_field,
+          transform: s.transform || 'direct',
+          confidence: s.confidence
+        }));
+        
+        setModelMappings(prev => ({
+          ...prev,
+          [modelName]: {
+            ...prev[modelName],
+            mappings: mappingRules
+          }
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to load model fields');
+    } finally {
+      setLoadingFields(false);
+    }
+  };
+
+  // Update model mappings in multi-model mode
+  const updateModelMapping = (modelName, field, value) => {
+    setModelMappings(prev => ({
+      ...prev,
+      [modelName]: {
+        ...prev[modelName],
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle tab change in multi-model mode
+  const handleModelTabChange = async (modelName) => {
+    setActiveModelTab(modelName);
+    await loadModelFields(modelName);
   };
 
   const handleAutoSuggest = async (sourceModel = formData.source_model) => {
