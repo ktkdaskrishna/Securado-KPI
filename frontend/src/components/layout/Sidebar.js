@@ -280,29 +280,24 @@ export function Sidebar() {
                 ))}
               </div>
             </div>
+            
+            <div className="pt-4">
+              <Button 
+                variant="outline" 
+                className="w-full border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white"
+                onClick={() => {
+                  const defaults = {};
+                  Object.values(defaultNavigation).flat().forEach(item => {
+                    defaults[item.id] = item.default;
+                  });
+                  setNavPreferences(defaults);
+                }}
+              >
+                Reset to Defaults
+              </Button>
+            </div>
           </div>
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
-  );
-          </div>
-
-          <div className="pt-4">
-            <Button 
-              variant="outline" 
-              className="w-full border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white"
-              onClick={() => {
-                const defaults = {};
-                Object.values(defaultNavigation).flat().forEach(item => {
-                  defaults[item.id] = item.default;
-                });
-                setNavPreferences(defaults);
-              }}
-            >
-              Reset to Defaults
-            </Button>
-          </div>
-        </div>
       </SheetContent>
     </Sheet>
   );
