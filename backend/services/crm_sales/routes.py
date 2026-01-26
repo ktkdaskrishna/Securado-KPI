@@ -76,7 +76,7 @@ async def list_opportunities(
     app_db = get_app_db()
     
     # Build query
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if stage:
         query["stage"] = stage
     
@@ -84,7 +84,7 @@ async def list_opportunities(
     records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
     
     # Merge with overrides
-    merged = await merge_with_overrides(records, current_user["org_id"], app_db)
+    merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
     
     return merged
 
@@ -97,11 +97,11 @@ async def opportunities_kanban(current_user: dict = Depends(get_current_user)):
     
     # Get all opportunities
     records = await canonical_db.opportunities.find(
-        {"org_id": current_user["org_id"]}
+        {"org_id": current_user.get("org_id", "default")}
     ).to_list(1000)
     
     # Merge with overrides
-    merged = await merge_with_overrides(records, current_user["org_id"], app_db)
+    merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
     
     # Organize by stage
     kanban = {stage: [] for stage in PipelineStages.all()}
@@ -131,13 +131,13 @@ async def get_opportunity(
     
     record = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not record:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     
-    merged = await merge_with_overrides([record], current_user["org_id"], app_db)
+    merged = await merge_with_overrides([record], current_user.get("org_id", "default"), app_db)
     return merged[0]
 
 
@@ -154,7 +154,7 @@ async def update_opportunity_stage(
     # Verify opportunity exists
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -162,7 +162,7 @@ async def update_opportunity_stage(
     # Get old value for event
     old_override = await app_db.overrides.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     old_stage = old_override.get("stage") if old_override else opp.get("stage")
     
@@ -171,13 +171,13 @@ async def update_opportunity_stage(
     await app_db.overrides.update_one(
         {
             "canonical_id": opp_id,
-            "org_id": current_user["org_id"]
+            "org_id": current_user.get("org_id", "default")
         },
         {
             "$set": {
                 "id": override_id,
                 "canonical_id": opp_id,
-                "org_id": current_user["org_id"],
+                "org_id": current_user.get("org_id", "default"),
                 "entity_type": "opportunity",
                 "stage": stage_data.stage,
                 "updated_at": now_utc(),
@@ -200,7 +200,7 @@ async def update_opportunity_stage(
             "updated_by": current_user["id"]
         },
         producer="crm-sales-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     logger.info(f"Stage updated for {opp_id}: {old_stage} -> {stage_data.stage}")
@@ -226,7 +226,7 @@ async def calculate_probability(
     # Verify opportunity exists
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -235,7 +235,7 @@ async def calculate_probability(
     await app_db.overrides.update_one(
         {
             "canonical_id": opp_id,
-            "org_id": current_user["org_id"]
+            "org_id": current_user.get("org_id", "default")
         },
         {
             "$set": {
@@ -266,7 +266,7 @@ async def get_opportunity_messages(
     # Get notes from database
     notes = await app_db.notes.find({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).sort("created_at", -1).to_list(100)
     
     if notes:
@@ -289,14 +289,14 @@ async def create_opportunity_note(
     # Verify opportunity exists
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     
     note_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "opportunity_id": opp_id,
         "content": note_data.content,
         "note_type": note_data.note_type,
@@ -321,7 +321,7 @@ async def get_opportunity_activities(
     
     activities = await app_db.activities.find({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).sort("created_at", -1).to_list(100)
     
     return serialize_doc(activities)
@@ -341,7 +341,7 @@ async def get_bluesheet(
     # Get opportunity
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -349,13 +349,13 @@ async def get_bluesheet(
     # Get bluesheet data
     bluesheet = await app_db.bluesheets.find_one({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     # Get activities for this opportunity
     activities = await app_db.activities.find({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     # Calculate probability
@@ -387,7 +387,7 @@ async def update_bluesheet(
     # Verify opportunity exists
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -395,7 +395,7 @@ async def update_bluesheet(
     # Prepare bluesheet document
     bluesheet_doc = {
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "buying_influences": [bi.model_dump() for bi in (bluesheet_data.buying_influences or [])],
         "competition_status": bluesheet_data.competition_status,
         "budget_status": bluesheet_data.budget_status,
@@ -408,7 +408,7 @@ async def update_bluesheet(
     
     # Upsert bluesheet
     await app_db.bluesheets.update_one(
-        {"opportunity_id": opp_id, "org_id": current_user["org_id"]},
+        {"opportunity_id": opp_id, "org_id": current_user.get("org_id", "default")},
         {"$set": bluesheet_doc},
         upsert=True
     )
@@ -416,7 +416,7 @@ async def update_bluesheet(
     # Get activities to calculate probability
     activities = await app_db.activities.find({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     # Calculate new probability
@@ -428,7 +428,7 @@ async def update_bluesheet(
     
     # Update override with calculated probability
     await app_db.overrides.update_one(
-        {"canonical_id": opp_id, "org_id": current_user["org_id"]},
+        {"canonical_id": opp_id, "org_id": current_user.get("org_id", "default")},
         {
             "$set": {
                 "probability": round(probability_result["probability"]),
@@ -460,7 +460,7 @@ async def calculate_bluesheet_only(
     # Get opportunity
     opp = await canonical_db.opportunities.find_one({
         "canonical_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -468,13 +468,13 @@ async def calculate_bluesheet_only(
     # Get bluesheet data
     bluesheet = await app_db.bluesheets.find_one({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     # Get activities
     activities = await app_db.activities.find({
         "opportunity_id": opp_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     # Calculate
@@ -495,7 +495,7 @@ async def list_accounts(current_user: dict = Depends(get_current_user)):
     canonical_db = get_canonical_db()
     
     accounts = await canonical_db.accounts.find(
-        {"org_id": current_user["org_id"]}
+        {"org_id": current_user.get("org_id", "default")}
     ).to_list(1000)
     
     return serialize_doc(accounts)
@@ -512,7 +512,7 @@ async def create_account(
     account_doc = {
         "id": generate_id(),
         "canonical_id": f"local_account_{generate_id()[:8]}",
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "source_system": "local",
         "created_by": current_user["id"],
         "created_at": now_utc(),
@@ -535,14 +535,14 @@ async def get_account_360(
     # Try canonical first
     account = await canonical_db.accounts.find_one({
         "canonical_id": account_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     # Try local accounts
     if not account:
         account = await app_db.local_accounts.find_one({
             "id": account_id,
-            "org_id": current_user["org_id"]
+            "org_id": current_user.get("org_id", "default")
         })
     
     if not account:
@@ -552,13 +552,13 @@ async def get_account_360(
     account_name = account.get("name")
     opps = await canonical_db.opportunities.find({
         "account_name": account_name,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     # Get related activities
     activities = await app_db.activities.find({
         "account_id": account_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     result = serialize_doc(account)
@@ -587,7 +587,7 @@ async def list_activities(
     """List activities"""
     app_db = get_app_db()
     
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if opportunity_id:
         query["opportunity_id"] = opportunity_id
     if account_id:
@@ -605,7 +605,7 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
     app_db = get_app_db()
     
     activities = await app_db.activities.find(
-        {"org_id": current_user["org_id"]}
+        {"org_id": current_user.get("org_id", "default")}
     ).to_list(1000)
     
     return {
@@ -632,7 +632,7 @@ async def create_activity(
     
     activity_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "status": "pending",
         "completed": False,
         "created_by": current_user["id"],
@@ -653,7 +653,7 @@ async def create_activity(
             "opportunity_id": activity_data.opportunity_id
         },
         producer="crm-sales-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return serialize_doc(activity_doc)
@@ -677,7 +677,7 @@ async def update_activity_status(
         update_fields["notes"] = update_data.notes
     
     result = await app_db.activities.update_one(
-        {"id": activity_id, "org_id": current_user["org_id"]},
+        {"id": activity_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_fields}
     )
     
@@ -694,7 +694,7 @@ async def update_activity_status(
             "opportunity_id": None
         },
         producer="crm-sales-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return {"success": True, "message": "Activity updated"}
@@ -709,7 +709,7 @@ async def complete_activity(
     app_db = get_app_db()
     
     result = await app_db.activities.update_one(
-        {"id": activity_id, "org_id": current_user["org_id"]},
+        {"id": activity_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {"status": "completed", "completed": True, "completed_at": now_utc()}}
     )
     
@@ -726,7 +726,7 @@ async def list_kpis(current_user: dict = Depends(get_current_user)):
     """List KPIs"""
     app_db = get_app_db()
     
-    kpis = await app_db.kpis.find({"org_id": current_user["org_id"]}).to_list(100)
+    kpis = await app_db.kpis.find({"org_id": current_user.get("org_id", "default")}).to_list(100)
     
     if not kpis:
         # Return default KPIs
@@ -750,7 +750,7 @@ async def create_kpi(
     
     kpi_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "change": 0,
         "created_at": now_utc(),
         **kpi_data.model_dump()
@@ -770,7 +770,7 @@ async def update_kpi(
     app_db = get_app_db()
     
     result = await app_db.kpis.update_one(
-        {"id": kpi_id, "org_id": current_user["org_id"]},
+        {"id": kpi_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {**kpi_data.model_dump(), "updated_at": now_utc()}}
     )
     
@@ -790,7 +790,7 @@ async def delete_kpi(
     
     result = await app_db.kpis.delete_one({
         "id": kpi_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:

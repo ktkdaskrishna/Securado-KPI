@@ -50,7 +50,7 @@ async def create_connection(
     
     conn_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "name": conn_data.name,
         "type": conn_data.type,
         "url": conn_data.url,
@@ -77,7 +77,7 @@ async def create_connection(
 async def list_connections(current_user: dict = Depends(get_current_user)):
     """List all connections"""
     db = get_app_db()
-    connections = await db.connections.find({"org_id": current_user["org_id"]}).to_list(100)
+    connections = await db.connections.find({"org_id": current_user.get("org_id", "default")}).to_list(100)
     
     # Remove api_key from response
     return serialize_doc([{k: v for k, v in c.items() if k != 'api_key'} for c in connections])
@@ -93,7 +93,7 @@ async def get_connection(
     
     conn = await db.connections.find_one({
         "id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not conn:
@@ -117,7 +117,7 @@ async def update_connection(
     update_data["status"] = "pending"  # Reset status on update
     
     result = await db.connections.update_one(
-        {"id": conn_id, "org_id": current_user["org_id"]},
+        {"id": conn_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_data}
     )
     
@@ -137,7 +137,7 @@ async def delete_connection(
     
     result = await db.connections.delete_one({
         "id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -156,7 +156,7 @@ async def test_connection(
     
     conn = await db.connections.find_one({
         "id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not conn:
@@ -216,7 +216,7 @@ async def discover_schema(
     
     conn = await db.connections.find_one({
         "id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not conn:
@@ -252,7 +252,7 @@ async def discover_schema(
             schema_doc = {
                 "id": generate_id(),
                 "connection_id": conn_id,
-                "org_id": current_user["org_id"],
+                "org_id": current_user.get("org_id", "default"),
                 "discovered_at": now_utc(),
                 "models": [{"model": m['model'], "name": m['name']} for m in all_models]
             }
@@ -269,7 +269,7 @@ async def discover_schema(
             schema_doc = {
                 "id": generate_id(),
                 "connection_id": conn_id,
-                "org_id": current_user["org_id"],
+                "org_id": current_user.get("org_id", "default"),
                 "discovered_at": now_utc(),
                 "models": [
                     {"model": "opportunities", "name": "Opportunities"},
@@ -301,7 +301,7 @@ async def get_schema(
     
     schema = await db.schemas.find_one({
         "connection_id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not schema:
@@ -321,7 +321,7 @@ async def get_model_fields(
     
     conn = await db.connections.find_one({
         "id": conn_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not conn:
@@ -384,14 +384,14 @@ async def create_mapping(
     # Verify connection exists
     conn = await db.connections.find_one({
         "id": mapping_data.connection_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not conn:
         raise HTTPException(status_code=400, detail="Connection not found")
     
     mapping_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "name": mapping_data.name,
         "connection_id": mapping_data.connection_id,
         "source_model": mapping_data.source_model,
@@ -417,7 +417,7 @@ async def list_mappings(
     """List all mappings"""
     db = get_app_db()
     
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if connection_id:
         query["connection_id"] = connection_id
     
@@ -435,7 +435,7 @@ async def get_mapping(
     
     mapping = await db.mappings.find_one({
         "id": mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not mapping:
@@ -455,7 +455,7 @@ async def update_mapping(
     
     existing = await db.mappings.find_one({
         "id": mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not existing:
@@ -487,7 +487,7 @@ async def delete_mapping(
     
     result = await db.mappings.delete_one({
         "id": mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -507,7 +507,7 @@ async def preview_mapping(
     
     mapping = await db.mappings.find_one({
         "id": mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not mapping:
@@ -551,21 +551,21 @@ async def create_pipeline(
     # Verify connection and mapping exist
     conn = await db.connections.find_one({
         "id": pipeline_data.connection_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not conn:
         raise HTTPException(status_code=400, detail="Connection not found")
     
     mapping = await db.mappings.find_one({
         "id": pipeline_data.mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     if not mapping:
         raise HTTPException(status_code=400, detail="Mapping not found")
     
     pipeline_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "name": pipeline_data.name,
         "connection_id": pipeline_data.connection_id,
         "mapping_id": pipeline_data.mapping_id,
@@ -597,7 +597,7 @@ async def create_pipeline(
 async def list_pipelines(current_user: dict = Depends(get_current_user)):
     """List all pipelines"""
     db = get_app_db()
-    pipelines = await db.pipelines.find({"org_id": current_user["org_id"]}).to_list(100)
+    pipelines = await db.pipelines.find({"org_id": current_user.get("org_id", "default")}).to_list(100)
     return serialize_doc(pipelines)
 
 
@@ -611,7 +611,7 @@ async def get_pipeline(
     
     pipeline = await db.pipelines.find_one({
         "id": pipeline_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not pipeline:
@@ -633,7 +633,7 @@ async def update_pipeline(
     update_data["updated_at"] = now_utc()
     
     result = await db.pipelines.update_one(
-        {"id": pipeline_id, "org_id": current_user["org_id"]},
+        {"id": pipeline_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_data}
     )
     
@@ -653,7 +653,7 @@ async def delete_pipeline(
     
     result = await db.pipelines.delete_one({
         "id": pipeline_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -673,7 +673,7 @@ async def run_pipeline(
     
     pipeline = await db.pipelines.find_one({
         "id": pipeline_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not pipeline:
@@ -689,7 +689,7 @@ async def run_pipeline(
     run_doc = {
         "id": run_id,
         "pipeline_id": pipeline_id,
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "correlation_id": correlation_id,
         "status": RunStatus.PENDING,
         "trigger_type": "manual",
@@ -727,7 +727,7 @@ async def run_pipeline(
             }
         },
         producer="etl-control-service",
-        org_id=current_user["org_id"],
+        org_id=current_user.get("org_id", "default"),
         correlation_id=correlation_id
     )
     
@@ -745,7 +745,7 @@ async def list_pipeline_runs(
     db = get_app_db()
     
     runs = await db.pipeline_runs.find(
-        {"pipeline_id": pipeline_id, "org_id": current_user["org_id"]}
+        {"pipeline_id": pipeline_id, "org_id": current_user.get("org_id", "default")}
     ).sort("started_at", -1).limit(limit).to_list(limit)
     
     return serialize_doc(runs)
@@ -762,7 +762,7 @@ async def list_all_runs(
     db = get_app_db()
     
     runs = await db.pipeline_runs.find(
-        {"org_id": current_user["org_id"]}
+        {"org_id": current_user.get("org_id", "default")}
     ).sort("started_at", -1).limit(limit).to_list(limit)
     
     return serialize_doc(runs)
@@ -778,7 +778,7 @@ async def get_run(
     
     run = await db.pipeline_runs.find_one({
         "id": run_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not run:
@@ -797,7 +797,7 @@ async def get_run_logs(
     
     run = await db.pipeline_runs.find_one({
         "id": run_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not run:
@@ -853,7 +853,7 @@ async def create_connection_from_template(
     
     conn_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "name": conn_data.name,
         "type": conn_data.type or conn_defaults.get("type", template["type"]),
         "url": conn_data.url or conn_defaults.get("url", ""),
@@ -914,7 +914,7 @@ async def auto_suggest_field_mappings(
     # Get connection
     conn = await db.connections.find_one({
         "id": connection_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not conn:
@@ -923,7 +923,7 @@ async def auto_suggest_field_mappings(
     # Get discovered schema
     schema = await db.schemas.find_one({
         "connection_id": connection_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     # Try to get source fields
@@ -1001,7 +1001,7 @@ async def verify_mapping_schema(
     
     mapping = await db.mappings.find_one({
         "id": mapping_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not mapping:

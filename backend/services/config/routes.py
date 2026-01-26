@@ -45,7 +45,7 @@ async def get_system_config(current_user: dict = Depends(get_current_user)):
     
     config = await app_db.config.find_one({
         "config_type": "system",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if config:
@@ -74,12 +74,12 @@ async def update_system_config(
     app_db = get_app_db()
     
     config_data["config_type"] = "system"
-    config_data["org_id"] = current_user["org_id"]
+    config_data["org_id"] = current_user.get("org_id", "default")
     config_data["updated_at"] = now_utc()
     config_data["updated_by"] = current_user["id"]
     
     await app_db.config.update_one(
-        {"config_type": "system", "org_id": current_user["org_id"]},
+        {"config_type": "system", "org_id": current_user.get("org_id", "default")},
         {"$set": config_data},
         upsert=True
     )
@@ -89,7 +89,7 @@ async def update_system_config(
         event_type=Topics.CONFIG_UPDATED,
         payload={"config_type": "system"},
         producer="config-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return {"success": True, "message": "Configuration updated"}
@@ -130,7 +130,7 @@ async def update_user_dashboard_config(
     config_doc = {
         "config_type": "user_dashboard",
         "user_id": current_user["id"],
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "updated_at": now_utc(),
         **config_data.model_dump()
     }
@@ -151,7 +151,7 @@ async def get_widgets(current_user: dict = Depends(get_current_user)):
     
     widgets = await app_db.config.find({
         "config_type": "widget",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(100)
     
     if not widgets:
@@ -177,7 +177,7 @@ async def create_widget(
     widget_doc = {
         "id": generate_id(),
         "config_type": "widget",
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "created_at": now_utc(),
         **widget_data.model_dump()
     }

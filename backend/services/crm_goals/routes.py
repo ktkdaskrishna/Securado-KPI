@@ -83,7 +83,7 @@ async def list_goals(
     """List goals"""
     app_db = get_app_db()
     
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if team_id:
         query["team_id"] = team_id
     if assigned_to:
@@ -100,7 +100,7 @@ async def get_goals_stats(current_user: dict = Depends(get_current_user)):
     """Get goals summary statistics"""
     app_db = get_app_db()
     
-    goals = await app_db.goals.find({"org_id": current_user["org_id"]}).to_list(1000)
+    goals = await app_db.goals.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
     total = len(goals)
     completed = len([g for g in goals if g.get("status") == "completed" or 
@@ -129,7 +129,7 @@ async def get_goal(
     
     goal = await app_db.goals.find_one({
         "id": goal_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not goal:
@@ -148,7 +148,7 @@ async def create_goal(
     
     goal_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "created_by": current_user["id"],
         "owner_name": current_user.get("name", "Unknown"),
         "created_at": now_utc(),
@@ -168,7 +168,7 @@ async def create_goal(
             "current_value": goal_data.current_value
         },
         producer="crm-goals-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return serialize_doc(goal_doc)
@@ -184,7 +184,7 @@ async def update_goal(
     app_db = get_app_db()
     
     result = await app_db.goals.update_one(
-        {"id": goal_id, "org_id": current_user["org_id"]},
+        {"id": goal_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {**goal_data.model_dump(), "updated_at": now_utc()}}
     )
     
@@ -204,7 +204,7 @@ async def delete_goal(
     
     result = await app_db.goals.delete_one({
         "id": goal_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -223,7 +223,7 @@ async def update_goal_progress(
     app_db = get_app_db()
     
     result = await app_db.goals.update_one(
-        {"id": goal_id, "org_id": current_user["org_id"]},
+        {"id": goal_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {"current_value": progress_data.current_value, "updated_at": now_utc()}}
     )
     
@@ -240,7 +240,7 @@ async def update_goal_progress(
             "current_value": progress_data.current_value
         },
         producer="crm-goals-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return {"success": True, "message": "Goal progress updated", "current_value": progress_data.current_value}
@@ -253,7 +253,7 @@ async def list_teams(current_user: dict = Depends(get_current_user)):
     """List teams"""
     app_db = get_app_db()
     
-    teams = await app_db.teams.find({"org_id": current_user["org_id"]}).to_list(1000)
+    teams = await app_db.teams.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     return serialize_doc(teams)
 
 
@@ -267,7 +267,7 @@ async def get_team(
     
     team = await app_db.teams.find_one({
         "id": team_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not team:
@@ -286,7 +286,7 @@ async def create_team(
     
     team_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "members": [],
         "members_count": 0,
         "created_by": current_user["id"],
@@ -308,7 +308,7 @@ async def update_team(
     app_db = get_app_db()
     
     result = await app_db.teams.update_one(
-        {"id": team_id, "org_id": current_user["org_id"]},
+        {"id": team_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {**team_data.model_dump(), "updated_at": now_utc()}}
     )
     
@@ -328,7 +328,7 @@ async def delete_team(
     
     result = await app_db.teams.delete_one({
         "id": team_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -347,7 +347,7 @@ async def add_team_member(
     app_db = get_app_db()
     
     result = await app_db.teams.update_one(
-        {"id": team_id, "org_id": current_user["org_id"]},
+        {"id": team_id, "org_id": current_user.get("org_id", "default")},
         {
             "$addToSet": {"members": member_data.user_id},
             "$inc": {"members_count": 1}
@@ -370,7 +370,7 @@ async def remove_team_member(
     app_db = get_app_db()
     
     result = await app_db.teams.update_one(
-        {"id": team_id, "org_id": current_user["org_id"]},
+        {"id": team_id, "org_id": current_user.get("org_id", "default")},
         {
             "$pull": {"members": user_id},
             "$inc": {"members_count": -1}
@@ -390,7 +390,7 @@ async def list_portfolios(current_user: dict = Depends(get_current_user)):
     """List portfolios"""
     app_db = get_app_db()
     
-    portfolios = await app_db.portfolios.find({"org_id": current_user["org_id"]}).to_list(1000)
+    portfolios = await app_db.portfolios.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     return serialize_doc(portfolios)
 
 
@@ -404,7 +404,7 @@ async def get_portfolio(
     
     portfolio = await app_db.portfolios.find_one({
         "id": portfolio_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not portfolio:
@@ -423,7 +423,7 @@ async def create_portfolio(
     
     portfolio_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "owner_name": current_user.get("name", "Unknown"),
         "total_value": 0,
         "accounts_count": 0,
@@ -446,7 +446,7 @@ async def delete_portfolio(
     
     result = await app_db.portfolios.delete_one({
         "id": portfolio_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -465,7 +465,7 @@ async def get_portfolio_dashboard(
     
     portfolio = await app_db.portfolios.find_one({
         "id": portfolio_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not portfolio:
@@ -473,7 +473,7 @@ async def get_portfolio_dashboard(
     
     initiatives = await app_db.initiatives.find({
         "portfolio_id": portfolio_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(1000)
     
     total = len(initiatives)
@@ -502,7 +502,7 @@ async def list_initiatives(
     """List initiatives"""
     app_db = get_app_db()
     
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if portfolio_id:
         query["portfolio_id"] = portfolio_id
     if status:
@@ -522,7 +522,7 @@ async def get_initiative(
     
     initiative = await app_db.initiatives.find_one({
         "id": initiative_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not initiative:
@@ -541,7 +541,7 @@ async def create_initiative(
     
     initiative_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "progress": 0,
         "owner_name": current_user.get("name", "Unknown"),
         "created_by": current_user["id"],
@@ -563,7 +563,7 @@ async def delete_initiative(
     
     result = await app_db.initiatives.delete_one({
         "id": initiative_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -582,7 +582,7 @@ async def get_initiative_progress(
     
     initiative = await app_db.initiatives.find_one({
         "id": initiative_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not initiative:
@@ -611,7 +611,7 @@ async def update_initiative_status(
         update_fields["progress"] = status_data.progress
     
     result = await app_db.initiatives.update_one(
-        {"id": initiative_id, "org_id": current_user["org_id"]},
+        {"id": initiative_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_fields}
     )
     

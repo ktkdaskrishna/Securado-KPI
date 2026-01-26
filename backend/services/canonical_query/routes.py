@@ -32,7 +32,7 @@ async def list_canonical_records(
     canonical_db = get_canonical_db()
     
     # Build query
-    query = {"org_id": current_user["org_id"]}
+    query = {"org_id": current_user.get("org_id", "default")}
     if stage:
         query["stage"] = stage
     if source_system:
@@ -66,7 +66,7 @@ async def get_canonical_record(
     collection = canonical_db[entity]
     record = await collection.find_one({
         "canonical_id": canonical_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not record:
@@ -86,13 +86,13 @@ async def get_serving_data(
     
     # Get canonical records
     collection = canonical_db[f"{entity}s" if not entity.endswith('s') else entity]
-    records = await collection.find({"org_id": current_user["org_id"]}).to_list(1000)
+    records = await collection.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
     # Get overrides
     canonical_ids = [r.get("canonical_id") for r in records]
     overrides = await app_db.overrides.find({
         "canonical_id": {"$in": canonical_ids},
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }).to_list(1000)
     
     # Create override map
@@ -145,7 +145,7 @@ async def search(
         
         # Search on common fields
         query = {
-            "org_id": current_user["org_id"],
+            "org_id": current_user.get("org_id", "default"),
             "$or": [
                 {"name": regex},
                 {"contact_email": regex},
@@ -173,11 +173,11 @@ async def get_data_lake_stats(current_user: dict = Depends(get_current_user)):
     stats = {}
     for entity in ["opportunities", "accounts", "contacts", "users"]:
         collection = canonical_db[entity]
-        count = await collection.count_documents({"org_id": current_user["org_id"]})
+        count = await collection.count_documents({"org_id": current_user.get("org_id", "default")})
         stats[entity] = count
     
     return {
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "entity_counts": stats,
         "total_records": sum(stats.values())
     }

@@ -69,7 +69,7 @@ async def get_event_history(
     """Get event history"""
     events = await event_bus.get_events(
         event_type=event_type,
-        org_id=current_user["org_id"],
+        org_id=current_user.get("org_id", "default"),
         correlation_id=correlation_id,
         limit=limit
     )
@@ -84,7 +84,7 @@ async def get_run_events(
     """Get events for a specific run"""
     events = await event_bus.get_events(
         event_type="etl.pipeline_run.event.v1",
-        org_id=current_user["org_id"],
+        org_id=current_user.get("org_id", "default"),
         limit=100
     )
     
@@ -105,7 +105,7 @@ async def list_dlq(
     """List DLQ items"""
     app_db = get_app_db()
     
-    query = {"org_id": current_user["org_id"], "status": status}
+    query = {"org_id": current_user.get("org_id", "default"), "status": status}
     if pipeline_id:
         query["pipeline_id"] = pipeline_id
     
@@ -118,9 +118,9 @@ async def get_dlq_stats(current_user: dict = Depends(get_current_user)):
     """Get DLQ statistics"""
     app_db = get_app_db()
     
-    failed = await app_db.dlq.count_documents({"org_id": current_user["org_id"], "status": "failed"})
-    retried = await app_db.dlq.count_documents({"org_id": current_user["org_id"], "status": "retried"})
-    dismissed = await app_db.dlq.count_documents({"org_id": current_user["org_id"], "status": "dismissed"})
+    failed = await app_db.dlq.count_documents({"org_id": current_user.get("org_id", "default"), "status": "failed"})
+    retried = await app_db.dlq.count_documents({"org_id": current_user.get("org_id", "default"), "status": "retried"})
+    dismissed = await app_db.dlq.count_documents({"org_id": current_user.get("org_id", "default"), "status": "dismissed"})
     
     return {
         "failed": failed,
@@ -139,7 +139,7 @@ async def retry_dlq_item(
     app_db = get_app_db()
     
     result = await app_db.dlq.update_one(
-        {"id": item_id, "org_id": current_user["org_id"]},
+        {"id": item_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {"status": "retried", "retried_at": datetime.utcnow()}}
     )
     
@@ -159,7 +159,7 @@ async def dismiss_dlq_item(
     app_db = get_app_db()
     
     result = await app_db.dlq.update_one(
-        {"id": item_id, "org_id": current_user["org_id"]},
+        {"id": item_id, "org_id": current_user.get("org_id", "default")},
         {"$set": {"status": "dismissed", "dismissed_at": datetime.utcnow()}}
     )
     

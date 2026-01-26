@@ -184,18 +184,18 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     # Get from cache
     stats = await app_db.serving_cache.find_one({
         "entity_type": "dashboard_stats",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if stats:
         return serialize_doc(stats)
     
     # Build cache if not exists
-    await dashboard_aggregator.rebuild_cache(current_user["org_id"])
+    await dashboard_aggregator.rebuild_cache(current_user.get("org_id", "default"))
     
     stats = await app_db.serving_cache.find_one({
         "entity_type": "dashboard_stats",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if stats:
@@ -204,7 +204,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     # Return default stats
     return {
         "entity_type": "dashboard_stats",
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "total_pipeline": 0,
         "pipeline_change": 0,
         "won_value": 0,
@@ -224,12 +224,12 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 @router.post("/refresh")
 async def refresh_dashboard(current_user: dict = Depends(get_current_user)):
     """Manually trigger dashboard refresh"""
-    await dashboard_aggregator.rebuild_cache(current_user["org_id"])
+    await dashboard_aggregator.rebuild_cache(current_user.get("org_id", "default"))
     
     return {
         "success": True,
         "message": "Dashboard refreshed",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     }
 
 
@@ -241,14 +241,14 @@ async def get_sync_status(current_user: dict = Depends(get_current_user)):
     
     # Get last canonical update
     last_opp = await canonical_db.opportunities.find_one(
-        {"org_id": current_user["org_id"]},
+        {"org_id": current_user.get("org_id", "default")},
         sort=[("transformed_at", -1)]
     )
     
     # Get last cache update
     cache_stats = await app_db.serving_cache.find_one({
         "entity_type": "dashboard_stats",
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     last_canonical = last_opp.get("transformed_at") if last_opp else None

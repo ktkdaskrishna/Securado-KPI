@@ -31,7 +31,7 @@ router = APIRouter(prefix="/admin", tags=["rbac"])
 async def list_permissions(current_user: dict = Depends(get_current_user)):
     """List all permissions"""
     db = get_app_db()
-    permissions = await db.permissions.find({"org_id": current_user["org_id"]}).to_list(1000)
+    permissions = await db.permissions.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
     # If no custom permissions, return defaults
     if not permissions:
@@ -50,7 +50,7 @@ async def create_permission(
     
     perm_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "created_at": now_utc(),
         **perm_data.model_dump()
     }
@@ -69,7 +69,7 @@ async def delete_permission(
     
     result = await db.permissions.delete_one({
         "id": perm_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -84,7 +84,7 @@ async def delete_permission(
 async def list_roles(current_user: dict = Depends(get_current_user)):
     """List all roles"""
     db = get_app_db()
-    roles = await db.roles.find({"org_id": current_user["org_id"]}).to_list(1000)
+    roles = await db.roles.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
     # If no roles, return default roles
     if not roles:
@@ -132,7 +132,7 @@ async def get_role(
     
     role = await db.roles.find_one({
         "id": role_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if not role:
@@ -151,7 +151,7 @@ async def create_role(
     
     role_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "created_at": now_utc(),
         "users_count": 0,
         **role_data.model_dump()
@@ -169,7 +169,7 @@ async def create_role(
             "permissions": role_data.permissions
         },
         producer="rbac-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return serialize_doc(role_doc)
@@ -188,7 +188,7 @@ async def update_role(
     update_data["updated_at"] = now_utc()
     
     result = await db.roles.update_one(
-        {"id": role_id, "org_id": current_user["org_id"]},
+        {"id": role_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_data}
     )
     
@@ -205,7 +205,7 @@ async def update_role(
             "permissions": role_data.permissions or []
         },
         producer="rbac-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return {"success": True, "message": "Role updated"}
@@ -221,7 +221,7 @@ async def delete_role(
     
     result = await db.roles.delete_one({
         "id": role_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -229,7 +229,7 @@ async def delete_role(
     
     # Remove role from all users
     await db.users.update_many(
-        {"org_id": current_user["org_id"], "roles": role_id},
+        {"org_id": current_user.get("org_id", "default"), "roles": role_id},
         {"$pull": {"roles": role_id}}
     )
     
@@ -243,7 +243,7 @@ async def delete_role(
             "permissions": []
         },
         producer="rbac-service",
-        org_id=current_user["org_id"]
+        org_id=current_user.get("org_id", "default")
     )
     
     return {"success": True, "message": "Role deleted"}
@@ -255,7 +255,7 @@ async def delete_role(
 async def list_departments(current_user: dict = Depends(get_current_user)):
     """List all departments"""
     db = get_app_db()
-    departments = await db.departments.find({"org_id": current_user["org_id"]}).to_list(1000)
+    departments = await db.departments.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
     if not departments:
         return [
@@ -278,7 +278,7 @@ async def create_department(
     
     dept_doc = {
         "id": generate_id(),
-        "org_id": current_user["org_id"],
+        "org_id": current_user.get("org_id", "default"),
         "created_at": now_utc(),
         "users_count": 0,
         **dept_data.model_dump()
@@ -301,7 +301,7 @@ async def update_department(
     update_data["updated_at"] = now_utc()
     
     result = await db.departments.update_one(
-        {"id": dept_id, "org_id": current_user["org_id"]},
+        {"id": dept_id, "org_id": current_user.get("org_id", "default")},
         {"$set": update_data}
     )
     
@@ -321,7 +321,7 @@ async def delete_department(
     
     result = await db.departments.delete_one({
         "id": dept_id,
-        "org_id": current_user["org_id"]
+        "org_id": current_user.get("org_id", "default")
     })
     
     if result.deleted_count == 0:
@@ -341,7 +341,7 @@ async def get_my_permissions(current_user: dict = Depends(get_current_user)):
     
     # Get all permissions for user's roles
     roles = await db.roles.find(
-        {"id": {"$in": user_roles}, "org_id": current_user["org_id"]}
+        {"id": {"$in": user_roles}, "org_id": current_user.get("org_id", "default")}
     ).to_list(100)
     
     all_permissions = set(current_user.get("permissions", []))
