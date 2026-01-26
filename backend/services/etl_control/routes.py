@@ -804,3 +804,261 @@ async def get_run_logs(
         raise HTTPException(status_code=404, detail="Run not found")
     
     return {"run_id": run_id, "logs": run.get("logs", [])}
+
+
+
+# ==================== TEMPLATES ====================
+
+@templates_router.get("")
+async def list_templates():
+    """List all available integration templates"""
+    templates_list = []
+    for key, template in INTEGRATION_TEMPLATES.items():
+        templates_list.append({
+            "id": template["id"],
+            "name": template["name"],
+            "description": template["description"],
+            "type": template["type"],
+            "icon": template.get("icon", "database"),
+            "category": template.get("category", "Other"),
+            "models": template.get("models", [])
+        })
+    return templates_list
+
+
+@templates_router.get("/{template_id}")
+async def get_template(template_id: str):
+    """Get a specific template with all details"""
+    if template_id not in INTEGRATION_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return INTEGRATION_TEMPLATES[template_id]
+
+
+@templates_router.post("/{template_id}/create-connection")
+async def create_connection_from_template(
+    template_id: str,
+    conn_data: ConnectionCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a connection using a template's defaults"""
+    if template_id not in INTEGRATION_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template = INTEGRATION_TEMPLATES[template_id]
+    db = get_app_db()
+    
+    # Merge template defaults with user provided data
+    conn_defaults = template.get("connection_defaults", {})
+    
+    conn_doc = {
+        "id": generate_id(),
+        "org_id": current_user["org_id"],
+        "name": conn_data.name,
+        "type": conn_data.type or conn_defaults.get("type", template["type"]),
+        "url": conn_data.url or conn_defaults.get("url", ""),
+        "database": conn_data.database or conn_defaults.get("database", ""),
+        "username": conn_data.username,
+        "api_key": conn_data.api_key,
+        "description": conn_data.description or f"Created from {template['name']} template",
+        "template_id": template_id,
+        "status": "pending",
+        "health": "unknown",
+        "last_test": None,
+        "created_by": current_user["id"],
+        "created_at": now_utc()
+    }
+    
+    await db.connections.insert_one(conn_doc)
+    
+    safe_doc = {k: v for k, v in conn_doc.items() if k != 'api_key'}
+    logger.info(f"Connection created from template {template_id}: {conn_data.name}")
+    return serialize_doc(safe_doc)
+
+
+@templates_router.get("/{template_id}/default-mappings/{source_model}")
+async def get_default_mappings_from_template(
+    template_id: str,
+    source_model: str
+):
+    """Get default field mappings from a template for a specific source model"""
+    if template_id not in INTEGRATION_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template = INTEGRATION_TEMPLATES[template_id]
+    default_mappings = template.get("default_mappings", {})
+    
+    if source_model not in default_mappings:
+        return {"source_model": source_model, "mappings": [], "message": "No default mappings for this model"}
+    
+    mapping_def = default_mappings[source_model]
+    return {
+        "source_model": source_model,
+        "target_entity": mapping_def.get("target_entity"),
+        "mappings": mapping_def.get("fields", [])
+    }
+
+
+# ==================== AUTO-MAPPING ====================
+
+@mappings_router.post("/auto-suggest")
+async def auto_suggest_field_mappings(
+    connection_id: str,
+    source_model: str,
+    target_entity: str = "opportunity",
+    current_user: dict = Depends(get_current_user)
+):
+    """Auto-suggest field mappings based on source schema analysis"""
+    db = get_app_db()
+    
+    # Get connection
+    conn = await db.connections.find_one({
+        "id": connection_id,
+        "org_id": current_user["org_id"]
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    # Get discovered schema
+    schema = await db.schemas.find_one({
+        "connection_id": connection_id,
+        "org_id": current_user["org_id"]
+    })
+    
+    # Try to get source fields
+    source_fields = []
+    
+    if conn["type"] == "odoo":
+        try:
+            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+            uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            
+            if uid:
+                models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+                fields = models_proxy.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    source_model, 'fields_get',
+                    [],
+                    {'attributes': ['string', 'type', 'required']}
+                )
+                source_fields = list(fields.keys())
+        except Exception as e:
+            logger.warning(f"Could not fetch fields from Odoo: {e}")
+    
+    # If we couldn't get fields from source, check if we have template
+    template_id = conn.get("template_id")
+    if not source_fields and template_id and template_id in INTEGRATION_TEMPLATES:
+        template = INTEGRATION_TEMPLATES[template_id]
+        default_mappings = template.get("default_mappings", {})
+        if source_model in default_mappings:
+            # Return template defaults
+            mapping_def = default_mappings[source_model]
+            return {
+                "source_model": source_model,
+                "target_entity": mapping_def.get("target_entity", target_entity),
+                "suggestions": mapping_def.get("fields", []),
+                "source": "template",
+                "confidence": "high"
+            }
+    
+    # If we have fields, use auto-suggest
+    if source_fields:
+        suggestions = auto_suggest_mappings(source_fields, target_entity)
+        return {
+            "source_model": source_model,
+            "target_entity": target_entity,
+            "suggestions": suggestions,
+            "source": "schema_analysis",
+            "confidence": "medium"
+        }
+    
+    # Fallback: return canonical model fields for manual mapping
+    if target_entity in CANONICAL_ENTITIES:
+        canonical_fields = CANONICAL_ENTITIES[target_entity]["fields"]
+        return {
+            "source_model": source_model,
+            "target_entity": target_entity,
+            "suggestions": [],
+            "canonical_fields": canonical_fields,
+            "source": "manual",
+            "confidence": "low",
+            "message": "Could not auto-detect source fields. Please map manually."
+        }
+    
+    return {"suggestions": [], "source": "none", "message": "No suggestions available"}
+
+
+# ==================== SCHEMA VERIFICATION ====================
+
+@mappings_router.post("/{mapping_id}/verify")
+async def verify_mapping_schema(
+    mapping_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify mapping schema against source and target definitions"""
+    db = get_app_db()
+    
+    mapping = await db.mappings.find_one({
+        "id": mapping_id,
+        "org_id": current_user["org_id"]
+    })
+    
+    if not mapping:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+    
+    # Get connection
+    conn = await db.connections.find_one({"id": mapping["connection_id"]})
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    target_entity = mapping.get("target_entity", "opportunity")
+    verification_results = {
+        "mapping_id": mapping_id,
+        "status": "valid",
+        "errors": [],
+        "warnings": [],
+        "field_checks": []
+    }
+    
+    # Validate target fields exist in canonical model
+    canonical_fields = []
+    if target_entity in CANONICAL_ENTITIES:
+        canonical_fields = [f["name"] for f in CANONICAL_ENTITIES[target_entity]["fields"]]
+    
+    for rule in mapping.get("mappings", []):
+        field_check = {
+            "source_field": rule.get("source_field"),
+            "target_field": rule.get("target_field"),
+            "transform": rule.get("transform", "direct"),
+            "status": "valid"
+        }
+        
+        # Check if target field exists in canonical model
+        if canonical_fields and rule.get("target_field") not in canonical_fields:
+            field_check["status"] = "warning"
+            field_check["message"] = f"Target field '{rule.get('target_field')}' not in canonical model"
+            verification_results["warnings"].append(field_check["message"])
+        
+        # Check required fields
+        if target_entity in CANONICAL_ENTITIES:
+            required_fields = [f["name"] for f in CANONICAL_ENTITIES[target_entity]["fields"] if f.get("required")]
+            mapped_targets = [r.get("target_field") for r in mapping.get("mappings", [])]
+            
+            for req_field in required_fields:
+                if req_field not in mapped_targets:
+                    msg = f"Required field '{req_field}' is not mapped"
+                    verification_results["errors"].append(msg)
+                    verification_results["status"] = "invalid"
+        
+        verification_results["field_checks"].append(field_check)
+    
+    # Add summary
+    verification_results["summary"] = {
+        "total_fields": len(mapping.get("mappings", [])),
+        "valid": len([f for f in verification_results["field_checks"] if f["status"] == "valid"]),
+        "warnings": len(verification_results["warnings"]),
+        "errors": len(verification_results["errors"])
+    }
+    
+    return verification_results
