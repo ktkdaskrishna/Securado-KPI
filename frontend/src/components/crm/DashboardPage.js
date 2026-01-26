@@ -102,7 +102,7 @@ export function DashboardPage() {
   const formatValue = (value, format) => {
     switch (format) {
       case 'currency':
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+        return formatCurrency(value);
       case 'percent':
         return `${value.toFixed(1)}%`;
       default:
