@@ -90,7 +90,7 @@ class EventBus:
     
     async def publish(self, event: EventEnvelope) -> str:
         """Publish an event to the bus"""
-        if not self.db:
+        if self.db is None:
             raise RuntimeError("EventBus not initialized with database")
         
         # Persist to MongoDB
@@ -197,7 +197,7 @@ class EventBus:
         limit: int = 100
     ) -> List[Dict]:
         """Query persisted events"""
-        if not self.db:
+        if self.db is None:
             return []
         
         query = {}
