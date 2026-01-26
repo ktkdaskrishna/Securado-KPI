@@ -1,187 +1,218 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-    margin: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+:root {
+  /* Securado Brand Colors */
+  --securado-maroon: #800000;
+  --securado-maroon-light: #9a1919;
+  --securado-maroon-dark: #600000;
+  --securado-dark-gray: #333333;
+  --securado-gray-medium: #555555;
+  
+  /* Accent Colors */
+  --securado-green: #86c881;
+  --securado-orange: #ee6543;
+  --securado-grayish-yellow: #e0dfd4;
+  --securado-grayish-blue: #e8e8ea;
+  
+  /* Shadcn UI Variables - Light Mode */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 20%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 20%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 20%;
+  --primary: 0 100% 25%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 20%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 20%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 0 100% 25%;
+  --radius: 0.5rem;
+  
+  /* Chart Colors */
+  --chart-1: 0 100% 25%;
+  --chart-2: 120 40% 64%;
+  --chart-3: 13 83% 60%;
+  --chart-4: 0 0% 20%;
+  --chart-5: 50 10% 87%;
 }
 
-code {
-    font-family: 'Source Code Pro', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: -0.025em;
-}
-
-@layer base {
-    :root {
-        --background: 210 20% 98%;
-        --foreground: 222 47% 11%;
-        --card: 0 0% 100%;
-        --card-foreground: 222 47% 11%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 222 47% 11%;
-        --primary: 190 90% 40%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 222 47% 11%;
-        --muted: 210 16% 96%;
-        --muted-foreground: 215 16% 35%;
-        --accent: 158 64% 40%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 2 85% 50%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 216 12% 84%;
-        --input: 216 12% 84%;
-        --ring: 192 85% 32%;
-        --chart-1: 199 89% 48%;
-        --chart-2: 158 64% 40%;
-        --chart-3: 26 95% 53%;
-        --chart-4: 190 75% 46%;
-        --chart-5: 210 10% 60%;
-        --radius: 0.5rem;
-        
-        /* Custom tokens for ETL/CRM */
-        --sidebar: 216 28% 12%;
-        --sidebar-contrast: 214 20% 18%;
-        --etl-accent: 190 90% 40%;
-        --etl-accent-foreground: 0 0% 100%;
-        --crm-accent: 158 64% 40%;
-        --crm-accent-foreground: 0 0% 98%;
-        --success: 158 64% 40%;
-        --warning: 32 95% 45%;
-        --danger: 2 85% 50%;
-        --info: 199 89% 48%;
-        --panel: 0 0% 100%;
-        --panel-contrast: 220 13% 95%;
-    }
-    
-    .dark {
-        --background: 220 18% 7%;
-        --foreground: 0 0% 98%;
-        --card: 220 18% 10%;
-        --card-foreground: 0 0% 98%;
-        --popover: 220 18% 10%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 190 90% 45%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 220 10% 14%;
-        --muted-foreground: 220 10% 70%;
-        --accent: 158 64% 45%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 220 8% 22%;
-        --input: 220 8% 22%;
-        --ring: 190 90% 50%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-        
-        /* Dark mode custom tokens */
-        --sidebar: 220 23% 8%;
-        --sidebar-contrast: 218 20% 16%;
-        --etl-accent: 190 90% 45%;
-        --crm-accent: 158 64% 45%;
-        --panel: 220 18% 10%;
-        --panel-contrast: 218 20% 16%;
-    }
+.dark {
+  --background: 0 0% 10%;
+  --foreground: 0 0% 95%;
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 95%;
+  --popover: 0 0% 15%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 0 100% 25%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 0 0% 20%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 20%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 25%;
+  --input: 0 0% 25%;
+  --ring: 0 100% 35%;
 }
 
 @layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Source Sans Pro', 'Proxima Nova', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Source Sans Pro', 'Proxima Nova', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+  }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
-
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
-}
-
-/* Custom utility classes */
 @layer utilities {
-    .font-mono {
-        font-family: 'Source Code Pro', monospace;
-    }
-    
-    .tabular-nums {
-        font-variant-numeric: tabular-nums;
-    }
-    
-    /* Status pulse animation */
-    .animate-pulse-status {
-        animation: pulse-status 2s ease-in-out infinite;
-    }
-    
-    @keyframes pulse-status {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    /* Custom scrollbar */
-    .scrollbar-thin {
-        scrollbar-width: thin;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-        background: hsl(var(--border));
-        border-radius: 3px;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        background: hsl(var(--muted-foreground));
-    }
+  /* Securado Brand Utilities */
+  .bg-securado-maroon {
+    background-color: var(--securado-maroon);
+  }
+  
+  .text-securado-maroon {
+    color: var(--securado-maroon);
+  }
+  
+  .border-securado-maroon {
+    border-color: var(--securado-maroon);
+  }
+  
+  .bg-securado-dark {
+    background-color: var(--securado-dark-gray);
+  }
+  
+  .text-securado-dark {
+    color: var(--securado-dark-gray);
+  }
+  
+  .bg-securado-green {
+    background-color: var(--securado-green);
+  }
+  
+  .text-securado-green {
+    color: var(--securado-green);
+  }
+  
+  .bg-securado-orange {
+    background-color: var(--securado-orange);
+  }
+  
+  .text-securado-orange {
+    color: var(--securado-orange);
+  }
+  
+  /* Gradient utilities */
+  .bg-gradient-securado {
+    background: linear-gradient(135deg, var(--securado-maroon) 0%, var(--securado-maroon-light) 100%);
+  }
+  
+  .bg-gradient-securado-dark {
+    background: linear-gradient(135deg, var(--securado-dark-gray) 0%, #444444 100%);
+  }
+  
+  /* Focus ring */
+  .ring-securado {
+    --tw-ring-color: var(--securado-maroon);
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--securado-maroon);
+}
+
+/* Custom button variants */
+.btn-securado {
+  @apply bg-[#800000] text-white hover:bg-[#9a1919] transition-colors;
+}
+
+.btn-securado-outline {
+  @apply border-2 border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white transition-colors;
+}
+
+/* Badge variants */
+.badge-securado {
+  @apply bg-[#800000] text-white;
+}
+
+.badge-success {
+  @apply bg-[#86c881] text-[#333333];
+}
+
+.badge-warning {
+  @apply bg-[#ee6543] text-white;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-lg hover:border-[#800000]/20;
+}
+
+/* Active navigation item */
+.nav-item-active {
+  @apply bg-[#800000] text-white;
+}
+
+.nav-item-hover {
+  @apply hover:bg-[#800000]/10 hover:text-[#800000];
+}
+
+/* Form focus styles */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--securado-maroon) !important;
+  box-shadow: 0 0 0 2px rgba(128, 0, 0, 0.1) !important;
+}
+
+/* Table row hover */
+.table-row-hover:hover {
+  background-color: rgba(128, 0, 0, 0.03);
+}
+
+/* Progress bar */
+.progress-securado {
+  background-color: var(--securado-maroon);
+}
+
+/* Sidebar styling */
+.sidebar-securado {
+  background: linear-gradient(180deg, var(--securado-dark-gray) 0%, #2a2a2a 100%);
 }
