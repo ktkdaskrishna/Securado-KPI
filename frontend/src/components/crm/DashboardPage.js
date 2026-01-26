@@ -173,9 +173,9 @@ export function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats?.pipeline_by_stage || []}>
                   <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v / 1000}k`} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
                   <Tooltip 
-                    formatter={(value) => [`$${value.toLocaleString()}`, 'Value']}
+                    formatter={(value) => [formatCurrency(value), 'Value']}
                     labelFormatter={(label) => `Stage: ${label}`}
                   />
                   <Bar dataKey="value" fill="hsl(190, 90%, 40%)" radius={[4, 4, 0, 0]} />
