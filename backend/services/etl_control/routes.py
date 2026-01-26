@@ -997,8 +997,8 @@ async def auto_suggest_field_mappings(
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
     
-    # Get discovered schema
-    schema = await db.schemas.find_one({
+    # Get discovered schema (if available, can be used for caching)
+    _schema = await db.schemas.find_one({
         "connection_id": connection_id,
         "org_id": current_user.get("org_id", "default")
     })
