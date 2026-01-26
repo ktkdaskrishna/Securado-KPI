@@ -443,3 +443,41 @@ async def remove_role_from_user(
         raise HTTPException(status_code=404, detail="User not found")
     
     return {"success": True, "message": "Role removed"}
+
+
+class UserRolesUpdate(BaseModel):
+    roles: List[str]
+
+
+@admin_router.put("/users/{user_id}/roles")
+async def update_user_roles(
+    user_id: str,
+    roles_data: UserRolesUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update all roles for a user (replaces existing roles)"""
+    db = get_app_db()
+    
+    result = await db.users.update_one(
+        {"id": user_id, "org_id": current_user["org_id"]},
+        {"$set": {"roles": roles_data.roles, "updated_at": now_utc()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Emit user role updated event
+    await emit_event(
+        event_type=Topics.USER_UPDATED,
+        payload={
+            "user_id": user_id,
+            "updated_by": current_user["id"],
+            "roles": roles_data.roles
+        },
+        producer="identity-service",
+        org_id=current_user["org_id"]
+    )
+    
+    logger.info(f"User roles updated: {user_id} - {roles_data.roles}")
+    
+    return {"success": True, "message": "User roles updated"}
