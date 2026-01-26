@@ -130,6 +130,13 @@ export const crmAPI = {
   updateStage: (id, stage) => api.patch(`/opportunities/${id}/stage`, { stage }),
   updateProbability: (id, probability) => api.post(`/opportunities/${id}/calculate-probability`, { probability }),
   getMessages: (id) => api.get(`/opportunities/${id}/messages`),
+  getOpportunityActivities: (id) => api.get(`/opportunities/${id}/activities`),
+  createOpportunityNote: (id, data) => api.post(`/opportunities/${id}/notes`, data),
+  
+  // Bluesheet
+  getBluesheet: (oppId) => api.get(`/opportunities/${oppId}/bluesheet`),
+  updateBluesheet: (oppId, data) => api.put(`/opportunities/${oppId}/bluesheet`, data),
+  calculateBluesheet: (oppId) => api.post(`/opportunities/${oppId}/bluesheet/calculate`),
   
   // Accounts
   listAccounts: () => api.get('/accounts'),
