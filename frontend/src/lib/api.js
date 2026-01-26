@@ -59,6 +59,9 @@ export const adminAPI = {
   updateDepartment: (id, data) => api.put(`/admin/departments/${id}`, data),
   deleteDepartment: (id) => api.delete(`/admin/departments/${id}`),
   updateUserRoles: (userId, roles) => api.put(`/admin/users/${userId}/roles`, { roles }),
+  // Settings
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.put('/admin/settings', data),
 };
 
 // ETL APIs
