@@ -334,20 +334,49 @@ export function MappingsPage() {
   };
 
   const handleCreate = async () => {
-    // Filter out confidence from mappings before sending
-    const cleanedMappings = formData.mappings.map(({ confidence, ...rest }) => rest);
-    
-    try {
-      await etlAPI.createMapping({
-        ...formData,
-        mappings: cleanedMappings
-      });
-      toast.success('Mapping created');
-      setDialogOpen(false);
-      resetForm();
-      loadData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create mapping');
+    if (multiModelMode && selectedModels.length > 0) {
+      // Create multiple mappings for multi-model mode
+      try {
+        let successCount = 0;
+        for (const modelName of selectedModels) {
+          const modelConfig = modelMappings[modelName];
+          if (modelConfig && modelConfig.mappings.length > 0) {
+            const cleanedMappings = modelConfig.mappings.map(({ confidence, ...rest }) => rest);
+            await etlAPI.createMapping({
+              name: `${formData.name || 'Multi-Model Sync'} - ${modelName}`,
+              connection_id: formData.connection_id,
+              source_model: modelName,
+              target_entity: modelConfig.target_entity,
+              mappings: cleanedMappings,
+              description: formData.description,
+              batch_id: formData.name || 'multi-model-batch' // Group related mappings
+            });
+            successCount++;
+          }
+        }
+        toast.success(`Created ${successCount} mappings for ${selectedModels.length} models`);
+        setDialogOpen(false);
+        resetForm();
+        loadData();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to create mappings');
+      }
+    } else {
+      // Single model mode
+      const cleanedMappings = formData.mappings.map(({ confidence, ...rest }) => rest);
+      
+      try {
+        await etlAPI.createMapping({
+          ...formData,
+          mappings: cleanedMappings
+        });
+        toast.success('Mapping created');
+        setDialogOpen(false);
+        resetForm();
+        loadData();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to create mapping');
+      }
     }
   };
 
@@ -375,27 +404,81 @@ export function MappingsPage() {
     setDiscoveredModels([]);
     setSelectedModelFields(null);
     setModelSearchQuery('');
+    setSelectedModels([]);
+    setModelMappings({});
+    setActiveModelTab(null);
+    setMultiModelMode(false);
   };
 
-  const addMappingRule = () => {
-    setFormData({
-      ...formData,
-      mappings: [...formData.mappings, { source_field: '', target_field: '', transform: 'direct' }],
-    });
+  const addMappingRule = (modelName = null) => {
+    if (multiModelMode && modelName) {
+      setModelMappings(prev => ({
+        ...prev,
+        [modelName]: {
+          ...prev[modelName],
+          mappings: [...(prev[modelName]?.mappings || []), { source_field: '', target_field: '', transform: 'direct' }]
+        }
+      }));
+    } else {
+      setFormData({
+        ...formData,
+        mappings: [...formData.mappings, { source_field: '', target_field: '', transform: 'direct' }],
+      });
+    }
   };
 
-  const removeMappingRule = (index) => {
-    setFormData({
-      ...formData,
-      mappings: formData.mappings.filter((_, i) => i !== index),
-    });
+  const removeMappingRule = (index, modelName = null) => {
+    if (multiModelMode && modelName) {
+      setModelMappings(prev => ({
+        ...prev,
+        [modelName]: {
+          ...prev[modelName],
+          mappings: prev[modelName]?.mappings?.filter((_, i) => i !== index) || []
+        }
+      }));
+    } else {
+      setFormData({
+        ...formData,
+        mappings: formData.mappings.filter((_, i) => i !== index),
+      });
+    }
   };
 
-  const updateMappingRule = (index, field, value) => {
-    const newMappings = [...formData.mappings];
-    newMappings[index] = { ...newMappings[index], [field]: value };
-    setFormData({ ...formData, mappings: newMappings });
+  const updateMappingRule = (index, field, value, modelName = null) => {
+    if (multiModelMode && modelName) {
+      setModelMappings(prev => {
+        const newMappings = [...(prev[modelName]?.mappings || [])];
+        newMappings[index] = { ...newMappings[index], [field]: value };
+        return {
+          ...prev,
+          [modelName]: {
+            ...prev[modelName],
+            mappings: newMappings
+          }
+        };
+      });
+    } else {
+      const newMappings = [...formData.mappings];
+      newMappings[index] = { ...newMappings[index], [field]: value };
+      setFormData({ ...formData, mappings: newMappings });
+    }
   };
+
+  // Group models by category
+  const getModelCategory = (modelName) => {
+    const prefix = modelName.split('.')[0];
+    return MODEL_CATEGORIES[prefix] || { label: 'Other', icon: '📄' };
+  };
+
+  const groupedModels = discoveredModels.reduce((acc, model) => {
+    const category = getModelCategory(model.model);
+    const key = category.label;
+    if (!acc[key]) {
+      acc[key] = { ...category, models: [] };
+    }
+    acc[key].models.push(model);
+    return acc;
+  }, {});
 
   const filteredModels = discoveredModels.filter(m => 
     !modelSearchQuery || 
