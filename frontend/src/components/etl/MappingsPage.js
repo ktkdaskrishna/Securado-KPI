@@ -319,17 +319,34 @@ export function MappingsPage() {
   const handleVerifyMapping = async (mappingId) => {
     setSelectedMappingForVerify(mappingId);
     setVerifyDialogOpen(true);
+    setVerificationResult(null); // Reset result while loading
     
     try {
+      console.log(`[ETL] Verifying mapping: ${mappingId}`);
       const res = await etlAPI.verifyMapping(mappingId);
+      console.log(`[ETL] Verification result:`, res.data);
       setVerificationResult(res.data);
+      
+      // Show toast based on result
+      if (res.data.status === 'valid') {
+        toast.success('Mapping verified successfully');
+      } else if (res.data.status === 'invalid') {
+        toast.error(`Mapping has ${res.data.summary?.errors || 0} error(s)`);
+      } else {
+        toast.warning(`Mapping has ${res.data.summary?.warnings || 0} warning(s)`);
+      }
     } catch (error) {
+      console.error('[ETL] Verification failed:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to verify mapping';
       setVerificationResult({
         status: 'error',
-        errors: ['Failed to verify mapping'],
+        errors: [errorMessage],
         warnings: [],
-        field_checks: []
+        field_checks: [],
+        suggestions: [],
+        summary: { total_fields: 0, valid: 0, warnings: 0, errors: 1 }
       });
+      toast.error(`Verification failed: ${errorMessage}`);
     }
   };
 
