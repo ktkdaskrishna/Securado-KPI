@@ -125,7 +125,7 @@ INTEGRATION_TEMPLATES = {
             "deals": {
                 "target_entity": "opportunity",
                 "fields": [
-                    {"source_field": "hs_object_id", "target_field": "source_id", "transform": "direct"},
+                    {"source_field": "hs_object_id", "target_field": "canonical_id", "transform": "direct"},
                     {"source_field": "dealname", "target_field": "name", "transform": "direct"},
                     {"source_field": "amount", "target_field": "amount", "transform": "to_float"},
                     {"source_field": "dealstage", "target_field": "stage", "transform": "direct"},
