@@ -127,3 +127,53 @@ Milestone 6 — Hardening
 - Design: call design agent after POC green; apply across both UIs.
 
 POC Decision: REQUIRED (complex event-driven ETL + SSE + multi-domain). Proceed only after tests/tests_core.py passes.
+
+## 8) Current Status
+
+### Phase 1 - Core POC (Status: COMPLETED)
+- ✅ In-memory Event Bus with Mongo outbox
+- ✅ Identity service (register/login/refresh/me)
+- ✅ ETL minimal loop (connections, mappings, pipelines, runner)
+- ✅ Canonical query service
+- ✅ Event Gateway SSE
+- ✅ API Gateway routing + auth guard
+- ✅ tests/test_core.py passes
+
+### Phase 2 - Full App Development (Status: COMPLETED)
+**Backend Services:** All 11 microservices implemented and integrated:
+- ✅ api-gateway
+- ✅ identity-service
+- ✅ rbac-service
+- ✅ config-service
+- ✅ etl-control-service
+- ✅ etl-runner-service
+- ✅ canonical-query-service
+- ✅ crm-sales-service
+- ✅ crm-goals-service
+- ✅ dashboard-agg-service
+- ✅ event-gateway-service
+
+**Frontend:** Single React app with dual surfaces implemented:
+- ✅ Authentication pages (Login, Register)
+- ✅ CRM Platform pages (Dashboard, Opportunities, Accounts, Activities, Goals, Teams, Portfolios, Initiatives, KPIs)
+- ✅ ETL Platform pages (Connections, Mappings, Pipelines, Runs, Data Lake, DLQ)
+- ✅ Admin pages (Users, Roles, Departments)
+- ✅ Layout with collapsible sidebar navigation
+- ✅ Design guidelines applied (Space Grotesk headings, Inter body, Source Code Pro mono)
+- ✅ Shadcn/UI components used throughout
+
+### What's Working:
+1. User registration → login flow with JWT auth
+2. Dashboard with KPI cards, charts, leaderboard
+3. Opportunities page with List/Kanban views
+4. ETL Connections management
+5. Admin user management with approval workflow
+6. All navigation and routing working correctly
+
+### Next Steps (Remaining Work):
+- [ ] Run comprehensive end-to-end testing with testing agent
+- [ ] Validate all CRM CRUD operations
+- [ ] Validate all ETL pipeline execution flow
+- [ ] Test Kanban drag-and-drop functionality
+- [ ] Address any bugs found during testing
+- [ ] Add more sample data for demonstration
