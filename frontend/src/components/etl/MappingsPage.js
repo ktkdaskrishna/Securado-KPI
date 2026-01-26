@@ -1059,11 +1059,17 @@ export function MappingsPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button 
                 onClick={handleCreate} 
-                disabled={!formData.name || !formData.connection_id || !formData.source_model || formData.mappings.length === 0}
+                disabled={
+                  !formData.name || 
+                  !formData.connection_id || 
+                  (multiModelMode 
+                    ? selectedModels.length === 0 
+                    : (!formData.source_model || formData.mappings.length === 0))
+                }
                 className="bg-primary hover:bg-primary/90"
                 data-testid="mappings-save-button"
               >
-                Create Mapping
+                {multiModelMode ? `Create ${selectedModels.length} Mappings` : 'Create Mapping'}
               </Button>
             </DialogFooter>
           </DialogContent>
