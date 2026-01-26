@@ -683,6 +683,7 @@ export function OpportunitiesPage() {
   const [activeId, setActiveId] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const { formatCurrency } = useCurrency();
 
   useEffect(() => {
     loadData();
