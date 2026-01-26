@@ -209,7 +209,7 @@ export function DashboardPage() {
                       <span className="font-medium">{person.name}</span>
                     </div>
                     <span className="font-semibold text-gray-900">
-                      ${person.value.toLocaleString()}
+                      {formatCurrency(person.value)}
                     </span>
                   </div>
                 ))}
