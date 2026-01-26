@@ -12,9 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Alert, AlertDescription } from '../ui/alert';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Checkbox } from '../ui/checkbox';
 import { 
   Plus, GitMerge, Trash2, ArrowRight, Eye, Wand2, CheckCircle, AlertCircle, 
-  XCircle, RefreshCw, Shield, Database, Layers, Search, Download, ChevronRight
+  XCircle, RefreshCw, Shield, Database, Layers, Search, Download, ChevronRight,
+  CheckSquare, Square, Boxes
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,7 +34,22 @@ const TARGET_ENTITIES = [
   { value: 'account', label: 'Account' },
   { value: 'contact', label: 'Contact' },
   { value: 'user', label: 'User' },
+  { value: 'invoice', label: 'Invoice' },
+  { value: 'product', label: 'Product' },
+  { value: 'order', label: 'Order' },
 ];
+
+// Model categories for grouping
+const MODEL_CATEGORIES = {
+  'crm': { label: 'CRM', icon: '🎯', models: ['crm.lead', 'crm.stage', 'crm.team', 'crm.lost.reason'] },
+  'account': { label: 'Accounting', icon: '💰', models: ['account.move', 'account.invoice', 'account.payment', 'account.journal'] },
+  'sale': { label: 'Sales', icon: '📈', models: ['sale.order', 'sale.order.line'] },
+  'purchase': { label: 'Purchase', icon: '🛒', models: ['purchase.order', 'purchase.order.line'] },
+  'product': { label: 'Products', icon: '📦', models: ['product.product', 'product.template', 'product.category'] },
+  'stock': { label: 'Inventory', icon: '🏭', models: ['stock.move', 'stock.picking', 'stock.warehouse'] },
+  'hr': { label: 'HR', icon: '👥', models: ['hr.employee', 'hr.department'] },
+  'res': { label: 'Core', icon: '⚙️', models: ['res.partner', 'res.users', 'res.company', 'res.currency'] },
+};
 
 const confidenceColors = {
   high: 'text-emerald-600 bg-emerald-50',
@@ -57,6 +74,12 @@ export function MappingsPage() {
   const [discoveringSchema, setDiscoveringSchema] = useState(false);
   const [loadingFields, setLoadingFields] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
+  
+  // Multi-model selection state
+  const [selectedModels, setSelectedModels] = useState([]);
+  const [multiModelMode, setMultiModelMode] = useState(false);
+  const [activeModelTab, setActiveModelTab] = useState(null);
+  const [modelMappings, setModelMappings] = useState({}); // { modelName: { target_entity, mappings: [] } }
   
   const [formData, setFormData] = useState({
     name: '',
