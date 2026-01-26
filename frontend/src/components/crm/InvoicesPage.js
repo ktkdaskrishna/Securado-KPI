@@ -34,7 +34,8 @@ export function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-  const [selectedCurrency, setSelectedCurrency] = useState(DEFAULT_CURRENCY);
+  const { currency: globalCurrency, formatCurrency, updateCurrency } = useCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState(globalCurrency);
 
   // Stats with currency support
   const stats = {
