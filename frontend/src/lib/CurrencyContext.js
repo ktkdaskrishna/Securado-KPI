@@ -10,27 +10,36 @@ export function CurrencyProvider({ children }) {
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [loading, setLoading] = useState(true);
 
+  // Function to load currency from settings
+  const loadCurrency = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        const res = await adminAPI.getSettings();
+        if (res.data?.default_currency) {
+          setCurrency(res.data.default_currency);
+        }
+      }
+    } catch (error) {
+      console.log('Using default currency:', DEFAULT_CURRENCY);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load currency from settings on mount
   useEffect(() => {
-    const loadCurrency = async () => {
-      try {
-        // Only attempt to load settings if user is likely logged in (has token)
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          const res = await adminAPI.getSettings();
-          if (res.data?.default_currency) {
-            setCurrency(res.data.default_currency);
-          }
-        }
-      } catch (error) {
-        // Use default currency if settings not available
-        console.log('Using default currency:', DEFAULT_CURRENCY);
-      } finally {
-        setLoading(false);
+    loadCurrency();
+    
+    // Also listen for storage changes (login/logout)
+    const handleStorageChange = (e) => {
+      if (e.key === 'access_token') {
+        loadCurrency();
       }
     };
-
-    loadCurrency();
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Format currency with current context currency
