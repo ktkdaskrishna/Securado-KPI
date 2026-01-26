@@ -314,12 +314,16 @@ export function MappingsPage() {
         
         toast.success(`Auto-populated ${mappingRules.length} field mappings`);
       } else if (res.data.canonical_fields) {
+        console.log('[ETL] No suggestions, showing canonical fields for manual mapping');
         toast.info('No auto-suggestions available. Please map fields manually.');
       } else {
+        console.warn('[ETL] No suggestions or canonical fields available');
         toast.warning('No mapping suggestions available');
       }
     } catch (error) {
-      toast.error('Failed to auto-suggest mappings');
+      console.error('[ETL] Auto-suggest failed:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to auto-suggest mappings';
+      toast.error(`Auto-suggest failed: ${errorMessage}`);
     } finally {
       setAutoSuggesting(false);
     }
