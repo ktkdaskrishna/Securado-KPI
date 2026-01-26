@@ -52,13 +52,13 @@ Users can register themselves, but they start in **PENDING** status:
 **Step 1: List Pending Users**
 ```bash
 curl -H "Authorization: Bearer <ADMIN_TOKEN>" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users?status=pending
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users?status=pending
 ```
 
 **Step 2: Approve User**
 ```bash
 curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{user_id}/approve
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{user_id}/approve
 ```
 
 **Step 3: Assign Roles**
@@ -66,7 +66,7 @@ curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
 curl -X PATCH -H "Authorization: Bearer <ADMIN_TOKEN>" \\
   -H "Content-Type: application/json" \\
   -d '{"role": "sales_rep"}' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{user_id}/assign-role
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{user_id}/assign-role
 ```
 
 **Step 4: Assign Department**
@@ -74,7 +74,7 @@ curl -X PATCH -H "Authorization: Bearer <ADMIN_TOKEN>" \\
 curl -X PUT -H "Authorization: Bearer <ADMIN_TOKEN>" \\
   -H "Content-Type: application/json" \\
   -d '{"department_id": "dept_uuid"}' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{user_id}
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{user_id}
 ```
 
 ---
@@ -89,7 +89,7 @@ curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
     "user_ids": ["user1_id", "user2_id", "user3_id"],
     "role": "sales_rep"
   }' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/bulk-assign-role
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/bulk-assign-role
 ```
 
 **Bulk Department Assignment:**
@@ -100,7 +100,7 @@ curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
     "user_ids": ["user1_id", "user2_id"],
     "department_id": "sales_dept_id"
   }' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/bulk-assign-department
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/bulk-assign-department
 ```
 
 ---
@@ -148,7 +148,7 @@ curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
 #### List All Roles
 ```bash
 curl -H "Authorization: Bearer <TOKEN>" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/roles
+  https://streamhub-crm.preview.emergentagent.com/api/admin/roles
 ```
 
 ---
@@ -164,13 +164,13 @@ curl -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \\
     "description": "North American sales team",
     "parent_id": null
   }' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/departments
+  https://streamhub-crm.preview.emergentagent.com/api/admin/departments
 ```
 
 #### List Departments
 ```bash
 curl -H "Authorization: Bearer <TOKEN>" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/departments
+  https://streamhub-crm.preview.emergentagent.com/api/admin/departments
 ```
 
 ---
@@ -187,30 +187,30 @@ curl -X POST -H "Content-Type: application/json" \\
     "name": "Jane Smith",
     "password": "Secure123!"
   }' \\
-  https://eventmesh-3.preview.emergentagent.com/api/auth/register
+  https://streamhub-crm.preview.emergentagent.com/api/auth/register
 
 # 2. Admin logs in
 TOKEN=$(curl -s -X POST -H "Content-Type: application/json" \\
   -d '{"email":"admin@platform2.com","password":"admin123"}' \\
-  https://eventmesh-3.preview.emergentagent.com/api/auth/login | jq -r '.access_token')
+  https://streamhub-crm.preview.emergentagent.com/api/auth/login | jq -r '.access_token')
 
 # 3. Admin lists pending users
 curl -H "Authorization: Bearer $TOKEN" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users?status=pending
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users?status=pending
 
 # 4. Admin approves user (get USER_ID from step 3)
 curl -X POST -H "Authorization: Bearer $TOKEN" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{USER_ID}/approve
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{USER_ID}/approve
 
 # 5. Admin assigns sales_rep role
 curl -X PATCH -H "Authorization: Bearer $TOKEN" \\
   -H "Content-Type: application/json" \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{USER_ID}/assign-role?role=sales_rep
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{USER_ID}/assign-role?role=sales_rep
 
 # 6. User can now login
 curl -X POST -H "Content-Type: application/json" \\
   -d '{"email":"jane@company.com","password":"Secure123!"}' \\
-  https://eventmesh-3.preview.emergentagent.com/api/auth/login
+  https://streamhub-crm.preview.emergentagent.com/api/auth/login
 ```
 
 ---
@@ -464,7 +464,7 @@ CANONICAL_ENTITY_COLLECTION_PREFIX="silver_"
 
 4. **Test Connection:**
    ```bash
-   curl https://eventmesh-3.preview.emergentagent.com/api/data-lake/health
+   curl https://streamhub-crm.preview.emergentagent.com/api/data-lake/health
    ```
 
 5. **Write Test Data:**
@@ -473,7 +473,7 @@ CANONICAL_ENTITY_COLLECTION_PREFIX="silver_"
 6. **Verify in Platform 2:**
    ```bash
    curl -H "Authorization: Bearer <TOKEN>" \\
-     "https://eventmesh-3.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
+     "https://streamhub-crm.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
    ```
 
 ---
@@ -528,7 +528,7 @@ JWT_SECRET="your-very-long-and-secure-secret-key-minimum-32-characters"
 curl -X PUT -H "Authorization: Bearer <ADMIN_TOKEN>" \\
   -H "Content-Type: application/json" \\
   -d '{"password": "NewSecurePassword123!"}' \\
-  https://eventmesh-3.preview.emergentagent.com/api/admin/users/{admin_user_id}
+  https://streamhub-crm.preview.emergentagent.com/api/admin/users/{admin_user_id}
 ```
 
 **✅ Use HTTPS:**
@@ -567,7 +567,7 @@ Use bastion/jump host for MongoDB admin access.
 **Issue 1: Platform 2 Cannot Connect to Canonical MongoDB**
 ```bash
 # Check connectivity
-curl https://eventmesh-3.preview.emergentagent.com/api/data-lake/health
+curl https://streamhub-crm.preview.emergentagent.com/api/data-lake/health
 
 # Expected response:
 {
@@ -645,7 +645,7 @@ curl https://eventmesh-3.preview.emergentagent.com/api/data-lake/health
 
 ## 📚 Additional Resources
 
-- **API Documentation UI:** https://eventmesh-3.preview.emergentagent.com
+- **API Documentation UI:** https://streamhub-crm.preview.emergentagent.com
 - **Full Platform Documentation:** `/app/backend/PLATFORM2_COMPLETE.md`
 - **Receiving Connector Details:** `/app/backend/RECEIVING_CONNECTOR.md`
 - **MongoDB Documentation:** https://docs.mongodb.com/
