@@ -351,8 +351,8 @@ export function InvoicesPage() {
                       <TableRow key={i}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.rate)}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.amount)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(item.rate, selectedCurrency)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(item.amount, selectedCurrency)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -361,7 +361,7 @@ export function InvoicesPage() {
 
               <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
                 <span className="font-medium">Total Amount</span>
-                <span className="text-2xl font-bold">{formatCurrency(selectedInvoice.amount)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
               </div>
 
               <div className="flex gap-2">
