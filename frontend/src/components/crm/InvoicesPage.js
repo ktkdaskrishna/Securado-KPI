@@ -135,7 +135,7 @@ export function InvoicesPage() {
           <p className="text-muted-foreground">Track payments and manage invoices</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+          <Select value={selectedCurrency} onValueChange={handleCurrencyChange}>
             <SelectTrigger className="w-[140px]" data-testid="currency-selector">
               <SelectValue placeholder="Currency" />
             </SelectTrigger>
