@@ -340,45 +340,6 @@ async def discover_schema(
             )
             
             return serialize_doc(schema_doc)
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'in', [
-                    'res.partner', 'res.users', 'res.company', 'res.currency',
-                    'res.country', 'res.country.state', 'res.bank', 'res.partner.bank'
-                ]]]],
-                {'fields': ['model', 'name']}
-            )
-            
-            # Combine all models and remove duplicates
-            all_models = crm_models + account_models + sale_models + purchase_models + stock_models + product_models + hr_models + project_models + core_models
-            
-            # Remove duplicates based on model name
-            seen_models = set()
-            unique_models = []
-            for m in all_models:
-                if m['model'] not in seen_models:
-                    seen_models.add(m['model'])
-                    unique_models.append(m)
-            
-            # Sort by model name
-            unique_models.sort(key=lambda x: x['model'])
-            
-            schema_doc = {
-                "id": generate_id(),
-                "connection_id": conn_id,
-                "org_id": current_user.get("org_id", "default"),
-                "discovered_at": now_utc(),
-                "models": [{"model": m['model'], "name": m['name']} for m in unique_models],
-                "model_count": len(unique_models)
-            }
-            
-            await db.schemas.update_one(
-                {"connection_id": conn_id},
-                {"$set": schema_doc},
-                upsert=True
-            )
-            
-            return serialize_doc(schema_doc)
         else:
             # Mock schema for other types
             schema_doc = {
@@ -387,11 +348,13 @@ async def discover_schema(
                 "org_id": current_user.get("org_id", "default"),
                 "discovered_at": now_utc(),
                 "models": [
-                    {"model": "opportunities", "name": "Opportunities"},
-                    {"model": "accounts", "name": "Accounts"},
-                    {"model": "contacts", "name": "Contacts"},
-                    {"model": "users", "name": "Users"}
-                ]
+                    {"model": "opportunities", "name": "Opportunities", "category": "crm", "category_label": "CRM", "category_icon": "🎯"},
+                    {"model": "accounts", "name": "Accounts", "category": "core", "category_label": "Core", "category_icon": "⚙️"},
+                    {"model": "contacts", "name": "Contacts", "category": "core", "category_label": "Core", "category_icon": "⚙️"},
+                    {"model": "users", "name": "Users", "category": "core", "category_label": "Core", "category_icon": "⚙️"},
+                    {"model": "invoices", "name": "Invoices", "category": "account", "category_label": "Accounting", "category_icon": "💰"}
+                ],
+                "model_count": 5
             }
             
             await db.schemas.update_one(
