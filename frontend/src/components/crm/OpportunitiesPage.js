@@ -143,7 +143,7 @@ function KanbanColumn({ stage, opportunities, onCardClick, formatCurrency }) {
   );
 }
 
-function OpportunityDetailSheet({ opportunity, open, onClose }) {
+function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [bluesheet, setBluesheet] = useState(null);
   const [activities, setActivities] = useState([]);
