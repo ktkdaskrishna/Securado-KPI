@@ -14,7 +14,7 @@ export function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { formatCurrency, currency } = useCurrency();
+  const { formatCurrency, currency, reloadCurrency } = useCurrency();
 
   const loadStats = async () => {
     try {
@@ -29,6 +29,8 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadStats();
+    // Reload currency when dashboard mounts (useful after login)
+    reloadCurrency();
   }, []);
 
   const handleRefresh = async () => {
