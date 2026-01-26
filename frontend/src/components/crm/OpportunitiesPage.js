@@ -41,7 +41,7 @@ const formatStage = (stage) => {
   return stage?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Unknown';
 };
 
-function SortableCard({ opportunity, onClick }) {
+function SortableCard({ opportunity, onClick, formatCurrency }) {
   const {
     attributes,
     listeners,
@@ -81,7 +81,7 @@ function SortableCard({ opportunity, onClick }) {
           <div className="flex items-center gap-2 mt-2">
             <DollarSign className="h-3 w-3 text-gray-400" />
             <span className="text-sm font-semibold">
-              ${(opportunity.amount || 0).toLocaleString()}
+              {formatCurrency(opportunity.amount || 0)}
             </span>
           </div>
           <div className="flex items-center justify-between mt-2">
@@ -101,7 +101,7 @@ function SortableCard({ opportunity, onClick }) {
   );
 }
 
-function KanbanColumn({ stage, opportunities, onCardClick }) {
+function KanbanColumn({ stage, opportunities, onCardClick, formatCurrency }) {
   const stageOpps = opportunities.filter(o => o.stage === stage);
   
   return (
@@ -117,7 +117,7 @@ function KanbanColumn({ stage, opportunities, onCardClick }) {
           </Badge>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          ${stageOpps.reduce((sum, o) => sum + (o.amount || 0), 0).toLocaleString()}
+          {formatCurrency(stageOpps.reduce((sum, o) => sum + (o.amount || 0), 0))}
         </p>
       </div>
       <ScrollArea className="h-[calc(100vh-320px)]">
@@ -128,6 +128,7 @@ function KanbanColumn({ stage, opportunities, onCardClick }) {
                 key={opp.canonical_id} 
                 opportunity={opp} 
                 onClick={() => onCardClick(opp)}
+                formatCurrency={formatCurrency}
               />
             ))}
           </SortableContext>
