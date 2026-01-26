@@ -869,6 +869,7 @@ export function OpportunitiesPage() {
                   stage={stage}
                   opportunities={filteredOpportunities}
                   onCardClick={handleOpenDetail}
+                  formatCurrency={formatCurrency}
                 />
               ))}
             </div>
