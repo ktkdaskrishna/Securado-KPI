@@ -190,94 +190,101 @@ export function Sidebar() {
           <Settings className="h-4 w-4" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="bg-[#1a1a1a] text-white border-[#333333]">
+      <SheetContent className="bg-[#1a1a1a] text-white border-[#333333] overflow-hidden">
         <SheetHeader>
           <SheetTitle className="text-white">Navigation Settings</SheetTitle>
           <SheetDescription className="text-gray-400">
             Select which menu items to show in the sidebar
           </SheetDescription>
         </SheetHeader>
-        <div className="mt-6 space-y-6">
-          {/* CRM Section */}
-          <div>
-            <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
-              CRM Platform
-            </h4>
-            <div className="space-y-3">
-              {defaultNavigation.crm.map((item) => (
-                <div key={item.id} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={`nav-${item.id}`}
-                    checked={navPreferences[item.id] !== false}
-                    onCheckedChange={() => toggleNavItem(item.id)}
-                    className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
-                  />
-                  <Label 
-                    htmlFor={`nav-${item.id}`} 
-                    className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
-                  >
-                    {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
-                    {item.name}
-                  </Label>
-                </div>
-              ))}
+        <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
+          <div className="space-y-6">
+            {/* CRM Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
+                CRM Platform
+              </h4>
+              <div className="space-y-3">
+                {defaultNavigation.crm.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`nav-${item.id}`}
+                      checked={navPreferences[item.id] !== false}
+                      onCheckedChange={() => toggleNavItem(item.id)}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                    />
+                    <Label 
+                      htmlFor={`nav-${item.id}`} 
+                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                    >
+                      {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
+                      {item.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator className="bg-gray-700" />
+
+            {/* ETL Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
+                ETL Platform
+              </h4>
+              <div className="space-y-3">
+                {defaultNavigation.etl.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`nav-${item.id}`}
+                      checked={navPreferences[item.id] !== false}
+                      onCheckedChange={() => toggleNavItem(item.id)}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                    />
+                    <Label 
+                      htmlFor={`nav-${item.id}`} 
+                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                    >
+                      {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
+                      {item.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator className="bg-gray-700" />
+
+            {/* Admin Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
+                Admin
+              </h4>
+              <div className="space-y-3">
+                {defaultNavigation.admin.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`nav-${item.id}`}
+                      checked={navPreferences[item.id] !== false}
+                      onCheckedChange={() => toggleNavItem(item.id)}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                    />
+                    <Label 
+                      htmlFor={`nav-${item.id}`} 
+                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                    >
+                      {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
+                      {item.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-
-          <Separator className="bg-gray-700" />
-
-          {/* ETL Section */}
-          <div>
-            <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
-              ETL Platform
-            </h4>
-            <div className="space-y-3">
-              {defaultNavigation.etl.map((item) => (
-                <div key={item.id} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={`nav-${item.id}`}
-                    checked={navPreferences[item.id] !== false}
-                    onCheckedChange={() => toggleNavItem(item.id)}
-                    className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
-                  />
-                  <Label 
-                    htmlFor={`nav-${item.id}`} 
-                    className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
-                  >
-                    {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
-                    {item.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Separator className="bg-gray-700" />
-
-          {/* Admin Section */}
-          <div>
-            <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
-              Admin
-            </h4>
-            <div className="space-y-3">
-              {defaultNavigation.admin.map((item) => (
-                <div key={item.id} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={`nav-${item.id}`}
-                    checked={navPreferences[item.id] !== false}
-                    onCheckedChange={() => toggleNavItem(item.id)}
-                    className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
-                  />
-                  <Label 
-                    htmlFor={`nav-${item.id}`} 
-                    className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
-                  >
-                    {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
-                    {item.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
           </div>
 
           <div className="pt-4">
