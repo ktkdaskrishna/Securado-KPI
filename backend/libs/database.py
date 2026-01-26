@@ -116,6 +116,18 @@ class DatabaseManager:
         
         await self.app_db.config.create_index(["config_type", "org_id"])
         
+        # Bluesheet indexes
+        await self.app_db.bluesheets.create_index("opportunity_id")
+        await self.app_db.bluesheets.create_index("org_id")
+        await self.app_db.bluesheets.create_index(["opportunity_id", "org_id"], unique=True)
+        
+        # Notes indexes
+        await self.app_db.notes.create_index("id", unique=True)
+        await self.app_db.notes.create_index("org_id")
+        await self.app_db.notes.create_index("opportunity_id")
+        await self.app_db.notes.create_index("account_id")
+        await self.app_db.notes.create_index("created_at")
+        
         # Canonical DB indexes
         await self.canonical_db.opportunities.create_index("canonical_id", unique=True)
         await self.canonical_db.opportunities.create_index("org_id")
