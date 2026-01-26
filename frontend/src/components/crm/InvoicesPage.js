@@ -49,6 +49,17 @@ export function InvoicesPage() {
     loadInvoices();
   }, []);
 
+  // Sync with global currency setting
+  useEffect(() => {
+    setSelectedCurrency(globalCurrency);
+  }, [globalCurrency]);
+
+  // Update global currency when changed in this page
+  const handleCurrencyChange = (newCurrency) => {
+    setSelectedCurrency(newCurrency);
+    updateCurrency(newCurrency);
+  };
+
   const loadInvoices = async () => {
     try {
       const res = await crmAPI.listReceivables();
