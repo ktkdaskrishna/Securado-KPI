@@ -211,7 +211,7 @@ async def discover_schema(
     conn_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Discover schema from connection"""
+    """Discover ALL available models from connection"""
     db = get_app_db()
     
     conn = await db.connections.find_one({
@@ -232,72 +232,114 @@ async def discover_schema(
             
             models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
             
-            # Discover CRM models
-            crm_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'crm.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
+            # Define model categories to discover
+            model_categories = {
+                'crm': {'pattern': 'crm.%', 'label': 'CRM', 'icon': '🎯'},
+                'account': {'pattern': 'account.%', 'label': 'Accounting/Invoices', 'icon': '💰'},
+                'sale': {'pattern': 'sale.%', 'label': 'Sales', 'icon': '📈'},
+                'purchase': {'pattern': 'purchase.%', 'label': 'Purchase', 'icon': '🛒'},
+                'stock': {'pattern': 'stock.%', 'label': 'Inventory', 'icon': '🏭'},
+                'product': {'pattern': 'product.%', 'label': 'Products', 'icon': '📦'},
+                'hr': {'pattern': 'hr.%', 'label': 'HR/Employees', 'icon': '👥'},
+                'project': {'pattern': 'project.%', 'label': 'Projects', 'icon': '📋'},
+                'mrp': {'pattern': 'mrp.%', 'label': 'Manufacturing', 'icon': '🔧'},
+                'fleet': {'pattern': 'fleet.%', 'label': 'Fleet', 'icon': '🚗'},
+                'maintenance': {'pattern': 'maintenance.%', 'label': 'Maintenance', 'icon': '🔨'},
+                'helpdesk': {'pattern': 'helpdesk.%', 'label': 'Helpdesk', 'icon': '🎧'},
+                'calendar': {'pattern': 'calendar.%', 'label': 'Calendar', 'icon': '📅'},
+                'mail': {'pattern': 'mail.%', 'label': 'Mail/Messages', 'icon': '✉️'},
+                'survey': {'pattern': 'survey.%', 'label': 'Surveys', 'icon': '📊'},
+                'event': {'pattern': 'event.%', 'label': 'Events', 'icon': '🎪'},
+                'website': {'pattern': 'website.%', 'label': 'Website', 'icon': '🌐'},
+                'pos': {'pattern': 'pos.%', 'label': 'Point of Sale', 'icon': '🏪'},
+                'mrp': {'pattern': 'mrp.%', 'label': 'Manufacturing', 'icon': '🏭'},
+                'quality': {'pattern': 'quality.%', 'label': 'Quality', 'icon': '✅'},
+                'timesheet': {'pattern': 'account.analytic.line', 'label': 'Timesheets', 'icon': '⏱️'},
+            }
+            
+            all_models = []
+            category_counts = {}
+            
+            # Discover models for each category
+            for cat_key, cat_info in model_categories.items():
+                try:
+                    if cat_info['pattern'].endswith('%'):
+                        # Pattern search
+                        models = models_proxy.execute_kw(
+                            conn["database"], uid, conn["api_key"],
+                            'ir.model', 'search_read',
+                            [[['model', 'like', cat_info['pattern']]]],
+                            {'fields': ['model', 'name', 'state', 'transient'], 'limit': 200}
+                        )
+                    else:
+                        # Exact match
+                        models = models_proxy.execute_kw(
+                            conn["database"], uid, conn["api_key"],
+                            'ir.model', 'search_read',
+                            [[['model', '=', cat_info['pattern']]]],
+                            {'fields': ['model', 'name', 'state', 'transient']}
+                        )
+                    
+                    for m in models:
+                        # Skip transient models (wizards)
+                        if m.get('transient'):
+                            continue
+                        m['category'] = cat_key
+                        m['category_label'] = cat_info['label']
+                        m['category_icon'] = cat_info['icon']
+                        all_models.append(m)
+                    
+                    category_counts[cat_key] = len([m for m in models if not m.get('transient')])
+                except Exception as e:
+                    logger.warning(f"Error discovering {cat_key} models: {e}")
+            
+            # Also get core/res models
+            try:
+                core_models = models_proxy.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    'ir.model', 'search_read',
+                    [[['model', 'like', 'res.%']]],
+                    {'fields': ['model', 'name', 'state', 'transient'], 'limit': 100}
+                )
+                for m in core_models:
+                    if m.get('transient'):
+                        continue
+                    m['category'] = 'core'
+                    m['category_label'] = 'Core/Settings'
+                    m['category_icon'] = '⚙️'
+                    all_models.append(m)
+                category_counts['core'] = len([m for m in core_models if not m.get('transient')])
+            except Exception as e:
+                logger.warning(f"Error discovering core models: {e}")
+            
+            # Remove duplicates based on model name
+            seen_models = set()
+            unique_models = []
+            for m in all_models:
+                if m['model'] not in seen_models:
+                    seen_models.add(m['model'])
+                    unique_models.append(m)
+            
+            # Sort by category then model name
+            unique_models.sort(key=lambda x: (x.get('category', 'z'), x['model']))
+            
+            schema_doc = {
+                "id": generate_id(),
+                "connection_id": conn_id,
+                "org_id": current_user.get("org_id", "default"),
+                "discovered_at": now_utc(),
+                "models": [{"model": m['model'], "name": m['name'], "category": m.get('category'), "category_label": m.get('category_label'), "category_icon": m.get('category_icon')} for m in unique_models],
+                "model_count": len(unique_models),
+                "category_counts": category_counts
+            }
+            
+            await db.schemas.update_one(
+                {"connection_id": conn_id},
+                {"$set": schema_doc},
+                upsert=True
             )
             
-            # Discover Accounting/Invoice models
-            account_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'account.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover Sales models
-            sale_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'sale.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover Purchase models
-            purchase_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'purchase.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover Stock/Inventory models
-            stock_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'stock.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover Product models
-            product_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'product.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover HR models
-            hr_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'hr.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Discover Project models
-            project_models = models_proxy.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.model', 'search_read',
-                [[['model', 'like', 'project.%']]],
-                {'fields': ['model', 'name'], 'limit': 100}
-            )
-            
-            # Core models (partners, users, companies, currencies)
-            core_models = models_proxy.execute_kw(
+            return serialize_doc(schema_doc)
                 conn["database"], uid, conn["api_key"],
                 'ir.model', 'search_read',
                 [[['model', 'in', [
