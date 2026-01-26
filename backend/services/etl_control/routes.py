@@ -1096,14 +1096,21 @@ async def verify_mapping_schema(
         "status": "valid",
         "errors": [],
         "warnings": [],
-        "field_checks": []
+        "field_checks": [],
+        "suggestions": []
     }
     
-    # Validate target fields exist in canonical model
+    # Get canonical fields for target entity
     canonical_fields = []
+    required_fields = []
     if target_entity in CANONICAL_ENTITIES:
         canonical_fields = [f["name"] for f in CANONICAL_ENTITIES[target_entity]["fields"]]
+        required_fields = [f["name"] for f in CANONICAL_ENTITIES[target_entity]["fields"] if f.get("required")]
     
+    # Track which target fields are mapped
+    mapped_targets = set()
+    
+    # Check each mapping rule
     for rule in mapping.get("mappings", []):
         field_check = {
             "source_field": rule.get("source_field"),
@@ -1112,24 +1119,37 @@ async def verify_mapping_schema(
             "status": "valid"
         }
         
+        target_field = rule.get("target_field")
+        mapped_targets.add(target_field)
+        
         # Check if target field exists in canonical model
-        if canonical_fields and rule.get("target_field") not in canonical_fields:
+        if canonical_fields and target_field not in canonical_fields:
             field_check["status"] = "warning"
-            field_check["message"] = f"Target field '{rule.get('target_field')}' not in canonical model"
+            field_check["message"] = f"Target field '{target_field}' not in canonical model - will be stored as custom field"
             verification_results["warnings"].append(field_check["message"])
         
-        # Check required fields
-        if target_entity in CANONICAL_ENTITIES:
-            required_fields = [f["name"] for f in CANONICAL_ENTITIES[target_entity]["fields"] if f.get("required")]
-            mapped_targets = [r.get("target_field") for r in mapping.get("mappings", [])]
-            
-            for req_field in required_fields:
-                if req_field not in mapped_targets:
-                    msg = f"Required field '{req_field}' is not mapped"
-                    verification_results["errors"].append(msg)
-                    verification_results["status"] = "invalid"
-        
         verification_results["field_checks"].append(field_check)
+    
+    # Check required fields (only once per missing field)
+    for req_field in required_fields:
+        if req_field not in mapped_targets:
+            msg = f"Required field '{req_field}' is not mapped"
+            verification_results["errors"].append(msg)
+            verification_results["status"] = "invalid"
+            
+            # Add suggestion for fixing
+            if req_field == "canonical_id":
+                verification_results["suggestions"].append({
+                    "field": req_field,
+                    "message": "Map your source ID field (e.g., 'id', 'Id', '_id') to 'canonical_id'",
+                    "recommended_source": "id"
+                })
+            elif req_field == "name":
+                verification_results["suggestions"].append({
+                    "field": req_field,
+                    "message": "Map your source name field (e.g., 'name', 'title', 'display_name') to 'name'",
+                    "recommended_source": "name"
+                })
     
     # Add summary
     verification_results["summary"] = {
@@ -1138,5 +1158,7 @@ async def verify_mapping_schema(
         "warnings": len(verification_results["warnings"]),
         "errors": len(verification_results["errors"])
     }
+    
+    logger.info(f"Mapping {mapping_id} verification: {verification_results['status']} - {len(verification_results['errors'])} errors, {len(verification_results['warnings'])} warnings")
     
     return verification_results
