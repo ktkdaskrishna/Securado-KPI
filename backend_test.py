@@ -176,14 +176,14 @@ class APITester:
             print(f"   Stats keys: {list(data.keys())}")
 
     def test_opportunities(self):
-        """Test opportunities endpoints"""
+        """Test opportunities endpoints including Bluesheet and Notes"""
         print("\n" + "="*60)
-        print("TEST: Opportunities")
+        print("TEST: Opportunities (with Bluesheet & Notes)")
         print("="*60)
         
         if not self.token:
             self.log("No token available, skipping opportunities tests", False)
-            return
+            return None
         
         # List opportunities
         status, data = self.make_request(
@@ -193,19 +193,94 @@ class APITester:
             description="List opportunities"
         )
         
-        if data and isinstance(data, list):
-            print(f"   Found {len(data)} opportunities")
+        opportunities = data if isinstance(data, list) else []
+        print(f"   Found {len(opportunities)} opportunities")
         
         # Kanban view
-        status, data = self.make_request(
+        status, kanban_data = self.make_request(
             'GET',
             'opportunities/kanban',
             expected_status=200,
             description="Get opportunities kanban"
         )
         
-        if data and isinstance(data, dict):
-            print(f"   Kanban stages: {list(data.keys())}")
+        if kanban_data and isinstance(kanban_data, dict):
+            print(f"   Kanban stages: {list(kanban_data.get('data', {}).keys())}")
+        
+        # Test Bluesheet and Notes if we have opportunities
+        if opportunities and len(opportunities) > 0:
+            opp_id = opportunities[0].get('canonical_id')
+            print(f"\n   Testing Bluesheet & Notes with opportunity: {opp_id}")
+            
+            # Get Bluesheet
+            status, bluesheet_data = self.make_request(
+                'GET',
+                f'opportunities/{opp_id}/bluesheet',
+                expected_status=200,
+                description="GET /api/opportunities/{id}/bluesheet - Get bluesheet assessment"
+            )
+            
+            if bluesheet_data and isinstance(bluesheet_data, dict):
+                print(f"   Bluesheet loaded successfully")
+                if bluesheet_data.get('calculated_probability'):
+                    prob = bluesheet_data['calculated_probability']
+                    print(f"   Calculated probability: {prob.get('probability')}% (risk: {prob.get('risk_level')})")
+            
+            # Update Bluesheet
+            bluesheet_update = {
+                "competition_status": "favored",
+                "budget_status": "confirmed",
+                "buying_influences": [
+                    {"role": "economic_buyer", "name": "John Doe", "title": "CEO", "coverage": 0.8}
+                ],
+                "win_strategy": "Focus on ROI and quick implementation",
+                "key_issues": ["Budget approval", "Timeline"]
+            }
+            
+            status, update_result = self.make_request(
+                'PUT',
+                f'opportunities/{opp_id}/bluesheet',
+                data=bluesheet_update,
+                expected_status=200,
+                description="PUT /api/opportunities/{id}/bluesheet - Update bluesheet and calculate probability"
+            )
+            
+            if update_result and isinstance(update_result, dict):
+                if update_result.get('calculated_probability'):
+                    prob = update_result['calculated_probability']
+                    print(f"   Updated probability: {prob.get('probability')}% (risk: {prob.get('risk_level')})")
+            
+            # Create Note
+            note_data = {
+                "content": "Test note from backend API test",
+                "note_type": "general"
+            }
+            
+            status, note_result = self.make_request(
+                'POST',
+                f'opportunities/{opp_id}/notes',
+                data=note_data,
+                expected_status=200,
+                description="POST /api/opportunities/{id}/notes - Create note under opportunity"
+            )
+            
+            if note_result and isinstance(note_result, dict):
+                print(f"   Note created: {note_result.get('id')}")
+            
+            # Get Activities
+            status, activities_data = self.make_request(
+                'GET',
+                f'opportunities/{opp_id}/activities',
+                expected_status=200,
+                description="GET /api/opportunities/{id}/activities - Get opportunity activities"
+            )
+            
+            if activities_data and isinstance(activities_data, list):
+                print(f"   Found {len(activities_data)} activities for this opportunity")
+        else:
+            self.log("No opportunities available for Bluesheet/Notes/Activities tests", False)
+        
+        return opportunities
 
     def test_accounts(self):
         """Test accounts endpoints"""
