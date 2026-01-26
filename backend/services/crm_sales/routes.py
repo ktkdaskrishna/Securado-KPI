@@ -261,12 +261,230 @@ async def get_opportunity_messages(
     current_user: dict = Depends(get_current_user)
 ):
     """Get messages/communications for an opportunity"""
-    # Mock messages for now
-    return [
-        {"id": "1", "subject": "Initial Contact", "preview": "Thank you for your interest...", "date": "2024-01-15"},
-        {"id": "2", "subject": "Follow-up", "preview": "Following up on our conversation...", "date": "2024-01-18"},
-        {"id": "3", "subject": "Proposal Review", "preview": "Please find attached...", "date": "2024-01-22"}
-    ]
+    app_db = get_app_db()
+    
+    # Get notes from database
+    notes = await app_db.notes.find({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    }).sort("created_at", -1).to_list(100)
+    
+    if notes:
+        return serialize_doc(notes)
+    
+    # Return empty list if no notes
+    return []
+
+
+@opportunities_router.post("/{opp_id}/notes")
+async def create_opportunity_note(
+    opp_id: str,
+    note_data: NoteCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a note under an opportunity"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    # Verify opportunity exists
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    note_doc = {
+        "id": generate_id(),
+        "org_id": current_user["org_id"],
+        "opportunity_id": opp_id,
+        "content": note_data.content,
+        "note_type": note_data.note_type,
+        "created_by": current_user["id"],
+        "created_by_name": current_user.get("name", "Unknown"),
+        "created_at": now_utc()
+    }
+    
+    await app_db.notes.insert_one(note_doc)
+    
+    logger.info(f"Note created for opportunity {opp_id}")
+    return serialize_doc(note_doc)
+
+
+@opportunities_router.get("/{opp_id}/activities")
+async def get_opportunity_activities(
+    opp_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all activities for an opportunity"""
+    app_db = get_app_db()
+    
+    activities = await app_db.activities.find({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    }).sort("created_at", -1).to_list(100)
+    
+    return serialize_doc(activities)
+
+
+# ==================== BLUESHEET ====================
+
+@opportunities_router.get("/{opp_id}/bluesheet")
+async def get_bluesheet(
+    opp_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get Bluesheet assessment for an opportunity"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    # Get opportunity
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    # Get bluesheet data
+    bluesheet = await app_db.bluesheets.find_one({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    
+    # Get activities for this opportunity
+    activities = await app_db.activities.find({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    }).to_list(100)
+    
+    # Calculate probability
+    bluesheet_data = bluesheet or {}
+    probability_result = calculate_bluesheet_probability(
+        serialize_doc(opp),
+        bluesheet_data,
+        serialize_doc(activities)
+    )
+    
+    return {
+        "opportunity_id": opp_id,
+        "bluesheet": serialize_doc(bluesheet_data) if bluesheet else None,
+        "calculated_probability": probability_result,
+        "form_options": get_bluesheet_form_options()
+    }
+
+
+@opportunities_router.put("/{opp_id}/bluesheet")
+async def update_bluesheet(
+    opp_id: str,
+    bluesheet_data: BluesheetUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update Bluesheet assessment for an opportunity"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    # Verify opportunity exists
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    # Prepare bluesheet document
+    bluesheet_doc = {
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"],
+        "buying_influences": [bi.model_dump() for bi in (bluesheet_data.buying_influences or [])],
+        "competition_status": bluesheet_data.competition_status,
+        "budget_status": bluesheet_data.budget_status,
+        "timeline_notes": bluesheet_data.timeline_notes,
+        "win_strategy": bluesheet_data.win_strategy,
+        "key_issues": bluesheet_data.key_issues or [],
+        "updated_at": now_utc(),
+        "updated_by": current_user["id"]
+    }
+    
+    # Upsert bluesheet
+    await app_db.bluesheets.update_one(
+        {"opportunity_id": opp_id, "org_id": current_user["org_id"]},
+        {"$set": bluesheet_doc},
+        upsert=True
+    )
+    
+    # Get activities to calculate probability
+    activities = await app_db.activities.find({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    }).to_list(100)
+    
+    # Calculate new probability
+    probability_result = calculate_bluesheet_probability(
+        serialize_doc(opp),
+        bluesheet_doc,
+        serialize_doc(activities)
+    )
+    
+    # Update override with calculated probability
+    await app_db.overrides.update_one(
+        {"canonical_id": opp_id, "org_id": current_user["org_id"]},
+        {
+            "$set": {
+                "probability": round(probability_result["probability"]),
+                "updated_at": now_utc(),
+                "updated_by": current_user["id"]
+            }
+        },
+        upsert=True
+    )
+    
+    logger.info(f"Bluesheet updated for {opp_id}, probability: {probability_result['probability']}")
+    
+    return {
+        "success": True,
+        "calculated_probability": probability_result,
+        "bluesheet": bluesheet_doc
+    }
+
+
+@opportunities_router.post("/{opp_id}/bluesheet/calculate")
+async def calculate_bluesheet_only(
+    opp_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Recalculate Bluesheet probability without saving"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    # Get opportunity
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    # Get bluesheet data
+    bluesheet = await app_db.bluesheets.find_one({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    })
+    
+    # Get activities
+    activities = await app_db.activities.find({
+        "opportunity_id": opp_id,
+        "org_id": current_user["org_id"]
+    }).to_list(100)
+    
+    # Calculate
+    probability_result = calculate_bluesheet_probability(
+        serialize_doc(opp),
+        bluesheet or {},
+        serialize_doc(activities)
+    )
+    
+    return probability_result
 
 
 # ==================== ACCOUNTS ====================
