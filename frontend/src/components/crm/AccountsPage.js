@@ -179,7 +179,7 @@ export function AccountsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">Total Value</p>
-                          <p className="text-xl font-bold">${(account360.total_value || 0).toLocaleString()}</p>
+                          <p className="text-xl font-bold">{formatCurrency(account360.total_value || 0)}</p>
                         </div>
                         <DollarSign className="h-8 w-8 text-emerald-500" />
                       </div>
