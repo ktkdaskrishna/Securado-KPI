@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-01-26T05:30:59.380548",
+  "total_tests": 19,
+  "passed": 19,
+  "failed": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "message": "Health check - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.400088"
+    },
+    {
+      "message": "Login with approved user - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.660593"
+    },
+    {
+      "message": "Access token received",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.661216"
+    },
+    {
+      "message": "Get current user info - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.733450"
+    },
+    {
+      "message": "Get dashboard stats - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.773945"
+    },
+    {
+      "message": "List opportunities - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.815331"
+    },
+    {
+      "message": "Get opportunities kanban - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.851016"
+    },
+    {
+      "message": "List accounts - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.887594"
+    },
+    {
+      "message": "List activities - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.918867"
+    },
+    {
+      "message": "Get activity stats - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:58.998263"
+    },
+    {
+      "message": "List goals - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.035103"
+    },
+    {
+      "message": "List teams - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.078270"
+    },
+    {
+      "message": "List portfolios - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.115513"
+    },
+    {
+      "message": "List initiatives - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.153822"
+    },
+    {
+      "message": "List KPIs - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.190136"
+    },
+    {
+      "message": "List ETL connections - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.267937"
+    },
+    {
+      "message": "List ETL pipelines - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.304363"
+    },
+    {
+      "message": "List users - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.338692"
+    },
+    {
+      "message": "List roles - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-26T05:30:59.379629"
+    }
+  ]
+}
