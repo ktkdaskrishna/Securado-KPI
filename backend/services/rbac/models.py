@@ -2,6 +2,195 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+# Comprehensive permission definitions
+ALL_PERMISSIONS = [
+    # Dashboard
+    "view_dashboard",
+    "manage_dashboard",
+    
+    # ETL - Connections
+    "view_connections",
+    "manage_connections",
+    "test_connections",
+    "delete_connections",
+    
+    # ETL - Mappings
+    "view_mappings",
+    "manage_mappings",
+    "delete_mappings",
+    
+    # ETL - Pipelines
+    "view_pipelines",
+    "manage_pipelines",
+    "run_pipelines",
+    "delete_pipelines",
+    
+    # ETL - Runs
+    "view_runs",
+    "cancel_runs",
+    
+    # ETL - DLQ
+    "view_dlq",
+    "manage_dlq",
+    "retry_dlq",
+    
+    # CRM - Opportunities
+    "view_opportunities",
+    "manage_opportunities",
+    "update_stage",
+    "update_probability",
+    "delete_opportunities",
+    
+    # CRM - Accounts
+    "view_accounts",
+    "manage_accounts",
+    "delete_accounts",
+    
+    # CRM - Activities
+    "view_activities",
+    "manage_activities",
+    "delete_activities",
+    
+    # CRM - Goals
+    "view_goals",
+    "manage_goals",
+    "delete_goals",
+    
+    # CRM - Teams
+    "view_teams",
+    "manage_teams",
+    "delete_teams",
+    
+    # CRM - Portfolios
+    "view_portfolios",
+    "manage_portfolios",
+    "delete_portfolios",
+    
+    # CRM - KPIs
+    "view_kpis",
+    "manage_kpis",
+    "delete_kpis",
+    
+    # Admin - Users
+    "view_users",
+    "manage_users",
+    "approve_users",
+    "delete_users",
+    
+    # Admin - Roles
+    "view_roles",
+    "manage_roles",
+    "delete_roles",
+    
+    # Admin - Departments
+    "view_departments",
+    "manage_departments",
+    "delete_departments",
+    
+    # Admin - Config
+    "view_config",
+    "manage_config",
+    
+    # Admin - Audit
+    "view_audit_logs",
+    
+    # Super admin
+    "admin:*"
+]
+
+# Default permissions grouped by resource
+DEFAULT_PERMISSIONS = [
+    # Dashboard
+    {"name": "view_dashboard", "resource": "dashboard", "action": "view", "description": "View dashboard"},
+    {"name": "manage_dashboard", "resource": "dashboard", "action": "manage", "description": "Customize dashboard"},
+    
+    # Connections
+    {"name": "view_connections", "resource": "connections", "action": "view", "description": "View data connections"},
+    {"name": "manage_connections", "resource": "connections", "action": "manage", "description": "Create/edit connections"},
+    {"name": "test_connections", "resource": "connections", "action": "test", "description": "Test connections"},
+    {"name": "delete_connections", "resource": "connections", "action": "delete", "description": "Delete connections"},
+    
+    # Mappings
+    {"name": "view_mappings", "resource": "mappings", "action": "view", "description": "View field mappings"},
+    {"name": "manage_mappings", "resource": "mappings", "action": "manage", "description": "Create/edit mappings"},
+    {"name": "delete_mappings", "resource": "mappings", "action": "delete", "description": "Delete mappings"},
+    
+    # Pipelines
+    {"name": "view_pipelines", "resource": "pipelines", "action": "view", "description": "View pipelines"},
+    {"name": "manage_pipelines", "resource": "pipelines", "action": "manage", "description": "Create/edit pipelines"},
+    {"name": "run_pipelines", "resource": "pipelines", "action": "run", "description": "Execute pipelines"},
+    {"name": "delete_pipelines", "resource": "pipelines", "action": "delete", "description": "Delete pipelines"},
+    
+    # Runs
+    {"name": "view_runs", "resource": "runs", "action": "view", "description": "View run history"},
+    {"name": "cancel_runs", "resource": "runs", "action": "cancel", "description": "Cancel running pipelines"},
+    
+    # DLQ
+    {"name": "view_dlq", "resource": "dlq", "action": "view", "description": "View dead letter queue"},
+    {"name": "manage_dlq", "resource": "dlq", "action": "manage", "description": "Manage DLQ items"},
+    {"name": "retry_dlq", "resource": "dlq", "action": "retry", "description": "Retry DLQ items"},
+    
+    # Opportunities
+    {"name": "view_opportunities", "resource": "opportunities", "action": "view", "description": "View opportunities"},
+    {"name": "manage_opportunities", "resource": "opportunities", "action": "manage", "description": "Edit opportunities"},
+    {"name": "update_stage", "resource": "opportunities", "action": "update_stage", "description": "Update opportunity stage"},
+    {"name": "update_probability", "resource": "opportunities", "action": "update_probability", "description": "Update probability"},
+    {"name": "delete_opportunities", "resource": "opportunities", "action": "delete", "description": "Delete opportunities"},
+    
+    # Accounts
+    {"name": "view_accounts", "resource": "accounts", "action": "view", "description": "View accounts"},
+    {"name": "manage_accounts", "resource": "accounts", "action": "manage", "description": "Create/edit accounts"},
+    {"name": "delete_accounts", "resource": "accounts", "action": "delete", "description": "Delete accounts"},
+    
+    # Activities
+    {"name": "view_activities", "resource": "activities", "action": "view", "description": "View activities"},
+    {"name": "manage_activities", "resource": "activities", "action": "manage", "description": "Create/edit activities"},
+    {"name": "delete_activities", "resource": "activities", "action": "delete", "description": "Delete activities"},
+    
+    # Goals
+    {"name": "view_goals", "resource": "goals", "action": "view", "description": "View goals"},
+    {"name": "manage_goals", "resource": "goals", "action": "manage", "description": "Create/edit goals"},
+    {"name": "delete_goals", "resource": "goals", "action": "delete", "description": "Delete goals"},
+    
+    # Teams
+    {"name": "view_teams", "resource": "teams", "action": "view", "description": "View teams"},
+    {"name": "manage_teams", "resource": "teams", "action": "manage", "description": "Create/edit teams"},
+    {"name": "delete_teams", "resource": "teams", "action": "delete", "description": "Delete teams"},
+    
+    # Portfolios
+    {"name": "view_portfolios", "resource": "portfolios", "action": "view", "description": "View portfolios"},
+    {"name": "manage_portfolios", "resource": "portfolios", "action": "manage", "description": "Create/edit portfolios"},
+    {"name": "delete_portfolios", "resource": "portfolios", "action": "delete", "description": "Delete portfolios"},
+    
+    # KPIs
+    {"name": "view_kpis", "resource": "kpis", "action": "view", "description": "View KPIs"},
+    {"name": "manage_kpis", "resource": "kpis", "action": "manage", "description": "Create/edit KPIs"},
+    {"name": "delete_kpis", "resource": "kpis", "action": "delete", "description": "Delete KPIs"},
+    
+    # Users
+    {"name": "view_users", "resource": "users", "action": "view", "description": "View users"},
+    {"name": "manage_users", "resource": "users", "action": "manage", "description": "Manage users"},
+    {"name": "approve_users", "resource": "users", "action": "approve", "description": "Approve user registrations"},
+    {"name": "delete_users", "resource": "users", "action": "delete", "description": "Delete users"},
+    
+    # Roles
+    {"name": "view_roles", "resource": "roles", "action": "view", "description": "View roles"},
+    {"name": "manage_roles", "resource": "roles", "action": "manage", "description": "Create/edit roles"},
+    {"name": "delete_roles", "resource": "roles", "action": "delete", "description": "Delete roles"},
+    
+    # Departments
+    {"name": "view_departments", "resource": "departments", "action": "view", "description": "View departments"},
+    {"name": "manage_departments", "resource": "departments", "action": "manage", "description": "Create/edit departments"},
+    {"name": "delete_departments", "resource": "departments", "action": "delete", "description": "Delete departments"},
+    
+    # Config
+    {"name": "view_config", "resource": "config", "action": "view", "description": "View system config"},
+    {"name": "manage_config", "resource": "config", "action": "manage", "description": "Edit system config"},
+    
+    # Audit
+    {"name": "view_audit_logs", "resource": "audit", "action": "view", "description": "View audit logs"},
+]
+
 
 class PermissionCreate(BaseModel):
     name: str
@@ -25,35 +214,4 @@ class RoleUpdate(BaseModel):
 class DepartmentCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    manager_id: Optional[str] = None
-
-
-# Default permissions
-DEFAULT_PERMISSIONS = [
-    {"name": "view_dashboard", "resource": "dashboard", "action": "read", "description": "View dashboard"},
-    {"name": "manage_opportunities", "resource": "opportunities", "action": "write", "description": "Create/edit opportunities"},
-    {"name": "view_opportunities", "resource": "opportunities", "action": "read", "description": "View opportunities"},
-    {"name": "manage_accounts", "resource": "accounts", "action": "write", "description": "Create/edit accounts"},
-    {"name": "view_accounts", "resource": "accounts", "action": "read", "description": "View accounts"},
-    {"name": "manage_activities", "resource": "activities", "action": "write", "description": "Create/edit activities"},
-    {"name": "view_activities", "resource": "activities", "action": "read", "description": "View activities"},
-    {"name": "manage_goals", "resource": "goals", "action": "write", "description": "Create/edit goals"},
-    {"name": "view_goals", "resource": "goals", "action": "read", "description": "View goals"},
-    {"name": "manage_teams", "resource": "teams", "action": "write", "description": "Create/edit teams"},
-    {"name": "view_teams", "resource": "teams", "action": "read", "description": "View teams"},
-    {"name": "manage_pipelines", "resource": "pipelines", "action": "write", "description": "Create/edit pipelines"},
-    {"name": "view_pipelines", "resource": "pipelines", "action": "read", "description": "View pipelines"},
-    {"name": "run_pipelines", "resource": "pipelines", "action": "execute", "description": "Run pipelines"},
-    {"name": "manage_connections", "resource": "connections", "action": "write", "description": "Create/edit connections"},
-    {"name": "view_connections", "resource": "connections", "action": "read", "description": "View connections"},
-    {"name": "manage_mappings", "resource": "mappings", "action": "write", "description": "Create/edit mappings"},
-    {"name": "view_mappings", "resource": "mappings", "action": "read", "description": "View mappings"},
-    {"name": "admin_users", "resource": "users", "action": "admin", "description": "Manage users"},
-    {"name": "admin_roles", "resource": "roles", "action": "admin", "description": "Manage roles"},
-    {"name": "admin_config", "resource": "config", "action": "admin", "description": "Manage configuration"},
-    {"name": "view_dlq", "resource": "dlq", "action": "read", "description": "View DLQ items"},
-    {"name": "manage_dlq", "resource": "dlq", "action": "write", "description": "Retry/dismiss DLQ items"},
-]
-
-# All permissions for super admin
-ALL_PERMISSIONS = [p["name"] for p in DEFAULT_PERMISSIONS]
+    parent_id: Optional[str] = None
