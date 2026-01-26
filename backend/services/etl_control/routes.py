@@ -252,7 +252,6 @@ async def discover_schema(
                 'event': {'pattern': 'event.%', 'label': 'Events', 'icon': '🎪'},
                 'website': {'pattern': 'website.%', 'label': 'Website', 'icon': '🌐'},
                 'pos': {'pattern': 'pos.%', 'label': 'Point of Sale', 'icon': '🏪'},
-                'mrp': {'pattern': 'mrp.%', 'label': 'Manufacturing', 'icon': '🏭'},
                 'quality': {'pattern': 'quality.%', 'label': 'Quality', 'icon': '✅'},
                 'timesheet': {'pattern': 'account.analytic.line', 'label': 'Timesheets', 'icon': '⏱️'},
             }
