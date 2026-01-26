@@ -1,34 +1,63 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-level styles - minimal overrides */
+
+/* Prevent content flash during auth check */
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
-.App-link {
-    color: #61dafb;
+/* Kanban board specific styles */
+.kanban-column {
+  min-height: 200px;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.kanban-card-dragging {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: rotate(2deg);
+}
+
+/* Chart container responsive sizing */
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Data table row hover effect */
+.data-table-row:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* Dialog backdrop blur */
+.dialog-backdrop {
+  backdrop-filter: blur(4px);
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Remove default button styling */
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
