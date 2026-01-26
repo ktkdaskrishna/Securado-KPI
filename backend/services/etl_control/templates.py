@@ -29,7 +29,7 @@ INTEGRATION_TEMPLATES = {
             "crm.lead": {
                 "target_entity": "opportunity",
                 "fields": [
-                    {"source_field": "id", "target_field": "source_id", "transform": "direct"},
+                    {"source_field": "id", "target_field": "canonical_id", "transform": "direct"},
                     {"source_field": "name", "target_field": "name", "transform": "direct"},
                     {"source_field": "expected_revenue", "target_field": "amount", "transform": "to_float"},
                     {"source_field": "probability", "target_field": "probability", "transform": "to_float"},
@@ -48,7 +48,7 @@ INTEGRATION_TEMPLATES = {
             "res.partner": {
                 "target_entity": "account",
                 "fields": [
-                    {"source_field": "id", "target_field": "source_id", "transform": "direct"},
+                    {"source_field": "id", "target_field": "canonical_id", "transform": "direct"},
                     {"source_field": "name", "target_field": "name", "transform": "direct"},
                     {"source_field": "industry_id", "target_field": "industry", "transform": "extract_name"},
                     {"source_field": "phone", "target_field": "phone", "transform": "direct"},
