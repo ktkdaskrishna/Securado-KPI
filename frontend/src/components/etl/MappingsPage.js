@@ -730,7 +730,171 @@ export function MappingsPage() {
 
               {/* Right Panel - Mapping Configuration */}
               <div className="col-span-2 pl-4 space-y-4 overflow-y-auto">
-                {formData.source_model ? (
+                {/* Multi-Model Mode - Show tabs for each selected model */}
+                {multiModelMode && selectedModels.length > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Batch Name</Label>
+                      <Input
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g., Odoo Full Sync"
+                        data-testid="mapping-name-input"
+                      />
+                    </div>
+                    
+                    {/* Model tabs */}
+                    <Tabs value={activeModelTab || selectedModels[0]} onValueChange={handleModelTabChange}>
+                      <TabsList className="w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
+                        {selectedModels.map(model => (
+                          <TabsTrigger 
+                            key={model} 
+                            value={model}
+                            className="text-xs px-2 py-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                          >
+                            {model.split('.').pop()}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      
+                      {selectedModels.map(modelName => (
+                        <TabsContent key={modelName} value={modelName} className="mt-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Database className="h-4 w-4 text-primary" />
+                              <span className="font-medium">{modelName}</span>
+                              {selectedModelFields && activeModelTab === modelName && (
+                                <Badge variant="secondary">
+                                  {Object.keys(selectedModelFields.fields || {}).length} fields
+                                </Badge>
+                              )}
+                            </div>
+                            <Select 
+                              value={modelMappings[modelName]?.target_entity || 'account'} 
+                              onValueChange={(v) => updateModelMapping(modelName, 'target_entity', v)}
+                            >
+                              <SelectTrigger className="w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TARGET_ENTITIES.map((e) => (
+                                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Field Mappings for this model */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm">Field Mappings</Label>
+                              <div className="flex gap-1">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => loadModelFields(modelName)}
+                                  disabled={loadingFields}
+                                  className="h-7 text-xs"
+                                >
+                                  {loadingFields && activeModelTab === modelName ? (
+                                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                  ) : (
+                                    <Wand2 className="h-3 w-3 mr-1" />
+                                  )}
+                                  Auto-Suggest
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => addMappingRule(modelName)}
+                                  className="h-7 text-xs"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <ScrollArea className="h-[200px] border rounded-md p-2">
+                              <div className="space-y-2">
+                                {(modelMappings[modelName]?.mappings || []).length === 0 ? (
+                                  <div className="text-center py-4 text-muted-foreground text-sm">
+                                    Click "Auto-Suggest" to populate mappings
+                                  </div>
+                                ) : (
+                                  (modelMappings[modelName]?.mappings || []).map((rule, index) => (
+                                    <div key={index} className="flex items-center gap-2 p-2 border rounded bg-background">
+                                      <div className="flex-1">
+                                        <Select 
+                                          value={rule.source_field} 
+                                          onValueChange={(v) => updateMappingRule(index, 'source_field', v, modelName)}
+                                        >
+                                          <SelectTrigger className="h-8 text-sm">
+                                            <SelectValue placeholder="Source field" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {selectedModelFields?.fields && activeModelTab === modelName && Object.entries(selectedModelFields.fields).map(([fieldName, fieldInfo]) => (
+                                              <SelectItem key={fieldName} value={fieldName}>
+                                                <div className="flex items-center gap-2">
+                                                  <span>{fieldName}</span>
+                                                  <span className="text-xs text-muted-foreground">({fieldInfo.type})</span>
+                                                </div>
+                                              </SelectItem>
+                                            ))}
+                                            {rule.source_field && (
+                                              <SelectItem value={rule.source_field}>{rule.source_field}</SelectItem>
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                      <div className="flex-1">
+                                        <Input
+                                          placeholder="target_field"
+                                          value={rule.target_field}
+                                          onChange={(e) => updateMappingRule(index, 'target_field', e.target.value, modelName)}
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+                                      <Select value={rule.transform} onValueChange={(v) => updateMappingRule(index, 'transform', v, modelName)}>
+                                        <SelectTrigger className="w-28 h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {TRANSFORMS.map((t) => (
+                                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {rule.confidence !== undefined && (
+                                        <Badge className={`text-xs ${confidenceColors[rule.confidence >= 0.7 ? 'high' : rule.confidence >= 0.5 ? 'medium' : 'low']}`}>
+                                          {Math.round(rule.confidence * 100)}%
+                                        </Badge>
+                                      )}
+                                      {(modelMappings[modelName]?.mappings || []).length > 1 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => removeMappingRule(index, modelName)}
+                                        >
+                                          <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </>
+                ) : formData.source_model ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
