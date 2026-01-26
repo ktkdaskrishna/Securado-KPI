@@ -168,7 +168,7 @@ async def login(credentials: UserLogin):
     token_data = {
         "sub": user["id"],
         "email": user["email"],
-        "org_id": user["org_id"],
+        "org_id": user.get("org_id", "default"),
         "roles": role_ids,
         "permissions": permissions
     }
