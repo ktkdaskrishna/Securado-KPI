@@ -46,14 +46,15 @@ This document tracks the feature parity between the current Securado implementat
 ### 1.4 Finance
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Invoices/Receivables | ❌ | Invoice tracking, aging reports |
+| Invoices/Receivables | ✅ | Invoice tracking, stats, filters, detail view |
 | Incentives/Commission | ❌ | Bonus/commission tracking with charts |
 
 ### 1.5 Personal Tools
 | Feature | Status | Notes |
 |---------|--------|-------|
 | My Outlook (Email/Calendar) | ❌ | MS365 integration for emails and calendar |
-| Profile Page | ❌ | User profile management |
+| Profile Page | ✅ | User profile management with tabs (Profile, Notifications, Security) |
+| Activity Timeline | ✅ | Visual timeline page with grouping and filters |
 
 ### 1.6 Administration
 | Feature | Status | Notes |
