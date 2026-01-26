@@ -232,29 +232,102 @@ async def discover_schema(
             
             models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
             
-            # Discover CRM and related models
+            # Discover CRM models
             crm_models = models_proxy.execute_kw(
                 conn["database"], uid, conn["api_key"],
                 'ir.model', 'search_read',
                 [[['model', 'like', 'crm.%']]],
-                {'fields': ['model', 'name'], 'limit': 50}
+                {'fields': ['model', 'name'], 'limit': 100}
             )
             
-            other_models = models_proxy.execute_kw(
+            # Discover Accounting/Invoice models
+            account_models = models_proxy.execute_kw(
                 conn["database"], uid, conn["api_key"],
                 'ir.model', 'search_read',
-                [[['model', 'in', ['res.partner', 'res.users', 'res.company']]]],
+                [[['model', 'like', 'account.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover Sales models
+            sale_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'sale.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover Purchase models
+            purchase_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'purchase.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover Stock/Inventory models
+            stock_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'stock.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover Product models
+            product_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'product.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover HR models
+            hr_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'hr.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Discover Project models
+            project_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'like', 'project.%']]],
+                {'fields': ['model', 'name'], 'limit': 100}
+            )
+            
+            # Core models (partners, users, companies, currencies)
+            core_models = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.model', 'search_read',
+                [[['model', 'in', [
+                    'res.partner', 'res.users', 'res.company', 'res.currency',
+                    'res.country', 'res.country.state', 'res.bank', 'res.partner.bank'
+                ]]]],
                 {'fields': ['model', 'name']}
             )
             
-            all_models = crm_models + other_models
+            # Combine all models and remove duplicates
+            all_models = crm_models + account_models + sale_models + purchase_models + stock_models + product_models + hr_models + project_models + core_models
+            
+            # Remove duplicates based on model name
+            seen_models = set()
+            unique_models = []
+            for m in all_models:
+                if m['model'] not in seen_models:
+                    seen_models.add(m['model'])
+                    unique_models.append(m)
+            
+            # Sort by model name
+            unique_models.sort(key=lambda x: x['model'])
             
             schema_doc = {
                 "id": generate_id(),
                 "connection_id": conn_id,
                 "org_id": current_user.get("org_id", "default"),
                 "discovered_at": now_utc(),
-                "models": [{"model": m['model'], "name": m['name']} for m in all_models]
+                "models": [{"model": m['model'], "name": m['name']} for m in unique_models],
+                "model_count": len(unique_models)
             }
             
             await db.schemas.update_one(
