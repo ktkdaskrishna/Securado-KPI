@@ -552,23 +552,61 @@ export function MappingsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>2. Select Source Model(s)</Label>
-                      <Button
-                        variant={multiModelMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setMultiModelMode(!multiModelMode)}
-                        className="h-7 text-xs"
-                      >
-                        <Boxes className="h-3 w-3 mr-1" />
-                        {multiModelMode ? 'Multi' : 'Single'}
-                      </Button>
+                      <div className="flex gap-1">
+                        {multiModelMode && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Select all visible filtered models
+                              const allFiltered = filteredModels.map(m => m.model);
+                              if (selectedModels.length === allFiltered.length) {
+                                // Deselect all
+                                setSelectedModels([]);
+                                setModelMappings({});
+                              } else {
+                                // Select all
+                                setSelectedModels(allFiltered);
+                                const newMappings = {};
+                                allFiltered.forEach(modelName => {
+                                  newMappings[modelName] = {
+                                    target_entity: guessTargetEntity(modelName),
+                                    mappings: [{ source_field: '', target_field: '', transform: 'direct' }]
+                                  };
+                                });
+                                setModelMappings(newMappings);
+                                if (!activeModelTab && allFiltered.length > 0) {
+                                  setActiveModelTab(allFiltered[0]);
+                                }
+                              }
+                            }}
+                            className="h-7 text-xs"
+                          >
+                            <CheckSquare className="h-3 w-3 mr-1" />
+                            {selectedModels.length === filteredModels.length ? 'None' : 'All'}
+                          </Button>
+                        )}
+                        <Button
+                          variant={multiModelMode ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMultiModelMode(!multiModelMode)}
+                          className="h-7 text-xs"
+                        >
+                          <Boxes className="h-3 w-3 mr-1" />
+                          {multiModelMode ? 'Multi' : 'Single'}
+                        </Button>
+                      </div>
                     </div>
                     
                     {multiModelMode && selectedModels.length > 0 && (
-                      <div className="flex flex-wrap gap-1 p-2 bg-muted rounded-md">
+                      <div className="flex flex-wrap gap-1 p-2 bg-muted rounded-md max-h-20 overflow-y-auto">
                         {selectedModels.map(m => (
-                          <Badge key={m} variant="secondary" className="text-xs">
-                            {m}
-                            <button onClick={() => toggleModelSelection(m)} className="ml-1 hover:text-red-500">×</button>
+                          <Badge key={m} variant="secondary" className="text-xs cursor-pointer" onClick={() => {
+                            setActiveModelTab(m);
+                            loadModelFields(m);
+                          }}>
+                            {m.split('.').pop()}
+                            <button onClick={(e) => { e.stopPropagation(); toggleModelSelection(m); }} className="ml-1 hover:text-red-500">×</button>
                           </Badge>
                         ))}
                       </div>
@@ -584,7 +622,7 @@ export function MappingsPage() {
                         data-testid="model-search-input"
                       />
                     </div>
-                    <ScrollArea className="h-[250px] border rounded-md">
+                    <ScrollArea className="h-[220px] border rounded-md">
                       <div className="p-2">
                         {/* Group models by category */}
                         {Object.entries(groupedModels).map(([categoryName, category]) => {
@@ -598,10 +636,41 @@ export function MappingsPage() {
                           
                           return (
                             <div key={categoryName} className="mb-3">
-                              <div className="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                <span>{category.icon}</span>
-                                <span>{categoryName}</span>
-                                <Badge variant="outline" className="text-xs h-4">{categoryModels.length}</Badge>
+                              <div className="flex items-center justify-between px-2 py-1">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  <span>{category.icon}</span>
+                                  <span>{categoryName}</span>
+                                  <Badge variant="outline" className="text-xs h-4">{categoryModels.length}</Badge>
+                                </div>
+                                {multiModelMode && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 text-xs px-1"
+                                    onClick={() => {
+                                      const categoryModelNames = categoryModels.map(m => m.model);
+                                      const allSelected = categoryModelNames.every(m => selectedModels.includes(m));
+                                      if (allSelected) {
+                                        setSelectedModels(prev => prev.filter(m => !categoryModelNames.includes(m)));
+                                      } else {
+                                        setSelectedModels(prev => [...new Set([...prev, ...categoryModelNames])]);
+                                        categoryModelNames.forEach(modelName => {
+                                          if (!modelMappings[modelName]) {
+                                            setModelMappings(prev => ({
+                                              ...prev,
+                                              [modelName]: {
+                                                target_entity: guessTargetEntity(modelName),
+                                                mappings: [{ source_field: '', target_field: '', transform: 'direct' }]
+                                              }
+                                            }));
+                                          }
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    Select
+                                  </Button>
+                                )}
                               </div>
                               <div className="space-y-0.5">
                                 {categoryModels.map((model) => (
@@ -639,7 +708,7 @@ export function MappingsPage() {
                     </ScrollArea>
                     <div className="text-xs text-muted-foreground flex justify-between">
                       <span>{filteredModels.length} of {discoveredModels.length} models</span>
-                      {multiModelMode && <span className="text-primary">{selectedModels.length} selected</span>}
+                      {multiModelMode && <span className="text-primary font-medium">{selectedModels.length} selected</span>}
                     </div>
                   </div>
                 ) : selectedConnection ? (
