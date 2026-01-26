@@ -881,6 +881,7 @@ export function OpportunitiesPage() {
         opportunity={selectedOpportunity}
         open={detailSheetOpen}
         onClose={() => setDetailSheetOpen(false)}
+        formatCurrency={formatCurrency}
       />
     </div>
   );
