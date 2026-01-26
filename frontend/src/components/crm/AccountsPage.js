@@ -22,6 +22,7 @@ export function AccountsPage() {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [account360, setAccount360] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { formatCurrency, currency } = useCurrency();
 
   useEffect(() => {
     loadAccounts();
