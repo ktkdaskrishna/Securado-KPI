@@ -488,3 +488,75 @@ async def update_user_roles(
     logger.info(f"User roles updated: {user_id} - {roles_data.roles}")
     
     return {"success": True, "message": "User roles updated"}
+
+
+# ============== Settings ==============
+
+class OrgSettings(BaseModel):
+    company_name: Optional[str] = None
+    default_currency: Optional[str] = "USD"
+    timezone: Optional[str] = "UTC"
+    date_format: Optional[str] = "MM/DD/YYYY"
+    email_notifications: Optional[bool] = True
+    deal_alerts: Optional[bool] = True
+    activity_reminders: Optional[bool] = True
+    weekly_reports: Optional[bool] = False
+    default_sync_interval: Optional[str] = "15"
+    auto_map_fields: Optional[bool] = True
+    enable_data_validation: Optional[bool] = True
+    session_timeout: Optional[str] = "60"
+    require_2fa: Optional[bool] = False
+    password_expiry_days: Optional[str] = "90"
+
+
+@admin_router.get("/settings")
+async def get_settings(current_user: dict = Depends(get_current_user)):
+    """Get organization settings"""
+    db = get_app_db()
+    
+    settings = await db.settings.find_one({"org_id": current_user.get("org_id", "default")})
+    
+    if not settings:
+        # Return defaults
+        return {
+            "company_name": "Securado",
+            "default_currency": "USD",
+            "timezone": "UTC",
+            "date_format": "MM/DD/YYYY",
+            "email_notifications": True,
+            "deal_alerts": True,
+            "activity_reminders": True,
+            "weekly_reports": False,
+            "default_sync_interval": "15",
+            "auto_map_fields": True,
+            "enable_data_validation": True,
+            "session_timeout": "60",
+            "require_2fa": False,
+            "password_expiry_days": "90"
+        }
+    
+    return serialize_doc(settings)
+
+
+@admin_router.put("/settings")
+async def update_settings(
+    settings_data: OrgSettings,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update organization settings"""
+    db = get_app_db()
+    
+    update_data = {k: v for k, v in settings_data.dict().items() if v is not None}
+    update_data["updated_at"] = now_utc()
+    update_data["updated_by"] = current_user["id"]
+    
+    result = await db.settings.update_one(
+        {"org_id": current_user.get("org_id", "default")},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    logger.info(f"Settings updated for org: {current_user.get('org_id', 'default')}")
+    
+    return {"success": True, "message": "Settings updated"}
+
