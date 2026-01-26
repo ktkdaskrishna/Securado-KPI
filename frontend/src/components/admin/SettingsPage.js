@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../lib/api';
+import { useCurrency } from '../../lib/CurrencyContext';
 import { getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -21,6 +22,7 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const { setCurrency: setGlobalCurrency } = useCurrency();
   
   // Settings state
   const [settings, setSettings] = useState({
