@@ -142,13 +142,13 @@ db_manager = DatabaseManager()
 
 def get_app_db() -> AsyncIOMotorDatabase:
     """Get app database"""
-    if not db_manager.app_db:
+    if db_manager.app_db is None:
         raise RuntimeError("Database not connected")
     return db_manager.app_db
 
 
 def get_canonical_db() -> AsyncIOMotorDatabase:
     """Get canonical database"""
-    if not db_manager.canonical_db:
+    if db_manager.canonical_db is None:
         raise RuntimeError("Database not connected")
     return db_manager.canonical_db
