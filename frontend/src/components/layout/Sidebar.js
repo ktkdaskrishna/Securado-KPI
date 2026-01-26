@@ -61,6 +61,7 @@ const iconMap = {
   FileText,
   Clock,
   User,
+  Settings,
 };
 
 const defaultNavigation = {
