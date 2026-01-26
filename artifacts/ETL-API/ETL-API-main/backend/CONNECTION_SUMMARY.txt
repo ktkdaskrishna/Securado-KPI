@@ -7,8 +7,8 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Environment: Emergent Kubernetes Cluster
-Preview URL: https://streamhub-crm.preview.emergentagent.com
-API Docs UI: https://streamhub-crm.preview.emergentagent.com (Live & Interactive)
+Preview URL: https://securado-hub.preview.emergentagent.com
+API Docs UI: https://securado-hub.preview.emergentagent.com (Live & Interactive)
 
 MongoDB Location: Inside Kubernetes cluster
 Current Access: localhost:27017 (internal only)
@@ -98,7 +98,7 @@ Database 2: platform2_app (Platform 2 operational data)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Step 1: Check Platform 2 health
-  curl https://streamhub-crm.preview.emergentagent.com/api/data-lake/health
+  curl https://securado-hub.preview.emergentagent.com/api/data-lake/health
 
   ✅ Expected: {"status":"healthy","canonical_db":"connected"}
 
@@ -108,14 +108,14 @@ Step 2: Platform 1 writes test data
 Step 3: Verify in Platform 2
   # Login first
   TOKEN=$(curl -s -X POST \
-    https://streamhub-crm.preview.emergentagent.com/api/auth/login \
+    https://securado-hub.preview.emergentagent.com/api/auth/login \
     -H "Content-Type: application/json" \
     -d '{"email":"admin@platform2.com","password":"admin123"}' \
     | jq -r '.access_token')
   
   # Browse data
   curl -H "Authorization: Bearer $TOKEN" \
-    "https://streamhub-crm.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
+    "https://securado-hub.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
 
 
 📚 DOCUMENTATION FILES
@@ -142,7 +142,7 @@ Superadmin:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. ✅ Try the API Documentation UI:
-   https://streamhub-crm.preview.emergentagent.com
+   https://securado-hub.preview.emergentagent.com
 
 2. ✅ Set up MongoDB Atlas (recommended):
    - Create free cluster

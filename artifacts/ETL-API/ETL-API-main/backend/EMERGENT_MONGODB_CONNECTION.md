@@ -3,8 +3,8 @@
 ## 🔌 MongoDB Connection Information
 
 ### Environment Details
-- **Preview URL:** https://streamhub-crm.preview.emergentagent.com
-- **Backend API:** https://streamhub-crm.preview.emergentagent.com/api
+- **Preview URL:** https://securado-hub.preview.emergentagent.com
+- **Backend API:** https://securado-hub.preview.emergentagent.com/api
 - **Public IP:** 104.198.214.223
 - **Internal IP:** 10.232.132.6
 
@@ -61,7 +61,7 @@ Use Emergent's internal service mesh to connect directly
 
 **Platform 2 API Access:**
 ```
-Base URL: https://streamhub-crm.preview.emergentagent.com/api
+Base URL: https://securado-hub.preview.emergentagent.com/api
 Auth: JWT Bearer Token
 ```
 
@@ -236,7 +236,7 @@ supervisorctl restart backend
 
 **Step 6: Verify Connection**
 ```bash
-curl https://streamhub-crm.preview.emergentagent.com/api/data-lake/health
+curl https://securado-hub.preview.emergentagent.com/api/data-lake/health
 ```
 
 Expected response:
@@ -293,13 +293,13 @@ db.silver_opportunities.insertOne({
 ### Test 2: Platform 2 Reads Data
 ```bash
 # Login to get token
-TOKEN=$(curl -s -X POST https://streamhub-crm.preview.emergentagent.com/api/auth/login \
+TOKEN=$(curl -s -X POST https://securado-hub.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@platform2.com","password":"admin123"}' | jq -r '.access_token')
 
 # Browse canonical data
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://streamhub-crm.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
+  "https://securado-hub.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
 ```
 
 Expected: Should see the test opportunity inserted by Platform 1
@@ -407,7 +407,7 @@ Expected: Should see the test opportunity inserted by Platform 1
 ## 📚 Additional Resources
 
 - **MongoDB Atlas Getting Started:** https://www.mongodb.com/docs/atlas/getting-started/
-- **Platform 2 API Docs:** https://streamhub-crm.preview.emergentagent.com
+- **Platform 2 API Docs:** https://securado-hub.preview.emergentagent.com
 - **User Management Guide:** `/app/backend/USER_MANAGEMENT_AND_DB_SETUP.md`
 - **Quick Start:** `/app/backend/QUICK_START.md`
 
