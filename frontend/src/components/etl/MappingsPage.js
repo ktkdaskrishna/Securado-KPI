@@ -16,7 +16,7 @@ import { Checkbox } from '../ui/checkbox';
 import { 
   Plus, GitMerge, Trash2, ArrowRight, Eye, Wand2, CheckCircle, AlertCircle, 
   XCircle, RefreshCw, Shield, Database, Layers, Search, Download, ChevronRight,
-  CheckSquare, Square, Boxes
+  CheckSquare, Square, Boxes, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 
