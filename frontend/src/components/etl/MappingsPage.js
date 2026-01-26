@@ -1122,7 +1122,9 @@ export function MappingsPage() {
               
               {verificationResult.errors?.length > 0 && (
                 <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
+                    <div className="font-medium mb-2">Required Fields Missing:</div>
                     <ul className="list-disc list-inside space-y-1">
                       {verificationResult.errors.map((err, i) => (
                         <li key={i} className="text-sm">{err}</li>
@@ -1132,14 +1134,44 @@ export function MappingsPage() {
                 </Alert>
               )}
               
-              {verificationResult.warnings?.length > 0 && (
-                <Alert>
+              {/* Show suggestions for fixing errors */}
+              {verificationResult.suggestions?.length > 0 && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="h-4 w-4 text-blue-600" />
                   <AlertDescription>
-                    <ul className="list-disc list-inside space-y-1">
-                      {verificationResult.warnings.map((warn, i) => (
-                        <li key={i} className="text-sm text-amber-700">{warn}</li>
+                    <div className="font-medium mb-2 text-blue-800">How to Fix:</div>
+                    <ul className="list-disc list-inside space-y-2">
+                      {verificationResult.suggestions.map((suggestion, i) => (
+                        <li key={i} className="text-sm text-blue-700">
+                          <span className="font-medium">{suggestion.field}:</span> {suggestion.message}
+                        </li>
                       ))}
                     </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {verificationResult.warnings?.length > 0 && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription>
+                    <div className="font-medium mb-2 text-amber-800">Warnings (will be stored as custom fields):</div>
+                    <ScrollArea className="max-h-32">
+                      <ul className="list-disc list-inside space-y-1">
+                        {verificationResult.warnings.map((warn, i) => (
+                          <li key={i} className="text-sm text-amber-700">{warn}</li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {verificationResult.status === 'valid' && (
+                <Alert className="bg-emerald-50 border-emerald-200">
+                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  <AlertDescription className="text-emerald-700">
+                    All required fields are mapped. This mapping is ready to use in a pipeline.
                   </AlertDescription>
                 </Alert>
               )}
