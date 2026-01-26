@@ -476,7 +476,14 @@ class ETLRunner:
         log
     ) -> tuple:
         """Load records to canonical database"""
-        collection_name = f"{target_entity}s" if not target_entity.endswith('s') else target_entity
+        # Proper pluralization for collection names
+        entity_to_collection = {
+            "opportunity": "opportunities",
+            "account": "accounts",
+            "contact": "contacts",
+            "user": "users"
+        }
+        collection_name = entity_to_collection.get(target_entity, f"{target_entity}s")
         collection = canonical_db[collection_name]
         
         inserted = 0
