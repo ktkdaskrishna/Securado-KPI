@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { crmAPI } from '../../lib/api';
+import { formatCurrency, getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -9,7 +10,8 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
-import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function AccountsPage() {
@@ -27,7 +29,13 @@ export function AccountsPage() {
   const loadAccounts = async () => {
     try {
       const res = await crmAPI.listAccounts();
-      setAccounts(res.data);
+      // Enrich accounts with currency if not present
+      const enrichedAccounts = (res.data || []).map(acc => ({
+        ...acc,
+        currency: acc.currency || DEFAULT_CURRENCY,
+        revenue: acc.revenue || 0
+      }));
+      setAccounts(enrichedAccounts);
     } catch (error) {
       toast.error('Failed to load accounts');
     } finally {
