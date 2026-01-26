@@ -118,7 +118,7 @@ class APITester:
         status, data = self.make_request(
             'POST',
             'auth/login',
-            data={"email": "admin@test.com", "password": "Test123!"},
+            data={"email": "admin@test.com", "password": "test123456"},
             expected_status=200,
             description="Login with approved user"
         )
