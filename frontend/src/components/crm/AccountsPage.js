@@ -265,7 +265,7 @@ export function AccountsPage() {
                               <p className="font-medium text-sm">{opp.name}</p>
                               <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
                             </div>
-                            <span className="font-mono text-sm">${(opp.amount || 0).toLocaleString()}</span>
+                            <span className="font-mono text-sm">{formatCurrency(opp.amount || 0)}</span>
                           </div>
                         ))
                       )}
