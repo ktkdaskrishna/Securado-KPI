@@ -257,6 +257,43 @@ class APITester:
             description="Get activity stats"
         )
 
+    def test_etl_templates(self):
+        """Test ETL integration templates"""
+        print("\n" + "="*60)
+        print("TEST: ETL Integration Templates")
+        print("="*60)
+        
+        if not self.token:
+            self.log("No token available, skipping ETL templates tests", False)
+            return
+        
+        # List templates
+        status, data = self.make_request(
+            'GET',
+            'templates',
+            expected_status=200,
+            description="GET /api/templates - List integration templates"
+        )
+        
+        if data and isinstance(data, list):
+            print(f"   Found {len(data)} templates")
+            # Check for expected templates
+            template_ids = [t.get('id') for t in data]
+            expected_templates = ['odoo_crm', 'salesforce', 'hubspot', 'pipedrive']
+            for expected in expected_templates:
+                if expected in template_ids:
+                    print(f"   ✓ Template '{expected}' found")
+                else:
+                    print(f"   ✗ Template '{expected}' NOT found")
+            
+            # Show first template details
+            if data:
+                first = data[0]
+                print(f"   Sample template: {first.get('name')} ({first.get('type')})")
+                print(f"   Description: {first.get('description')}")
+        
+        return data
+
     def test_etl_connections(self):
         """Test ETL connections endpoints"""
         print("\n" + "="*60)
@@ -277,6 +314,8 @@ class APITester:
         
         if data and isinstance(data, list):
             print(f"   Found {len(data)} connections")
+        
+        return data
 
     def test_etl_pipelines(self):
         """Test ETL pipelines endpoints"""
