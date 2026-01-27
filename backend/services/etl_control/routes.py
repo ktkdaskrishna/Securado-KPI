@@ -1638,6 +1638,7 @@ ENTITY_SOURCE_FILTERS = {
     "invoice": [("move_type", "in", ["out_invoice", "out_refund"])],  # account.move customer invoices
     "opportunity": [],  # crm.lead (can optionally filter by type='opportunity')
     "activity": [("res_model", "=", "crm.lead")],  # CRITICAL: Only CRM activities, not HR/expenses!
+    "log_message": [("model", "=", "crm.lead")],  # Only CRM log messages from chatter
 }
 
 
