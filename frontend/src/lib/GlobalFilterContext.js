@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { analyticsAPI } from './api';
 
 // Default filter state
@@ -20,13 +20,12 @@ export function GlobalFilterProvider({ children }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [filterOptions, setFilterOptions] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const loadedRef = useRef(false);
 
   const loadFilterOptions = useCallback(async () => {
-    // Don't load if no token (not logged in)
+    // Don't load if no token (not logged in) or already loading/loaded
     const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
+    if (!token || loading || loadedRef.current) {
       return;
     }
     
@@ -34,49 +33,21 @@ export function GlobalFilterProvider({ children }) {
       setLoading(true);
       const response = await analyticsAPI.getFilters();
       setFilterOptions(response.data);
-      setInitialized(true);
+      loadedRef.current = true;
     } catch (error) {
       console.error('Failed to load filter options:', error);
-      // Silently fail - filters will just not be available
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loading]);
 
-  // Load filter options when token changes (login/logout)
+  // Simple effect to load on mount if token exists
   useEffect(() => {
-    const handleStorageChange = () => {
-      const token = localStorage.getItem('token');
-      if (token && !initialized) {
-        loadFilterOptions();
-      } else if (!token) {
-        setFilterOptions(null);
-        setInitialized(false);
-      }
-    };
-
-    // Check on mount
     const token = localStorage.getItem('token');
-    if (token && !initialized) {
+    if (token && !loadedRef.current && !loading) {
       loadFilterOptions();
     }
-
-    // Listen for storage changes (login/logout in other tabs)
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also poll for token changes (same tab login)
-    const interval = setInterval(() => {
-      const currentToken = localStorage.getItem('token');
-      if (currentToken && !initialized) {
-        loadFilterOptions();
-      }
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [initialized, loadFilterOptions]);
+  }, [loadFilterOptions, loading]);
 
   const updateFilter = useCallback((key, value) => {
     setFilters(prev => ({
