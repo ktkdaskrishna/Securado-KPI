@@ -1750,6 +1750,7 @@ async def get_sync_status(
 ):
     """Get sync status for a connection"""
     db = get_app_db()
+    canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
     # Get last run for this connection
@@ -1761,12 +1762,21 @@ async def get_sync_status(
         sort=[("started_at", -1)]
     )
     
-    # Get canonical collection stats
+    # Entity to collection name mapping
+    entity_collections = {
+        "opportunity": "opportunities",
+        "account": "accounts", 
+        "contact": "contacts",
+        "invoice": "invoices",
+        "activity": "activities",
+        "task": "tasks"
+    }
+    
+    # Get canonical collection stats from the correct database
     entity_counts = {}
-    for entity in ["opportunity", "account", "contact", "invoice", "activity", "task"]:
-        collection_name = f"canonical_{entity}"
+    for entity, collection_name in entity_collections.items():
         try:
-            count = await db[collection_name].count_documents({"org_id": org_id})
+            count = await canonical_db[collection_name].count_documents({"org_id": org_id})
             entity_counts[entity] = count
         except Exception:
             entity_counts[entity] = 0
