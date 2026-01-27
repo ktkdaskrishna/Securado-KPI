@@ -19,24 +19,64 @@ const GlobalFilterContext = createContext(null);
 export function GlobalFilterProvider({ children }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [filterOptions, setFilterOptions] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  // Load filter options on mount
-  useEffect(() => {
-    loadFilterOptions();
-  }, []);
-
-  const loadFilterOptions = async () => {
+  const loadFilterOptions = useCallback(async () => {
+    // Don't load if no token (not logged in)
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const response = await analyticsAPI.getFilters();
       setFilterOptions(response.data);
+      setInitialized(true);
     } catch (error) {
       console.error('Failed to load filter options:', error);
+      // Silently fail - filters will just not be available
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load filter options when token changes (login/logout)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const token = localStorage.getItem('token');
+      if (token && !initialized) {
+        loadFilterOptions();
+      } else if (!token) {
+        setFilterOptions(null);
+        setInitialized(false);
+      }
+    };
+
+    // Check on mount
+    const token = localStorage.getItem('token');
+    if (token && !initialized) {
+      loadFilterOptions();
+    }
+
+    // Listen for storage changes (login/logout in other tabs)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also poll for token changes (same tab login)
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('token');
+      if (currentToken && !initialized) {
+        loadFilterOptions();
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [initialized, loadFilterOptions]);
 
   const updateFilter = useCallback((key, value) => {
     setFilters(prev => ({
