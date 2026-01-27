@@ -1743,8 +1743,19 @@ async def run_mapping_sync(
                 source_model, target_entity = parts
                 
                 try:
-                    # Get source fields
+                    # Get source fields from mappings
                     source_fields = list(set(["id"] + [m.get("sourceField") for m in mappings if m.get("sourceField")]))
+                    
+                    # IMPORTANT: Always include essential date/audit fields for opportunities
+                    if target_entity == "opportunity":
+                        essential_fields = [
+                            "create_date", "write_date", "date_open", "date_closed", 
+                            "date_deadline", "date_conversion", "day_open", "day_close",
+                            "expected_revenue", "probability", "active", "type"
+                        ]
+                        for field in essential_fields:
+                            if field not in source_fields:
+                                source_fields.append(field)
                     
                     # Apply entity-specific filters
                     domain_filter = ENTITY_SOURCE_FILTERS.get(target_entity, [])
@@ -1754,7 +1765,7 @@ async def run_mapping_sync(
                         conn["database"], uid, conn["api_key"],
                         source_model, 'search_read',
                         [domain_filter],
-                        {'fields': source_fields, 'limit': 1000}
+                        {'fields': source_fields, 'limit': 2000}
                     )
                     
                     logger.info(f"Fetched {len(records)} records from {source_model} (filter: {domain_filter})")
@@ -1780,6 +1791,33 @@ async def run_mapping_sync(
                             if source_field and target_field:
                                 value = record.get(source_field)
                                 transformed[target_field] = apply_transform(value, transform, target_field)
+                        
+                        # ALWAYS add essential date fields for opportunities (regardless of mapping)
+                        if target_entity == "opportunity":
+                            # Add create_date
+                            if record.get("create_date"):
+                                transformed["create_date"] = record.get("create_date")
+                            # Add write_date (last modified)
+                            if record.get("write_date"):
+                                transformed["write_date"] = record.get("write_date")
+                                transformed["updated_at"] = record.get("write_date")
+                            # Add date_open (when assigned)
+                            if record.get("date_open"):
+                                transformed["date_open"] = record.get("date_open")
+                            # Add date_closed (actual close)
+                            if record.get("date_closed"):
+                                transformed["date_closed"] = record.get("date_closed")
+                            # Add date_conversion (lead to opp)
+                            if record.get("date_conversion"):
+                                transformed["date_conversion"] = record.get("date_conversion")
+                            # Add deal cycle metrics
+                            if record.get("day_open"):
+                                transformed["days_to_assign"] = record.get("day_open")
+                            if record.get("day_close"):
+                                transformed["days_to_close"] = record.get("day_close")
+                            # Lead vs Opportunity type
+                            if record.get("type"):
+                                transformed["type"] = record.get("type")  # 'lead' or 'opportunity'
                         
                         # Upsert to canonical database (not app_db)
                         collection_name = ENTITY_COLLECTION_MAP.get(target_entity, f"{target_entity}s")
