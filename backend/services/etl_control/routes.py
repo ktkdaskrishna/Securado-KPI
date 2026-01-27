@@ -44,21 +44,20 @@ templates_router = APIRouter(prefix="/templates", tags=["templates"])
 
 # ==================== SSL-SAFE XML-RPC TRANSPORT ====================
 
-class SSLTransport(xmlrpc.client.SafeTransport):
-    """Custom transport that handles SSL certificate verification issues"""
+class SSLUnverifiedTransport(xmlrpc.client.SafeTransport):
+    """Custom transport that bypasses SSL certificate verification.
     
-    def __init__(self, use_datetime=False, use_builtin_types=False, ssl_context=None):
+    This is needed for Odoo instances with self-signed certificates or
+    incomplete certificate chains.
+    """
+    
+    def __init__(self, use_datetime=False, use_builtin_types=False):
         super().__init__(use_datetime=use_datetime, use_builtin_types=use_builtin_types)
-        self._ssl_context = ssl_context
+        self._ssl_context = ssl._create_unverified_context()
     
     def make_connection(self, host):
-        if self._ssl_context is None:
-            # Create an unverified SSL context for connections with certificate issues
-            self._ssl_context = ssl.create_default_context()
-            self._ssl_context.check_hostname = False
-            self._ssl_context.verify_mode = ssl.CERT_NONE
-        
-        return super().make_connection(host)
+        import http.client
+        return http.client.HTTPSConnection(host, context=self._ssl_context)
 
 
 def create_odoo_proxy(url: str, endpoint: str = "common") -> xmlrpc.client.ServerProxy:
@@ -69,17 +68,12 @@ def create_odoo_proxy(url: str, endpoint: str = "common") -> xmlrpc.client.Serve
         endpoint: The XML-RPC endpoint (common, object, etc.)
     
     Returns:
-        ServerProxy configured for the Odoo endpoint
+        ServerProxy configured for the Odoo endpoint with SSL bypass
     """
     full_url = f'{url}/xmlrpc/2/{endpoint}'
     
-    # Create SSL context that doesn't verify certificates
-    # This is needed for some Odoo instances with self-signed or chain issues
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    
-    transport = SSLTransport(ssl_context=ssl_context)
+    # Use transport that bypasses SSL verification
+    transport = SSLUnverifiedTransport()
     
     return xmlrpc.client.ServerProxy(full_url, transport=transport, allow_none=True)
 
