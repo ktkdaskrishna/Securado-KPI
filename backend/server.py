@@ -204,6 +204,9 @@ app.include_router(initiatives_router, prefix="/api")
 # Dashboard
 app.include_router(dashboard_router, prefix="/api")
 
+# AI Analytics
+app.include_router(analytics_router, prefix="/api")
+
 # Events & DLQ
 app.include_router(events_router, prefix="/api")
 app.include_router(dlq_router, prefix="/api")
