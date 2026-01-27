@@ -316,15 +316,64 @@ async def get_opportunity_activities(
     opp_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all activities for an opportunity"""
+    """Get all activities for an opportunity (from both canonical and app DB)"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    activities = await app_db.activities.find({
+    # Get the opportunity to find its source_record_id
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": org_id
+    })
+    
+    # Build query conditions for activities
+    # Activities can be linked by:
+    # 1. opportunity_id (canonical_id format)
+    # 2. opportunity_id (source_record_id format - integer from Odoo)
+    query_conditions = [
+        {"opportunity_id": opp_id, "org_id": org_id},
+    ]
+    
+    if opp and opp.get("source_record_id"):
+        # Also look for activities linked by the Odoo record ID
+        source_id = opp.get("source_record_id")
+        query_conditions.extend([
+            {"opportunity_id": source_id, "org_id": org_id},
+            {"opportunity_id": int(source_id) if source_id.isdigit() else source_id, "org_id": org_id},
+        ])
+    
+    # Fetch from canonical DB (synced from Odoo)
+    canonical_activities = await canonical_db.activities.find({
+        "$or": query_conditions
+    }).sort("date_deadline", -1).to_list(100)
+    
+    # Fetch from app DB (manually created)
+    app_activities = await app_db.activities.find({
         "opportunity_id": opp_id,
-        "org_id": current_user.get("org_id", "default")
+        "org_id": org_id
     }).sort("created_at", -1).to_list(100)
     
-    return serialize_doc(activities)
+    # Combine and deduplicate
+    all_activities = canonical_activities + app_activities
+    
+    # Normalize activity format for frontend
+    normalized = []
+    for act in all_activities:
+        normalized.append({
+            "id": act.get("canonical_id") or act.get("id") or str(act.get("_id")),
+            "type": act.get("activity_type", "").lower().replace(" ", "_") or "todo",
+            "subject": act.get("summary") or act.get("subject") or "Activity",
+            "description": act.get("note") or act.get("description") or "",
+            "status": act.get("state") or act.get("status") or "pending",
+            "completed": act.get("state") == "done" or act.get("completed", False),
+            "created_at": act.get("created_at") or act.get("synced_at"),
+            "date_deadline": act.get("date_deadline"),
+            "user_id": act.get("user_id"),
+            "source_system": act.get("source_system", "local"),
+        })
+    
+    return serialize_doc(normalized)
 
 
 # ==================== BLUESHEET ====================
