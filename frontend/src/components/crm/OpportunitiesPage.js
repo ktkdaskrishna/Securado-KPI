@@ -494,42 +494,106 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                       Deal Details
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-2 text-sm">
                     {opportunity.is_tender && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 w-32">Is Tender:</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Is Tender:</span>
                         <Badge variant={opportunity.is_tender === 'Yes' ? 'default' : 'secondary'} className="text-xs">
                           {opportunity.is_tender}
                         </Badge>
                       </div>
                     )}
                     {opportunity.budget_status && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 w-32">Budget Status:</span>
-                        <span className="text-sm">{opportunity.budget_status}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Budget Status:</span>
+                        <span className="font-medium">{opportunity.budget_status}</span>
                       </div>
                     )}
                     {opportunity.pledge && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 w-32">Commitment:</span>
-                        <span className="text-sm">{opportunity.pledge}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Pledge/Commitment:</span>
+                        <Badge variant={opportunity.pledge === 'No Commitment' ? 'secondary' : 'default'} className="text-xs">
+                          {opportunity.pledge}
+                        </Badge>
                       </div>
                     )}
-                    {opportunity.competitor_solution && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 w-32">Competitor:</span>
-                        <Badge variant="outline" className="text-xs text-red-600">{opportunity.competitor_solution}</Badge>
+                    {opportunity.rfp_invited !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">RFP Invited:</span>
+                        <Badge variant={opportunity.rfp_invited ? 'default' : 'secondary'} className="text-xs">
+                          {opportunity.rfp_invited ? 'Yes' : 'No'}
+                        </Badge>
                       </div>
                     )}
-                    {opportunity.opportunity_number && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 w-32">Opp #:</span>
-                        <span className="text-xs font-mono text-gray-600">{opportunity.opportunity_number}</span>
+                    {opportunity.poc_demo_done !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">POC/Demo Done:</span>
+                        <Badge variant={opportunity.poc_demo_done ? 'default' : 'secondary'} className="text-xs">
+                          {opportunity.poc_demo_done ? 'Yes' : 'No'}
+                        </Badge>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
+              
+              {/* Competitor Information */}
+              {(opportunity.competitor_solution || opportunity.competitor_price) && (
+                <Card className="border-red-200 bg-red-50/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      Competitor Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {opportunity.competitor_solution && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Competitor's Solution:</span>
+                        <Badge variant="outline" className="text-red-600 border-red-300">{opportunity.competitor_solution}</Badge>
+                      </div>
+                    )}
+                    {opportunity.competitor_price && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Competitor's Price:</span>
+                        <span className="font-mono text-sm text-red-600">{opportunity.competitor_price}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Tender Deadlines */}
+              {(opportunity.tender_submission_deadline || opportunity.query_submission_deadline || opportunity.tender_purchase_deadline) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Important Deadlines
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-3 gap-4 text-sm">
+                    {opportunity.query_submission_deadline && (
+                      <div className="text-center p-2 bg-gray-50 rounded">
+                        <p className="text-xs text-gray-500">Query Deadline</p>
+                        <p className="font-medium">{new Date(opportunity.query_submission_deadline).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {opportunity.tender_submission_deadline && (
+                      <div className="text-center p-2 bg-blue-50 rounded">
+                        <p className="text-xs text-gray-500">Tender Submission</p>
+                        <p className="font-medium">{new Date(opportunity.tender_submission_deadline).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {opportunity.tender_purchase_deadline && (
+                      <div className="text-center p-2 bg-amber-50 rounded">
+                        <p className="text-xs text-gray-500">Purchase Deadline</p>
+                        <p className="font-medium">{new Date(opportunity.tender_purchase_deadline).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
               
               {/* Description */}
               {opportunity.descriptions && (
