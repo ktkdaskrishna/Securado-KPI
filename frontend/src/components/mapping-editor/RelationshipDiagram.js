@@ -100,7 +100,97 @@ const defaultRelationships = [
   { id: 'employee__task', from: 'employee', to: 'task', cardinality: '1:N', label: 'assigned' },
 ];
 
-export function RelationshipDiagram({ targetModels = [], relationships = [], onUpdateRelationships }) {
+export function RelationshipDiagram({ targetModels = [], relationships = [], onUpdateRelationships, fieldMappings = {} }) {
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Discover relationships from field mappings (FK fields)
+  const discoverRelationships = useCallback(() => {
+    const discovered = [];
+    
+    // Check target model fields for FK references
+    targetModels.forEach(model => {
+      (model.fields || []).forEach(field => {
+        if (field.fk) {
+          // This field references another entity
+          discovered.push({
+            id: `${model.id}__${field.fk}__${field.name}`,
+            from: field.fk,
+            to: model.id,
+            cardinality: '1:N',
+            label: field.name.replace('_id', ''),
+            discovered: true
+          });
+        }
+      });
+    });
+    
+    // Also check existing field mappings for FK patterns
+    Object.entries(fieldMappings).forEach(([key, mappings]) => {
+      const [sourceModel, targetEntity] = key.split('__');
+      mappings.forEach(m => {
+        if (m.targetField?.endsWith('_id') && m.transform === 'extract_id') {
+          const relatedEntity = m.targetField.replace('_id', '');
+          const existingRel = discovered.find(d => 
+            d.from === relatedEntity && d.to === targetEntity
+          );
+          if (!existingRel && targetModels.find(tm => tm.id === relatedEntity)) {
+            discovered.push({
+              id: `${targetEntity}__${relatedEntity}__mapped`,
+              from: relatedEntity,
+              to: targetEntity,
+              cardinality: '1:N',
+              label: `has ${targetEntity}s`,
+              discovered: true
+            });
+          }
+        }
+      });
+    });
+    
+    // Merge with defaults, preferring discovered
+    const merged = [...defaultRelationships];
+    discovered.forEach(disc => {
+      const existing = merged.find(m => 
+        m.from === disc.from && m.to === disc.to
+      );
+      if (!existing) {
+        merged.push(disc);
+      }
+    });
+    
+    if (onUpdateRelationships) {
+      onUpdateRelationships(merged);
+    }
+    
+    toast.success(`Discovered ${discovered.length} relationships from field mappings`);
+    return merged;
+  }, [targetModels, fieldMappings, onUpdateRelationships]);
+  
+  // Handle edge connection (for manual editing)
+  const onConnect = useCallback((params) => {
+    if (isEditing) {
+      setEdges(eds => addEdge({
+        ...params,
+        type: 'smoothstep',
+        animated: false,
+        style: { stroke: '#6B7280', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#6B7280' },
+        label: 'new relation',
+        labelStyle: { fontSize: 10, fontWeight: 500, fill: '#374151' },
+        labelBgStyle: { fill: 'white', fillOpacity: 0.9 },
+      }, eds));
+      toast.success('Relationship added!');
+    }
+  }, [isEditing]);
+  
+  // Delete edge on click (when editing)
+  const onEdgeClick = useCallback((event, edge) => {
+    if (isEditing) {
+      setEdges(eds => eds.filter(e => e.id !== edge.id));
+      toast.info('Relationship removed');
+    }
+  }, [isEditing]);
+
   // Convert target models to nodes
   const initialNodes = useMemo(() => {
     const positions = [
