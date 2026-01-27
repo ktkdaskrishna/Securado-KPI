@@ -333,9 +333,65 @@ Successfully tested the complete ETL pipeline with a live Odoo connection (secur
 - **Status**: VERIFIED WORKING - Successfully tested role assignment via UI
 - **Resolution**: No code changes needed - feature was working correctly
 
+### ~~P2 - RunsPage Crash~~ (RESOLVED ✅)
+- **Issue**: ETL Runs page crashed with "Cannot read properties of undefined (reading 'slice')"
+- **Status**: FIXED - Added comprehensive null-safety checks
+- **Resolution**: Enhanced data filtering and null handling in RunsPage.js
+
+### ~~P0 - Wrong Activity Data Being Synced~~ (RESOLVED ✅)
+- **Issue**: ETL was syncing ALL `mail.activity` records (including HR approvals, time off requests) instead of only CRM-related activities
+- **Status**: FIXED - Added filter `[('res_model', '=', 'crm.lead')]` to `ENTITY_SOURCE_FILTERS`
+- **Resolution**: Cleared existing incorrect activities and resynced with filter. Note: User's Odoo instance has 0 CRM activities.
+
+### ~~P1 - Missing Invoices in Data Lake UI~~ (RESOLVED ✅)
+- **Issue**: Invoices were synced but not displayed in Data Lake page
+- **Status**: FIXED - Added "invoices" to ENTITIES array in DataLakePage.js
+- **Resolution**: Data Lake now shows 186 invoices
+
+### P1 - Log Messages (Chatter) Not Implemented
+- **Issue**: User requested to see Odoo chatter/log messages in Opportunity 360 view
+- **Status**: NOT STARTED - Would require syncing `mail.message` model where `model = 'crm.lead'`
+- **Next Steps**: Add `log_message` entity to sales_model.yml and create UI tab
+
 ### P2 - Sidebar Scroll Issue
 - **Issue**: Settings section may not be scrollable
 - **Status**: Verification needed
+
+---
+
+## Phase 15: Data Integrity Fixes (COMPLETED ✅)
+
+### Overview
+Fixed critical data integrity issues reported by user after connecting to live Odoo database.
+
+### Issues Fixed
+
+#### 1. RunsPage.js Crash (P2 → FIXED ✅)
+- **Root Cause**: Null safety issues when mapping runs and live events
+- **Fix**: Added defensive coding:
+  - Filter runs to ensure all have required `id` field
+  - Return null for invalid items in map functions
+  - Safe handling of `liveEvents` array
+  - Extracted `displayId` calculation to avoid inline errors
+
+#### 2. Wrong Activity Data (P0 → FIXED ✅)
+- **Root Cause**: ETL was syncing ALL `mail.activity` records including HR activities
+- **Fix**: 
+  - Activity filter was already implemented: `[('res_model', '=', 'crm.lead')]`
+  - Created `/api/mapping-editor/clear-and-resync/{entity}` endpoint
+  - Cleared 19 incorrect activities, resynced with filter (0 CRM activities found in Odoo)
+
+#### 3. Missing Invoices in UI (P1 → FIXED ✅)
+- **Root Cause**: DataLakePage.js only listed 5 entities, missing "invoices"
+- **Fix**: Added "invoices" to ENTITIES array, now showing 186 invoices
+
+### API Endpoints Added
+- `POST /api/mapping-editor/clear-and-resync/{entity}` - Clear and resync specific entity with filters
+
+### Code Changes
+- `/app/frontend/src/components/etl/RunsPage.js` - Enhanced null safety
+- `/app/frontend/src/components/etl/DataLakePage.js` - Added invoices
+- `/app/backend/services/etl_control/routes.py` - Added clear-and-resync endpoint
 
 ---
 
