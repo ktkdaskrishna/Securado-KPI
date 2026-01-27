@@ -75,14 +75,21 @@ STAGE_MAPPING = {
     "enquiry": "qualified",
     "qualified": "qualified",
     "qualification": "qualified",
+    "qualified opportunity": "qualified",
+    "prospect": "qualified",
     "proposition": "proposal",
     "proposal": "proposal",
     "proposal sent": "proposal",
+    "in- progress": "proposal",
+    "in-progress": "proposal",
+    "in progress": "proposal",
     "negotiation": "negotiation",
     "won": "closed_won",
     "closed won": "closed_won",
+    "closed_won": "closed_won",
     "lost": "closed_lost",
     "closed lost": "closed_lost",
+    "closed_lost": "closed_lost",
     # Default mapping for any unrecognized stage
 }
 
