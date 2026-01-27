@@ -690,13 +690,39 @@ async def calculate_bluesheet_only(
 # ==================== ACCOUNTS ====================
 
 @accounts_router.get("")
-async def list_accounts(current_user: dict = Depends(get_current_user)):
-    """List accounts"""
+async def list_accounts(
+    year: Optional[str] = None,
+    sales_rep: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """List accounts with optional filters"""
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    accounts = await canonical_db.accounts.find(
-        {"org_id": current_user.get("org_id", "default")}
-    ).to_list(1000)
+    # Base query
+    query = {"org_id": org_id}
+    
+    # Get all accounts first (can't easily filter accounts by opportunity-related fields)
+    accounts = await canonical_db.accounts.find(query).to_list(1000)
+    
+    # If we need to filter by sales_rep or year, we need to check related opportunities
+    if sales_rep or year:
+        # Get opportunities that match the filter
+        opp_query = {"org_id": org_id}
+        if sales_rep:
+            opp_query["owner_name"] = sales_rep
+        
+        opps = await canonical_db.opportunities.find(opp_query).to_list(10000)
+        
+        # Apply year filter on opportunities
+        if year:
+            opps = [o for o in opps if str(o.get("close_date", ""))[:4] == year or str(o.get("create_date", ""))[:4] == year]
+        
+        # Get unique account names from filtered opportunities
+        valid_accounts = set(o.get("account_name") for o in opps if o.get("account_name"))
+        
+        # Filter accounts to only those with matching opportunities
+        accounts = [a for a in accounts if a.get("name") in valid_accounts]
     
     return serialize_doc(accounts)
 
