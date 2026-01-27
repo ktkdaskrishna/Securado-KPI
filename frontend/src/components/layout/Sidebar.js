@@ -73,6 +73,7 @@ const defaultNavigation = {
     { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard', default: true },
     { id: 'analytics', name: 'AI Analytics', href: '/analytics', icon: 'Brain', default: true },
     { id: 'opportunities', name: 'Opportunities', href: '/opportunities', icon: 'TrendingUp', default: true },
+    { id: 'leads', name: 'Leads', href: '/leads', icon: 'Users', default: true },
     { id: 'accounts', name: 'Accounts', href: '/accounts', icon: 'Building2', default: true },
     { id: 'activities', name: 'Activities', href: '/activities', icon: 'CheckSquare', default: true },
     { id: 'activity-timeline', name: 'Timeline', href: '/activity-timeline', icon: 'Clock', default: true },
