@@ -1694,6 +1694,7 @@ async def run_mapping_sync(
         "employee": "employees",
         "sales_team": "sales_teams",
         "sales_user": "sales_users",
+        "log_message": "log_messages",
     }
     
     run_doc = {
