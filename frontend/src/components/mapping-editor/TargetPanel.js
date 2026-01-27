@@ -184,20 +184,41 @@ export function TargetPanel({
                           return (
                             <div
                               key={idx}
-                              className={`flex items-center justify-between py-1.5 px-2 rounded text-xs ${
+                              className={`flex items-center justify-between py-1.5 px-2 rounded text-xs transition-all ${
                                 isMapped 
                                   ? 'bg-green-50 border border-green-200' 
-                                  : 'hover:bg-white'
+                                  : dragOverField === `${model.id}-${field.name}`
+                                    ? 'bg-blue-100 border-2 border-dashed border-blue-400 scale-[1.02]'
+                                    : 'hover:bg-white border border-transparent'
                               }`}
-                              onDragOver={(e) => e.preventDefault()}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setDragOverField(`${model.id}-${field.name}`);
+                              }}
+                              onDragLeave={() => {
+                                setDragOverField(null);
+                              }}
                               onDrop={(e) => {
                                 e.preventDefault();
+                                setDragOverField(null);
                                 // Handle drop from source panel
                                 const data = e.dataTransfer.getData('sourceField');
-                                if (data) {
-                                  const { model: srcModel, field: srcField } = JSON.parse(data);
-                                  // This would trigger adding the mapping
-                                  console.log(`Map ${srcModel}.${srcField} -> ${model.id}.${field.name}`);
+                                if (data && onAddMapping) {
+                                  const { model: srcModel, field: srcField, type: srcType } = JSON.parse(data);
+                                  // Determine transformation based on field type
+                                  let transform = 'direct';
+                                  if (srcType === 'many2one') {
+                                    if (field.name.endsWith('_id')) {
+                                      transform = 'extract_id';
+                                    } else if (field.name.endsWith('_name')) {
+                                      transform = 'extract_name';
+                                    }
+                                  } else if (field.type === 'number' && srcType !== 'float' && srcType !== 'integer') {
+                                    transform = 'to_float';
+                                  } else if (field.type === 'boolean') {
+                                    transform = 'to_bool';
+                                  }
+                                  onAddMapping(srcModel, model.id, srcField, field.name, transform);
                                 }
                               }}
                               data-testid={`target-field-${model.id}-${field.name}`}
