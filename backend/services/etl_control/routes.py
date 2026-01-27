@@ -1454,13 +1454,14 @@ async def preview_transformation(
         
         try:
             if conn["type"] == "odoo":
-                common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+                # Use SSL-safe proxy for Odoo connections
+                common = create_odoo_proxy(conn["url"], "common")
                 uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
                 
                 if not uid:
                     continue
                 
-                models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+                models_proxy = create_odoo_proxy(conn["url"], "object")
                 
                 # Get source fields from mappings
                 source_fields = list(set([m.get("sourceField") for m in mappings if m.get("sourceField")]))
