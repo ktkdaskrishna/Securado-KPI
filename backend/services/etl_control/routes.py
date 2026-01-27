@@ -1828,6 +1828,156 @@ async def run_mapping_sync(
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 
+@mapping_editor_router.post("/clear-and-resync/{entity}")
+async def clear_and_resync_entity(
+    entity: str,
+    sync_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Clear a specific canonical entity collection and resync from source.
+    
+    This is useful when filters or mappings have changed and old data needs 
+    to be replaced with correctly filtered data.
+    
+    Args:
+        entity: The canonical entity name (e.g., 'activity', 'invoice')
+        sync_data: Must include connectionId and optionally fieldMappings
+    """
+    db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    connection_id = sync_data.get("connectionId")
+    field_mappings = sync_data.get("fieldMappings", {})
+    
+    if not connection_id:
+        raise HTTPException(status_code=400, detail="Connection ID required")
+    
+    # Entity to collection and source model mapping
+    ENTITY_CONFIG = {
+        "activity": {"collection": "activities", "source_model": "mail.activity"},
+        "invoice": {"collection": "invoices", "source_model": "account.move"},
+        "opportunity": {"collection": "opportunities", "source_model": "crm.lead"},
+        "account": {"collection": "accounts", "source_model": "res.partner"},
+        "contact": {"collection": "contacts", "source_model": "res.partner"},
+        "sales_user": {"collection": "sales_users", "source_model": "res.users"},
+        "task": {"collection": "tasks", "source_model": "project.task"},
+        "employee": {"collection": "employees", "source_model": "hr.employee"},
+    }
+    
+    if entity not in ENTITY_CONFIG:
+        raise HTTPException(status_code=400, detail=f"Unknown entity: {entity}. Valid: {list(ENTITY_CONFIG.keys())}")
+    
+    config = ENTITY_CONFIG[entity]
+    collection_name = config["collection"]
+    source_model = config["source_model"]
+    
+    # Get connection
+    conn = await db.connections.find_one({
+        "id": connection_id,
+        "org_id": org_id
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    # Step 1: Clear the collection for this org
+    delete_result = await canonical_db[collection_name].delete_many({"org_id": org_id})
+    deleted_count = delete_result.deleted_count
+    logger.info(f"Cleared {deleted_count} records from {collection_name}")
+    
+    # Step 2: Find the mapping for this entity
+    mapping_key = f"{source_model}__{entity}"
+    entity_mappings = field_mappings.get(mapping_key, [])
+    
+    if not entity_mappings:
+        # Try to find any mapping that targets this entity
+        for key, mappings in field_mappings.items():
+            if key.endswith(f"__{entity}") and mappings:
+                entity_mappings = mappings
+                source_model = key.split("__")[0]
+                break
+    
+    if not entity_mappings:
+        return {
+            "success": True,
+            "message": f"Cleared {deleted_count} records but no mapping found for {entity}",
+            "deletedCount": deleted_count,
+            "syncedCount": 0
+        }
+    
+    # Step 3: Re-sync with filters
+    try:
+        if conn["type"] == "odoo":
+            common = create_odoo_proxy(conn["url"], "common")
+            uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            
+            if not uid:
+                raise Exception("Odoo authentication failed")
+            
+            models_proxy = create_odoo_proxy(conn["url"], "object")
+            
+            # Get source fields
+            source_fields = list(set(["id"] + [m.get("sourceField") for m in entity_mappings if m.get("sourceField")]))
+            
+            # Apply entity-specific filters - CRITICAL for activities!
+            domain_filter = ENTITY_SOURCE_FILTERS.get(entity, [])
+            
+            logger.info(f"Re-syncing {entity} from {source_model} with filter: {domain_filter}")
+            
+            # Fetch records with filter
+            records = models_proxy.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                source_model, 'search_read',
+                [domain_filter],
+                {'fields': source_fields, 'limit': 2000}
+            )
+            
+            logger.info(f"Fetched {len(records)} filtered records from {source_model}")
+            
+            # Transform and insert
+            synced_count = 0
+            for record in records:
+                transformed = {
+                    "org_id": org_id,
+                    "source_system": "odoo",
+                    "source_model": source_model,
+                    "source_record_id": str(record.get("id")),
+                    "canonical_id": f"odoo_{entity}_{record.get('id')}",
+                    "synced_at": now_utc()
+                }
+                
+                # Apply field mappings
+                for mapping in entity_mappings:
+                    source_field = mapping.get("sourceField")
+                    target_field = mapping.get("targetField")
+                    transform = mapping.get("transform", "direct")
+                    
+                    if source_field and target_field:
+                        value = record.get(source_field)
+                        transformed[target_field] = apply_transform(value, transform, target_field)
+                
+                # Upsert to canonical
+                await canonical_db[collection_name].update_one(
+                    {"canonical_id": transformed["canonical_id"]},
+                    {"$set": transformed},
+                    upsert=True
+                )
+                synced_count += 1
+            
+            return {
+                "success": True,
+                "message": f"Cleared {deleted_count} old records, synced {synced_count} filtered records",
+                "deletedCount": deleted_count,
+                "syncedCount": synced_count,
+                "filter": str(domain_filter)
+            }
+    
+    except Exception as e:
+        logger.error(f"Re-sync failed for {entity}: {e}")
+        raise HTTPException(status_code=500, detail=f"Re-sync failed: {str(e)}")
+
+
 @mapping_editor_router.get("/sync/status/{connection_id}")
 async def get_sync_status(
     connection_id: str,
