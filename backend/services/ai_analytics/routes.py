@@ -45,15 +45,32 @@ def normalize_stage(stage: str) -> str:
 
 @router.get("/overview")
 async def get_analytics_overview(
-    time_period: Optional[str] = "year",  # year, quarter, month
+    time_period: Optional[str] = "all",  # year, quarter, month
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
+    sales_rep: Optional[str] = None,
+    team_id: Optional[str] = None,
+    account: Optional[str] = None,
+    stage: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get overview of all analytics metrics"""
+    """Get overview of all analytics metrics with optional filters"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
     # Get all opportunities
-    opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    all_opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    
+    # Apply filters
+    filters = {
+        "year": year,
+        "quarter": quarter,
+        "sales_rep": sales_rep,
+        "team_id": team_id,
+        "account": account,
+        "stage": stage
+    }
+    opps = apply_filters(all_opps, filters)
     
     # Get all accounts
     accounts = await canonical_db.accounts.find({"org_id": org_id}).to_list(10000)
@@ -81,6 +98,9 @@ async def get_analytics_overview(
         stage_counts[stage] += 1
         stage_values[stage] += opp.get("amount", 0) or 0
     
+    # Get unique sales reps in filtered data
+    unique_reps = len(set(o.get("owner_name") for o in opps if o.get("owner_name")))
+    
     return {
         "summary": {
             "total_pipeline": total_pipeline,
@@ -92,7 +112,8 @@ async def get_analytics_overview(
             "win_rate": round(win_rate, 1),
             "avg_deal_size": round(avg_deal_size, 2),
             "total_accounts": len(accounts),
-            "total_sales_reps": len(sales_users)
+            "total_sales_reps": unique_reps,
+            "filtered": any(v for v in filters.values())
         },
         "funnel": {
             "lead": {"count": stage_counts["lead"], "value": stage_values["lead"]},
@@ -101,7 +122,8 @@ async def get_analytics_overview(
             "negotiation": {"count": stage_counts["negotiation"], "value": stage_values["negotiation"]},
             "won": {"count": stage_counts["won"], "value": stage_values["won"]},
             "lost": {"count": stage_counts["lost"], "value": stage_values["lost"]}
-        }
+        },
+        "applied_filters": {k: v for k, v in filters.items() if v}
     }
 
 
