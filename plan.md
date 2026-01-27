@@ -287,10 +287,10 @@ ENTITY_SOURCE_FILTERS = {
 
 ## Known Issues / Pending Fixes
 
-### P1 - RBAC Role Saving Bug
+### ~~P1 - RBAC Role Saving Bug~~ (RESOLVED ✅)
 - **Issue**: User role saving fails on Admin > Users page
-- **Status**: Not addressed in this session
-- **Debug Plan**: Check updateUserRoles API endpoint and frontend payload
+- **Status**: VERIFIED WORKING - Successfully tested role assignment via UI
+- **Resolution**: No code changes needed - feature was working correctly
 
 ### P2 - Sidebar Scroll Issue
 - **Issue**: Settings section may not be scrollable
