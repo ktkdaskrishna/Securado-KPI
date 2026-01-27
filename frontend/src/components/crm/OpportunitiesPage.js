@@ -127,26 +127,46 @@ function SortableCard({ opportunity, onClick, formatCurrency }) {
 }
 
 function KanbanColumn({ stage, opportunities, onCardClick, formatCurrency }) {
-  const stageOpps = opportunities.filter(o => o.stage === stage);
+  // Filter by custom_stage first, then fall back to stage
+  const stageOpps = opportunities.filter(o => {
+    const oppStage = (o.custom_stage || o.stage || '').toLowerCase().replace(/[&\s]/g, '_');
+    const targetStage = stage.toLowerCase().replace(/[&\s]/g, '_');
+    return oppStage === targetStage || o.stage === stage;
+  });
+  
+  // Stage header colors
+  const stageHeaderColors = {
+    qualified: 'border-l-blue-500',
+    proposal: 'border-l-purple-500',
+    negotiation: 'border-l-amber-500',
+    review_negotiation: 'border-l-amber-500',
+    closed_won: 'border-l-emerald-500',
+    won: 'border-l-emerald-500',
+    closed_lost: 'border-l-red-500',
+    lost: 'border-l-red-500',
+  };
+  
+  const headerColor = stageHeaderColors[stage] || 'border-l-gray-400';
+  const totalValue = stageOpps.reduce((sum, o) => sum + (o.amount || o.sale_value || 0), 0);
   
   return (
     <div 
-      className="flex-shrink-0 w-72 bg-gray-50 rounded-lg"
+      className="flex-shrink-0 w-80 bg-gray-50 rounded-lg shadow-sm"
       data-testid={`opps-kanban-column-${stage}`}
     >
-      <div className="p-3 border-b bg-white rounded-t-lg">
+      <div className={`p-4 border-b border-l-4 ${headerColor} bg-white rounded-t-lg`}>
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-sm">{formatStage(stage)}</h3>
-          <Badge variant="secondary" className={stageColors[stage]}>
+          <h3 className="font-semibold text-sm text-gray-800">{formatStage(stage)}</h3>
+          <Badge className={stageColors[stage] || 'bg-gray-100 text-gray-700'}>
             {stageOpps.length}
           </Badge>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          {formatCurrency(stageOpps.reduce((sum, o) => sum + (o.amount || 0), 0))}
+        <p className="text-sm font-medium text-gray-600 mt-1">
+          {formatCurrency(totalValue)}
         </p>
       </div>
       <ScrollArea className="h-[calc(100vh-320px)]">
-        <div className="p-2 space-y-2">
+        <div className="p-3 space-y-3">
           <SortableContext items={stageOpps.map(o => o.canonical_id)} strategy={verticalListSortingStrategy}>
             {stageOpps.map((opp) => (
               <SortableCard 
