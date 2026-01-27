@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { analyticsAPI } from './api';
 
 // Default filter state
@@ -11,20 +12,63 @@ const defaultFilters = {
   team: null,               // team_id
   account: null,            // account_id or account_name
   stage: null,              // stage name
-  dateField: 'close_date',  // which date to filter on: close_date, create_date
+  dateField: 'create_date', // which date to filter on: close_date, create_date
 };
 
 const GlobalFilterContext = createContext(null);
 
+// Parse URL params to filter state
+function parseUrlParams(searchParams) {
+  const params = {};
+  
+  if (searchParams.get('year')) params.year = searchParams.get('year');
+  if (searchParams.get('quarter')) params.quarter = searchParams.get('quarter');
+  if (searchParams.get('month')) params.month = searchParams.get('month');
+  if (searchParams.get('salesRep')) params.salesRep = searchParams.get('salesRep');
+  if (searchParams.get('team')) params.team = searchParams.get('team');
+  if (searchParams.get('account')) params.account = searchParams.get('account');
+  if (searchParams.get('stage')) params.stage = searchParams.get('stage');
+  if (searchParams.get('dateField')) params.dateField = searchParams.get('dateField');
+  if (searchParams.get('timePeriod')) params.timePeriod = searchParams.get('timePeriod');
+  
+  return params;
+}
+
+// Convert filter state to URL params
+function filtersToUrlParams(filters) {
+  const params = new URLSearchParams();
+  
+  if (filters.year) params.set('year', filters.year);
+  if (filters.quarter) params.set('quarter', filters.quarter);
+  if (filters.month) params.set('month', filters.month);
+  if (filters.salesRep) params.set('salesRep', filters.salesRep);
+  if (filters.team) params.set('team', filters.team);
+  if (filters.account) params.set('account', filters.account);
+  if (filters.stage) params.set('stage', filters.stage);
+  if (filters.dateField && filters.dateField !== 'create_date') params.set('dateField', filters.dateField);
+  if (filters.timePeriod && filters.timePeriod !== 'all') params.set('timePeriod', filters.timePeriod);
+  
+  return params;
+}
+
 export function GlobalFilterProvider({ children }) {
-  const [filters, setFilters] = useState(defaultFilters);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Initialize filters from URL on mount
+  const [filters, setFilters] = useState(() => {
+    const urlParams = parseUrlParams(searchParams);
+    return { ...defaultFilters, ...urlParams };
+  });
+  
   const [filterOptions, setFilterOptions] = useState(null);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
+  const isUpdatingUrl = useRef(false);
 
   const loadFilterOptions = useCallback(async () => {
-    // Don't load if no token (not logged in) or already loading/loaded
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token || loading || loadedRef.current) {
       return;
     }
@@ -41,39 +85,77 @@ export function GlobalFilterProvider({ children }) {
     }
   }, [loading]);
 
-  // Simple effect to load on mount if token exists
+  // Load on mount if token exists
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (token && !loadedRef.current && !loading) {
       loadFilterOptions();
     }
   }, [loadFilterOptions, loading]);
 
+  // Sync URL params to filters when URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    if (isUpdatingUrl.current) {
+      isUpdatingUrl.current = false;
+      return;
+    }
+    
+    const urlParams = parseUrlParams(searchParams);
+    const hasUrlParams = Object.keys(urlParams).length > 0;
+    
+    if (hasUrlParams) {
+      setFilters(prev => ({ ...defaultFilters, ...urlParams }));
+    }
+  }, [searchParams]);
+
+  // Update URL when filters change
+  const syncFiltersToUrl = useCallback((newFilters) => {
+    isUpdatingUrl.current = true;
+    const params = filtersToUrlParams(newFilters);
+    const paramString = params.toString();
+    
+    // Only update if params have changed
+    const currentParams = searchParams.toString();
+    if (paramString !== currentParams) {
+      // Use replace to avoid polluting browser history on every filter change
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const updateFilter = useCallback((key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  }, []);
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [key]: value
+      };
+      // Sync to URL
+      syncFiltersToUrl(newFilters);
+      return newFilters;
+    });
+  }, [syncFiltersToUrl]);
 
   const resetFilters = useCallback(() => {
     setFilters(defaultFilters);
-  }, []);
+    // Clear URL params
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
 
   const setMultipleFilters = useCallback((newFilters) => {
-    setFilters(prev => ({
-      ...prev,
-      ...newFilters
-    }));
-  }, []);
+    setFilters(prev => {
+      const updated = {
+        ...prev,
+        ...newFilters
+      };
+      syncFiltersToUrl(updated);
+      return updated;
+    });
+  }, [syncFiltersToUrl]);
 
-  // Build query params for API calls
+  // Build query params for API calls - THIS IS THE KEY FIX
   const getQueryParams = useCallback(() => {
     const params = {};
     
-    if (filters.timePeriod && filters.timePeriod !== 'all') {
-      params.time_period = filters.timePeriod;
-    }
+    // Always include these if set
     if (filters.year) {
       params.year = filters.year;
     }
@@ -97,6 +179,9 @@ export function GlobalFilterProvider({ children }) {
     }
     if (filters.dateField) {
       params.date_field = filters.dateField;
+    }
+    if (filters.timePeriod && filters.timePeriod !== 'all') {
+      params.time_period = filters.timePeriod;
     }
     
     return params;
@@ -122,7 +207,7 @@ export function GlobalFilterProvider({ children }) {
   // Check if any filter is active
   const hasActiveFilters = useCallback(() => {
     return (
-      filters.timePeriod !== 'all' ||
+      (filters.timePeriod && filters.timePeriod !== 'all') ||
       filters.year !== null ||
       filters.quarter !== null ||
       filters.salesRep !== null ||
@@ -164,7 +249,8 @@ export function useGlobalFilters() {
 export function getYearOptions() {
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let year = currentYear; year >= currentYear - 5; year--) {
+  // Include future years for forecasting
+  for (let year = currentYear + 2; year >= currentYear - 5; year--) {
     years.push({ value: year.toString(), label: year.toString() });
   }
   return years;

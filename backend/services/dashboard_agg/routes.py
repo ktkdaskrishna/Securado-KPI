@@ -5,10 +5,10 @@ Handles:
 - Provide aggregated dashboard statistics
 - Manual refresh triggers
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from typing import Optional
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 from collections import defaultdict
 
@@ -67,6 +67,76 @@ def normalize_stage_for_dashboard(stage: str) -> str:
         return "proposal"
     
     return "qualified"
+
+
+def parse_date_from_string(date_str):
+    """Parse date from various string formats"""
+    if not date_str or date_str == 'False':
+        return None
+    
+    if isinstance(date_str, datetime):
+        return date_str
+    
+    if isinstance(date_str, str):
+        # Try common formats
+        for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f']:
+            try:
+                return datetime.strptime(date_str[:len(fmt.replace('%', ''))].strip(), fmt)
+            except:
+                continue
+        
+        # Try extracting just year-month-day
+        try:
+            if len(date_str) >= 10:
+                return datetime.strptime(date_str[:10], '%Y-%m-%d')
+        except:
+            pass
+    
+    return None
+
+
+def apply_date_filters(records: list, year: str = None, quarter: str = None, date_field: str = 'create_date') -> list:
+    """Apply year and quarter filters to records based on the specified date field"""
+    if not year and not quarter:
+        return records
+    
+    filtered = []
+    quarter_months = {
+        "Q1": [1, 2, 3], 
+        "Q2": [4, 5, 6], 
+        "Q3": [7, 8, 9], 
+        "Q4": [10, 11, 12]
+    }
+    
+    for record in records:
+        # Try multiple date fields - prefer create_date for filtering
+        date_value = None
+        for field in [date_field, 'create_date', 'close_date', 'date_open', 'write_date']:
+            if record.get(field):
+                date_value = parse_date_from_string(record.get(field))
+                if date_value:
+                    break
+        
+        if not date_value:
+            # Include records without dates only if no year filter (to not lose data)
+            if not year:
+                filtered.append(record)
+            continue
+        
+        # Check year filter
+        if year:
+            if str(date_value.year) != str(year):
+                continue
+        
+        # Check quarter filter
+        if quarter:
+            months = quarter_months.get(quarter, [])
+            if date_value.month not in months:
+                continue
+        
+        filtered.append(record)
+    
+    return filtered
 
 
 class DashboardAggregator:
@@ -170,9 +240,6 @@ class DashboardAggregator:
             # Also get app activities (manually created)
             app_activities = await app_db.activities.find({"org_id": org_id}).to_list(10000)
             all_activities = canonical_activities + app_activities
-            
-            # NOTE: Project tasks are NOT included in CRM Activities dashboard
-            # They are separate from CRM workflow
             
             # Activity stats - count by type (CRM activities only)
             activity_type_map = defaultdict(int)
@@ -281,18 +348,22 @@ dashboard_aggregator = DashboardAggregator()
 
 @router.get("/stats")
 async def get_dashboard_stats(
-    year: Optional[str] = None,
-    quarter: Optional[str] = None,
-    sales_rep: Optional[str] = None,
-    team_id: Optional[str] = None,
-    account: Optional[str] = None,
-    stage: Optional[str] = None,
+    year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    team_id: Optional[str] = Query(None, description="Filter by team ID"),
+    account: Optional[str] = Query(None, description="Filter by account name"),
+    stage: Optional[str] = Query(None, description="Filter by stage"),
+    date_field: Optional[str] = Query('create_date', description="Date field to filter on: create_date or close_date"),
     current_user: dict = Depends(get_current_user)
 ):
     """Get dashboard statistics - real-time calculation with optional filters"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
+    
+    # Log the filter parameters received
+    logger.info(f"Dashboard stats request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}, team_id: {team_id}, account: {account}, stage: {stage}, date_field: {date_field}")
     
     # Check if any filter is applied
     has_filters = any([year, quarter, sales_rep, team_id, account, stage])
@@ -319,7 +390,7 @@ async def get_dashboard_stats(
             return serialize_doc(stats)
     
     # Calculate filtered stats in real-time
-    # Build query
+    # Build MongoDB query for non-date filters
     query = {"org_id": org_id}
     if sales_rep:
         query["owner_name"] = sales_rep
@@ -332,14 +403,10 @@ async def get_dashboard_stats(
     
     opps = await canonical_db.opportunities.find(query).to_list(10000)
     
-    # Apply date filters
-    if year:
-        opps = [o for o in opps if str(o.get("close_date", ""))[:4] == year or str(o.get("create_date", ""))[:4] == year]
-    if quarter:
-        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
-                        "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
-        months = quarter_months.get(quarter, [])
-        opps = [o for o in opps if str(o.get("close_date", ""))[5:7] in months]
+    # Apply date filters (year and quarter) using the helper function
+    opps = apply_date_filters(opps, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    
+    logger.info(f"After filtering: {len(opps)} opportunities match criteria")
     
     # Calculate stats
     total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
@@ -407,7 +474,8 @@ async def get_dashboard_stats(
             "sales_rep": sales_rep,
             "team_id": team_id,
             "account": account,
-            "stage": stage
+            "stage": stage,
+            "date_field": date_field
         }
     }
 
