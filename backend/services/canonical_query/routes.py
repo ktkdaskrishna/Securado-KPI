@@ -170,11 +170,21 @@ async def get_data_lake_stats(current_user: dict = Depends(get_current_user)):
     """Get statistics about canonical data"""
     canonical_db = get_canonical_db()
     
+    # Map display names to actual collection names
+    entity_collections = {
+        "opportunities": "opportunities",
+        "accounts": "accounts", 
+        "contacts": "contacts",
+        "users": "sales_users",  # ETL syncs to sales_users, not users
+        "activities": "activities",
+        "invoices": "invoices",
+    }
+    
     stats = {}
-    for entity in ["opportunities", "accounts", "contacts", "users"]:
-        collection = canonical_db[entity]
+    for display_name, collection_name in entity_collections.items():
+        collection = canonical_db[collection_name]
         count = await collection.count_documents({"org_id": current_user.get("org_id", "default")})
-        stats[entity] = count
+        stats[display_name] = count
     
     return {
         "org_id": current_user.get("org_id", "default"),
