@@ -102,8 +102,8 @@ export function GlobalFilterBar({ className, compact = false }) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="">All Years</SelectItem>
-          {yearOptions.map(opt => (
-            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          {(options?.years || yearOptions.map(y => y.value)).map(year => (
+            <SelectItem key={year} value={year}>{year}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -155,7 +155,7 @@ export function GlobalFilterBar({ className, compact = false }) {
                 >
                   All Sales Reps
                 </CommandItem>
-                {filterOptions.sales_reps?.map((rep) => (
+                {options?.sales_reps?.map((rep) => (
                   <CommandItem
                     key={rep}
                     value={rep}
@@ -184,7 +184,7 @@ export function GlobalFilterBar({ className, compact = false }) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="">All Teams</SelectItem>
-          {filterOptions.teams?.map(team => (
+          {options?.teams?.map(team => (
             <SelectItem key={team.id} value={team.id?.toString()}>
               {team.name}
             </SelectItem>
@@ -223,7 +223,7 @@ export function GlobalFilterBar({ className, compact = false }) {
                 >
                   All Accounts
                 </CommandItem>
-                {filterOptions.accounts?.slice(0, 50).map((acc) => (
+                {options?.accounts?.slice(0, 50).map((acc) => (
                   <CommandItem
                     key={acc.id}
                     value={acc.name}
@@ -252,7 +252,7 @@ export function GlobalFilterBar({ className, compact = false }) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="">All Stages</SelectItem>
-          {filterOptions.stages?.map(stage => (
+          {options?.stages?.map(stage => (
             <SelectItem key={stage} value={stage}>{stage}</SelectItem>
           ))}
         </SelectContent>
