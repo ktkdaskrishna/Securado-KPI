@@ -219,11 +219,15 @@ entities:
         required: false
 
   # --- Contact (Person) ---
+  # NOTE: In Odoo, res.partner stores BOTH companies and contacts
+  # For Contacts (people): filter where is_company = False
+  # parent_id links to the parent company (Account)
   contact:
     label: "Contact"
-    description: "Individual person/contact at an account"
+    description: "Individual person/contact at an account - from res.partner where is_company=False"
     source_models:
-      - res.partner
+      - res.partner  # Filter: is_company = False
+    source_filter: "is_company = False"
     primary_key:
       - org_id
       - source_system
