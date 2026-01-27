@@ -531,6 +531,7 @@ export function MappingEditor() {
                 onSelectModel={setSelectedTargetModel}
                 fieldMappings={fieldMappings}
                 selectedSourceModel={selectedSourceModel}
+                onAddMapping={addFieldMapping}
                 onRemoveMapping={removeFieldMapping}
               />
             </div>
