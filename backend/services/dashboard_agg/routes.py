@@ -6,6 +6,7 @@ Handles:
 - Manual refresh triggers
 """
 from fastapi import APIRouter, Depends
+from typing import Optional
 import logging
 from datetime import datetime
 import random
