@@ -1302,8 +1302,8 @@ export function OpportunitiesPage() {
                         <TableCell className="font-medium">{opp.name}</TableCell>
                         <TableCell>{opp.account_name || '-'}</TableCell>
                         <TableCell>
-                          <Badge className={stageColors[opp.stage] || 'bg-gray-100'}>
-                            {formatStage(opp.stage)}
+                          <Badge className={stageColors[opp.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opp.stage] || 'bg-gray-100 text-gray-700'}>
+                            {opp.custom_stage || formatStage(opp.stage)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
@@ -1312,8 +1312,8 @@ export function OpportunitiesPage() {
                         <TableCell>{opp.owner_name || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Progress value={opp.probability || 0} className="w-16 h-2" />
-                            <span className="text-sm">{opp.probability || 0}%</span>
+                            <Progress value={opp.user_probability || opp.probability || 0} className="w-16 h-2" />
+                            <span className="text-sm">{opp.user_probability || opp.probability || 0}%</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
