@@ -179,143 +179,248 @@ export function AccountsPage() {
 
       {/* 360 View Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-[500px] sm:w-[600px]">
+        <SheetContent className="w-[600px] sm:w-[700px] sm:max-w-[700px]">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              {selectedAccount?.name}
+            <SheetTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white font-medium">
+                {selectedAccount?.name?.charAt(0) || '?'}
+              </div>
+              <div>
+                <span className="text-lg">{selectedAccount?.name}</span>
+                {selectedAccount?.city && (
+                  <p className="text-sm font-normal text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {[selectedAccount.city, selectedAccount.country].filter(Boolean).join(', ')}
+                  </p>
+                )}
+              </div>
             </SheetTitle>
           </SheetHeader>
           
           {account360 ? (
-            <ScrollArea className="h-[calc(100vh-100px)] mt-6">
-              <div className="space-y-6 pr-4">
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-500">Total Value</p>
-                          <p className="text-xl font-bold">{formatCurrency(account360.total_value || 0)}</p>
-                        </div>
-                        <DollarSign className="h-8 w-8 text-emerald-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-500">Opportunities</p>
-                          <p className="text-xl font-bold">{account360.opportunities_count || 0}</p>
-                        </div>
-                        <TrendingUp className="h-8 w-8 text-cyan-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Contact Info */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Contact Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {account360.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span>{account360.phone}</span>
-                      </div>
-                    )}
-                    {account360.email && (
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <span>{account360.email}</span>
-                      </div>
-                    )}
-                    {account360.website && (
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4 text-gray-400" />
-                        <a href={account360.website} target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">
-                          {account360.website}
-                        </a>
-                      </div>
-                    )}
+            <div className="mt-6">
+              {/* Stats Row */}
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                <Card className="bg-emerald-50 border-emerald-200">
+                  <CardContent className="pt-3 pb-3">
+                    <p className="text-xs text-emerald-600">Pipeline Value</p>
+                    <p className="text-lg font-bold text-emerald-700">{formatCurrency(account360.total_value || 0)}</p>
                   </CardContent>
                 </Card>
-
-                {/* Contacts */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Key Contacts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {(account360.contacts || []).map((contact, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 rounded bg-gray-50">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-sm">
-                            {contact.name?.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{contact.name}</p>
-                            <p className="text-xs text-gray-500">{contact.title}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="pt-3 pb-3">
+                    <p className="text-xs text-blue-600">Opportunities</p>
+                    <p className="text-lg font-bold text-blue-700">{account360.opportunities_count || 0}</p>
                   </CardContent>
                 </Card>
-
-                {/* Opportunities */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Opportunities</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {(account360.opportunities || []).length === 0 ? (
-                        <p className="text-gray-500 text-sm">No opportunities</p>
-                      ) : (
-                        (account360.opportunities || []).map((opp, i) => (
-                          <div key={i} className="flex items-center justify-between p-2 rounded bg-gray-50">
-                            <div>
-                              <p className="font-medium text-sm">{opp.name}</p>
-                              <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
-                            </div>
-                            <span className="font-mono text-sm">{formatCurrency(opp.amount || 0)}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                <Card className="bg-amber-50 border-amber-200">
+                  <CardContent className="pt-3 pb-3">
+                    <p className="text-xs text-amber-600">Invoiced</p>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(account360.total_invoiced || 0)}</p>
                   </CardContent>
                 </Card>
-
-                {/* Activities */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Recent Activities</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {(account360.activities || []).length === 0 ? (
-                        <p className="text-gray-500 text-sm">No activities</p>
-                      ) : (
-                        (account360.activities || []).map((act, i) => (
-                          <div key={i} className="flex items-center gap-3 p-2 rounded bg-gray-50">
-                            <Activity className="h-4 w-4 text-gray-400" />
-                            <div>
-                              <p className="font-medium text-sm">{act.subject}</p>
-                              <p className="text-xs text-gray-500">{act.type}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="pt-3 pb-3">
+                    <p className="text-xs text-red-600">Outstanding</p>
+                    <p className="text-lg font-bold text-red-700">{formatCurrency(account360.total_outstanding || 0)}</p>
                   </CardContent>
                 </Card>
               </div>
-            </ScrollArea>
+
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="contacts">Contacts ({account360.contacts?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="opportunities">Deals ({account360.opportunities_count || 0})</TabsTrigger>
+                  <TabsTrigger value="invoices">Invoices ({account360.invoices_count || 0})</TabsTrigger>
+                </TabsList>
+                
+                <ScrollArea className="h-[calc(100vh-320px)] mt-4">
+                  <TabsContent value="overview" className="space-y-4 pr-4">
+                    {/* Contact Info */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Company Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {account360.phone && (
+                          <div className="flex items-center gap-3">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <span>{account360.phone}</span>
+                          </div>
+                        )}
+                        {account360.email && (
+                          <div className="flex items-center gap-3">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <span>{account360.email}</span>
+                          </div>
+                        )}
+                        {account360.website && (
+                          <div className="flex items-center gap-3">
+                            <Globe className="h-4 w-4 text-muted-foreground" />
+                            <a href={account360.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              {account360.website}
+                            </a>
+                          </div>
+                        )}
+                        {account360.address && (
+                          <div className="flex items-center gap-3">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span>{account360.address}</span>
+                          </div>
+                        )}
+                        {account360.industry && (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <Badge variant="outline">{account360.industry}</Badge>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Recent Activity */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Activity className="h-4 w-4" />
+                          Recent Activities
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(account360.activities || []).length === 0 ? (
+                          <p className="text-muted-foreground text-sm">No recent activities</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(account360.activities || []).slice(0, 5).map((act, i) => (
+                              <div key={i} className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                                <Activity className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium text-sm">{act.subject}</p>
+                                  <p className="text-xs text-muted-foreground">{act.type}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="contacts" className="space-y-2 pr-4">
+                    {(account360.contacts || []).length === 0 ? (
+                      <Card>
+                        <CardContent className="pt-6 text-center">
+                          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">No contacts found for this account</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      (account360.contacts || []).map((contact, i) => (
+                        <Card key={i} className="hover:bg-muted/50 transition-colors">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-sm font-medium">
+                                {contact.name?.charAt(0) || '?'}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">{contact.name}</p>
+                                {contact.title && <p className="text-sm text-muted-foreground">{contact.title}</p>}
+                              </div>
+                              <div className="text-right text-sm">
+                                {contact.email && (
+                                  <p className="text-muted-foreground">{contact.email}</p>
+                                )}
+                                {contact.phone && (
+                                  <p className="text-muted-foreground">{contact.phone}</p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="opportunities" className="space-y-2 pr-4">
+                    {(account360.opportunities || []).length === 0 ? (
+                      <Card>
+                        <CardContent className="pt-6 text-center">
+                          <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">No opportunities for this account</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      (account360.opportunities || []).map((opp, i) => (
+                        <Card key={i} className="hover:bg-muted/50 transition-colors">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{opp.name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
+                                  {opp.probability && (
+                                    <span className="text-xs text-muted-foreground">{opp.probability}% prob.</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono font-medium">{formatCurrency(opp.amount || 0)}</p>
+                                {opp.owner_name && (
+                                  <p className="text-xs text-muted-foreground">{opp.owner_name}</p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="invoices" className="space-y-2 pr-4">
+                    {(account360.invoices || []).length === 0 ? (
+                      <Card>
+                        <CardContent className="pt-6 text-center">
+                          <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">No invoices for this account</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      (account360.invoices || []).map((inv, i) => (
+                        <Card key={i} className="hover:bg-muted/50 transition-colors">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium font-mono">{inv.invoice_number || 'INV-' + (i + 1)}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge 
+                                    variant={inv.status === 'paid' ? 'default' : inv.status === 'partial' ? 'secondary' : 'destructive'}
+                                    className="text-xs"
+                                  >
+                                    {inv.status || 'pending'}
+                                  </Badge>
+                                  {inv.invoice_date && (
+                                    <span className="text-xs text-muted-foreground">{inv.invoice_date}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono font-medium">{formatCurrency(inv.amount || 0)}</p>
+                                {inv.due_date && (
+                                  <p className="text-xs text-muted-foreground">Due: {inv.due_date}</p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </TabsContent>
+                </ScrollArea>
+              </Tabs>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-64">
               <Skeleton className="h-32 w-full" />
