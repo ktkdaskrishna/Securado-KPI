@@ -465,7 +465,50 @@ The mock receivables endpoint has been replaced with real invoice data from Odoo
 
 ---
 
-## Phase 16: Dashboard & Data Display Fixes (COMPLETED ✅)
+## Phase 17: AI Sales Analytics & Data Fixes (COMPLETED ✅)
+
+### Overview
+Built a comprehensive AI-powered Sales Analytics module and fixed data display issues.
+
+### Activities Data Fix (COMPLETED ✅)
+- ✅ **Fixed Activity Count**: Changed from 1001 (project tasks) to 1 (actual CRM activity)
+- ✅ **CRM-Only Filter**: Activities now only show `mail.activity` where `res_model='crm.lead'`
+- ✅ **Removed Project Tasks**: `project.task` records no longer pollute CRM activities
+
+### AI Sales Analytics Page (NEW - COMPLETED ✅)
+Built a full analytics dashboard at `/analytics` with:
+
+**Summary Cards:**
+- Total Pipeline value
+- Won Value
+- Win Rate
+- Sales Team count
+
+**5 Analysis Tabs:**
+1. **Conversion Funnel** - Visual funnel (Lead → Qualified → Proposal → Negotiation → Won) with conversion rates
+2. **Rep Performance** - Ranked leaderboard with medals, Win Rate, Avg Deal, Pipeline per rep
+3. **Teams** - Team performance comparison
+4. **Account Health** - Engagement scores (Healthy/At Risk/Dormant)
+5. **AI Insights** - GPT-5.2 powered analysis with actionable recommendations
+
+**AI Integration:**
+- Uses Emergent LLM key with GPT-5.2
+- Generates real-time insights based on sales data
+- Example insights generated:
+  - Pipeline bottleneck identification (75.7% leads, only 8.5% qualified)
+  - Data quality gaps (100% win rate suggests missing lost deals)
+  - Revenue concentration analysis
+  - Capacity risk (top 5 reps = 74.1% of wins)
+
+### Code Changes
+- `/app/backend/services/ai_analytics/` - New AI analytics service
+- `/app/backend/services/ai_analytics/routes.py` - 6 API endpoints
+- `/app/frontend/src/components/crm/AnalyticsPage.js` - Full analytics UI
+- `/app/frontend/src/lib/api.js` - Added analyticsAPI
+- `/app/frontend/src/App.js` - Added /analytics route
+- `/app/frontend/src/components/layout/Sidebar.js` - Added AI Analytics nav item
+- `/app/backend/services/dashboard_agg/routes.py` - Fixed activity stats
+- `/app/backend/services/crm_sales/routes.py` - Fixed activities API to filter CRM-only
 
 ### Overview
 Fixed critical data display issues across Dashboard, Activities, and Accounts pages to show live, real data from Odoo sync.
