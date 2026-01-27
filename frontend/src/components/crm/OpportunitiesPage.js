@@ -872,69 +872,6 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                 </CardContent>
               </Card>
             </TabsContent>
-                                <SelectItem value="1">Full (100%)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      ))}
-                      {bluesheetForm.buying_influences.length === 0 && (
-                        <p className="text-sm text-gray-500 text-center py-4">
-                          No buying influences added. Add roles above.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Win Strategy */}
-                  <div className="space-y-2">
-                    <Label>Win Strategy</Label>
-                    <Textarea
-                      value={bluesheetForm.win_strategy}
-                      onChange={(e) => setBluesheetForm({...bluesheetForm, win_strategy: e.target.value})}
-                      placeholder="Describe your strategy to win this opportunity..."
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <Button 
-                    onClick={handleSaveBluesheet} 
-                    disabled={savingBluesheet}
-                    className="w-full"
-                    data-testid="bluesheet-save-button"
-                  >
-                    {savingBluesheet ? 'Saving...' : 'Save & Calculate Probability'}
-                  </Button>
-                  
-                  {bluesheet?.calculated_probability && (
-                    <Card className="bg-gray-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">Calculated Probability</span>
-                          <span className={`text-xl font-bold ${riskColors[bluesheet.calculated_probability.risk_level].split(' ')[0]}`}>
-                            {bluesheet.calculated_probability.probability}%
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div className="text-center p-2 bg-white rounded">
-                            <div className="text-gray-500">Stage</div>
-                            <div className="font-medium">{bluesheet.calculated_probability.breakdown?.stage_score}%</div>
-                          </div>
-                          <div className="text-center p-2 bg-white rounded">
-                            <div className="text-gray-500">Influences</div>
-                            <div className="font-medium">{bluesheet.calculated_probability.breakdown?.buying_influences_score}%</div>
-                          </div>
-                          <div className="text-center p-2 bg-white rounded">
-                            <div className="text-gray-500">Competition</div>
-                            <div className="font-medium">{bluesheet.calculated_probability.breakdown?.competition_score}%</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
             
             {/* Activities Tab */}
             <TabsContent value="activities" className="mt-4">
