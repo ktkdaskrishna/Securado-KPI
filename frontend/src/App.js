@@ -24,6 +24,7 @@ import { KPIsPage } from './components/crm/KPIsPage';
 import { ProfilePage } from './components/crm/ProfilePage';
 import { InvoicesPage } from './components/crm/InvoicesPage';
 import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
+import AnalyticsPage from './components/crm/AnalyticsPage';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
