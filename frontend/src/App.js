@@ -130,7 +130,7 @@ function AppRoutes() {
 
         {/* ETL Platform */}
         <Route path="/etl/connections" element={<ConnectionsPage />} />
-        <Route path="/etl/mappings" element={<MappingsPage />} />
+        <Route path="/etl/mappings" element={<MappingEditor />} />
         <Route path="/etl/pipelines" element={<PipelinesPage />} />
         <Route path="/etl/runs" element={<RunsPage />} />
         <Route path="/etl/data-lake" element={<DataLakePage />} />
