@@ -9,6 +9,7 @@ Consumes pipeline run commands and executes:
 """
 import asyncio
 import logging
+import traceback
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import xmlrpc.client
