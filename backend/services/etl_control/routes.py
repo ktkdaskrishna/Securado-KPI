@@ -495,13 +495,14 @@ async def get_model_fields(
     
     try:
         if conn["type"] == "odoo":
-            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+            # Use SSL-safe proxy for Odoo connections
+            common = create_odoo_proxy(conn["url"], "common")
             uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
             
             if not uid:
                 raise HTTPException(status_code=401, detail="Odoo authentication failed")
             
-            models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+            models_proxy = create_odoo_proxy(conn["url"], "object")
             
             fields = models_proxy.execute_kw(
                 conn["database"], uid, conn["api_key"],
