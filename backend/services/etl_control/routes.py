@@ -1161,3 +1161,110 @@ async def verify_mapping_schema(
     logger.info(f"Mapping {mapping_id} verification: {verification_results['status']} - {len(verification_results['errors'])} errors, {len(verification_results['warnings'])} warnings")
     
     return verification_results
+
+
+# ==================== DATA MODEL ====================
+
+data_model_router = APIRouter(prefix="/data-model", tags=["data-model"])
+
+@data_model_router.get("")
+async def get_data_model(current_user: dict = Depends(get_current_user)):
+    """Get the current data model graph JSON"""
+    import os
+    import json
+    
+    model_path = os.path.join(
+        os.path.dirname(__file__), 
+        "..", 
+        "data_modeling", 
+        "sales_model.graph.json"
+    )
+    
+    try:
+        with open(model_path, 'r') as f:
+            model_data = json.load(f)
+        return model_data
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Data model not found")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Invalid data model JSON")
+
+
+@data_model_router.put("")
+async def save_data_model(
+    model_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Save updated data model graph JSON"""
+    import os
+    import json
+    
+    model_path = os.path.join(
+        os.path.dirname(__file__), 
+        "..", 
+        "data_modeling", 
+        "sales_model.graph.json"
+    )
+    
+    try:
+        with open(model_path, 'w') as f:
+            json.dump(model_data, f, indent=2)
+        return {"status": "success", "message": "Data model saved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save data model: {str(e)}")
+
+
+@data_model_router.post("/regenerate")
+async def regenerate_data_model(current_user: dict = Depends(get_current_user)):
+    """Regenerate graph.json and .mmd from YAML spec"""
+    from services.data_modeling.model_generator import ModelGenerator
+    
+    try:
+        generator = ModelGenerator()
+        outputs = generator.save_outputs()
+        return {
+            "status": "success",
+            "message": "Data model regenerated from YAML",
+            "files": outputs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to regenerate model: {str(e)}")
+
+
+@data_model_router.get("/yaml")
+async def get_data_model_yaml(current_user: dict = Depends(get_current_user)):
+    """Get the YAML spec (source of truth)"""
+    import os
+    
+    yaml_path = os.path.join(
+        os.path.dirname(__file__), 
+        "..", 
+        "data_modeling", 
+        "sales_model.yml"
+    )
+    
+    try:
+        with open(yaml_path, 'r') as f:
+            return {"yaml": f.read()}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="YAML spec not found")
+
+
+@data_model_router.get("/mermaid")
+async def get_data_model_mermaid(current_user: dict = Depends(get_current_user)):
+    """Get the Mermaid ER diagram"""
+    import os
+    
+    mmd_path = os.path.join(
+        os.path.dirname(__file__), 
+        "..", 
+        "data_modeling", 
+        "sales_model.mmd"
+    )
+    
+    try:
+        with open(mmd_path, 'r') as f:
+            return {"mermaid": f.read()}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Mermaid diagram not found")
+
