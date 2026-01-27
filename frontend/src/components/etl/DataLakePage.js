@@ -12,7 +12,7 @@ import { Database, RefreshCw, Search, FileJson } from 'lucide-react';
 import { Input } from '../ui/input';
 import { toast } from 'sonner';
 
-const ENTITIES = ['opportunities', 'accounts', 'contacts', 'sales_users', 'activities', 'invoices'];
+const ENTITIES = ['opportunities', 'accounts', 'contacts', 'users', 'activities', 'invoices'];
 
 export function DataLakePage() {
   const [selectedEntity, setSelectedEntity] = useState('opportunities');
