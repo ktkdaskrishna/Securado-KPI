@@ -25,18 +25,36 @@ export function GlobalFilterBar({ className, compact = false }) {
     updateFilter, 
     resetFilters, 
     hasActiveFilters,
-    getFilterSummary
+    getFilterSummary,
+    loadFilterOptions
   } = useGlobalFilters();
 
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [repOpen, setRepOpen] = React.useState(false);
 
-  if (loading || !filterOptions) {
+  // Load filter options if not loaded yet
+  React.useEffect(() => {
+    if (!filterOptions && !loading) {
+      loadFilterOptions();
+    }
+  }, [filterOptions, loading, loadFilterOptions]);
+
+  if (loading) {
     return (
       <div className={cn("flex items-center gap-2 p-3 bg-muted/50 rounded-lg animate-pulse", className)}>
+        <Filter className="h-4 w-4 text-muted-foreground" />
         <div className="h-9 w-24 bg-muted rounded"></div>
         <div className="h-9 w-24 bg-muted rounded"></div>
         <div className="h-9 w-24 bg-muted rounded"></div>
+      </div>
+    );
+  }
+
+  if (!filterOptions) {
+    return (
+      <div className={cn("flex items-center gap-2 p-3 bg-muted/30 rounded-lg border border-dashed", className)}>
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Filters loading...</span>
       </div>
     );
   }
