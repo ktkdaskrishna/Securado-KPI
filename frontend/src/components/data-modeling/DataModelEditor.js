@@ -109,7 +109,7 @@ const EntityNode = ({ data }) => {
   );
 };
 
-// Node types registry
+// Node types registry - defined outside component to avoid re-creation
 const nodeTypes = {
   entity: EntityNode,
 };
