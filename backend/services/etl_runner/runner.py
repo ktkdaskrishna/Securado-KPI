@@ -403,10 +403,23 @@ class ETLRunner:
         source_type: str,
         log
     ) -> tuple:
-        """Transform records using mapping rules"""
+        """Transform records using mapping rules
+        
+        Handles Odoo relational fields which return as [id, 'name'] tuples.
+        Transform types:
+        - direct: Pass value as-is (or extract appropriately from tuple)
+        - extract_id: Extract ID from [id, 'name'] tuple
+        - extract_name: Extract name from [id, 'name'] tuple
+        - to_float: Convert to float
+        - to_int: Convert to integer
+        - to_bool: Convert to boolean
+        """
         transformed = []
         errors = []
         max_write_date = None
+        target_entity = mapping.get("target_entity", "record")
+        
+        log(f"Transforming {len(records)} records to {target_entity}")
         
         for record in records:
             try:
@@ -422,6 +435,9 @@ class ETLRunner:
                     if max_write_date is None or write_date > max_write_date:
                         max_write_date = write_date
                 
+                # Track if canonical_id is mapped
+                canonical_id_mapped = False
+                
                 # Apply mapping rules
                 for rule in mapping.get("mappings", []):
                     source_field = rule.get("source_field")
@@ -433,37 +449,74 @@ class ETLRunner:
                     
                     value = record.get(source_field)
                     
-                    # Handle Odoo relational fields
-                    if isinstance(value, (list, tuple)) and len(value) >= 2:
-                        if transform in ["id", "extract_id"]:
-                            value = str(value[0])
-                        elif transform in ["name", "extract_name"]:
-                            value = value[1]
-                        else:
-                            value = value[1]  # Default to name
+                    # Track canonical_id mapping
+                    if target_field == "canonical_id":
+                        canonical_id_mapped = True
                     
-                    # Apply transforms
-                    if transform == "to_float" and value is not None:
-                        value = float(value or 0)
-                    elif transform == "to_int" and value is not None:
-                        value = int(value or 0)
-                    elif transform == "to_bool":
-                        value = bool(value)
+                    # Handle None/False values
+                    if value is None or value is False:
+                        # For numeric fields, use 0 or None based on transform
+                        if transform in ["to_float", "to_int"]:
+                            value = 0
+                        else:
+                            result[target_field] = None
+                            continue
+                    
+                    # Handle Odoo relational fields which return as [id, 'name'] tuples
+                    if isinstance(value, (list, tuple)) and len(value) >= 2:
+                        if transform == "extract_id":
+                            value = str(value[0])
+                        elif transform == "extract_name":
+                            value = str(value[1]) if value[1] else None
+                        elif transform == "direct":
+                            # For direct copy of relational field, default to name
+                            # unless the target is an ID field (canonical_id, *_id)
+                            if target_field == "canonical_id" or target_field.endswith("_id"):
+                                value = str(value[0])
+                            else:
+                                value = str(value[1]) if value[1] else None
+                        else:
+                            # Default: extract name for display fields
+                            value = str(value[1]) if value[1] else None
+                    
+                    # Apply type transforms
+                    try:
+                        if transform == "to_float":
+                            value = float(value) if value else 0.0
+                        elif transform == "to_int":
+                            value = int(float(value)) if value else 0
+                        elif transform == "to_bool":
+                            value = bool(value)
+                        elif transform == "direct":
+                            # Keep as-is but ensure strings for IDs
+                            if target_field == "canonical_id" or target_field.endswith("_id"):
+                                value = str(value) if value else None
+                    except (ValueError, TypeError) as e:
+                        log(f"Transform error for {source_field}->{target_field}: {e}", "warning")
+                        value = None
                     
                     result[target_field] = value
                 
-                # Generate canonical ID
-                result["canonical_id"] = f"{source_type}_{mapping.get('target_entity', 'record')}_{record.get('id')}"
+                # Generate canonical_id only if not mapped from source
+                if not canonical_id_mapped or not result.get("canonical_id"):
+                    result["canonical_id"] = f"{source_type}_{target_entity}_{record.get('id')}"
+                    log(f"Auto-generated canonical_id: {result['canonical_id']}", "debug")
+                
+                # Ensure required fields have values
+                if not result.get("canonical_id"):
+                    raise ValueError("Missing canonical_id after transformation")
                 
                 transformed.append(result)
                 
             except Exception as e:
+                log(f"Transform error for record {record.get('id')}: {str(e)}", "error")
                 errors.append({
                     "record_id": record.get('id'),
                     "error": str(e),
                     "raw_data": record
                 })
         
+        log(f"Transformation complete: {len(transformed)} success, {len(errors)} errors")
         return transformed, errors, max_write_date
     
     async def _load(
