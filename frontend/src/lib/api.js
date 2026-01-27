@@ -230,3 +230,14 @@ export const configAPI = {
   getWidgets: () => api.get('/config/widgets'),
   getNavigation: () => api.get('/config/navigation'),
 };
+
+// AI Analytics APIs
+export const analyticsAPI = {
+  getOverview: (params) => api.get('/analytics/overview', { params }),
+  getConversionFunnel: (params) => api.get('/analytics/conversion-funnel', { params }),
+  getRepPerformance: (params) => api.get('/analytics/rep-performance', { params }),
+  getTeamPerformance: (params) => api.get('/analytics/team-performance', { params }),
+  getAccountHealth: (params) => api.get('/analytics/account-health', { params }),
+  getAIInsights: () => api.post('/analytics/ai-insights'),
+  getFilters: () => api.get('/analytics/filters'),
+};
