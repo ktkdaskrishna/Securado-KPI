@@ -135,8 +135,21 @@ export function DashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">Overview of your sales performance</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            Dashboard
+            {hasActiveFilters() && (
+              <Badge variant="secondary" className="text-xs font-normal flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                Filtered
+              </Badge>
+            )}
+          </h1>
+          <p className="text-gray-500">
+            {hasActiveFilters() 
+              ? `Showing filtered data (${stats?.total_opportunities || 0} opportunities)`
+              : 'Overview of your sales performance'
+            }
+          </p>
         </div>
         <Button
           onClick={handleRefresh}
