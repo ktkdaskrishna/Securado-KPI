@@ -159,16 +159,21 @@ class DashboardAggregator:
             
             win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
             
-            # Get activities from CANONICAL DB (synced from Odoo)
-            canonical_activities = await canonical_db.activities.find({"org_id": org_id}).to_list(10000)
+            # Get CRM activities ONLY from CANONICAL DB (synced from Odoo)
+            # Only mail.activity where res_model='crm.lead' - NOT project tasks
+            canonical_activities = await canonical_db.activities.find({
+                "org_id": org_id,
+                "res_model": "crm.lead"  # Only CRM-related activities
+            }).to_list(10000)
+            
             # Also get app activities (manually created)
             app_activities = await app_db.activities.find({"org_id": org_id}).to_list(10000)
             all_activities = canonical_activities + app_activities
             
-            # Get tasks from canonical DB (project tasks)
-            tasks = await canonical_db.tasks.find({"org_id": org_id}).to_list(10000)
+            # NOTE: Project tasks are NOT included in CRM Activities dashboard
+            # They are separate from CRM workflow
             
-            # Activity stats - count by type
+            # Activity stats - count by type (CRM activities only)
             activity_type_map = defaultdict(int)
             for act in all_activities:
                 act_type = (act.get("activity_type") or act.get("type") or "").lower()
@@ -181,17 +186,13 @@ class DashboardAggregator:
                 else:
                     activity_type_map["tasks"] += 1
             
-            # Add tasks count
-            activity_type_map["tasks"] += len(tasks)
-            
             activity_stats = {
                 "calls": activity_type_map["calls"],
                 "emails": activity_type_map["emails"],
                 "meetings": activity_type_map["meetings"],
                 "tasks": activity_type_map["tasks"],
-                "total": len(all_activities) + len(tasks),
+                "total": len(all_activities),
                 "completed": len([a for a in all_activities if a.get("state") == "done" or a.get("status") == "completed"])
-                            + len([t for t in tasks if t.get("state") in ["1_done", "done"]])
             }
             
             # Recent activities - combine and sort
