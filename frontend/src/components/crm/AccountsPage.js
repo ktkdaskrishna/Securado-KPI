@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { crmAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
+import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -13,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../u
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity, Plus, MapPin, Users, FileText, Receipt } from 'lucide-react';
+import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity, Plus, MapPin, Users, FileText, Receipt, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function AccountsPage() {
@@ -24,14 +25,22 @@ export function AccountsPage() {
   const [account360, setAccount360] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const { formatCurrency, currency } = useCurrency();
+  const { filters, hasActiveFilters, getQueryParams } = useGlobalFilters();
 
+  // Load accounts when filters change
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.team]);
 
   const loadAccounts = async () => {
     try {
-      const res = await crmAPI.listAccounts();
+      // Build filter params from global filters
+      const params = {};
+      if (filters.year) params.year = filters.year;
+      if (filters.quarter) params.quarter = filters.quarter;
+      if (filters.salesRep) params.sales_rep = filters.salesRep;
+      
+      const res = await crmAPI.listAccounts(params);
       // Enrich accounts with currency if not present
       const enrichedAccounts = (res.data || []).map(acc => ({
         ...acc,
