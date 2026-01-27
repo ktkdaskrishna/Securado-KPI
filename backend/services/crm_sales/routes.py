@@ -594,13 +594,22 @@ async def update_bluesheet(
     )
     
     # Update override with calculated probability
+    import uuid
+    override_id = f"override_{opp_id}"
     await app_db.overrides.update_one(
         {"canonical_id": opp_id, "org_id": current_user.get("org_id", "default")},
         {
             "$set": {
+                "id": override_id,
+                "canonical_id": opp_id,
+                "org_id": current_user.get("org_id", "default"),
                 "probability": round(probability_result["probability"]),
+                "bluesheet_probability": probability_result["probability"],
                 "updated_at": now_utc(),
                 "updated_by": current_user["id"]
+            },
+            "$setOnInsert": {
+                "created_at": now_utc()
             }
         },
         upsert=True
