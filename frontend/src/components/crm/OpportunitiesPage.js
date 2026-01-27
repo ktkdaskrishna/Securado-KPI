@@ -301,8 +301,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
           <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
             <div className="flex items-center justify-between">
               <div className="text-center flex-1">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Salesperson Estimate</p>
-                <p className="text-2xl font-bold text-blue-600">{opportunity.probability || 0}%</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Salesperson Input</p>
+                <p className="text-2xl font-bold text-blue-600">{opportunity.user_probability || opportunity.probability || 0}%</p>
               </div>
               <div className="h-12 w-px bg-gray-200"></div>
               <div className="text-center flex-1">
@@ -312,8 +312,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
               <div className="h-12 w-px bg-gray-200"></div>
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Variance</p>
-                <p className={`text-2xl font-bold ${Math.abs((opportunity.probability || 0) - (opportunity.automated_probability || 0)) > 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {Math.abs((opportunity.probability || 0) - (opportunity.automated_probability || 0)).toFixed(1)}%
+                <p className={`text-2xl font-bold ${Math.abs((opportunity.user_probability || opportunity.probability || 0) - (opportunity.automated_probability || 0)) > 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {Math.abs((opportunity.user_probability || opportunity.probability || 0) - (opportunity.automated_probability || 0)).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -322,10 +322,14 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
         
         <div className="mt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="bluesheet">Bluesheet</TabsTrigger>
               <TabsTrigger value="activities">Activities</TabsTrigger>
+              <TabsTrigger value="logs">
+                Logs
+                {logs.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{logs.length}</Badge>}
+              </TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
             
