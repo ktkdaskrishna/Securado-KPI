@@ -703,8 +703,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
             </TabsContent>
             
             {/* Activities Tab */}
-            <TabsContent value="activities" className="mt-4 space-y-4">
-              <div className="flex justify-between items-center">
+            <TabsContent value="activities" className="mt-4">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="font-medium text-sm">Activity Stream</h3>
                 <Badge variant="secondary">{activities.length} activities</Badge>
               </div>
@@ -717,39 +717,114 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                       <p className="text-sm">No activities yet</p>
                     </div>
                   ) : (
-                    activities.map((activity) => (
-                      <Card key={activity.id}>
-                        <CardContent className="p-3">
-                          <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-full ${
-                              activity.type === 'call' ? 'bg-blue-100' :
-                              activity.type === 'email' ? 'bg-purple-100' :
-                              activity.type === 'meeting' ? 'bg-amber-100' : 'bg-gray-100'
-                            }`}>
-                              {activity.type === 'call' ? <Phone className="h-4 w-4" /> :
-                               activity.type === 'email' ? <Mail className="h-4 w-4" /> :
-                               activity.type === 'meeting' ? <Calendar className="h-4 w-4" /> :
-                               <Activity className="h-4 w-4" />}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{activity.subject}</p>
-                              {activity.description && (
-                                <p className="text-xs text-gray-500 mt-1">{activity.description}</p>
-                              )}
-                              <div className="flex items-center gap-2 mt-2">
-                                <Clock className="h-3 w-3 text-gray-400" />
-                                <span className="text-xs text-gray-400">
-                                  {activity.created_at ? new Date(activity.created_at).toLocaleDateString() : 'Unknown'}
-                                </span>
-                                <Badge variant={activity.completed ? 'default' : 'secondary'} className="text-xs">
-                                  {activity.status || 'pending'}
-                                </Badge>
+                    activities.map((activity) => {
+                      // Calculate urgency based on deadline
+                      const deadline = activity.date_deadline ? new Date(activity.date_deadline) : null;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      
+                      let urgency = 'future';
+                      let urgencyLabel = '';
+                      let urgencyClass = 'bg-gray-100 text-gray-600';
+                      
+                      if (deadline) {
+                        const deadlineDate = new Date(deadline);
+                        deadlineDate.setHours(0, 0, 0, 0);
+                        const diffDays = Math.floor((deadlineDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays < 0) {
+                          urgency = 'overdue';
+                          urgencyLabel = `${Math.abs(diffDays)} days overdue`;
+                          urgencyClass = 'bg-red-100 text-red-700 border-red-200';
+                        } else if (diffDays === 0) {
+                          urgency = 'today';
+                          urgencyLabel = 'Today';
+                          urgencyClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                        } else if (diffDays === 1) {
+                          urgency = 'tomorrow';
+                          urgencyLabel = 'Tomorrow';
+                          urgencyClass = 'bg-blue-100 text-blue-700 border-blue-200';
+                        } else {
+                          urgencyLabel = deadlineDate.toLocaleDateString();
+                          urgencyClass = 'bg-gray-100 text-gray-600';
+                        }
+                      }
+                      
+                      // Strip HTML from description
+                      const cleanDescription = activity.description 
+                        ? activity.description.replace(/<[^>]*>/g, '').trim() 
+                        : '';
+                      
+                      // Get activity type icon and color
+                      const typeConfig = {
+                        call: { icon: Phone, color: 'bg-blue-100 text-blue-600' },
+                        email: { icon: Mail, color: 'bg-purple-100 text-purple-600' },
+                        meeting: { icon: Calendar, color: 'bg-amber-100 text-amber-600' },
+                        to_do: { icon: CheckCircle, color: 'bg-emerald-100 text-emerald-600' },
+                        todo: { icon: CheckCircle, color: 'bg-emerald-100 text-emerald-600' },
+                      };
+                      const config = typeConfig[activity.type] || { icon: Activity, color: 'bg-gray-100 text-gray-600' };
+                      const IconComponent = config.icon;
+                      
+                      return (
+                        <Card key={activity.id} className={`border-l-4 ${urgency === 'overdue' ? 'border-l-red-500' : urgency === 'today' ? 'border-l-amber-500' : 'border-l-gray-300'}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-full ${config.color}`}>
+                                <IconComponent className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <p className="font-medium text-sm">{activity.subject}</p>
+                                    {activity.assigned_user && (
+                                      <p className="text-xs text-gray-500 mt-0.5">
+                                        Assigned to: <span className="font-medium">{activity.assigned_user}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Badge className={`text-xs ${urgencyClass}`}>
+                                    {urgencyLabel || 'Scheduled'}
+                                  </Badge>
+                                </div>
+                                
+                                {cleanDescription && (
+                                  <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">{cleanDescription}</p>
+                                )}
+                                
+                                <div className="flex items-center justify-between mt-3">
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Due: {deadline ? deadline.toLocaleDateString() : 'No deadline'}
+                                    </span>
+                                    {activity.source_system && (
+                                      <Badge variant="outline" className="text-xs">
+                                        From {activity.source_system}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Action Buttons */}
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-emerald-600 hover:bg-emerald-50">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Done
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-gray-500 hover:bg-gray-100">
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:bg-red-50">
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               </ScrollArea>
