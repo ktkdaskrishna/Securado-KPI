@@ -431,8 +431,8 @@ async def get_dashboard_stats(
     
     # Leads stats
     total_leads = len(leads_only)
-    new_leads = len([l for l in leads_only if "new" in (l.get("stage") or "").lower() or "enquiry" in (l.get("stage") or "").lower()])
-    qualified_leads = len([l for l in leads_only if "qualified" in (l.get("stage") or "").lower()])
+    new_leads = len([lead for lead in leads_only if "new" in (lead.get("stage") or "").lower() or "enquiry" in (lead.get("stage") or "").lower()])
+    qualified_leads = len([lead for lead in leads_only if "qualified" in (lead.get("stage") or "").lower()])
     
     # Build leaderboard from filtered opportunities
     owner_values = defaultdict(float)
