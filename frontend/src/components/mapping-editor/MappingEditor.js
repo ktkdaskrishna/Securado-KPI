@@ -275,38 +275,86 @@ export function MappingEditor() {
       }
     }
     
-    // PRECISE Odoo field mappings based on official documentation
+    // PRECISE Odoo field mappings based on official documentation + custom fields (x_studio_*)
     // These are exact mappings from Odoo model fields to canonical fields
     const odooFieldMappings = {
-      // crm.lead -> opportunity
-      'amount': ['expected_revenue'],  // Odoo uses expected_revenue for deal value
+      // crm.lead -> opportunity (Core fields)
+      'amount': ['expected_revenue'],
+      'sale_value': ['x_studio_sale_value'],  // Custom: Sale Value
+      'budget_value': ['x_studio_budget_value'],  // Custom: Budget Value
       'probability': ['probability', 'automated_probability'],
+      'automated_probability': ['automated_probability'],
       'stage': ['stage_id'],
       'stage_id': ['stage_id'],
-      'close_date': ['date_deadline'],  // Odoo: date_deadline = Expected Closing
-      'date_open': ['date_open'],  // Odoo: date_open = Assignment Date
-      'is_won': ['won_status'],  // Transform: won_status === 'won'
-      'is_closed': ['won_status'],  // Transform: won_status !== 'pending'
-      'contact_email': ['email_from'],  // Odoo: email_from for lead contact
+      'close_date': ['date_deadline'],
+      'date_open': ['date_open'],
+      'date_closed': ['date_closed'],
+      'is_won': ['won_status'],
+      'is_closed': ['won_status'],
+      'contact_email': ['email_from'],
       'contact_phone': ['phone'],
-      'lost_reason': ['lost_reason'],
+      'contact_mobile': ['contact_mobile'],
+      'contact_name': ['contact_name'],
+      'contact_job_position': ['contact_jobposition'],
+      'customer_name': ['partner_name'],
+      'description': ['description'],
+      'descriptions': ['x_studio_descriptions'],
+      'priority': ['priority'],
+      'active': ['active'],
+      'lost_reason': ['lost_reason_id'],
+      'lost_reason_detail': ['x_studio_lost_reason'],
+      
+      // crm.lead -> Buyers/Stakeholders (Custom fields)
+      'technical_buyer_id': ['techbuyer'],
+      'technical_buyer_name': ['techbuyer'],
+      'commercial_buyer_id': ['commbuyer'],
+      'commercial_buyer_name': ['commbuyer'],
+      'is_tech_buyer_coach': ['x_studio_is_a_technical_buyer'],
+      'is_comm_buyer_coach': ['x_studio_is_a_commercial_buyer'],
+      
+      // crm.lead -> Tender/RFP fields (Custom)
+      'is_tender': ['x_studio_is_it_a_tender'],
+      'rfp_invited': ['x_studio_rfprfq_invited'],
+      'assisted_in_rfp': ['x_studio_assisted_in_rfp'],
+      'tender_purchase_deadline': ['x_studio_tender_purchase_end_date'],
+      'query_submission_deadline': ['x_studio_query_submission_date'],
+      'tender_submission_deadline': ['x_studio_tender_submission_date'],
+      'is_bid_bond_needed': ['x_studio_is_bid_bond_needed'],
+      
+      // crm.lead -> Budget/Pledge (Custom)
+      'budget_status': ['x_studio_budget_status'],
+      'pledge': ['x_studio_pledge'],
+      
+      // crm.lead -> POC/Demo (Custom)
+      'poc_demo_done': ['x_studio_poc_demo_done_successfully'],
+      'poc_demo_date': ['x_studio_poc_demo_date'],
+      
+      // crm.lead -> Competition (Custom)
+      'competitor_solution': ['x_studio_competitors_details_sales'],
+      'competitor_price': ['x_studio_competitors_details_tech_sales'],
+      
+      // crm.lead -> Product/Service (Custom)
+      'product_service_class': ['x_studio_product_service_class'],
+      'deal_type': ['x_studio_deal_type'],
+      'segment': ['x_studio_segment'],
+      'customer_type': ['x_studio_customer_type'],
       
       // res.partner -> account/contact
-      'industry': ['industry_id'],  // Odoo: industry_id (many2one)
+      'industry': ['industry_id'],
       'phone': ['phone', 'mobile'],
       'email': ['email', 'email_from', 'work_email'],
       'website': ['website'],
       'address': ['street', 'street2'],
       'city': ['city'],
-      'state': ['state_id'],  // Odoo: state_id (many2one to res.country.state)
+      'state': ['state_id'],
       'zip': ['zip'],
-      'country': ['country_id'],  // Odoo: country_id (many2one to res.country)
-      'owner_id': ['user_id'],  // Odoo: user_id = Salesperson
+      'country': ['country_id'],
+      'owner_id': ['user_id'],
       'owner_name': ['user_id'],
       'customer_rank': ['customer_rank'],
-      'account_id': ['parent_id', 'partner_id'],  // parent_id for contact->account
+      'account_id': ['parent_id', 'partner_id'],
       'account_name': ['parent_id', 'partner_id'],
-      'title': ['function'],  // Odoo: function = Job Position
+      'title': ['function'],
       'function': ['function'],
       'mobile': ['mobile'],
       
@@ -320,25 +368,25 @@ export function MappingEditor() {
       
       // res.users -> sales_user
       'login': ['login'],
-      'team_id': ['sale_team_id', 'team_id'],  // Odoo: sale_team_id for default team
+      'team_id': ['sale_team_id', 'team_id'],
       
       // hr.employee -> employee
       'work_phone': ['work_phone'],
       'mobile_phone': ['mobile_phone'],
-      'job_title': ['job_title', 'job_id'],  // job_title is computed from job_id
+      'job_title': ['job_title', 'job_id'],
       'department_id': ['department_id'],
       'department_name': ['department_id'],
-      'manager_id': ['parent_id'],  // Odoo: parent_id = Manager (hr.employee)
-      'user_id': ['user_id'],  // Link to res.users
+      'manager_id': ['parent_id'],
+      'user_id': ['user_id'],
       
       // account.move -> invoice
-      'invoice_number': ['name'],  // Odoo: name = Invoice number (INV/2024/0001)
+      'invoice_number': ['name'],
       'invoice_date': ['invoice_date'],
-      'due_date': ['invoice_date_due'],  // Odoo: invoice_date_due
+      'due_date': ['invoice_date_due'],
       'amount_untaxed': ['amount_untaxed'],
       'amount_tax': ['amount_tax'],
       'amount_total': ['amount_total'],
-      'currency': ['currency_id'],  // Odoo: currency_id (many2one)
+      'currency': ['currency_id'],
       'payment_state': ['payment_state'],
       
       // mail.activity -> activity
@@ -346,7 +394,7 @@ export function MappingEditor() {
       'activity_type': ['activity_type_id'],
       'note': ['note'],
       'date_deadline': ['date_deadline'],
-      'opportunity_id': ['res_id'],  // When res_model = 'crm.lead'
+      'opportunity_id': ['res_id'],
       
       // project.task -> task
       'description': ['description'],
