@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
               <SelectValue placeholder="Time Period" />
             </SelectTrigger>
             <SelectContent>
-              {filters?.time_periods?.map(p => (
+              {localFilters?.time_periods?.map(p => (
                 <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
               ))}
             </SelectContent>
