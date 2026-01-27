@@ -132,19 +132,42 @@ async def list_opportunities(
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
+    sales_rep: Optional[str] = None,
+    team_id: Optional[str] = None,
+    account: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """List opportunities with overrides applied"""
+    """List opportunities with overrides applied and optional filters"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     
     # Build query
     query = {"org_id": current_user.get("org_id", "default")}
+    
+    # Apply filters
     if stage:
         query["stage"] = stage
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    if team_id:
+        query["team_id"] = team_id
+    if account:
+        query["account_name"] = account
     
     # Get from canonical
     records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
+    
+    # Apply date-based filters (on results since MongoDB string date comparison is tricky)
+    if year:
+        records = [r for r in records if str(r.get("close_date", ""))[:4] == year or str(r.get("create_date", ""))[:4] == year]
+    
+    if quarter:
+        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
+                        "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
+        months = quarter_months.get(quarter, [])
+        records = [r for r in records if str(r.get("close_date", ""))[5:7] in months or str(r.get("create_date", ""))[5:7] in months]
     
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
