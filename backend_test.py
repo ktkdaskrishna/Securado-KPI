@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Use the public endpoint
-BASE_URL = "https://odoo-model-map.preview.emergentagent.com/api"
+BASE_URL = "https://filter-connect.preview.emergentagent.com/api"
 
 class APITester:
     def __init__(self):

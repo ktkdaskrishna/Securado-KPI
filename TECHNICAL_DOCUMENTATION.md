@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://odoo-model-map.preview.emergentagent.com
+https://filter-connect.preview.emergentagent.com
 ```
 
 ### Test Credentials
