@@ -1461,8 +1461,6 @@ def apply_transform(value, transform, target_field):
     - Many2many/One2many return list of IDs
     - HTML fields may need stripping
     """
-    import re
-    
     if value is None:
         return None
     
