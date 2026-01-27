@@ -71,6 +71,7 @@ from services.etl_runner.runner import etl_runner
 from services.canonical_query.routes import router as canonical_router, search_router
 from services.crm_sales.routes import (
     opportunities_router,
+    leads_router,
     accounts_router,
     activities_router,
     kpis_router,
