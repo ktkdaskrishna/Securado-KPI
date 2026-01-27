@@ -760,40 +760,142 @@ async def list_activities(
     status: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """List activities"""
+    """List activities from both canonical (synced) and app (local) databases"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    query = {"org_id": current_user.get("org_id", "default")}
+    # Build query for canonical activities
+    canonical_query = {"org_id": org_id}
+    app_query = {"org_id": org_id}
+    
     if opportunity_id:
-        query["opportunity_id"] = opportunity_id
+        canonical_query["opportunity_id"] = opportunity_id
+        app_query["opportunity_id"] = opportunity_id
     if account_id:
-        query["account_id"] = account_id
-    if status:
-        query["status"] = status
+        app_query["account_id"] = account_id
     
-    activities = await app_db.activities.find(query).to_list(1000)
-    return serialize_doc(activities)
+    # Fetch from canonical DB (synced from Odoo)
+    canonical_activities = await canonical_db.activities.find(canonical_query).to_list(1000)
+    
+    # Fetch from app DB (manually created)
+    app_activities = await app_db.activities.find(app_query).to_list(1000)
+    
+    # Normalize both sets to consistent format
+    all_activities = []
+    
+    for act in canonical_activities:
+        normalized = {
+            "id": act.get("canonical_id") or str(act.get("_id")),
+            "type": (act.get("activity_type") or "task").lower().replace(" ", "_"),
+            "subject": act.get("summary") or "Activity",
+            "description": act.get("note") or "",
+            "status": "completed" if act.get("state") == "done" else "pending",
+            "owner_name": act.get("assigned_user") or "System",
+            "due_date": act.get("date_deadline"),
+            "created_at": act.get("created_at") or act.get("synced_at"),
+            "source": "odoo"
+        }
+        # Apply status filter if provided
+        if status and normalized["status"] != status:
+            continue
+        all_activities.append(normalized)
+    
+    for act in app_activities:
+        normalized = {
+            "id": act.get("id") or str(act.get("_id")),
+            "type": act.get("type") or "task",
+            "subject": act.get("subject") or "Activity",
+            "description": act.get("description") or "",
+            "status": act.get("status") or "pending",
+            "owner_name": act.get("owner_name") or "Unknown",
+            "due_date": act.get("due_date"),
+            "created_at": act.get("created_at"),
+            "source": "local"
+        }
+        # Apply status filter if provided
+        if status and normalized["status"] != status:
+            continue
+        all_activities.append(normalized)
+    
+    # Sort by due_date or created_at
+    all_activities.sort(key=lambda x: str(x.get("due_date") or x.get("created_at") or ""), reverse=True)
+    
+    return serialize_doc(all_activities)
 
 
 @activities_router.get("/stats")
 async def get_activity_stats(current_user: dict = Depends(get_current_user)):
-    """Get activity statistics"""
+    """Get activity statistics from both canonical and app databases"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    activities = await app_db.activities.find(
-        {"org_id": current_user.get("org_id", "default")}
-    ).to_list(1000)
+    # Get activities from canonical DB
+    canonical_activities = await canonical_db.activities.find({"org_id": org_id}).to_list(1000)
+    
+    # Get activities from app DB
+    app_activities = await app_db.activities.find({"org_id": org_id}).to_list(1000)
+    
+    # Also count tasks from canonical DB
+    tasks = await canonical_db.tasks.find({"org_id": org_id}).to_list(1000)
+    
+    # Combine and categorize
+    calls = 0
+    emails = 0
+    meetings = 0
+    task_count = len(tasks)
+    completed = len([t for t in tasks if t.get("state") in ["1_done", "done"]])
+    pending = 0
+    overdue = 0
+    
+    for act in canonical_activities:
+        act_type = (act.get("activity_type") or "").lower()
+        if "call" in act_type or "phone" in act_type:
+            calls += 1
+        elif "email" in act_type or "mail" in act_type:
+            emails += 1
+        elif "meet" in act_type or "event" in act_type:
+            meetings += 1
+        else:
+            task_count += 1
+        
+        if act.get("state") == "done":
+            completed += 1
+        else:
+            pending += 1
+    
+    for act in app_activities:
+        act_type = (act.get("type") or "").lower()
+        if act_type == "call":
+            calls += 1
+        elif act_type == "email":
+            emails += 1
+        elif act_type == "meeting":
+            meetings += 1
+        else:
+            task_count += 1
+        
+        status = act.get("status")
+        if status == "completed":
+            completed += 1
+        elif status == "overdue":
+            overdue += 1
+        else:
+            pending += 1
+    
+    total = calls + emails + meetings + task_count
     
     return {
-        "total": len(activities),
-        "completed": len([a for a in activities if a.get("status") == "completed"]),
-        "pending": len([a for a in activities if a.get("status") == "pending"]),
-        "overdue": len([a for a in activities if a.get("status") == "overdue"]),
+        "total": total,
+        "completed": completed,
+        "pending": pending,
+        "overdue": overdue,
         "by_type": {
-            "calls": len([a for a in activities if a.get("type") == "call"]),
-            "emails": len([a for a in activities if a.get("type") == "email"]),
-            "meetings": len([a for a in activities if a.get("type") == "meeting"]),
-            "tasks": len([a for a in activities if a.get("type") == "task"])
+            "calls": calls,
+            "emails": emails,
+            "meetings": meetings,
+            "tasks": task_count
         }
     }
 
