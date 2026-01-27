@@ -148,13 +148,29 @@ export function Sidebar() {
     return items.filter(item => navPreferences[item.id] !== false);
   };
 
+  // List of pages that should preserve filter params
+  const FILTER_ENABLED_PATHS = [
+    '/dashboard',
+    '/opportunities',
+    '/accounts',
+    '/activities',
+    '/analytics',
+    '/invoices',
+    '/activity-timeline',
+    '/kpis'
+  ];
+
   const NavItem = ({ item }) => {
     const Icon = iconMap[item.icon] || LayoutDashboard;
     const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+    
+    // Preserve search params when navigating between filter-enabled pages
+    const shouldPreserveParams = FILTER_ENABLED_PATHS.includes(location.pathname) && FILTER_ENABLED_PATHS.includes(item.href);
+    const linkTo = shouldPreserveParams ? `${item.href}${location.search}` : item.href;
 
     const content = (
       <Link
-        to={item.href}
+        to={linkTo}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
           isActive
