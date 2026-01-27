@@ -198,6 +198,52 @@ Implemented a comprehensive visual data modeling pipeline that replaces the lega
 
 ---
 
+## Phase 12: Odoo Schema Analysis & ETL Enhancement (COMPLETED ✅)
+
+### Overview
+Analyzed 15 official Odoo model documentation PDFs to create comprehensive field mappings and enhance the ETL auto-mapping functionality.
+
+### Odoo Models Analyzed
+| # | Model | Description | Canonical Mapping |
+|---|-------|-------------|-------------------|
+| 1-5 | res.partner, res.users, mail.activity, account.move | Core entities | account, contact, sales_user, activity, invoice |
+| 6 | discuss.channel | Discussion Channel | (not mapped - messaging) |
+| 7 | hr.employee | Employee | employee |
+| 8 | crm.lead | Lead/Opportunity | **opportunity** (critical) |
+| 9 | account.payment | Payments | (linked to invoice) |
+| 10 | product.template | Product | (product catalog) |
+| 11 | product.category | Product Category | (product organization) |
+| 12 | sale.order | Sales Order | (links opportunities to invoices) |
+| 13 | crm.team.member | Sales Team Member | sales_user membership |
+| 14 | crm.team | Sales Team | **sales_team** (critical) |
+| 15 | ir.cron | Scheduled Actions | (automation) |
+
+### Documentation Created
+- ✅ `/app/docs/ODOO_SCHEMA_REFERENCE.md` - Comprehensive reference guide with all field types, relationships, and mapping notes
+- ✅ `/app/backend/services/data_modeling/odoo_field_mappings.json` - Precise JSON mapping definitions for ETL runner
+
+### Key Findings & Mappings
+1. **res.partner** stores BOTH companies AND contacts (filter by `is_company`)
+2. **account.move** stores ALL journal entries (filter by `move_type` for invoices)
+3. **crm.lead** uses `expected_revenue` for deal value (not `amount`)
+4. **Many2one fields** return `[id, name]` tuples requiring extraction
+5. **hr.employee** uses `parent_id` for manager (not `manager_id`)
+
+### Code Updates
+- ✅ Updated `MappingEditor.js` with accurate Odoo field mappings (95% confidence)
+- ✅ Updated `sales_model.yml` with documentation references
+- ✅ Enhanced `getSmartFieldMatch()` with ~50 precise Odoo → Canonical field mappings
+
+### Transform Types Implemented
+- `direct` - Copy value as-is
+- `to_string` - Convert ID to string
+- `extract_id` - Extract ID from many2one tuple
+- `extract_name` - Extract name from many2one tuple
+- `first_id` / `first_name` - Extract from many2many arrays
+- `strip_html` - Remove HTML tags from text fields
+
+---
+
 ## Known Issues / Pending Fixes
 
 ### P1 - RBAC Role Saving Bug
