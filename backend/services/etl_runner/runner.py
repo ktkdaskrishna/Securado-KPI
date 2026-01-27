@@ -381,7 +381,6 @@ class ETLRunner:
             
         except Exception as e:
             log(f"Odoo extraction failed: {e}", "error")
-            import traceback
             log(f"Traceback: {traceback.format_exc()}", "error")
             raise
     
