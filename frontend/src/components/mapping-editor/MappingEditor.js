@@ -127,7 +127,20 @@ export function MappingEditor() {
       }
     } catch (error) {
       console.error('Failed to load source models:', error);
-      toast.error('Failed to load Odoo models: ' + (error.response?.data?.detail || error.message));
+      const errorMsg = error.response?.data?.detail || error.response?.data?.message || error.message;
+      
+      // Check for specific error conditions
+      if (errorMsg.includes('303') || errorMsg.includes('unavailable') || errorMsg.includes('upgrading')) {
+        toast.error('Odoo server unavailable', {
+          description: 'The Odoo instance may be upgrading or under maintenance. Please try again later.',
+          duration: 8000,
+        });
+      } else {
+        toast.error('Failed to load Odoo models', {
+          description: errorMsg,
+          duration: 5000,
+        });
+      }
     } finally {
       setLoading(false);
     }
