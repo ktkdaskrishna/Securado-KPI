@@ -924,6 +924,9 @@ class APITester:
         self.test_etl_mappings()
         self.test_etl_pipelines()
         
+        # Schema Discovery & Field Loading (NEW)
+        self.test_schema_discovery()
+        
         # Visual Mapping Editor (NEW)
         self.test_visual_mapping_editor()
         
