@@ -240,18 +240,41 @@ async def list_opportunities(
 
 
 @opportunities_router.get("/kanban")
-async def opportunities_kanban(current_user: dict = Depends(get_current_user)):
+async def opportunities_kanban(
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    team_id: Optional[str] = Query(None, description="Filter by team ID"),
+    account: Optional[str] = Query(None, description="Filter by account name"),
+    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
+    current_user: dict = Depends(get_current_user)
+):
     """Get opportunities organized by stage for kanban view"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    logger.info(f"Kanban request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
+    
+    # Build query for non-date filters
+    query = {"org_id": org_id}
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    if team_id:
+        query["team_id"] = team_id
+    if account:
+        query["account_name"] = account
     
     # Get all opportunities
-    records = await canonical_db.opportunities.find(
-        {"org_id": current_user.get("org_id", "default")}
-    ).to_list(1000)
+    records = await canonical_db.opportunities.find(query).to_list(1000)
+    
+    # Apply date filters
+    records = apply_date_filters(records, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    
+    logger.info(f"Kanban after filtering: {len(records)} opportunities")
     
     # Merge with overrides
-    merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
+    merged = await merge_with_overrides(records, org_id, app_db)
     
     # Organize by stage
     kanban = {stage: [] for stage in PipelineStages.all()}
@@ -266,7 +289,9 @@ async def opportunities_kanban(current_user: dict = Depends(get_current_user)):
     
     return {
         "stages": PipelineStages.all(),
-        "data": kanban
+        "data": kanban,
+        "filtered": any([year, quarter, sales_rep, team_id, account]),
+        "total_count": len(merged)
     }
 
 
