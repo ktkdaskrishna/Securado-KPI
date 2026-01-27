@@ -950,6 +950,51 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
               </ScrollArea>
             </TabsContent>
             
+            {/* Logs Tab - Chatter History */}
+            <TabsContent value="logs" className="mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-sm">Activity Log / Chatter</h3>
+                <Badge variant="secondary">{logs.length} messages</Badge>
+              </div>
+              
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-3">
+                  {logs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No log messages yet</p>
+                    </div>
+                  ) : (
+                    logs.map((log) => (
+                      <Card key={log.id} className="border-l-4 border-l-blue-200">
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-full bg-blue-100">
+                              <MessageSquare className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <p className="font-medium text-sm">{log.author}</p>
+                                <span className="text-xs text-gray-400">
+                                  {log.date ? new Date(log.date).toLocaleString() : ''}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">{log.body}</p>
+                              {log.source_system && (
+                                <Badge variant="outline" className="text-xs mt-2">
+                                  From {log.source_system}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
             {/* Notes Tab */}
             <TabsContent value="notes" className="mt-4 space-y-4">
               <Card>
