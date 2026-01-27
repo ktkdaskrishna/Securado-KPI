@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://odoo-sync-builder.preview.emergentagent.com
+https://datamapper-10.preview.emergentagent.com
 ```
 
 ### Test Credentials
