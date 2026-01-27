@@ -674,6 +674,141 @@ class APITester:
         if data and isinstance(data, list):
             print(f"   Found {len(data)} KPIs")
 
+    def test_schema_discovery(self):
+        """Test schema discovery and field loading for Odoo models"""
+        print("\n" + "="*60)
+        print("TEST: Schema Discovery & Field Loading")
+        print("="*60)
+        
+        if not self.token:
+            self.log("No token available, skipping schema discovery tests", False)
+            return None
+        
+        # Get connections
+        connections = self.test_etl_connections()
+        if not connections or len(connections) == 0:
+            self.log("No connections available for schema discovery test", False)
+            return None
+        
+        # Find an Odoo connection
+        odoo_conn = None
+        for conn in connections:
+            if conn.get('type') == 'odoo':
+                odoo_conn = conn
+                break
+        
+        if not odoo_conn:
+            self.log("No Odoo connection found for schema discovery test", False)
+            return None
+        
+        conn_id = odoo_conn.get('id')
+        print(f"   Using Odoo connection: {odoo_conn.get('name')} (ID: {conn_id})")
+        
+        # Test 1: Get existing schema (if available)
+        print(f"\n   Step 1: Checking for existing schema...")
+        status, schema_data = self.make_request(
+            'GET',
+            f'integrations/{conn_id}/schema',
+            expected_status=None,  # May be 404 if not discovered yet
+            description="GET /api/integrations/{id}/schema - Get discovered schema"
+        )
+        
+        if status == 200 and schema_data and isinstance(schema_data, dict):
+            models = schema_data.get('models', [])
+            print(f"   ✓ Existing schema found with {len(models)} models")
+            
+            # Check if we have 244 models as expected
+            if len(models) >= 240:
+                self.log(f"Schema has {len(models)} models (expected ~244)", True)
+            else:
+                print(f"   ⚠ Schema has only {len(models)} models (expected ~244)")
+            
+            # Check for CRM category and crm.lead model
+            crm_models = [m for m in models if m.get('category') == 'crm']
+            print(f"   Found {len(crm_models)} CRM models")
+            
+            crm_lead = next((m for m in models if m.get('model') == 'crm.lead'), None)
+            if crm_lead:
+                self.log("Found crm.lead model in schema", True)
+                print(f"   crm.lead: {crm_lead.get('name')}")
+            else:
+                self.log("crm.lead model NOT found in schema", False)
+        elif status == 404:
+            print(f"   No existing schema found (404). Will trigger discovery...")
+            
+            # Test 2: Discover schema
+            print(f"\n   Step 2: Triggering schema discovery...")
+            status, discover_data = self.make_request(
+                'POST',
+                f'integrations/{conn_id}/discover',
+                expected_status=200,
+                description="POST /api/integrations/{id}/discover - Discover all Odoo models"
+            )
+            
+            if discover_data and isinstance(discover_data, dict):
+                models = discover_data.get('models', [])
+                print(f"   ✓ Discovery completed: {len(models)} models found")
+                
+                # Check if we have 244 models as expected
+                if len(models) >= 240:
+                    self.log(f"Discovered {len(models)} models (expected ~244)", True)
+                else:
+                    self.log(f"Discovered only {len(models)} models (expected ~244)", False)
+                
+                # Check for CRM category and crm.lead model
+                crm_models = [m for m in models if m.get('category') == 'crm']
+                print(f"   Found {len(crm_models)} CRM models")
+                
+                crm_lead = next((m for m in models if m.get('model') == 'crm.lead'), None)
+                if crm_lead:
+                    self.log("Found crm.lead model after discovery", True)
+                    print(f"   crm.lead: {crm_lead.get('name')}")
+                else:
+                    self.log("crm.lead model NOT found after discovery", False)
+                
+                schema_data = discover_data
+        else:
+            self.log(f"Failed to get schema (status: {status})", False)
+            return None
+        
+        # Test 3: Get fields for crm.lead model
+        print(f"\n   Step 3: Loading fields for crm.lead model...")
+        status, fields_data = self.make_request(
+            'GET',
+            f'integrations/{conn_id}/schema/crm.lead/fields',
+            expected_status=200,
+            description="GET /api/integrations/{id}/schema/crm.lead/fields - Get crm.lead fields"
+        )
+        
+        if fields_data and isinstance(fields_data, dict):
+            fields = fields_data.get('fields', {})
+            print(f"   ✓ Loaded {len(fields)} fields for crm.lead")
+            
+            # Check for expected fields
+            expected_fields = ['id', 'display_name', 'name', 'expected_revenue', 
+                             'probability', 'stage_id', 'user_id', 'partner_id']
+            found_fields = []
+            missing_fields = []
+            
+            for field_name in expected_fields:
+                if field_name in fields:
+                    found_fields.append(field_name)
+                    field_info = fields[field_name]
+                    print(f"   ✓ {field_name}: {field_info.get('type')} - {field_info.get('string', 'N/A')}")
+                else:
+                    missing_fields.append(field_name)
+            
+            if len(found_fields) == len(expected_fields):
+                self.log(f"All {len(expected_fields)} expected fields found in crm.lead", True)
+            else:
+                self.log(f"Only {len(found_fields)}/{len(expected_fields)} expected fields found", False)
+                if missing_fields:
+                    print(f"   Missing fields: {missing_fields}")
+        else:
+            self.log("Failed to load fields for crm.lead", False)
+        
+        return schema_data
+
     def test_visual_mapping_editor(self):
         """Test Visual Mapping Editor endpoints"""
         print("\n" + "="*60)
