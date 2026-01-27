@@ -103,10 +103,9 @@ export function AccountsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Contact</TableHead>
               <TableHead>Industry</TableHead>
-              <TableHead>Currency</TableHead>
-              <TableHead>Revenue</TableHead>
-              <TableHead>Phone</TableHead>
               <TableHead>Owner</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -114,7 +113,7 @@ export function AccountsPage() {
           <TableBody>
             {filteredAccounts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No accounts found. Run an ETL pipeline to import data.
                 </TableCell>
               </TableRow>
@@ -123,9 +122,32 @@ export function AccountsPage() {
                 <TableRow key={account.canonical_id || account.id} data-testid={`account-row-${account.canonical_id || account.id}`}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      {account.name}
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white text-sm font-medium">
+                        {account.name?.charAt(0) || '?'}
+                      </div>
+                      <div>
+                        <p className="font-medium">{account.name}</p>
+                        {account.email && (
+                          <p className="text-xs text-muted-foreground">{account.email}</p>
+                        )}
+                      </div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {account.city || account.country ? (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        <span>{[account.city, account.country].filter(Boolean).join(', ') || '-'}</span>
+                      </div>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {account.phone ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span>{account.phone}</span>
+                      </div>
+                    ) : '-'}
                   </TableCell>
                   <TableCell>
                     {account.industry ? (
@@ -133,18 +155,13 @@ export function AccountsPage() {
                     ) : '-'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="font-mono">
-                      {account.currency || DEFAULT_CURRENCY}
-                    </Badge>
+                    {account.owner_name ? (
+                      <span className="text-sm">{account.owner_name}</span>
+                    ) : '-'}
                   </TableCell>
-                  <TableCell className="font-mono">
-                    {account.revenue ? formatCurrency(account.revenue, account.currency || DEFAULT_CURRENCY) : '-'}
-                  </TableCell>
-                  <TableCell>{account.phone || '-'}</TableCell>
-                  <TableCell>{account.owner_name || '-'}</TableCell>
                   <TableCell className="text-right">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => load360(account)}
                       data-testid={`account-360-open-button-${account.canonical_id || account.id}`}
