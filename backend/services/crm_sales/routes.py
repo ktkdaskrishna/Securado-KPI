@@ -127,26 +127,91 @@ def normalize_stage(stage: str) -> str:
     return "qualified"
 
 
+def parse_date_from_string(date_str):
+    """Parse date from various string formats"""
+    if not date_str or date_str == 'False':
+        return None
+    
+    if isinstance(date_str, datetime):
+        return date_str
+    
+    if isinstance(date_str, str):
+        for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S']:
+            try:
+                return datetime.strptime(date_str[:len(fmt.replace('%', ''))].strip(), fmt)
+            except:
+                continue
+        try:
+            if len(date_str) >= 10:
+                return datetime.strptime(date_str[:10], '%Y-%m-%d')
+        except:
+            pass
+    return None
+
+
+def apply_date_filters(records: list, year: str = None, quarter: str = None, date_field: str = 'create_date') -> list:
+    """Apply year and quarter filters to records"""
+    if not year and not quarter:
+        return records
+    
+    filtered = []
+    quarter_months = {
+        "Q1": [1, 2, 3], 
+        "Q2": [4, 5, 6], 
+        "Q3": [7, 8, 9], 
+        "Q4": [10, 11, 12]
+    }
+    
+    for record in records:
+        date_value = None
+        for field in [date_field, 'create_date', 'close_date', 'date_open', 'write_date']:
+            if record.get(field):
+                date_value = parse_date_from_string(record.get(field))
+                if date_value:
+                    break
+        
+        if not date_value:
+            if not year:
+                filtered.append(record)
+            continue
+        
+        if year:
+            if str(date_value.year) != str(year):
+                continue
+        
+        if quarter:
+            months = quarter_months.get(quarter, [])
+            if date_value.month not in months:
+                continue
+        
+        filtered.append(record)
+    
+    return filtered
+
+
 @opportunities_router.get("")
 async def list_opportunities(
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
-    year: Optional[str] = None,
-    quarter: Optional[str] = None,
-    sales_rep: Optional[str] = None,
-    team_id: Optional[str] = None,
-    account: Optional[str] = None,
+    year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    team_id: Optional[str] = Query(None, description="Filter by team ID"),
+    account: Optional[str] = Query(None, description="Filter by account name"),
+    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
     """List opportunities with overrides applied and optional filters"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     
+    logger.info(f"Opportunities list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
+    
     # Build query
     query = {"org_id": current_user.get("org_id", "default")}
     
-    # Apply filters
+    # Apply non-date filters
     if stage:
         query["stage"] = stage
     if sales_rep:
@@ -156,18 +221,17 @@ async def list_opportunities(
     if account:
         query["account_name"] = account
     
-    # Get from canonical
-    records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
+    # Get from canonical - get more records if filtering to ensure we have enough after date filter
+    fetch_limit = limit * 10 if (year or quarter) else limit
+    records = await canonical_db.opportunities.find(query).skip(skip).limit(fetch_limit).to_list(fetch_limit)
     
-    # Apply date-based filters (on results since MongoDB string date comparison is tricky)
-    if year:
-        records = [r for r in records if str(r.get("close_date", ""))[:4] == year or str(r.get("create_date", ""))[:4] == year]
+    # Apply date-based filters using the improved helper function
+    records = apply_date_filters(records, year=year, quarter=quarter, date_field=date_field or 'create_date')
     
-    if quarter:
-        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
-                        "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
-        months = quarter_months.get(quarter, [])
-        records = [r for r in records if str(r.get("close_date", ""))[5:7] in months or str(r.get("create_date", ""))[5:7] in months]
+    # Trim to requested limit
+    records = records[:limit]
+    
+    logger.info(f"After filtering: {len(records)} opportunities")
     
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
