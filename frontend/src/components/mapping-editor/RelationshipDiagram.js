@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -9,6 +9,7 @@ import ReactFlow, {
   Panel,
   Handle,
   Position,
+  addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -17,8 +18,9 @@ import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { 
   Link2, Building, Target, User, FileText, CheckSquare, 
-  Calendar, Briefcase, UserCircle, Info, ZoomIn, ZoomOut
+  Calendar, Briefcase, UserCircle, Info, ZoomIn, ZoomOut, Sparkles, RefreshCw, Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Entity icons
 const entityIcons = {
