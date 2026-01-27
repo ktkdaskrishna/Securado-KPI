@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "description": "Precise Odoo to Canonical field mappings based on official Odoo model documentation",
+  "version": "2.0",
+  "description": "Comprehensive Odoo to Canonical field mappings including custom fields (x_studio_*)",
   "mappings": {
     "opportunity": {
       "source_model": "crm.lead",
@@ -8,24 +8,73 @@
       "fields": [
         { "source": "id", "target": "source_record_id", "transform": "to_string" },
         { "source": "name", "target": "name", "transform": "direct" },
-        { "source": "expected_revenue", "target": "amount", "transform": "direct" },
-        { "source": "probability", "target": "probability", "transform": "direct" },
-        { "source": "stage_id", "target": "stage_id", "transform": "extract_id" },
-        { "source": "stage_id", "target": "stage", "transform": "extract_name" },
+        { "source": "description", "target": "description", "transform": "strip_html" },
+        { "source": "x_studio_descriptions", "target": "descriptions", "transform": "direct" },
+        { "source": "priority", "target": "priority", "transform": "direct" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        
         { "source": "partner_id", "target": "account_id", "transform": "extract_id" },
         { "source": "partner_id", "target": "account_name", "transform": "extract_name" },
+        { "source": "partner_name", "target": "customer_name", "transform": "direct" },
+        
+        { "source": "contact_id", "target": "contact_id", "transform": "extract_id" },
+        { "source": "contact_name", "target": "contact_name", "transform": "direct" },
+        { "source": "email_from", "target": "contact_email", "transform": "direct" },
+        { "source": "phone", "target": "contact_phone", "transform": "direct" },
+        { "source": "contact_mobile", "target": "contact_mobile", "transform": "direct" },
+        { "source": "contact_jobposition", "target": "contact_job_position", "transform": "direct" },
+        
         { "source": "user_id", "target": "owner_id", "transform": "extract_id" },
         { "source": "user_id", "target": "owner_name", "transform": "extract_name" },
         { "source": "team_id", "target": "team_id", "transform": "extract_id" },
-        { "source": "date_deadline", "target": "close_date", "transform": "direct" },
+        
+        { "source": "stage_id", "target": "stage_id", "transform": "extract_id" },
+        { "source": "stage_id", "target": "stage", "transform": "extract_name" },
+        
+        { "source": "probability", "target": "probability", "transform": "direct" },
+        { "source": "automated_probability", "target": "automated_probability", "transform": "direct" },
+        { "source": "expected_revenue", "target": "amount", "transform": "direct" },
+        { "source": "x_studio_sale_value", "target": "sale_value", "transform": "direct" },
+        { "source": "x_studio_budget_value", "target": "budget_value", "transform": "direct" },
+        { "source": "recurring_revenue", "target": "recurring_revenue", "transform": "direct" },
+        
         { "source": "date_open", "target": "date_open", "transform": "direct" },
-        { "source": "won_status", "target": "is_won", "transform": "equals:won" },
-        { "source": "won_status", "target": "is_closed", "transform": "not_equals:pending" },
-        { "source": "email_from", "target": "contact_email", "transform": "direct" },
-        { "source": "phone", "target": "contact_phone", "transform": "direct" },
-        { "source": "lost_reason", "target": "lost_reason", "transform": "extract_name" },
+        { "source": "date_deadline", "target": "close_date", "transform": "direct" },
+        { "source": "date_closed", "target": "date_closed", "transform": "direct" },
         { "source": "create_date", "target": "created_at", "transform": "direct" },
-        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+        { "source": "write_date", "target": "updated_at", "transform": "direct" },
+        
+        { "source": "techbuyer", "target": "technical_buyer_id", "transform": "extract_id" },
+        { "source": "techbuyer", "target": "technical_buyer_name", "transform": "extract_name" },
+        { "source": "commbuyer", "target": "commercial_buyer_id", "transform": "extract_id" },
+        { "source": "commbuyer", "target": "commercial_buyer_name", "transform": "extract_name" },
+        { "source": "x_studio_is_a_technical_buyer", "target": "is_tech_buyer_coach", "transform": "direct" },
+        { "source": "x_studio_is_a_commercial_buyer", "target": "is_comm_buyer_coach", "transform": "direct" },
+        
+        { "source": "x_studio_is_it_a_tender", "target": "is_tender", "transform": "direct" },
+        { "source": "x_studio_rfprfq_invited", "target": "rfp_invited", "transform": "direct" },
+        { "source": "x_studio_assisted_in_rfp", "target": "assisted_in_rfp", "transform": "direct" },
+        { "source": "x_studio_tender_purchase_end_date", "target": "tender_purchase_deadline", "transform": "direct" },
+        { "source": "x_studio_query_submission_date", "target": "query_submission_deadline", "transform": "direct" },
+        { "source": "x_studio_tender_submission_date", "target": "tender_submission_deadline", "transform": "direct" },
+        { "source": "x_studio_is_bid_bond_needed", "target": "is_bid_bond_needed", "transform": "direct" },
+        
+        { "source": "x_studio_budget_status", "target": "budget_status", "transform": "direct" },
+        { "source": "x_studio_pledge", "target": "pledge", "transform": "direct" },
+        
+        { "source": "x_studio_poc_demo_done_successfully", "target": "poc_demo_done", "transform": "direct" },
+        { "source": "x_studio_poc_demo_date", "target": "poc_demo_date", "transform": "direct" },
+        
+        { "source": "x_studio_competitors_details_sales", "target": "competitor_solution", "transform": "direct" },
+        { "source": "x_studio_competitors_details_tech_sales", "target": "competitor_price", "transform": "direct" },
+        
+        { "source": "x_studio_product_service_class", "target": "product_service_class", "transform": "direct" },
+        { "source": "x_studio_deal_type", "target": "deal_type", "transform": "direct" },
+        { "source": "x_studio_segment", "target": "segment", "transform": "direct" },
+        { "source": "x_studio_customer_type", "target": "customer_type", "transform": "direct" },
+        
+        { "source": "lost_reason_id", "target": "lost_reason", "transform": "extract_name" },
+        { "source": "x_studio_lost_reason", "target": "lost_reason_detail", "transform": "direct" }
       ]
     },
     "account": {
