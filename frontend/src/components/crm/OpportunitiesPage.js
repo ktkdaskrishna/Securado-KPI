@@ -1233,7 +1233,7 @@ export function OpportunitiesPage() {
 
       const [listRes, kanbanRes] = await Promise.all([
         crmAPI.listOpportunities(params),
-        crmAPI.getKanban(),
+        crmAPI.getKanban(params),
       ]);
       setOpportunities(listRes.data);
       setKanbanData(kanbanRes.data);
