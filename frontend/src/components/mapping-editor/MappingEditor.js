@@ -87,14 +87,31 @@ export function MappingEditor() {
     loadSavedMappings();
   }, [loadConnections]);
 
-  // Load source models from Odoo
-  const loadSourceModels = async (connectionId) => {
+  // Load source models from Odoo - first try existing schema, then discover if needed
+  const loadSourceModels = async (connectionId, forceDiscover = false) => {
     if (!connectionId) return;
     
     setLoading(true);
     try {
-      const res = await etlAPI.discoverSchema(connectionId);
-      const models = res.data?.models || [];
+      let models = [];
+      
+      // First try to get existing schema
+      if (!forceDiscover) {
+        try {
+          const schemaRes = await etlAPI.getSchema(connectionId);
+          models = schemaRes.data?.models || [];
+        } catch (e) {
+          // Schema doesn't exist, will discover below
+          console.log('No existing schema, will discover');
+        }
+      }
+      
+      // If no models found or force discover, run discovery
+      if (models.length === 0 || forceDiscover) {
+        toast.info('Discovering Odoo models...');
+        const discoverRes = await etlAPI.discoverSchema(connectionId);
+        models = discoverRes.data?.models || [];
+      }
       
       // Group by category
       const grouped = models.reduce((acc, model) => {
@@ -105,10 +122,12 @@ export function MappingEditor() {
       }, {});
       
       setSourceModels(grouped);
-      toast.success(`Discovered ${models.length} models from Odoo`);
+      if (models.length > 0) {
+        toast.success(`Loaded ${models.length} Odoo models`);
+      }
     } catch (error) {
       console.error('Failed to load source models:', error);
-      toast.error('Failed to discover Odoo models');
+      toast.error('Failed to load Odoo models: ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }
