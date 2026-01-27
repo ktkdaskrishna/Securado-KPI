@@ -46,9 +46,13 @@ export function RunsPage() {
   const loadRuns = async () => {
     try {
       const res = await etlAPI.listRuns(50);
-      setRuns(res.data);
+      // Ensure runs is always an array
+      const runsData = Array.isArray(res.data) ? res.data : (res.data?.runs || []);
+      setRuns(runsData);
     } catch (error) {
+      console.error('Failed to load runs:', error);
       toast.error('Failed to load runs');
+      setRuns([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
