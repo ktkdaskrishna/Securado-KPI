@@ -1268,3 +1268,448 @@ async def get_data_model_mermaid(current_user: dict = Depends(get_current_user))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Mermaid diagram not found")
 
+
+# ==================== VISUAL MAPPING EDITOR ENDPOINTS ====================
+
+mapping_editor_router = APIRouter(prefix="/mapping-editor", tags=["mapping-editor"])
+
+@mapping_editor_router.get("/config")
+async def get_mapping_config(current_user: dict = Depends(get_current_user)):
+    """Get saved visual mapping configuration"""
+    db = get_app_db()
+    
+    config = await db.mapping_configs.find_one({
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not config:
+        # Return default empty config
+        return {
+            "connectionId": None,
+            "fieldMappings": {},
+            "relationships": [],
+            "scheduleConfig": None,
+            "updatedAt": None
+        }
+    
+    return serialize_doc(config)
+
+
+@mapping_editor_router.put("/config")
+async def save_mapping_config(
+    config_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Save visual mapping configuration"""
+    db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    config_doc = {
+        "org_id": org_id,
+        "connectionId": config_data.get("connectionId"),
+        "fieldMappings": config_data.get("fieldMappings", {}),
+        "relationships": config_data.get("relationships", []),
+        "scheduleConfig": config_data.get("scheduleConfig"),
+        "updated_by": current_user["id"],
+        "updated_at": now_utc()
+    }
+    
+    result = await db.mapping_configs.update_one(
+        {"org_id": org_id},
+        {"$set": config_doc},
+        upsert=True
+    )
+    
+    logger.info(f"Mapping config saved for org {org_id}")
+    return {"success": True, "message": "Mapping configuration saved"}
+
+
+@mapping_editor_router.post("/preview")
+async def preview_transformation(
+    preview_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Preview transformation results with sample data"""
+    db = get_app_db()
+    
+    connection_id = preview_data.get("connectionId")
+    field_mappings = preview_data.get("fieldMappings", {})
+    limit = preview_data.get("limit", 5)
+    
+    if not connection_id:
+        raise HTTPException(status_code=400, detail="Connection ID required")
+    
+    # Get connection
+    conn = await db.connections.find_one({
+        "id": connection_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    preview_results = []
+    
+    # For each mapping pair, fetch sample data and transform
+    for mapping_key, mappings in field_mappings.items():
+        if not mappings:
+            continue
+            
+        parts = mapping_key.split("__")
+        if len(parts) != 2:
+            continue
+            
+        source_model, target_entity = parts
+        
+        try:
+            if conn["type"] == "odoo":
+                common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+                uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+                
+                if not uid:
+                    continue
+                
+                models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+                
+                # Get source fields from mappings
+                source_fields = list(set([m.get("sourceField") for m in mappings if m.get("sourceField")]))
+                if not source_fields:
+                    source_fields = ['id', 'name']
+                
+                # Fetch sample records
+                records = models_proxy.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    source_model, 'search_read',
+                    [[]],
+                    {'fields': source_fields, 'limit': limit}
+                )
+                
+                # Transform records
+                for record in records:
+                    source_data = {}
+                    transformed_data = {}
+                    
+                    for field in source_fields:
+                        value = record.get(field)
+                        # Handle Odoo relational fields
+                        if isinstance(value, list) and len(value) == 2:
+                            source_data[field] = f"{value[0]} ({value[1]})"
+                        elif isinstance(value, list) and len(value) > 2:
+                            source_data[field] = f"[{len(value)} items]"
+                        else:
+                            source_data[field] = value
+                    
+                    # Apply mappings
+                    for mapping in mappings:
+                        source_field = mapping.get("sourceField")
+                        target_field = mapping.get("targetField")
+                        transform = mapping.get("transform", "direct")
+                        
+                        if source_field and target_field:
+                            value = record.get(source_field)
+                            
+                            # Apply transformation
+                            if transform == "extract_id" and isinstance(value, list) and len(value) >= 1:
+                                value = str(value[0])
+                            elif transform == "extract_name" and isinstance(value, list) and len(value) >= 2:
+                                value = value[1]
+                            elif transform == "to_float":
+                                try:
+                                    value = float(value) if value else 0.0
+                                except (ValueError, TypeError):
+                                    value = 0.0
+                            elif transform == "to_int":
+                                try:
+                                    value = int(value) if value else 0
+                                except (ValueError, TypeError):
+                                    value = 0
+                            elif transform == "to_bool":
+                                value = bool(value)
+                            
+                            transformed_data[target_field] = value
+                    
+                    preview_results.append({
+                        "sourceModel": source_model,
+                        "targetEntity": target_entity,
+                        "source": source_data,
+                        "transformed": transformed_data
+                    })
+                    
+        except Exception as e:
+            logger.error(f"Preview failed for {source_model}: {e}")
+            preview_results.append({
+                "sourceModel": source_model,
+                "targetEntity": target_entity,
+                "error": str(e)
+            })
+    
+    return {
+        "connectionId": connection_id,
+        "previewCount": len(preview_results),
+        "results": preview_results
+    }
+
+
+@mapping_editor_router.post("/sync")
+async def run_mapping_sync(
+    sync_data: dict,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Run ETL sync using the visual mapping configuration"""
+    db = get_app_db()
+    
+    connection_id = sync_data.get("connectionId")
+    field_mappings = sync_data.get("fieldMappings", {})
+    
+    if not connection_id:
+        raise HTTPException(status_code=400, detail="Connection ID required")
+    
+    if not field_mappings:
+        raise HTTPException(status_code=400, detail="No field mappings configured")
+    
+    # Get connection
+    conn = await db.connections.find_one({
+        "id": connection_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    # Create run record
+    run_id = generate_id()
+    correlation_id = generate_correlation_id()
+    org_id = current_user.get("org_id", "default")
+    
+    run_doc = {
+        "id": run_id,
+        "org_id": org_id,
+        "correlation_id": correlation_id,
+        "connection_id": connection_id,
+        "status": RunStatus.RUNNING,
+        "trigger_type": "visual_mapping_editor",
+        "started_at": now_utc(),
+        "started_by": current_user["id"],
+        "extracted_count": 0,
+        "transformed_count": 0,
+        "loaded_count": 0,
+        "error_count": 0,
+        "logs": [],
+        "entity_stats": {}
+    }
+    
+    await db.pipeline_runs.insert_one(run_doc)
+    
+    # Process each mapping pair synchronously (for MVP - background task for production)
+    total_processed = 0
+    entity_stats = {}
+    errors = []
+    
+    try:
+        if conn["type"] == "odoo":
+            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+            uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            
+            if not uid:
+                raise Exception("Odoo authentication failed")
+            
+            models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+            
+            for mapping_key, mappings in field_mappings.items():
+                if not mappings:
+                    continue
+                
+                parts = mapping_key.split("__")
+                if len(parts) != 2:
+                    continue
+                
+                source_model, target_entity = parts
+                
+                try:
+                    # Get source fields
+                    source_fields = list(set(["id"] + [m.get("sourceField") for m in mappings if m.get("sourceField")]))
+                    
+                    # Fetch all records (with limit for safety)
+                    records = models_proxy.execute_kw(
+                        conn["database"], uid, conn["api_key"],
+                        source_model, 'search_read',
+                        [[]],
+                        {'fields': source_fields, 'limit': 1000}
+                    )
+                    
+                    entity_count = 0
+                    
+                    for record in records:
+                        transformed = {
+                            "org_id": org_id,
+                            "source_system": "odoo",
+                            "source_model": source_model,
+                            "source_record_id": str(record.get("id")),
+                            "canonical_id": f"odoo_{target_entity}_{record.get('id')}",
+                            "synced_at": now_utc()
+                        }
+                        
+                        # Apply field mappings
+                        for mapping in mappings:
+                            source_field = mapping.get("sourceField")
+                            target_field = mapping.get("targetField")
+                            transform = mapping.get("transform", "direct")
+                            
+                            if source_field and target_field:
+                                value = record.get(source_field)
+                                
+                                # Apply transformation
+                                if transform == "extract_id" and isinstance(value, list) and len(value) >= 1:
+                                    value = str(value[0])
+                                elif transform == "extract_name" and isinstance(value, list) and len(value) >= 2:
+                                    value = value[1]
+                                elif transform == "to_float":
+                                    try:
+                                        value = float(value) if value else 0.0
+                                    except (ValueError, TypeError):
+                                        value = 0.0
+                                elif transform == "to_int":
+                                    try:
+                                        value = int(value) if value else 0
+                                    except (ValueError, TypeError):
+                                        value = 0
+                                elif transform == "to_bool":
+                                    value = bool(value)
+                                elif isinstance(value, list) and len(value) == 2:
+                                    # Default handling for many2one
+                                    value = value[1] if target_field.endswith("_name") else str(value[0])
+                                
+                                transformed[target_field] = value
+                        
+                        # Upsert to canonical collection
+                        collection_name = f"canonical_{target_entity}"
+                        await db[collection_name].update_one(
+                            {"canonical_id": transformed["canonical_id"]},
+                            {"$set": transformed},
+                            upsert=True
+                        )
+                        entity_count += 1
+                    
+                    entity_stats[target_entity] = entity_stats.get(target_entity, 0) + entity_count
+                    total_processed += entity_count
+                    
+                except Exception as e:
+                    logger.error(f"Sync failed for {source_model} -> {target_entity}: {e}")
+                    errors.append(f"{source_model}: {str(e)}")
+        
+        # Update run status
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {
+                "status": RunStatus.COMPLETED if not errors else RunStatus.COMPLETED_WITH_ERRORS,
+                "completed_at": now_utc(),
+                "loaded_count": total_processed,
+                "entity_stats": entity_stats,
+                "errors": errors
+            }}
+        )
+        
+        return {
+            "runId": run_id,
+            "status": "completed" if not errors else "completed_with_errors",
+            "recordsProcessed": total_processed,
+            "entityStats": entity_stats,
+            "errors": errors if errors else None
+        }
+        
+    except Exception as e:
+        # Update run as failed
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {
+                "status": RunStatus.FAILED,
+                "completed_at": now_utc(),
+                "error": str(e)
+            }}
+        )
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
+@mapping_editor_router.get("/sync/status/{connection_id}")
+async def get_sync_status(
+    connection_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get sync status for a connection"""
+    db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get last run for this connection
+    last_run = await db.pipeline_runs.find_one(
+        {
+            "connection_id": connection_id,
+            "org_id": org_id
+        },
+        sort=[("started_at", -1)]
+    )
+    
+    # Get canonical collection stats
+    entity_counts = {}
+    for entity in ["opportunity", "account", "contact", "invoice", "activity", "task"]:
+        collection_name = f"canonical_{entity}"
+        try:
+            count = await db[collection_name].count_documents({"org_id": org_id})
+            entity_counts[entity] = count
+        except:
+            entity_counts[entity] = 0
+    
+    return {
+        "connectionId": connection_id,
+        "lastSync": last_run.get("completed_at") if last_run else None,
+        "lastRunStatus": last_run.get("status") if last_run else None,
+        "lastRunId": last_run.get("id") if last_run else None,
+        "entityCounts": entity_counts,
+        "totalRecords": sum(entity_counts.values())
+    }
+
+
+@mapping_editor_router.get("/entities")
+async def get_canonical_entities(current_user: dict = Depends(get_current_user)):
+    """Get canonical entity definitions from YAML spec"""
+    import os
+    import yaml
+    
+    yaml_path = os.path.join(
+        os.path.dirname(__file__), 
+        "..", 
+        "data_modeling", 
+        "sales_model.yml"
+    )
+    
+    try:
+        with open(yaml_path, 'r') as f:
+            spec = yaml.safe_load(f)
+        
+        entities = []
+        for entity_id, entity_def in spec.get("entities", {}).items():
+            fields = []
+            for field_name, field_def in entity_def.get("fields", {}).items():
+                fields.append({
+                    "name": field_name,
+                    "type": field_def.get("type", "string"),
+                    "required": field_def.get("required", False),
+                    "description": field_def.get("description", ""),
+                    "pk": field_name == "canonical_id",
+                    "fk": field_def.get("description", "").startswith("FK to ") and field_def.get("description", "").replace("FK to ", "").split()[0] or None
+                })
+            
+            entities.append({
+                "id": entity_id,
+                "label": entity_def.get("label", entity_id.title()),
+                "description": entity_def.get("description", ""),
+                "sourceModels": entity_def.get("source_models", []),
+                "fields": fields
+            })
+        
+        return {"entities": entities}
+        
+    except FileNotFoundError:
+        # Return default entities
+        return {"entities": list(CANONICAL_ENTITIES.keys())}
+
