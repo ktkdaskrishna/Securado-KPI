@@ -189,7 +189,7 @@ export function RelationshipDiagram({ targetModels = [], relationships = [], onU
                 <ul className="mt-1 space-y-1">
                   <li>─── Solid line = 1:N relationship</li>
                   <li>- - - Animated = 1:1 relationship</li>
-                  <li>Arrow points to "many" side</li>
+                  <li>Arrow points to &quot;many&quot; side</li>
                 </ul>
               </AlertDescription>
             </Alert>
