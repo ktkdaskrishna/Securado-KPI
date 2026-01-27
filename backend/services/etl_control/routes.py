@@ -9,11 +9,13 @@ Handles:
 - Integration templates
 - Auto-mapping suggestions
 - Schema verification
+- Visual Mapping Editor APIs
 """
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import Optional, List
 import logging
 import xmlrpc.client
+import yaml
 
 from libs.database import get_app_db
 from libs.utils import serialize_doc, generate_id, generate_correlation_id, now_utc, RunStatus
