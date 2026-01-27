@@ -461,11 +461,16 @@ entities:
         required: false
 
   # --- Invoice ---
+  # NOTE: In Odoo, account.move is the JOURNAL ENTRY model
+  # For Customer Invoices: filter where move_type = 'out_invoice'
+  # For Vendor Bills: move_type = 'in_invoice'
+  # For Credit Notes: move_type = 'out_refund' or 'in_refund'
   invoice:
     label: "Invoice"
-    description: "Customer invoice"
+    description: "Customer invoice - from account.move where move_type='out_invoice'"
     source_models:
-      - account.move
+      - account.move  # Filter: move_type IN ('out_invoice', 'out_refund')
+    source_filter: "move_type IN ('out_invoice', 'out_refund')"
     primary_key:
       - org_id
       - source_system
