@@ -431,7 +431,8 @@ async def get_opportunity_activities(
             "completed": act.get("state") == "done" or act.get("completed", False),
             "created_at": act.get("created_at") or act.get("synced_at"),
             "date_deadline": act.get("date_deadline"),
-            "user_id": act.get("user_id"),
+            "user_id": act.get("user_id") or act.get("assigned_user_id"),
+            "assigned_user": act.get("assigned_user"),  # Added: user name for display
             "source_system": act.get("source_system", "local"),
         })
     
