@@ -161,6 +161,56 @@ Unified microservices platform combining ETL, CRM backend, and CRM frontend with
 
 ---
 
+## Phase 11: Visual ETL Mapping Editor (COMPLETED ✅)
+
+### Overview
+Implemented a comprehensive visual data modeling pipeline that replaces the legacy MappingsPage with an interactive, visual editor for configuring ETL field mappings.
+
+### Backend API Endpoints (COMPLETED)
+- ✅ `GET /api/mapping-editor/config` - Get saved mapping configuration
+- ✅ `PUT /api/mapping-editor/config` - Save mapping configuration  
+- ✅ `POST /api/mapping-editor/preview` - Preview transformation with sample data
+- ✅ `POST /api/mapping-editor/sync` - Run ETL sync using visual mappings
+- ✅ `GET /api/mapping-editor/sync/status/{connection_id}` - Get sync status
+- ✅ `GET /api/mapping-editor/entities` - Get canonical entities from YAML spec
+
+### Frontend Components (COMPLETED)
+- ✅ **MappingEditor.js** - Main 3-panel layout editor
+- ✅ **SourcePanel.js** - Odoo models with collapsible field lists
+- ✅ **TargetPanel.js** - Canonical entities with field details and mapping indicators
+- ✅ **RelationshipDiagram.js** - React Flow visualization of entity relationships (10 relationships)
+- ✅ **SyncControls.js** - Sync status, run controls, and run history
+- ✅ **TransformPreview.js** - Preview dialog showing source → transformed data
+
+### Features
+- ✅ Visual source-to-target field mapping interface
+- ✅ 9 canonical entities loaded from YAML spec
+- ✅ Interactive entity relationship diagram (draggable nodes)
+- ✅ Auto-suggest field mappings
+- ✅ Preview transformation before sync
+- ✅ Sync status dashboard with run history
+- ✅ Schedule sync configuration dialog
+
+### Integration
+- ✅ Updated App.js to use MappingEditor at `/etl/mappings` route
+- ✅ Added 6 new API methods to frontend api.js
+- ✅ Registered mapping_editor_router in server.py
+
+---
+
+## Known Issues / Pending Fixes
+
+### P1 - RBAC Role Saving Bug
+- **Issue**: User role saving fails on Admin > Users page
+- **Status**: Not addressed in this session
+- **Debug Plan**: Check updateUserRoles API endpoint and frontend payload
+
+### P2 - Sidebar Scroll Issue
+- **Issue**: Settings section may not be scrollable
+- **Status**: Verification needed
+
+---
+
 ## Technical Notes
 - Backend: FastAPI with 11 microservices
 - Frontend: React + Shadcn/UI + Tailwind CSS
