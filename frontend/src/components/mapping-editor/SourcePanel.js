@@ -65,7 +65,19 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
     setLoadingFields(prev => ({ ...prev, [modelName]: true }));
     try {
       const res = await etlAPI.getModelFields(connectionId, modelName);
-      setModelFields(prev => ({ ...prev, [modelName]: res.data?.fields || [] }));
+      const fieldsData = res.data?.fields || {};
+      
+      // Convert object to array format
+      const fieldsArray = Object.entries(fieldsData).map(([name, field]) => ({
+        name,
+        type: field.type,
+        label: field.string || name,
+        required: field.required || false,
+        relation: field.relation,
+        help: field.help
+      }));
+      
+      setModelFields(prev => ({ ...prev, [modelName]: fieldsArray }));
     } catch (error) {
       console.error(`Failed to load fields for ${modelName}:`, error);
       // Use cached fields from discovery if available
