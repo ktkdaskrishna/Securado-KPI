@@ -1212,14 +1212,26 @@ export function OpportunitiesPage() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const { formatCurrency } = useCurrency();
 
+  // Import filter context
+  const { filters, hasActiveFilters } = useGlobalFilters();
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.team, filters.account, filters.stage]);
 
   const loadData = async () => {
     try {
+      // Build filter params
+      const params = {};
+      if (filters.year) params.year = filters.year;
+      if (filters.quarter) params.quarter = filters.quarter;
+      if (filters.salesRep) params.sales_rep = filters.salesRep;
+      if (filters.team) params.team_id = filters.team;
+      if (filters.account) params.account = filters.account;
+      if (filters.stage) params.stage = filters.stage;
+
       const [listRes, kanbanRes] = await Promise.all([
-        crmAPI.listOpportunities(),
+        crmAPI.listOpportunities(params),
         crmAPI.getKanban(),
       ]);
       setOpportunities(listRes.data);
