@@ -59,9 +59,64 @@ async def merge_with_overrides(records: List, org_id: str, app_db) -> List:
             merged_record["has_overrides"] = True
         else:
             merged_record["has_overrides"] = False
+        
+        # Normalize stage to frontend expected values
+        merged_record["stage"] = normalize_stage(merged_record.get("stage"))
+        
         merged.append(merged_record)
     
     return merged
+
+
+# Stage mapping from Odoo to frontend expected values
+STAGE_MAPPING = {
+    # Common Odoo CRM stages
+    "new": "qualified",
+    "enquiry": "qualified",
+    "qualified": "qualified",
+    "qualification": "qualified",
+    "proposition": "proposal",
+    "proposal": "proposal",
+    "proposal sent": "proposal",
+    "negotiation": "negotiation",
+    "won": "closed_won",
+    "closed won": "closed_won",
+    "lost": "closed_lost",
+    "closed lost": "closed_lost",
+    # Default mapping for any unrecognized stage
+}
+
+
+def normalize_stage(stage: str) -> str:
+    """Normalize Odoo stage names to frontend expected values"""
+    if not stage:
+        return "qualified"
+    
+    stage_lower = stage.lower().strip()
+    
+    # Direct match
+    if stage_lower in STAGE_MAPPING:
+        return STAGE_MAPPING[stage_lower]
+    
+    # Check if it's already a valid frontend stage
+    valid_stages = ["qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    if stage_lower in valid_stages:
+        return stage_lower
+    
+    # Fuzzy matching based on keywords
+    if "new" in stage_lower or "enquir" in stage_lower or "qualif" in stage_lower:
+        return "qualified"
+    if "prop" in stage_lower:
+        return "proposal"
+    if "negot" in stage_lower:
+        return "negotiation"
+    if "won" in stage_lower:
+        return "closed_won"
+    if "lost" in stage_lower:
+        return "closed_lost"
+    
+    # Default fallback
+    return "qualified"
 
 
 @opportunities_router.get("")
