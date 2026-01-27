@@ -7,6 +7,8 @@ import ReactFlow, {
   useEdgesState,
   MarkerType,
   Panel,
+  Handle,
+  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -44,16 +46,28 @@ const entityColors = {
   'sales_team': '#8B5CF6',
 };
 
-// Custom node for entities
+// Custom node for entities with connection handles
 const EntityNode = ({ data }) => {
   const Icon = entityIcons[data.id] || Building;
   const color = entityColors[data.id] || '#6B7280';
   
   return (
     <div 
-      className="px-4 py-3 rounded-lg border-2 bg-white shadow-lg min-w-[120px] text-center"
+      className="px-4 py-3 rounded-lg border-2 bg-white shadow-lg min-w-[120px] text-center relative"
       style={{ borderColor: color }}
     >
+      {/* Connection handles for edges */}
+      <Handle 
+        type="target" 
+        position={Position.Left} 
+        style={{ background: color, width: 8, height: 8 }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        style={{ background: color, width: 8, height: 8 }}
+      />
+      
       <div 
         className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white"
         style={{ backgroundColor: color }}
