@@ -2,6 +2,12 @@
 # This is the SOURCE OF TRUTH for the canonical data model
 # Edit this file to modify entities, fields, and relationships
 # The graph.json and .mmd files are generated from this spec
+#
+# IMPORTANT: Field mappings from Odoo are documented in:
+# - /app/backend/services/data_modeling/odoo_field_mappings.json (precise mappings)
+# - /app/docs/ODOO_SCHEMA_REFERENCE.md (comprehensive reference)
+#
+# Last Updated: Auto-generated from 15 official Odoo model documentation PDFs
 
 version: "1.0"
 name: "Sales KPI Model"
