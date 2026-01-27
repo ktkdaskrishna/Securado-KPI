@@ -128,7 +128,7 @@ class DashboardAggregator:
             }).to_list(10000)
             override_map = {o["canonical_id"]: o for o in overrides}
             
-            # Apply overrides
+            # Apply overrides and normalize stages
             for opp in opps:
                 override = override_map.get(opp.get("canonical_id"))
                 if override:
@@ -136,15 +136,18 @@ class DashboardAggregator:
                         opp["stage"] = override["stage"]
                     if "probability" in override:
                         opp["probability"] = override["probability"]
+                
+                # Normalize stage for dashboard grouping
+                opp["normalized_stage"] = normalize_stage_for_dashboard(opp.get("stage", ""))
             
             # Calculate aggregates
             total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
             
-            # By stage
+            # By normalized stage
             stage_counts = {}
             stage_values = {}
             for stage in PipelineStages.all():
-                stage_opps = [o for o in opps if o.get("stage") == stage]
+                stage_opps = [o for o in opps if o.get("normalized_stage") == stage]
                 stage_counts[stage] = len(stage_opps)
                 stage_values[stage] = sum(o.get("amount", 0) or 0 for o in stage_opps)
             
@@ -156,19 +159,54 @@ class DashboardAggregator:
             
             win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
             
-            # Get activities
-            activities = await app_db.activities.find({"org_id": org_id}).to_list(10000)
+            # Get activities from CANONICAL DB (synced from Odoo)
+            canonical_activities = await canonical_db.activities.find({"org_id": org_id}).to_list(10000)
+            # Also get app activities (manually created)
+            app_activities = await app_db.activities.find({"org_id": org_id}).to_list(10000)
+            all_activities = canonical_activities + app_activities
+            
+            # Get tasks from canonical DB (project tasks)
+            tasks = await canonical_db.tasks.find({"org_id": org_id}).to_list(10000)
+            
+            # Activity stats - count by type
+            activity_type_map = defaultdict(int)
+            for act in all_activities:
+                act_type = (act.get("activity_type") or act.get("type") or "").lower()
+                if "call" in act_type or "phone" in act_type:
+                    activity_type_map["calls"] += 1
+                elif "email" in act_type or "mail" in act_type:
+                    activity_type_map["emails"] += 1
+                elif "meet" in act_type or "event" in act_type:
+                    activity_type_map["meetings"] += 1
+                else:
+                    activity_type_map["tasks"] += 1
+            
+            # Add tasks count
+            activity_type_map["tasks"] += len(tasks)
+            
             activity_stats = {
-                "calls": len([a for a in activities if a.get("type") == "call"]),
-                "emails": len([a for a in activities if a.get("type") == "email"]),
-                "meetings": len([a for a in activities if a.get("type") == "meeting"]),
-                "tasks": len([a for a in activities if a.get("type") == "task"]),
-                "total": len(activities),
-                "completed": len([a for a in activities if a.get("status") == "completed"])
+                "calls": activity_type_map["calls"],
+                "emails": activity_type_map["emails"],
+                "meetings": activity_type_map["meetings"],
+                "tasks": activity_type_map["tasks"],
+                "total": len(all_activities) + len(tasks),
+                "completed": len([a for a in all_activities if a.get("state") == "done" or a.get("status") == "completed"])
+                            + len([t for t in tasks if t.get("state") in ["1_done", "done"]])
             }
             
-            # Recent activities
-            recent_activities = sorted(activities, key=lambda x: x.get("created_at", ""), reverse=True)[:5]
+            # Recent activities - combine and sort
+            recent_items = []
+            for act in all_activities:
+                recent_items.append({
+                    "id": act.get("canonical_id") or act.get("id"),
+                    "subject": act.get("summary") or act.get("subject") or "Activity",
+                    "type": act.get("activity_type") or act.get("type") or "task",
+                    "owner_name": act.get("assigned_user") or act.get("owner_name") or "System",
+                    "status": "completed" if act.get("state") == "done" else "pending",
+                    "created_at": act.get("created_at") or act.get("synced_at") or ""
+                })
+            # Sort by date and take top 5
+            recent_activities = sorted(recent_items, key=lambda x: str(x.get("created_at", "")), reverse=True)[:5]
             
             # Build pipeline by stage
             pipeline_by_stage = [
