@@ -926,6 +926,74 @@ entities:
         type: datetime
         required: false
 
+  # --- Log Message ---
+  # Odoo Chatter/Activity Log messages from mail.message
+  # Filter where model = 'crm.lead' for opportunity-related messages
+  log_message:
+    label: "Log Message"
+    description: "Chatter log messages - from mail.message where model='crm.lead'"
+    source_models:
+      - mail.message
+    source_filter: "model = 'crm.lead'"
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      opportunity_id:
+        type: string
+        required: false
+        description: "FK to opportunity (res_id from mail.message)"
+        source_field: res_id
+      body:
+        type: string
+        required: false
+        description: "Message body (HTML content)"
+        source_field: body
+      author_id:
+        type: string
+        required: false
+        description: "Author user ID"
+        source_field: author_id
+      author_name:
+        type: string
+        required: false
+        description: "Author display name"
+        source_field: author_id
+      message_type:
+        type: string
+        required: false
+        description: "email, comment, notification, auto_comment, user_notification"
+        source_field: message_type
+      subtype_id:
+        type: string
+        required: false
+        description: "Message subtype"
+        source_field: subtype_id
+      date:
+        type: datetime
+        required: false
+        description: "Message date"
+        source_field: date
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
 # ============================================================
 # RELATIONSHIPS
 # ============================================================
