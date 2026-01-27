@@ -61,15 +61,8 @@ export function MappingEditor() {
   const [fieldMappings, setFieldMappings] = useState({});
   const [autoSuggesting, setAutoSuggesting] = useState(false);
 
-  // Load initial data
-  useEffect(() => {
-    loadConnections();
-    loadTargetModels();
-    loadSavedMappings();
-  }, []);
-
   // Load connections
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     try {
       const res = await etlAPI.listConnections();
       setConnections(res.data || []);
@@ -85,7 +78,14 @@ export function MappingEditor() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load initial data
+  useEffect(() => {
+    loadConnections();
+    loadTargetModels();
+    loadSavedMappings();
+  }, [loadConnections]);
 
   // Load source models from Odoo
   const loadSourceModels = async (connectionId) => {
