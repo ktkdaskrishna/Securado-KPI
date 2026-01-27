@@ -890,7 +890,7 @@ class APITester:
         print("EVENT MESH CRM - COMPREHENSIVE BACKEND API TEST")
         print("="*70)
         print(f"Base URL: {BASE_URL}")
-        print(f"Test User: admin@test.com")
+        print(f"Test User: test@securado.com")
         print("="*70)
         
         # Health check (no auth required)
