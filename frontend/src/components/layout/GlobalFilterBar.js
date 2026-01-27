@@ -93,15 +93,15 @@ export function GlobalFilterBar({ className, compact = false }) {
 
       {/* Year Filter */}
       <Select 
-        value={filters.year || ''} 
-        onValueChange={(v) => updateFilter('year', v || null)}
+        value={filters.year || 'all'} 
+        onValueChange={(v) => updateFilter('year', v === 'all' ? null : v)}
       >
         <SelectTrigger className="w-[100px] h-9" data-testid="filter-year">
           <Calendar className="h-3 w-3 mr-1" />
           <SelectValue placeholder="Year" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Years</SelectItem>
+          <SelectItem value="all">All Years</SelectItem>
           {(options?.years || yearOptions.map(y => y.value)).map(year => (
             <SelectItem key={year} value={year}>{year}</SelectItem>
           ))}
@@ -110,14 +110,14 @@ export function GlobalFilterBar({ className, compact = false }) {
 
       {/* Quarter Filter */}
       <Select 
-        value={filters.quarter || ''} 
-        onValueChange={(v) => updateFilter('quarter', v || null)}
+        value={filters.quarter || 'all'} 
+        onValueChange={(v) => updateFilter('quarter', v === 'all' ? null : v)}
       >
         <SelectTrigger className="w-[120px] h-9" data-testid="filter-quarter">
           <SelectValue placeholder="Quarter" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Quarters</SelectItem>
+          <SelectItem value="all">All Quarters</SelectItem>
           {quarterOptions.map(opt => (
             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
           ))}
