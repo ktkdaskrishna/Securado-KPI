@@ -191,6 +191,7 @@ app.include_router(search_router, prefix="/api")
 
 # CRM Sales
 app.include_router(opportunities_router, prefix="/api")
+app.include_router(leads_router, prefix="/api")
 app.include_router(accounts_router, prefix="/api")
 app.include_router(activities_router, prefix="/api")
 app.include_router(kpis_router, prefix="/api")
