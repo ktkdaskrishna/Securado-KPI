@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 import logging
 from datetime import datetime
 import random
+from collections import defaultdict
 
 from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, now_utc, PipelineStages
@@ -18,6 +19,53 @@ from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+# Stage mapping for dashboard - normalize Odoo stages to our pipeline stages
+def normalize_stage_for_dashboard(stage: str) -> str:
+    """Normalize Odoo stage names to dashboard expected values"""
+    if not stage:
+        return "qualified"
+    
+    stage_lower = stage.lower().strip()
+    
+    # Direct mappings
+    mapping = {
+        "new": "qualified",
+        "enquiry": "qualified",
+        "qualified": "qualified",
+        "qualification": "qualified",
+        "qualified opportunity": "qualified",
+        "prospect": "qualified",
+        "proposition": "proposal",
+        "proposal": "proposal",
+        "proposal sent": "proposal",
+        "in- progress": "proposal",
+        "in-progress": "proposal",
+        "in progress": "proposal",
+        "negotiation": "negotiation",
+        "won": "closed_won",
+        "closed won": "closed_won",
+        "closed_won": "closed_won",
+        "lost": "closed_lost",
+        "closed lost": "closed_lost",
+        "closed_lost": "closed_lost",
+    }
+    
+    if stage_lower in mapping:
+        return mapping[stage_lower]
+    
+    # Fuzzy matching
+    if "won" in stage_lower:
+        return "closed_won"
+    if "lost" in stage_lower:
+        return "closed_lost"
+    if "negot" in stage_lower:
+        return "negotiation"
+    if "prop" in stage_lower:
+        return "proposal"
+    
+    return "qualified"
 
 
 class DashboardAggregator:
