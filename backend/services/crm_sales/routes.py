@@ -439,6 +439,61 @@ async def get_opportunity_activities(
     return serialize_doc(normalized)
 
 
+# ==================== LOG MESSAGES ====================
+
+@opportunities_router.get("/{opp_id}/logs")
+async def get_opportunity_logs(
+    opp_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get log messages (chatter history) for an opportunity"""
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get the opportunity to find its source_record_id
+    opp = await canonical_db.opportunities.find_one({
+        "canonical_id": opp_id,
+        "org_id": org_id
+    })
+    
+    # Build query - look for logs by both canonical_id and source_record_id
+    query_conditions = [
+        {"opportunity_id": opp_id, "org_id": org_id},
+    ]
+    
+    if opp and opp.get("source_record_id"):
+        source_id = str(opp.get("source_record_id"))
+        query_conditions.extend([
+            {"opportunity_id": source_id, "org_id": org_id},
+        ])
+    
+    # Fetch log messages
+    logs = await canonical_db.log_messages.find({
+        "$or": query_conditions
+    }).sort("date", -1).to_list(100)
+    
+    # Normalize for frontend
+    normalized = []
+    for log in logs:
+        # Clean HTML from body
+        import re
+        body = log.get("body", "") or ""
+        body_clean = log.get("body_clean") or re.sub('<[^>]+>', '', body).strip()
+        
+        normalized.append({
+            "id": log.get("canonical_id") or str(log.get("_id")),
+            "author": log.get("author_name", "System"),
+            "author_id": log.get("author_id"),
+            "body": body_clean,
+            "body_html": body,
+            "date": log.get("date"),
+            "message_type": log.get("message_type", "comment"),
+            "source_system": log.get("source_system", "local"),
+        })
+    
+    return serialize_doc(normalized)
+
+
 # ==================== BLUESHEET ====================
 
 @opportunities_router.get("/{opp_id}/bluesheet")
