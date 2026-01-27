@@ -63,17 +63,19 @@ Before using the ETL Mapping Editor, ensure:
 
 The **Target Models** panel shows 9 pre-defined canonical entities:
 
-| Entity | Description | Source Model |
-|--------|-------------|--------------|
-| **Sales User** | Salespeople/Users | res.users |
-| **Sales Team** | Sales teams | crm.team |
-| **Account** | Customer companies | res.partner (company) |
-| **Contact** | Contact persons | res.partner (contact) |
-| **Opportunity** | Sales opportunities | crm.lead |
-| **Activity** | Activities/Tasks | mail.activity |
-| **Invoice** | Customer invoices | account.move |
-| **Task** | Project tasks | project.task |
-| **Employee** | HR employees | hr.employee |
+| Entity | Description | Odoo Source Model | Filter |
+|--------|-------------|-------------------|--------|
+| **Sales User** | Salespeople/Users | `res.users` | - |
+| **Sales Team** | Sales teams | `crm.team` | - |
+| **Account** | Customer companies | `res.partner` | `is_company = True` |
+| **Contact** | Contact persons | `res.partner` | `is_company = False` |
+| **Opportunity** | Sales opportunities | `crm.lead` | `type = 'opportunity'` |
+| **Activity** | Activities/Tasks | `mail.activity` | - |
+| **Invoice** | Customer invoices | `account.move` | `move_type = 'out_invoice'` |
+| **Task** | Project tasks | `project.task` | - |
+| **Employee** | HR employees | `hr.employee` | - |
+
+> ⚠️ **Important**: Odoo's `account.*` models (Accounting category) are for **Finance/Invoices**, NOT customer accounts! Customer "Accounts" come from `res.partner` (companies).
 
 ### Step 5: Create Field Mappings
 
