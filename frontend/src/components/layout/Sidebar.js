@@ -153,6 +153,7 @@ export function Sidebar() {
   const FILTER_ENABLED_PATHS = [
     '/dashboard',
     '/opportunities',
+    '/leads',
     '/accounts',
     '/activities',
     '/analytics',
