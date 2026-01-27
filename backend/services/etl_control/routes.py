@@ -227,8 +227,19 @@ async def discover_schema(
     
     try:
         if conn["type"] == "odoo":
-            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
-            uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            try:
+                common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+                uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            except xmlrpc.client.ProtocolError as pe:
+                # Handle 303 redirect - Odoo might be upgrading or moved
+                if '303' in str(pe):
+                    raise HTTPException(
+                        status_code=503, 
+                        detail=f"Odoo server is unavailable (303 redirect). The instance at {conn['url']} may be upgrading or under maintenance. Please try again later or check the Odoo instance status."
+                    )
+                raise HTTPException(status_code=502, detail=f"Odoo connection error: {str(pe)}")
+            except Exception as conn_error:
+                raise HTTPException(status_code=502, detail=f"Failed to connect to Odoo: {str(conn_error)}")
             
             if not uid:
                 raise HTTPException(status_code=401, detail="Odoo authentication failed")
