@@ -11,8 +11,9 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity, Plus } from 'lucide-react';
+import { Building2, Search, Eye, Phone, Mail, Globe, DollarSign, TrendingUp, Activity, Plus, MapPin, Users, FileText, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function AccountsPage() {
