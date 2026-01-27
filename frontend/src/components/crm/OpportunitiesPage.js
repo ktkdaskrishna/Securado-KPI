@@ -148,6 +148,7 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
   const [bluesheet, setBluesheet] = useState(null);
   const [activities, setActivities] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [logs, setLogs] = useState([]);  // Log messages/chatter history
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState('');
   const [newNoteType, setNewNoteType] = useState('general');
@@ -171,15 +172,17 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
   const loadOpportunityDetails = async () => {
     setLoading(true);
     try {
-      const [bluesheetRes, activitiesRes, notesRes] = await Promise.all([
+      const [bluesheetRes, activitiesRes, notesRes, logsRes] = await Promise.all([
         crmAPI.getBluesheet(opportunity.canonical_id),
         crmAPI.getOpportunityActivities(opportunity.canonical_id),
         crmAPI.getMessages(opportunity.canonical_id),
+        crmAPI.getOpportunityLogs(opportunity.canonical_id),
       ]);
       
       setBluesheet(bluesheetRes.data);
       setActivities(activitiesRes.data || []);
       setNotes(notesRes.data || []);
+      setLogs(logsRes.data || []);
       
       // Initialize form with existing bluesheet data
       if (bluesheetRes.data?.bluesheet) {
