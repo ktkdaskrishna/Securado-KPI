@@ -148,40 +148,45 @@ export function RunsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    runs.map((run) => (
-                      <TableRow 
-                        key={run.id} 
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => setSelectedRun(run)}
-                        data-testid={`run-row-${run.id}`}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {statusIcons[run.status] || statusIcons.pending}
-                            <Badge className={statusColors[run.status] || statusColors.pending}>
-                              {run.status || 'unknown'}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {run.started_at ? new Date(run.started_at).toLocaleString() : '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {run.duration_seconds ? `${Number(run.duration_seconds).toFixed(2)}s` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <span className="text-emerald-600">{run.loaded_count || 0}</span>
-                            {(run.error_count || 0) > 0 && (
-                              <span className="text-red-600 ml-2">({run.error_count} errors)</span>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    runs.map((run, index) => {
+                      // Extra null safety
+                      if (!run || !run.id) return null;
+                      const displayId = String(run.pipeline_id || run.id || 'unknown').slice(0, 8);
+                      return (
+                        <TableRow 
+                          key={run.id || index} 
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => setSelectedRun(run)}
+                          data-testid={`run-row-${run.id}`}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {statusIcons[run.status] || statusIcons.pending}
+                              <Badge className={statusColors[run.status] || statusColors.pending}>
+                                {run.status || 'unknown'}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {displayId}...
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {run.started_at ? new Date(run.started_at).toLocaleString() : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {run.duration_seconds ? `${Number(run.duration_seconds).toFixed(2)}s` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <span className="text-emerald-600">{run.loaded_count || 0}</span>
+                              {(run.error_count || 0) > 0 && (
+                                <span className="text-red-600 ml-2">({run.error_count} errors)</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
