@@ -63,6 +63,7 @@ const iconMap = {
   Clock,
   User,
   Settings,
+  Boxes,
 };
 
 const defaultNavigation = {
