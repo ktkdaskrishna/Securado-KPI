@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://dataflow-designer.preview.emergentagent.com
+https://odoo-sync-builder.preview.emergentagent.com
 ```
 
 ### Test Credentials

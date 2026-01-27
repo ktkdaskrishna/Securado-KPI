@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 // Platform 2 backend URL for production use
-const PLATFORM2_URL = 'https://dataflow-designer.preview.emergentagent.com';
+const PLATFORM2_URL = 'https://odoo-sync-builder.preview.emergentagent.com';
 
 // Check if we should use Platform 2 backend (can be set via localStorage)
 const getApiBase = () => {
