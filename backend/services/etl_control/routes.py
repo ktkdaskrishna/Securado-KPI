@@ -1316,7 +1316,7 @@ async def save_mapping_config(
         "updated_at": now_utc()
     }
     
-    result = await db.mapping_configs.update_one(
+    await db.mapping_configs.update_one(
         {"org_id": org_id},
         {"$set": config_doc},
         upsert=True
