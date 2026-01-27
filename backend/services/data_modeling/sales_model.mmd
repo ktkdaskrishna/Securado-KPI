@@ -1,0 +1,145 @@
+erDiagram
+    SALES_USER {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string email
+        string login
+        boolean active
+        string team_id FK
+    }
+    
+    SALES_TEAM {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        boolean use_opportunities
+        boolean use_leads
+        string alias_name
+        number invoiced
+        number invoiced_target
+        boolean active
+    }
+    
+    ACCOUNT {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string industry
+        string type
+        string phone
+        string website
+        string email
+        string address
+        string city
+        string country
+        string owner_id FK
+        string currency
+    }
+    
+    CONTACT {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string email
+        string phone
+        string title
+        string account_id FK
+    }
+    
+    OPPORTUNITY {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string account_id FK
+        string owner_id FK
+        string team_id FK
+        string stage
+        number probability
+        number amount
+        string currency
+        boolean is_closed
+        boolean is_won
+        date close_date
+    }
+    
+    ACTIVITY {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string summary
+        string activity_type
+        string note
+        date date_deadline
+        string opportunity_id FK
+        string account_id FK
+        string user_id FK
+    }
+    
+    INVOICE {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string invoice_number
+        string account_id FK
+        string opportunity_id FK
+        date invoice_date
+        date due_date
+        number amount_total
+        string currency
+        string state
+        string payment_state
+    }
+    
+    TASK {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string description
+        string opportunity_id FK
+        string assignee_id FK
+        string stage
+        string priority
+        date date_deadline
+    }
+    
+    EMPLOYEE {
+        string canonical_id PK
+        string org_id
+        string source_system
+        string source_record_id
+        string name
+        string email
+        string job_title
+        string department_id
+        string manager_id FK
+        string user_id FK
+    }
+    
+    %% Relationships
+    SALES_USER ||--o{ ACCOUNT : "owns/manages"
+    SALES_TEAM ||--o{ SALES_USER : "has members"
+    SALES_TEAM ||--o{ OPPORTUNITY : "manages"
+    ACCOUNT ||--o{ CONTACT : "has contacts"
+    ACCOUNT ||--o{ OPPORTUNITY : "has opportunities"
+    ACCOUNT ||--o{ INVOICE : "billed"
+    SALES_USER ||--o{ OPPORTUNITY : "owns"
+    OPPORTUNITY ||--o{ ACTIVITY : "has activities"
+    OPPORTUNITY ||--o{ TASK : "has tasks"
+    OPPORTUNITY ||--o{ INVOICE : "generates"
+    EMPLOYEE ||--o{ TASK : "assigned"
+    EMPLOYEE ||--|| SALES_USER : "linked to"

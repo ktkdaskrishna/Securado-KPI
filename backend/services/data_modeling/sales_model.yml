@@ -1,0 +1,799 @@
+# Sales KPI Data Model Specification
+# This is the SOURCE OF TRUTH for the canonical data model
+# Edit this file to modify entities, fields, and relationships
+# The graph.json and .mmd files are generated from this spec
+
+version: "1.0"
+name: "Sales KPI Model"
+description: "Canonical data model for Sales CRM data from Odoo and other sources"
+
+# ============================================================
+# ENTITIES
+# ============================================================
+entities:
+  
+  # --- Sales User (Salesperson) ---
+  sales_user:
+    label: "Sales User"
+    description: "Salesperson/User who manages accounts and opportunities"
+    source_models:
+      - res.users
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+        description: "Unique identifier: {source_system}_{entity}_{source_record_id}"
+      org_id:
+        type: string
+        required: true
+        description: "Organization/tenant ID"
+      source_system:
+        type: string
+        required: true
+        description: "Source system (e.g., odoo, salesforce)"
+      source_record_id:
+        type: string
+        required: true
+        description: "Original record ID in source system"
+      name:
+        type: string
+        required: true
+        description: "User's display name"
+      email:
+        type: string
+        required: false
+        description: "User's email address"
+      login:
+        type: string
+        required: false
+        description: "Login/username"
+      active:
+        type: boolean
+        required: false
+        default: true
+        description: "Is user active?"
+      team_id:
+        type: string
+        required: false
+        description: "FK to sales_team"
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Sales Team ---
+  sales_team:
+    label: "Sales Team"
+    description: "Team of salespeople managing opportunities"
+    source_models:
+      - crm.team
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+        description: "Team name"
+      use_opportunities:
+        type: boolean
+        required: false
+        description: "Does team use opportunities pipeline?"
+      use_leads:
+        type: boolean
+        required: false
+        description: "Does team use leads?"
+      alias_name:
+        type: string
+        required: false
+        description: "Email alias for the team"
+      invoiced:
+        type: number
+        required: false
+        description: "Total invoiced amount"
+      invoiced_target:
+        type: number
+        required: false
+        description: "Target invoiced amount"
+      member_ids:
+        type: array
+        items: string
+        required: false
+        description: "List of member user IDs"
+      active:
+        type: boolean
+        required: false
+        default: true
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Account (Company/Organization) ---
+  account:
+    label: "Account"
+    description: "Company or organization (customer/prospect)"
+    source_models:
+      - res.partner
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+        description: "Account/Company name"
+      industry:
+        type: string
+        required: false
+      type:
+        type: string
+        required: false
+        description: "Account type (customer, vendor, etc.)"
+      phone:
+        type: string
+        required: false
+      website:
+        type: string
+        required: false
+      email:
+        type: string
+        required: false
+      address:
+        type: string
+        required: false
+      city:
+        type: string
+        required: false
+      state:
+        type: string
+        required: false
+      zip:
+        type: string
+        required: false
+      country:
+        type: string
+        required: false
+      owner_id:
+        type: string
+        required: false
+        description: "FK to sales_user (account manager)"
+      owner_name:
+        type: string
+        required: false
+      currency:
+        type: string
+        required: false
+        default: "USD"
+      customer_rank:
+        type: integer
+        required: false
+        description: "Customer ranking score"
+      active:
+        type: boolean
+        required: false
+        default: true
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Contact (Person) ---
+  contact:
+    label: "Contact"
+    description: "Individual person/contact at an account"
+    source_models:
+      - res.partner
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      email:
+        type: string
+        required: false
+      phone:
+        type: string
+        required: false
+      mobile:
+        type: string
+        required: false
+      title:
+        type: string
+        required: false
+        description: "Job title"
+      function:
+        type: string
+        required: false
+        description: "Job function/role"
+      account_id:
+        type: string
+        required: false
+        description: "FK to account (parent company)"
+      account_name:
+        type: string
+        required: false
+      active:
+        type: boolean
+        required: false
+        default: true
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Opportunity ---
+  opportunity:
+    label: "Opportunity"
+    description: "Sales opportunity/deal in the pipeline"
+    source_models:
+      - crm.lead
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+        description: "Opportunity name/title"
+      account_id:
+        type: string
+        required: false
+        description: "FK to account"
+      account_name:
+        type: string
+        required: false
+      contact_id:
+        type: string
+        required: false
+        description: "FK to contact"
+      owner_id:
+        type: string
+        required: false
+        description: "FK to sales_user"
+      owner_name:
+        type: string
+        required: false
+      team_id:
+        type: string
+        required: false
+        description: "FK to sales_team"
+      stage:
+        type: string
+        required: false
+        description: "Pipeline stage name"
+      stage_id:
+        type: string
+        required: false
+        description: "Pipeline stage ID"
+      probability:
+        type: number
+        required: false
+        description: "Win probability (0-100)"
+      amount:
+        type: number
+        required: false
+        description: "Expected revenue/deal value"
+      currency:
+        type: string
+        required: false
+        default: "USD"
+      is_closed:
+        type: boolean
+        required: false
+        default: false
+      is_won:
+        type: boolean
+        required: false
+        default: false
+      contact_email:
+        type: string
+        required: false
+      contact_phone:
+        type: string
+        required: false
+      date_open:
+        type: datetime
+        required: false
+        description: "Date opportunity was opened"
+      close_date:
+        type: date
+        required: false
+        description: "Expected/actual close date"
+      lost_reason:
+        type: string
+        required: false
+      activity_ids:
+        type: array
+        items: string
+        required: false
+        description: "List of related activity IDs"
+      invoice_ids:
+        type: array
+        items: string
+        required: false
+        description: "List of related invoice IDs"
+      task_ids:
+        type: array
+        items: string
+        required: false
+        description: "List of related task IDs"
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Activity ---
+  activity:
+    label: "Activity"
+    description: "Activity/task linked to an opportunity or account"
+    source_models:
+      - mail.activity
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      summary:
+        type: string
+        required: false
+        description: "Activity summary/subject"
+      activity_type:
+        type: string
+        required: false
+        description: "Type of activity (call, meeting, email, etc.)"
+      note:
+        type: string
+        required: false
+        description: "Activity notes"
+      date_deadline:
+        type: date
+        required: false
+      opportunity_id:
+        type: string
+        required: false
+        description: "FK to opportunity"
+      account_id:
+        type: string
+        required: false
+        description: "FK to account"
+      user_id:
+        type: string
+        required: false
+        description: "FK to sales_user (assigned to)"
+      state:
+        type: string
+        required: false
+        description: "Activity state (planned, done, cancelled)"
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Invoice ---
+  invoice:
+    label: "Invoice"
+    description: "Customer invoice"
+    source_models:
+      - account.move
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      invoice_number:
+        type: string
+        required: false
+        description: "Invoice number (e.g., INV/2026/0001)"
+      account_id:
+        type: string
+        required: false
+        description: "FK to account (customer)"
+      account_name:
+        type: string
+        required: false
+      opportunity_id:
+        type: string
+        required: false
+        description: "FK to opportunity (if linked)"
+      invoice_date:
+        type: date
+        required: false
+      due_date:
+        type: date
+        required: false
+      amount_untaxed:
+        type: number
+        required: false
+      amount_tax:
+        type: number
+        required: false
+      amount_total:
+        type: number
+        required: false
+      currency:
+        type: string
+        required: false
+        default: "USD"
+      state:
+        type: string
+        required: false
+        description: "draft, posted, cancel"
+      payment_state:
+        type: string
+        required: false
+        description: "not_paid, in_payment, paid"
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Task ---
+  task:
+    label: "Task"
+    description: "Project task/to-do item"
+    source_models:
+      - project.task
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+        description: "Task name/title"
+      description:
+        type: string
+        required: false
+      project_id:
+        type: string
+        required: false
+        description: "FK to project"
+      project_name:
+        type: string
+        required: false
+      opportunity_id:
+        type: string
+        required: false
+        description: "FK to opportunity (if linked)"
+      assignee_id:
+        type: string
+        required: false
+        description: "FK to employee/user assigned"
+      assignee_name:
+        type: string
+        required: false
+      stage:
+        type: string
+        required: false
+      priority:
+        type: string
+        required: false
+      date_deadline:
+        type: date
+        required: false
+      planned_hours:
+        type: number
+        required: false
+      effective_hours:
+        type: number
+        required: false
+      state:
+        type: string
+        required: false
+        description: "Task state"
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+  # --- Employee ---
+  employee:
+    label: "Employee"
+    description: "HR Employee record"
+    source_models:
+      - hr.employee
+    primary_key:
+      - org_id
+      - source_system
+      - source_record_id
+    fields:
+      canonical_id:
+        type: string
+        required: true
+      org_id:
+        type: string
+        required: true
+      source_system:
+        type: string
+        required: true
+      source_record_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      email:
+        type: string
+        required: false
+      work_phone:
+        type: string
+        required: false
+      mobile_phone:
+        type: string
+        required: false
+      job_title:
+        type: string
+        required: false
+      department_id:
+        type: string
+        required: false
+      department_name:
+        type: string
+        required: false
+      manager_id:
+        type: string
+        required: false
+        description: "FK to employee (manager)"
+      user_id:
+        type: string
+        required: false
+        description: "FK to sales_user (linked system user)"
+      active:
+        type: boolean
+        required: false
+        default: true
+      created_at:
+        type: datetime
+        required: false
+      updated_at:
+        type: datetime
+        required: false
+
+# ============================================================
+# RELATIONSHIPS
+# ============================================================
+relationships:
+
+  # Sales User owns Accounts
+  - id: sales_user__account
+    from_entity: sales_user
+    to_entity: account
+    cardinality: "1:N"
+    label: "owns/manages"
+    join:
+      from_field: source_record_id
+      to_field: owner_id
+    description: "A sales user can own/manage multiple accounts"
+
+  # Sales User belongs to Sales Team
+  - id: sales_user__sales_team
+    from_entity: sales_team
+    to_entity: sales_user
+    cardinality: "1:N"
+    label: "has members"
+    join:
+      from_field: source_record_id
+      to_field: team_id
+    description: "A sales team has multiple members"
+
+  # Account has Contacts
+  - id: account__contact
+    from_entity: account
+    to_entity: contact
+    cardinality: "1:N"
+    label: "has contacts"
+    join:
+      from_field: source_record_id
+      to_field: account_id
+    description: "An account has multiple contacts"
+
+  # Account has Opportunities
+  - id: account__opportunity
+    from_entity: account
+    to_entity: opportunity
+    cardinality: "1:N"
+    label: "has opportunities"
+    join:
+      from_field: source_record_id
+      to_field: account_id
+    description: "An account has multiple opportunities"
+
+  # Account has Invoices
+  - id: account__invoice
+    from_entity: account
+    to_entity: invoice
+    cardinality: "1:N"
+    label: "billed"
+    join:
+      from_field: source_record_id
+      to_field: account_id
+    description: "An account receives multiple invoices"
+
+  # Sales Team manages Opportunities
+  - id: sales_team__opportunity
+    from_entity: sales_team
+    to_entity: opportunity
+    cardinality: "1:N"
+    label: "manages"
+    join:
+      from_field: source_record_id
+      to_field: team_id
+    description: "A sales team manages multiple opportunities"
+
+  # Sales User owns Opportunities
+  - id: sales_user__opportunity
+    from_entity: sales_user
+    to_entity: opportunity
+    cardinality: "1:N"
+    label: "owns"
+    join:
+      from_field: source_record_id
+      to_field: owner_id
+    description: "A sales user owns multiple opportunities"
+
+  # Opportunity has Activities
+  - id: opportunity__activity
+    from_entity: opportunity
+    to_entity: activity
+    cardinality: "1:N"
+    label: "has activities"
+    join:
+      from_field: source_record_id
+      to_field: opportunity_id
+    description: "An opportunity has multiple activities"
+
+  # Opportunity has Tasks
+  - id: opportunity__task
+    from_entity: opportunity
+    to_entity: task
+    cardinality: "1:N"
+    label: "has tasks"
+    join:
+      from_field: source_record_id
+      to_field: opportunity_id
+    description: "An opportunity has multiple tasks"
+
+  # Opportunity generates Invoices
+  - id: opportunity__invoice
+    from_entity: opportunity
+    to_entity: invoice
+    cardinality: "1:N"
+    label: "generates"
+    join:
+      from_field: source_record_id
+      to_field: opportunity_id
+    description: "An opportunity generates invoices (via sale orders)"
+
+  # Employee assigned to Tasks
+  - id: employee__task
+    from_entity: employee
+    to_entity: task
+    cardinality: "1:N"
+    label: "assigned"
+    join:
+      from_field: source_record_id
+      to_field: assignee_id
+    description: "An employee is assigned to multiple tasks"
+
+  # Employee linked to Sales User
+  - id: employee__sales_user
+    from_entity: employee
+    to_entity: sales_user
+    cardinality: "1:1"
+    label: "linked to"
+    join:
+      from_field: user_id
+      to_field: source_record_id
+    description: "An employee may be linked to a system user"

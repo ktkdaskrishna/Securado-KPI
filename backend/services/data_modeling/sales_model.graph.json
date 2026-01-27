@@ -1,0 +1,322 @@
+{
+  "version": "1.0",
+  "name": "Sales KPI Model",
+  "description": "Canonical data model for Sales CRM data",
+  "generatedAt": "2026-01-27T00:00:00Z",
+  "entities": [
+    {
+      "id": "sales_user",
+      "label": "Sales User",
+      "description": "Salesperson/User who manages accounts and opportunities",
+      "color": "#3B82F6",
+      "icon": "user",
+      "position": { "x": 100, "y": 100 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["res.users"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "email", "type": "string", "required": false },
+        { "name": "login", "type": "string", "required": false },
+        { "name": "active", "type": "boolean", "required": false },
+        { "name": "team_id", "type": "string", "required": false, "fk": "sales_team" }
+      ]
+    },
+    {
+      "id": "sales_team",
+      "label": "Sales Team",
+      "description": "Team of salespeople managing opportunities",
+      "color": "#8B5CF6",
+      "icon": "users",
+      "position": { "x": 100, "y": 300 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["crm.team"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "use_opportunities", "type": "boolean", "required": false },
+        { "name": "use_leads", "type": "boolean", "required": false },
+        { "name": "invoiced", "type": "number", "required": false },
+        { "name": "invoiced_target", "type": "number", "required": false }
+      ]
+    },
+    {
+      "id": "account",
+      "label": "Account",
+      "description": "Company or organization (customer/prospect)",
+      "color": "#10B981",
+      "icon": "building",
+      "position": { "x": 400, "y": 100 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["res.partner"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "industry", "type": "string", "required": false },
+        { "name": "type", "type": "string", "required": false },
+        { "name": "phone", "type": "string", "required": false },
+        { "name": "website", "type": "string", "required": false },
+        { "name": "email", "type": "string", "required": false },
+        { "name": "owner_id", "type": "string", "required": false, "fk": "sales_user" },
+        { "name": "currency", "type": "string", "required": false }
+      ]
+    },
+    {
+      "id": "contact",
+      "label": "Contact",
+      "description": "Individual person/contact at an account",
+      "color": "#06B6D4",
+      "icon": "user-circle",
+      "position": { "x": 700, "y": 100 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["res.partner"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "email", "type": "string", "required": false },
+        { "name": "phone", "type": "string", "required": false },
+        { "name": "title", "type": "string", "required": false },
+        { "name": "account_id", "type": "string", "required": false, "fk": "account" }
+      ]
+    },
+    {
+      "id": "opportunity",
+      "label": "Opportunity",
+      "description": "Sales opportunity/deal in the pipeline",
+      "color": "#F59E0B",
+      "icon": "target",
+      "position": { "x": 400, "y": 300 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["crm.lead"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "account_id", "type": "string", "required": false, "fk": "account" },
+        { "name": "owner_id", "type": "string", "required": false, "fk": "sales_user" },
+        { "name": "team_id", "type": "string", "required": false, "fk": "sales_team" },
+        { "name": "stage", "type": "string", "required": false },
+        { "name": "probability", "type": "number", "required": false },
+        { "name": "amount", "type": "number", "required": false },
+        { "name": "is_closed", "type": "boolean", "required": false },
+        { "name": "is_won", "type": "boolean", "required": false }
+      ]
+    },
+    {
+      "id": "activity",
+      "label": "Activity",
+      "description": "Activity/task linked to an opportunity or account",
+      "color": "#EC4899",
+      "icon": "calendar",
+      "position": { "x": 700, "y": 300 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["mail.activity"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "summary", "type": "string", "required": false },
+        { "name": "activity_type", "type": "string", "required": false },
+        { "name": "date_deadline", "type": "date", "required": false },
+        { "name": "opportunity_id", "type": "string", "required": false, "fk": "opportunity" },
+        { "name": "account_id", "type": "string", "required": false, "fk": "account" },
+        { "name": "user_id", "type": "string", "required": false, "fk": "sales_user" }
+      ]
+    },
+    {
+      "id": "invoice",
+      "label": "Invoice",
+      "description": "Customer invoice",
+      "color": "#EF4444",
+      "icon": "file-text",
+      "position": { "x": 400, "y": 500 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["account.move"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "invoice_number", "type": "string", "required": false },
+        { "name": "account_id", "type": "string", "required": false, "fk": "account" },
+        { "name": "opportunity_id", "type": "string", "required": false, "fk": "opportunity" },
+        { "name": "invoice_date", "type": "date", "required": false },
+        { "name": "due_date", "type": "date", "required": false },
+        { "name": "amount_total", "type": "number", "required": false },
+        { "name": "currency", "type": "string", "required": false },
+        { "name": "state", "type": "string", "required": false },
+        { "name": "payment_state", "type": "string", "required": false }
+      ]
+    },
+    {
+      "id": "task",
+      "label": "Task",
+      "description": "Project task/to-do item",
+      "color": "#6366F1",
+      "icon": "check-square",
+      "position": { "x": 700, "y": 500 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["project.task"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "description", "type": "string", "required": false },
+        { "name": "opportunity_id", "type": "string", "required": false, "fk": "opportunity" },
+        { "name": "assignee_id", "type": "string", "required": false, "fk": "employee" },
+        { "name": "stage", "type": "string", "required": false },
+        { "name": "priority", "type": "string", "required": false },
+        { "name": "date_deadline", "type": "date", "required": false }
+      ]
+    },
+    {
+      "id": "employee",
+      "label": "Employee",
+      "description": "HR Employee record",
+      "color": "#84CC16",
+      "icon": "briefcase",
+      "position": { "x": 100, "y": 500 },
+      "pk": ["org_id", "source_system", "source_record_id"],
+      "sourceModels": ["hr.employee"],
+      "fields": [
+        { "name": "canonical_id", "type": "string", "required": true, "pk": true },
+        { "name": "org_id", "type": "string", "required": true },
+        { "name": "source_system", "type": "string", "required": true },
+        { "name": "source_record_id", "type": "string", "required": true },
+        { "name": "name", "type": "string", "required": true },
+        { "name": "email", "type": "string", "required": false },
+        { "name": "job_title", "type": "string", "required": false },
+        { "name": "department_name", "type": "string", "required": false },
+        { "name": "manager_id", "type": "string", "required": false, "fk": "employee" },
+        { "name": "user_id", "type": "string", "required": false, "fk": "sales_user" }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "sales_user__account",
+      "from": "sales_user",
+      "to": "account",
+      "cardinality": "1:N",
+      "label": "owns/manages",
+      "fk": { "from_field": "source_record_id", "to_field": "owner_id" },
+      "style": { "stroke": "#3B82F6", "animated": false }
+    },
+    {
+      "id": "sales_team__sales_user",
+      "from": "sales_team",
+      "to": "sales_user",
+      "cardinality": "1:N",
+      "label": "has members",
+      "fk": { "from_field": "source_record_id", "to_field": "team_id" },
+      "style": { "stroke": "#8B5CF6", "animated": false }
+    },
+    {
+      "id": "account__contact",
+      "from": "account",
+      "to": "contact",
+      "cardinality": "1:N",
+      "label": "has contacts",
+      "fk": { "from_field": "source_record_id", "to_field": "account_id" },
+      "style": { "stroke": "#10B981", "animated": false }
+    },
+    {
+      "id": "account__opportunity",
+      "from": "account",
+      "to": "opportunity",
+      "cardinality": "1:N",
+      "label": "has opportunities",
+      "fk": { "from_field": "source_record_id", "to_field": "account_id" },
+      "style": { "stroke": "#10B981", "animated": false }
+    },
+    {
+      "id": "account__invoice",
+      "from": "account",
+      "to": "invoice",
+      "cardinality": "1:N",
+      "label": "billed",
+      "fk": { "from_field": "source_record_id", "to_field": "account_id" },
+      "style": { "stroke": "#10B981", "animated": false }
+    },
+    {
+      "id": "sales_team__opportunity",
+      "from": "sales_team",
+      "to": "opportunity",
+      "cardinality": "1:N",
+      "label": "manages",
+      "fk": { "from_field": "source_record_id", "to_field": "team_id" },
+      "style": { "stroke": "#8B5CF6", "animated": false }
+    },
+    {
+      "id": "sales_user__opportunity",
+      "from": "sales_user",
+      "to": "opportunity",
+      "cardinality": "1:N",
+      "label": "owns",
+      "fk": { "from_field": "source_record_id", "to_field": "owner_id" },
+      "style": { "stroke": "#3B82F6", "animated": false }
+    },
+    {
+      "id": "opportunity__activity",
+      "from": "opportunity",
+      "to": "activity",
+      "cardinality": "1:N",
+      "label": "has activities",
+      "fk": { "from_field": "source_record_id", "to_field": "opportunity_id" },
+      "style": { "stroke": "#F59E0B", "animated": false }
+    },
+    {
+      "id": "opportunity__task",
+      "from": "opportunity",
+      "to": "task",
+      "cardinality": "1:N",
+      "label": "has tasks",
+      "fk": { "from_field": "source_record_id", "to_field": "opportunity_id" },
+      "style": { "stroke": "#F59E0B", "animated": false }
+    },
+    {
+      "id": "opportunity__invoice",
+      "from": "opportunity",
+      "to": "invoice",
+      "cardinality": "1:N",
+      "label": "generates",
+      "fk": { "from_field": "source_record_id", "to_field": "opportunity_id" },
+      "style": { "stroke": "#F59E0B", "animated": false }
+    },
+    {
+      "id": "employee__task",
+      "from": "employee",
+      "to": "task",
+      "cardinality": "1:N",
+      "label": "assigned",
+      "fk": { "from_field": "source_record_id", "to_field": "assignee_id" },
+      "style": { "stroke": "#84CC16", "animated": false }
+    },
+    {
+      "id": "employee__sales_user",
+      "from": "employee",
+      "to": "sales_user",
+      "cardinality": "1:1",
+      "label": "linked to",
+      "fk": { "from_field": "user_id", "to_field": "source_record_id" },
+      "style": { "stroke": "#84CC16", "animated": true }
+    }
+  ]
+}
