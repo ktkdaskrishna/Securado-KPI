@@ -1644,13 +1644,18 @@ async def run_mapping_sync(
                     # Get source fields
                     source_fields = list(set(["id"] + [m.get("sourceField") for m in mappings if m.get("sourceField")]))
                     
+                    # Apply entity-specific filters
+                    domain_filter = ENTITY_SOURCE_FILTERS.get(target_entity, [])
+                    
                     # Fetch all records (with limit for safety)
                     records = models_proxy.execute_kw(
                         conn["database"], uid, conn["api_key"],
                         source_model, 'search_read',
-                        [[]],
+                        [domain_filter],
                         {'fields': source_fields, 'limit': 1000}
                     )
+                    
+                    logger.info(f"Fetched {len(records)} records from {source_model} (filter: {domain_filter})")
                     
                     entity_count = 0
                     
@@ -1664,7 +1669,7 @@ async def run_mapping_sync(
                             "synced_at": now_utc()
                         }
                         
-                        # Apply field mappings
+                        # Apply field mappings with enhanced transforms
                         for mapping in mappings:
                             source_field = mapping.get("sourceField")
                             target_field = mapping.get("targetField")
@@ -1672,29 +1677,7 @@ async def run_mapping_sync(
                             
                             if source_field and target_field:
                                 value = record.get(source_field)
-                                
-                                # Apply transformation
-                                if transform == "extract_id" and isinstance(value, list) and len(value) >= 1:
-                                    value = str(value[0])
-                                elif transform == "extract_name" and isinstance(value, list) and len(value) >= 2:
-                                    value = value[1]
-                                elif transform == "to_float":
-                                    try:
-                                        value = float(value) if value else 0.0
-                                    except (ValueError, TypeError):
-                                        value = 0.0
-                                elif transform == "to_int":
-                                    try:
-                                        value = int(value) if value else 0
-                                    except (ValueError, TypeError):
-                                        value = 0
-                                elif transform == "to_bool":
-                                    value = bool(value)
-                                elif isinstance(value, list) and len(value) == 2:
-                                    # Default handling for many2one
-                                    value = value[1] if target_field.endswith("_name") else str(value[0])
-                                
-                                transformed[target_field] = value
+                                transformed[target_field] = apply_transform(value, transform, target_field)
                         
                         # Upsert to canonical collection
                         collection_name = f"canonical_{target_entity}"
