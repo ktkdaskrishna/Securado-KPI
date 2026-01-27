@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://datamapper-10.preview.emergentagent.com
+https://odoo-model-map.preview.emergentagent.com
 ```
 
 ### Test Credentials
