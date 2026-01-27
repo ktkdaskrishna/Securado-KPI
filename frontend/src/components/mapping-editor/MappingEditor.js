@@ -694,6 +694,7 @@ export function MappingEditor() {
           <RelationshipDiagram
             targetModels={targetModels}
             relationships={mappingConfig.relationships}
+            fieldMappings={fieldMappings}
             onUpdateRelationships={(rels) => setMappingConfig(prev => ({ ...prev, relationships: rels }))}
           />
         </TabsContent>
