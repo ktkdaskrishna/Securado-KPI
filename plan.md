@@ -348,10 +348,10 @@ Successfully tested the complete ETL pipeline with a live Odoo connection (secur
 - **Status**: FIXED - Added "invoices" to ENTITIES array in DataLakePage.js
 - **Resolution**: Data Lake now shows 186 invoices
 
-### P1 - Log Messages (Chatter) Not Implemented
+### ~~P1 - Log Messages (Chatter)~~ (RESOLVED ✅)
 - **Issue**: User requested to see Odoo chatter/log messages in Opportunity 360 view
-- **Status**: NOT STARTED - Would require syncing `mail.message` model where `model = 'crm.lead'`
-- **Next Steps**: Add `log_message` entity to sales_model.yml and create UI tab
+- **Status**: FIXED - Added `log_message` entity and Logs tab in Opportunity detail
+- **Resolution**: Synced `mail.message` where `model = 'crm.lead'`, displays in dedicated Logs tab
 
 ### P2 - Sidebar Scroll Issue
 - **Issue**: Settings section may not be scrollable
