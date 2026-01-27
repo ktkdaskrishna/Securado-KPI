@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { etlAPI } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -19,12 +19,11 @@ export function SyncControls({ connectionId, fieldMappings }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    loadSyncStatus();
-    loadRecentRuns();
-  }, [connectionId]);
-
-  const loadSyncStatus = async () => {
+  const loadSyncStatus = useCallback(async () => {
+    if (!connectionId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await etlAPI.getSyncStatus(connectionId);
       setSyncStatus(res.data);
@@ -33,16 +32,21 @@ export function SyncControls({ connectionId, fieldMappings }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [connectionId]);
 
-  const loadRecentRuns = async () => {
+  const loadRecentRuns = useCallback(async () => {
     try {
       const res = await etlAPI.listRuns(10);
       setRecentRuns(res.data || []);
     } catch (error) {
       console.log('No recent runs');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSyncStatus();
+    loadRecentRuns();
+  }, [loadSyncStatus, loadRecentRuns]);
 
   const handleSync = async () => {
     if (!connectionId) {
