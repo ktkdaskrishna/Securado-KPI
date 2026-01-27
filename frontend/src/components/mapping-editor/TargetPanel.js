@@ -220,6 +220,10 @@ export function TargetPanel({
                                     transform = 'to_bool';
                                   }
                                   onAddMapping(srcModel, model.id, srcField, field.name, transform);
+                                  toast.success(`Mapped ${srcField} → ${field.name}`, {
+                                    duration: 2000,
+                                    description: `Transform: ${transform}`
+                                  });
                                 }
                               }}
                               data-testid={`target-field-${model.id}-${field.name}`}
