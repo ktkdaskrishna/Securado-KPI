@@ -674,6 +674,81 @@ class APITester:
         if data and isinstance(data, list):
             print(f"   Found {len(data)} KPIs")
 
+    def test_visual_mapping_editor(self):
+        """Test Visual Mapping Editor endpoints"""
+        print("\n" + "="*60)
+        print("TEST: Visual Mapping Editor")
+        print("="*60)
+        
+        if not self.token:
+            self.log("No token available, skipping Visual Mapping Editor tests", False)
+            return
+        
+        # Test 1: Get canonical entities from YAML
+        status, entities_data = self.make_request(
+            'GET',
+            'mapping-editor/entities',
+            expected_status=200,
+            description="GET /api/mapping-editor/entities - Get canonical entities from YAML"
+        )
+        
+        if entities_data and isinstance(entities_data, dict):
+            entities = entities_data.get('entities', [])
+            print(f"   Found {len(entities)} canonical entities")
+            
+            # Check for expected 9 entities
+            expected_entities = ['sales_user', 'sales_team', 'account', 'contact', 
+                               'opportunity', 'activity', 'invoice', 'task', 'employee']
+            entity_ids = [e.get('id') for e in entities]
+            
+            for expected in expected_entities:
+                if expected in entity_ids:
+                    print(f"   ✓ Entity '{expected}' found")
+                else:
+                    print(f"   ✗ Entity '{expected}' NOT found")
+                    self.log(f"Missing expected entity: {expected}", False)
+            
+            # Show sample entity structure
+            if entities:
+                sample = entities[0]
+                print(f"   Sample entity: {sample.get('id')} - {sample.get('label')}")
+                print(f"   Fields count: {len(sample.get('fields', []))}")
+        
+        # Test 2: Get mapping config
+        status, config_data = self.make_request(
+            'GET',
+            'mapping-editor/config',
+            expected_status=200,
+            description="GET /api/mapping-editor/config - Get saved mapping configuration"
+        )
+        
+        if config_data and isinstance(config_data, dict):
+            print(f"   Config structure: {list(config_data.keys())}")
+            print(f"   Connection ID: {config_data.get('connectionId')}")
+            print(f"   Field Mappings: {len(config_data.get('fieldMappings', {}))} mappings")
+        
+        # Test 3: Get sync status (requires a connection)
+        connections = self.test_etl_connections()
+        if connections and len(connections) > 0:
+            conn_id = connections[0].get('id')
+            print(f"\n   Testing sync status with connection: {conn_id}")
+            
+            status, sync_data = self.make_request(
+                'GET',
+                f'mapping-editor/sync/status/{conn_id}',
+                expected_status=200,
+                description="GET /api/mapping-editor/sync/status/{id} - Get sync status"
+            )
+            
+            if sync_data and isinstance(sync_data, dict):
+                print(f"   Last sync: {sync_data.get('lastSync')}")
+                print(f"   Last run status: {sync_data.get('lastRunStatus')}")
+                print(f"   Total records: {sync_data.get('totalRecords')}")
+                entity_counts = sync_data.get('entityCounts', {})
+                print(f"   Entity counts: {entity_counts}")
+        else:
+            self.log("No connections available for sync status test", False)
+
     def run_all_tests(self):
         """Run all tests in sequence"""
         print("\n" + "="*70)
