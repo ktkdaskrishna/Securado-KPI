@@ -961,6 +961,10 @@ async def list_activities(
     opportunity_id: Optional[str] = None,
     account_id: Optional[str] = None,
     status: Optional[str] = None,
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
+    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
     """List CRM activities from both canonical (synced) and app (local) databases.
@@ -969,6 +973,8 @@ async def list_activities(
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
+    
+    logger.info(f"Activities list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
     # Build query for canonical CRM activities ONLY
     # res_model='crm.lead' ensures we only get CRM-related activities
@@ -983,6 +989,9 @@ async def list_activities(
         app_query["opportunity_id"] = opportunity_id
     if account_id:
         app_query["account_id"] = account_id
+    if sales_rep:
+        canonical_query["assigned_user"] = sales_rep
+        app_query["owner_name"] = sales_rep
     
     # Fetch CRM activities from canonical DB (synced from Odoo)
     canonical_activities = await canonical_db.activities.find(canonical_query).to_list(1000)
@@ -1003,6 +1012,7 @@ async def list_activities(
             "owner_name": act.get("assigned_user") or "System",
             "due_date": act.get("date_deadline"),
             "created_at": act.get("created_at") or act.get("synced_at"),
+            "create_date": act.get("create_date") or act.get("synced_at"),
             "opportunity_id": act.get("opportunity_id"),
             "source": "odoo"
         }
@@ -1021,6 +1031,7 @@ async def list_activities(
             "owner_name": act.get("owner_name") or "Unknown",
             "due_date": act.get("due_date"),
             "created_at": act.get("created_at"),
+            "create_date": act.get("created_at"),
             "opportunity_id": act.get("opportunity_id"),
             "source": "local"
         }
@@ -1028,6 +1039,11 @@ async def list_activities(
         if status and normalized["status"] != status:
             continue
         all_activities.append(normalized)
+    
+    # Apply date filters
+    all_activities = apply_date_filters(all_activities, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    
+    logger.info(f"Activities after filtering: {len(all_activities)}")
     
     # Sort by due_date or created_at
     all_activities.sort(key=lambda x: str(x.get("due_date") or x.get("created_at") or ""), reverse=True)
