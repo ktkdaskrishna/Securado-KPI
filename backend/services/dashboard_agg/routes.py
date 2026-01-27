@@ -406,16 +406,20 @@ async def get_dashboard_stats(
     # Apply date filters (year and quarter) using the helper function
     opps = apply_date_filters(opps, year=year, quarter=quarter, date_field=date_field or 'create_date')
     
-    logger.info(f"After filtering: {len(opps)} opportunities match criteria")
+    # Separate leads from opportunities by type field
+    opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
+    leads_only = [o for o in opps if o.get("type") == "lead"]
     
-    # Calculate stats
-    total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
+    logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
     
-    # By stage
+    # Calculate stats for OPPORTUNITIES only
+    total_pipeline = sum(o.get("amount", 0) or 0 for o in opportunities_only)
+    
+    # By stage (for opportunities)
     stage_counts = {}
     stage_values = {}
     for s in PipelineStages.all():
-        normalized_opps = [o for o in opps if normalize_stage_for_dashboard(o.get("stage", "")) == s]
+        normalized_opps = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get("stage", "")) == s]
         stage_counts[s] = len(normalized_opps)
         stage_values[s] = sum(o.get("amount", 0) or 0 for o in normalized_opps)
     
@@ -425,10 +429,15 @@ async def get_dashboard_stats(
     open_count = sum(c for s, c in stage_counts.items() if s not in [PipelineStages.CLOSED_WON, PipelineStages.CLOSED_LOST])
     win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
     
-    # Build leaderboard from filtered data
+    # Leads stats
+    total_leads = len(leads_only)
+    new_leads = len([l for l in leads_only if "new" in (l.get("stage") or "").lower() or "enquiry" in (l.get("stage") or "").lower()])
+    qualified_leads = len([l for l in leads_only if "qualified" in (l.get("stage") or "").lower()])
+    
+    # Build leaderboard from filtered opportunities
     owner_values = defaultdict(float)
     owner_names = {}
-    for opp in opps:
+    for opp in opportunities_only:
         owner_id = opp.get("owner_id")
         owner_name = opp.get("owner_name")
         if owner_id and owner_name:
@@ -462,7 +471,10 @@ async def get_dashboard_stats(
         "open_change": 0,
         "win_rate": round(win_rate, 1),
         "win_rate_change": 0,
-        "total_opportunities": len(opps),
+        "total_opportunities": len(opportunities_only),
+        "total_leads": total_leads,
+        "new_leads": new_leads,
+        "qualified_leads": qualified_leads,
         "stage_counts": stage_counts,
         "stage_values": stage_values,
         "pipeline_by_stage": pipeline_by_stage,
