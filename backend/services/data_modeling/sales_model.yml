@@ -131,11 +131,15 @@ entities:
         required: false
 
   # --- Account (Company/Organization) ---
+  # NOTE: In Odoo, res.partner stores BOTH companies and contacts
+  # For Accounts (companies): filter where is_company = True
+  # This is NOT the same as Odoo's "account.*" models which are for Finance/Accounting!
   account:
     label: "Account"
-    description: "Company or organization (customer/prospect)"
+    description: "Company or organization (customer/prospect) - from res.partner where is_company=True"
     source_models:
-      - res.partner
+      - res.partner  # Filter: is_company = True
+    source_filter: "is_company = True"
     primary_key:
       - org_id
       - source_system
