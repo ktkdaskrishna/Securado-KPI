@@ -1958,8 +1958,19 @@ async def clear_and_resync_entity(
             
             models_proxy = create_odoo_proxy(conn["url"], "object")
             
-            # Get source fields
+            # Get source fields from mappings
             source_fields = list(set(["id"] + [m.get("sourceField") for m in entity_mappings if m.get("sourceField")]))
+            
+            # IMPORTANT: Always include essential date/audit fields for opportunities
+            if entity == "opportunity":
+                essential_fields = [
+                    "create_date", "write_date", "date_open", "date_closed", 
+                    "date_deadline", "date_conversion", "day_open", "day_close",
+                    "expected_revenue", "probability", "active", "type"
+                ]
+                for field in essential_fields:
+                    if field not in source_fields:
+                        source_fields.append(field)
             
             # Apply entity-specific filters - CRITICAL for activities!
             domain_filter = ENTITY_SOURCE_FILTERS.get(entity, [])
@@ -1997,6 +2008,26 @@ async def clear_and_resync_entity(
                     if source_field and target_field:
                         value = record.get(source_field)
                         transformed[target_field] = apply_transform(value, transform, target_field)
+                
+                # ALWAYS add essential date fields for opportunities (regardless of mapping)
+                if entity == "opportunity":
+                    if record.get("create_date"):
+                        transformed["create_date"] = record.get("create_date")
+                    if record.get("write_date"):
+                        transformed["write_date"] = record.get("write_date")
+                        transformed["updated_at"] = record.get("write_date")
+                    if record.get("date_open"):
+                        transformed["date_open"] = record.get("date_open")
+                    if record.get("date_closed"):
+                        transformed["date_closed"] = record.get("date_closed")
+                    if record.get("date_conversion"):
+                        transformed["date_conversion"] = record.get("date_conversion")
+                    if record.get("day_open"):
+                        transformed["days_to_assign"] = record.get("day_open")
+                    if record.get("day_close"):
+                        transformed["days_to_close"] = record.get("day_close")
+                    if record.get("type"):
+                        transformed["type"] = record.get("type")
                 
                 # Upsert to canonical
                 await canonical_db[collection_name].update_one(
