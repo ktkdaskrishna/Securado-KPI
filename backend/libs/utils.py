@@ -117,10 +117,12 @@ class UserStatus:
 class RunStatus:
     """Pipeline run status constants"""
     PENDING = "pending"
+    RUNNING = "running"
     EXTRACTING = "extracting"
     TRANSFORMING = "transforming"
     LOADING = "loading"
     COMPLETED = "completed"
+    COMPLETED_WITH_ERRORS = "completed_with_errors"
     FAILED = "failed"
 
 
