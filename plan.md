@@ -244,6 +244,47 @@ Analyzed 15 official Odoo model documentation PDFs to create comprehensive field
 
 ---
 
+## Phase 13: P1/P2 Bug Fixes & ETL Runner Enhancement (COMPLETED ✅)
+
+### P1 - RBAC Role Saving Bug (VERIFIED WORKING ✅)
+- **Status:** RESOLVED - The feature was already working correctly
+- **Tested:** Successfully assigned "Sales Manager" role to test user via UI
+- **API Path:** `PUT /api/admin/users/{userId}/roles` with `{"roles": ["admin", "sales_manager"]}`
+
+### P2 - ETL Sync Runner Enhancement (COMPLETED ✅)
+
+#### Enhanced Transform Functions
+Added comprehensive `apply_transform()` function supporting:
+- `direct` - Copy value as-is
+- `to_string` - Convert to string
+- `to_string_array` - Convert array of IDs to string array
+- `extract_id` - Extract ID from Odoo many2one tuple `[id, name]`
+- `extract_name` - Extract name from Odoo many2one tuple
+- `first_id` / `first_name` - Extract from many2many arrays
+- `strip_html` - Remove HTML tags from text fields
+- `to_float`, `to_int`, `to_bool` - Type conversions
+- `equals:value` / `not_equals:value` - Boolean comparisons
+
+#### Entity-Specific Source Filters
+Based on Odoo schema analysis, added automatic filters:
+```python
+ENTITY_SOURCE_FILTERS = {
+    "account": [("is_company", "=", True)],     # res.partner companies only
+    "contact": [("is_company", "=", False)],    # res.partner individuals only  
+    "invoice": [("move_type", "in", ["out_invoice", "out_refund"])],  # Customer invoices only
+    "opportunity": [],  # All crm.lead records
+}
+```
+
+#### Code Changes
+- ✅ Added `re` import for HTML stripping
+- ✅ Created `apply_transform()` function at module level
+- ✅ Added `ENTITY_SOURCE_FILTERS` dictionary
+- ✅ Updated sync endpoint to use entity filters
+- ✅ All linting passes
+
+---
+
 ## Known Issues / Pending Fixes
 
 ### P1 - RBAC Role Saving Bug
