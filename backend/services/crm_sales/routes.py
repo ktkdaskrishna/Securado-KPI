@@ -780,22 +780,26 @@ async def calculate_bluesheet_only(
 
 @accounts_router.get("")
 async def list_accounts(
-    year: Optional[str] = None,
-    sales_rep: Optional[str] = None,
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
+    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
     """List accounts with optional filters"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
+    logger.info(f"Accounts list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
+    
     # Base query
     query = {"org_id": org_id}
     
-    # Get all accounts first (can't easily filter accounts by opportunity-related fields)
+    # Get all accounts first
     accounts = await canonical_db.accounts.find(query).to_list(1000)
     
     # If we need to filter by sales_rep or year, we need to check related opportunities
-    if sales_rep or year:
+    if sales_rep or year or quarter:
         # Get opportunities that match the filter
         opp_query = {"org_id": org_id}
         if sales_rep:
@@ -803,15 +807,16 @@ async def list_accounts(
         
         opps = await canonical_db.opportunities.find(opp_query).to_list(10000)
         
-        # Apply year filter on opportunities
-        if year:
-            opps = [o for o in opps if str(o.get("close_date", ""))[:4] == year or str(o.get("create_date", ""))[:4] == year]
+        # Apply date filters on opportunities
+        opps = apply_date_filters(opps, year=year, quarter=quarter, date_field=date_field or 'create_date')
         
         # Get unique account names from filtered opportunities
         valid_accounts = set(o.get("account_name") for o in opps if o.get("account_name"))
         
         # Filter accounts to only those with matching opportunities
         accounts = [a for a in accounts if a.get("name") in valid_accounts]
+    
+    logger.info(f"Accounts after filtering: {len(accounts)}")
     
     return serialize_doc(accounts)
 
