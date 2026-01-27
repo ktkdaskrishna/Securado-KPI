@@ -44,10 +44,12 @@ export function TargetPanel({
   onSelectModel, 
   fieldMappings = {},
   selectedSourceModel,
+  onAddMapping,
   onRemoveMapping 
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedModels, setExpandedModels] = useState(['opportunity', 'account']);
+  const [dragOverField, setDragOverField] = useState(null);
 
   // Toggle model expansion
   const toggleModel = (modelId) => {
