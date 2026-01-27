@@ -138,7 +138,7 @@ export function RunsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {runs.length === 0 ? (
+                  {!runs || runs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         No runs yet. Run a pipeline to see history.
@@ -147,16 +147,16 @@ export function RunsPage() {
                   ) : (
                     runs.map((run) => (
                       <TableRow 
-                        key={run.id} 
+                        key={run.id || Math.random()} 
                         className="cursor-pointer hover:bg-gray-50"
                         onClick={() => setSelectedRun(run)}
-                        data-testid={`run-row-${run.id}`}
+                        data-testid={`run-row-${run.id || 'unknown'}`}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {statusIcons[run.status]}
-                            <Badge className={statusColors[run.status]}>
-                              {run.status}
+                            {statusIcons[run.status] || statusIcons.pending}
+                            <Badge className={statusColors[run.status] || statusColors.pending}>
+                              {run.status || 'unknown'}
                             </Badge>
                           </div>
                         </TableCell>
@@ -164,7 +164,7 @@ export function RunsPage() {
                           {(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {new Date(run.started_at).toLocaleString()}
+                          {run.started_at ? new Date(run.started_at).toLocaleString() : '-'}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {run.duration_seconds ? `${run.duration_seconds.toFixed(2)}s` : '-'}
