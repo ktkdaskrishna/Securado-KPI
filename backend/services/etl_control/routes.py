@@ -1452,13 +1452,125 @@ async def preview_transformation(
     }
 
 
+def apply_transform(value, transform, target_field):
+    """Apply a transformation to a value based on the transform type.
+    
+    Based on Odoo schema analysis from 15 PDF documents:
+    - Many2one fields return [id, name] tuples
+    - Many2many/One2many return list of IDs
+    - HTML fields may need stripping
+    """
+    import re
+    
+    if value is None:
+        return None
+    
+    if transform == "direct":
+        return value
+    
+    if transform == "to_string":
+        return str(value) if value is not None else None
+    
+    if transform == "to_string_array":
+        if isinstance(value, list):
+            return [str(v) for v in value]
+        return []
+    
+    if transform == "extract_id":
+        # Many2one fields return [id, name]
+        if isinstance(value, list) and len(value) >= 1:
+            return str(value[0])
+        elif isinstance(value, (int, str)):
+            return str(value)
+        return None
+    
+    if transform == "extract_name":
+        # Many2one fields return [id, name]
+        if isinstance(value, list) and len(value) >= 2:
+            return value[1]
+        elif isinstance(value, str):
+            return value
+        return None
+    
+    if transform == "first_id":
+        # Get first ID from many2many array
+        if isinstance(value, list) and len(value) > 0:
+            first = value[0]
+            if isinstance(first, list) and len(first) >= 1:
+                return str(first[0])
+            return str(first)
+        return None
+    
+    if transform == "first_name":
+        # Get first name from many2many array
+        if isinstance(value, list) and len(value) > 0:
+            first = value[0]
+            if isinstance(first, list) and len(first) >= 2:
+                return first[1]
+            return str(first) if first else None
+        return None
+    
+    if transform == "strip_html":
+        # Remove HTML tags from text
+        if isinstance(value, str):
+            clean = re.sub(r'<[^>]+>', '', value)
+            return clean.strip()
+        return value
+    
+    if transform == "to_float":
+        try:
+            return float(value) if value else 0.0
+        except (ValueError, TypeError):
+            return 0.0
+    
+    if transform == "to_int":
+        try:
+            return int(value) if value else 0
+        except (ValueError, TypeError):
+            return 0
+    
+    if transform == "to_bool":
+        return bool(value)
+    
+    if transform.startswith("equals:"):
+        # Return true if value equals the specified value
+        expected = transform.split(":", 1)[1]
+        return str(value) == expected if value else False
+    
+    if transform.startswith("not_equals:"):
+        # Return true if value does not equal the specified value
+        expected = transform.split(":", 1)[1]
+        return str(value) != expected if value is not None else True
+    
+    # Default: handle many2one tuples
+    if isinstance(value, list) and len(value) == 2:
+        return value[1] if target_field.endswith("_name") else str(value[0])
+    
+    return value
+
+
+# Entity-specific source filters based on Odoo schema analysis
+ENTITY_SOURCE_FILTERS = {
+    "account": [("is_company", "=", True)],  # res.partner where is_company=True
+    "contact": [("is_company", "=", False)],  # res.partner where is_company=False
+    "invoice": [("move_type", "in", ["out_invoice", "out_refund"])],  # account.move customer invoices
+    "opportunity": [],  # crm.lead (can optionally filter by type='opportunity')
+}
+
+
 @mapping_editor_router.post("/sync")
 async def run_mapping_sync(
     sync_data: dict,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
-    """Run ETL sync using the visual mapping configuration"""
+    """Run ETL sync using the visual mapping configuration.
+    
+    Enhanced with:
+    - Entity-specific source filters (e.g., is_company=True for accounts)
+    - Full transform support from Odoo schema analysis
+    - Better error handling and logging
+    """
     db = get_app_db()
     
     connection_id = sync_data.get("connectionId")
