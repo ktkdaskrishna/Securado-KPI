@@ -462,3 +462,41 @@ The local pipeline stages configuration under Settings is no longer needed since
 
 ### Mock Receivables (Replaced)
 The mock receivables endpoint has been replaced with real invoice data from Odoo's `account.move` model.
+
+---
+
+## Phase 16: Dashboard & Data Display Fixes (COMPLETED ✅)
+
+### Overview
+Fixed critical data display issues across Dashboard, Activities, and Accounts pages to show live, real data from Odoo sync.
+
+### Dashboard Fixes (COMPLETED ✅)
+- ✅ **Stage Normalization**: Added `normalize_stage_for_dashboard()` function to map Odoo stages (Enquiry, Won, Qualified Opportunity) to dashboard stages (qualified, closed_won, etc.)
+- ✅ **Pipeline by Stage**: Now correctly shows distribution across stages (763 Qualified, 143 Won)
+- ✅ **Win Rate**: Fixed calculation - now shows 100% (143 won / 143 total closed)
+- ✅ **Open Opportunities**: Fixed to show 765 open deals
+- ✅ **Won This Period**: Shows OMR 803,892.25
+- ✅ **Real Leaderboard**: Replaced mock data with actual sales rep data from opportunities (top performer: Shri Hari Venkatesh Naidu)
+- ✅ **Activity Stats**: Now pulls from canonical_db.activities + canonical_db.tasks (shows 1001 tasks)
+- ✅ **Recent Activities**: Shows real Odoo activities
+
+### Activities Page Fixes (COMPLETED ✅)
+- ✅ **Data Source**: Updated `list_activities` API to combine canonical_db.activities + app_db.activities
+- ✅ **Stats API**: Updated `get_activity_stats` to count from both canonical and app databases
+- ✅ **Tasks Count**: Now includes project tasks from canonical_db.tasks (1001 tasks shown)
+- ✅ **Real Activity Display**: Shows "Proposal Planning" activity with owner and due date
+
+### Accounts Page Enhancement (COMPLETED ✅)
+- ✅ **Improved Table Layout**: Avatar with initials, name + email, location, contact, industry, owner
+- ✅ **360° View Redesign**: 
+  - Stats cards: Pipeline Value, Opportunities, Invoiced, Outstanding
+  - Tabbed interface: Overview, Contacts, Deals, Invoices
+  - Company Details section
+- ✅ **Real Contacts**: Now pulls from canonical_db.contacts linked by account
+- ✅ **Real Invoices**: Now pulls from canonical_db.invoices with payment status
+- ✅ **Opportunity Links**: Properly links opportunities by account_id and account_name
+
+### Code Changes
+- `/app/backend/services/dashboard_agg/routes.py` - Added stage normalization, real leaderboard, fixed activity stats
+- `/app/backend/services/crm_sales/routes.py` - Enhanced activities and accounts API endpoints
+- `/app/frontend/src/components/crm/AccountsPage.js` - Redesigned table and 360° view
