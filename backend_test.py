@@ -789,6 +789,9 @@ class APITester:
         self.test_etl_mappings()
         self.test_etl_pipelines()
         
+        # Visual Mapping Editor (NEW)
+        self.test_visual_mapping_editor()
+        
         # Admin modules
         self.test_admin_users()
         self.test_admin_roles()
