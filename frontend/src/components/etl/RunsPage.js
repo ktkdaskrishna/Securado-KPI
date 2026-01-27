@@ -146,7 +146,9 @@ export function RunsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    runs.map((run) => (
+                    runs.filter(Boolean).map((run) => {
+                      if (!run || typeof run !== 'object') return null;
+                      return (
                       <TableRow 
                         key={run.id || Math.random()} 
                         className="cursor-pointer hover:bg-gray-50"
@@ -162,24 +164,24 @@ export function RunsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
+                          {String(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {run.started_at ? new Date(run.started_at).toLocaleString() : '-'}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {run.duration_seconds ? `${run.duration_seconds.toFixed(2)}s` : '-'}
+                          {run.duration_seconds ? `${Number(run.duration_seconds).toFixed(2)}s` : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <span className="text-emerald-600">{run.loaded_count || 0}</span>
-                            {run.error_count > 0 && (
+                            {(run.error_count || 0) > 0 && (
                               <span className="text-red-600 ml-2">({run.error_count} errors)</span>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );})
                   )}
                 </TableBody>
               </Table>
