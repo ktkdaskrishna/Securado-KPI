@@ -820,13 +820,19 @@ async def list_activities(
     status: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """List activities from both canonical (synced) and app (local) databases"""
+    """List CRM activities from both canonical (synced) and app (local) databases.
+    Only returns activities related to CRM (crm.lead), not project tasks.
+    """
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Build query for canonical activities
-    canonical_query = {"org_id": org_id}
+    # Build query for canonical CRM activities ONLY
+    # res_model='crm.lead' ensures we only get CRM-related activities
+    canonical_query = {
+        "org_id": org_id,
+        "res_model": "crm.lead"  # Only CRM activities, not project tasks
+    }
     app_query = {"org_id": org_id}
     
     if opportunity_id:
@@ -835,7 +841,7 @@ async def list_activities(
     if account_id:
         app_query["account_id"] = account_id
     
-    # Fetch from canonical DB (synced from Odoo)
+    # Fetch CRM activities from canonical DB (synced from Odoo)
     canonical_activities = await canonical_db.activities.find(canonical_query).to_list(1000)
     
     # Fetch from app DB (manually created)
@@ -854,6 +860,7 @@ async def list_activities(
             "owner_name": act.get("assigned_user") or "System",
             "due_date": act.get("date_deadline"),
             "created_at": act.get("created_at") or act.get("synced_at"),
+            "opportunity_id": act.get("opportunity_id"),
             "source": "odoo"
         }
         # Apply status filter if provided
@@ -871,6 +878,7 @@ async def list_activities(
             "owner_name": act.get("owner_name") or "Unknown",
             "due_date": act.get("due_date"),
             "created_at": act.get("created_at"),
+            "opportunity_id": act.get("opportunity_id"),
             "source": "local"
         }
         # Apply status filter if provided
@@ -886,26 +894,28 @@ async def list_activities(
 
 @activities_router.get("/stats")
 async def get_activity_stats(current_user: dict = Depends(get_current_user)):
-    """Get activity statistics from both canonical and app databases"""
+    """Get CRM activity statistics. Only counts CRM-related activities, not project tasks."""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get activities from canonical DB
-    canonical_activities = await canonical_db.activities.find({"org_id": org_id}).to_list(1000)
+    # Get CRM activities from canonical DB (res_model='crm.lead')
+    canonical_activities = await canonical_db.activities.find({
+        "org_id": org_id,
+        "res_model": "crm.lead"  # Only CRM activities
+    }).to_list(1000)
     
     # Get activities from app DB
     app_activities = await app_db.activities.find({"org_id": org_id}).to_list(1000)
     
-    # Also count tasks from canonical DB
-    tasks = await canonical_db.tasks.find({"org_id": org_id}).to_list(1000)
+    # NOTE: Project tasks (canonical_db.tasks) are NOT included in CRM activity stats
     
     # Combine and categorize
     calls = 0
     emails = 0
     meetings = 0
-    task_count = len(tasks)
-    completed = len([t for t in tasks if t.get("state") in ["1_done", "done"]])
+    task_count = 0
+    completed = 0
     pending = 0
     overdue = 0
     
@@ -918,6 +928,12 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
         elif "meet" in act_type or "event" in act_type:
             meetings += 1
         else:
+            task_count += 1
+        
+        if act.get("state") == "done":
+            completed += 1
+        else:
+            pending += 1
             task_count += 1
         
         if act.get("state") == "done":
