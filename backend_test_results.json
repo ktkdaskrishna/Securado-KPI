@@ -1,179 +1,174 @@
 {
-  "timestamp": "2026-01-27T13:08:00.291456",
-  "total_tests": 34,
-  "passed": 31,
-  "failed": 3,
-  "success_rate": 91.17647058823529,
+  "timestamp": "2026-01-27T13:34:42.936757",
+  "total_tests": 33,
+  "passed": 28,
+  "failed": 5,
+  "success_rate": 84.84848484848484,
   "results": [
     {
       "message": "Health check - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:58.732704"
+      "timestamp": "2026-01-27T13:34:41.657933"
     },
     {
       "message": "Login with approved user - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.002190"
+      "timestamp": "2026-01-27T13:34:41.921321"
     },
     {
       "message": "Access token received",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.002789"
+      "timestamp": "2026-01-27T13:34:41.921942"
     },
     {
       "message": "Get current user info - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.043656"
+      "timestamp": "2026-01-27T13:34:41.963883"
     },
     {
       "message": "Get dashboard stats - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.085665"
+      "timestamp": "2026-01-27T13:34:42.003173"
     },
     {
       "message": "List opportunities - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.149666"
+      "timestamp": "2026-01-27T13:34:42.043091"
     },
     {
       "message": "Get opportunities kanban - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.194709"
+      "timestamp": "2026-01-27T13:34:42.082673"
     },
     {
-      "message": "GET /api/opportunities/{id}/bluesheet - Get bluesheet assessment - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:07:59.241907"
-    },
-    {
-      "message": "PUT /api/opportunities/{id}/bluesheet - Update bluesheet and calculate probability - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:07:59.280781"
-    },
-    {
-      "message": "POST /api/opportunities/{id}/notes - Create note under opportunity - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:07:59.329737"
-    },
-    {
-      "message": "GET /api/opportunities/{id}/activities - Get opportunity activities - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:07:59.409343"
+      "message": "No opportunities available for Bluesheet/Notes/Activities tests",
+      "success": false,
+      "timestamp": "2026-01-27T13:34:42.083179"
     },
     {
       "message": "List accounts - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.451461"
+      "timestamp": "2026-01-27T13:34:42.118873"
     },
     {
       "message": "List activities - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.499406"
+      "timestamp": "2026-01-27T13:34:42.158272"
     },
     {
       "message": "Get activity stats - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.540302"
+      "timestamp": "2026-01-27T13:34:42.196721"
     },
     {
       "message": "List goals - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.580901"
+      "timestamp": "2026-01-27T13:34:42.235172"
     },
     {
       "message": "List teams - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.618978"
+      "timestamp": "2026-01-27T13:34:42.271865"
     },
     {
       "message": "List portfolios - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.654653"
+      "timestamp": "2026-01-27T13:34:42.310600"
     },
     {
       "message": "List initiatives - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.693566"
+      "timestamp": "2026-01-27T13:34:42.351675"
     },
     {
       "message": "List KPIs - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.732912"
+      "timestamp": "2026-01-27T13:34:42.386967"
     },
     {
       "message": "GET /api/templates - List integration templates - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.769534"
+      "timestamp": "2026-01-27T13:34:42.418858"
     },
     {
       "message": "List ETL connections - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.816991"
+      "timestamp": "2026-01-27T13:34:42.456089"
     },
     {
       "message": "List ETL mappings - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.860769"
+      "timestamp": "2026-01-27T13:34:42.493527"
     },
     {
       "message": "List ETL connections - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.938728"
+      "timestamp": "2026-01-27T13:34:42.528744"
     },
     {
       "message": "No connections available for auto-suggest test",
       "success": false,
-      "timestamp": "2026-01-27T13:07:59.939324"
+      "timestamp": "2026-01-27T13:34:42.529181"
     },
     {
       "message": "No mappings available for verification test",
       "success": false,
-      "timestamp": "2026-01-27T13:07:59.939333"
+      "timestamp": "2026-01-27T13:34:42.529189"
     },
     {
       "message": "List ETL pipelines - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:07:59.978646"
-    },
-    {
-      "message": "GET /api/mapping-editor/entities - Get canonical entities from YAML - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:08:00.045077"
-    },
-    {
-      "message": "GET /api/mapping-editor/config - Get saved mapping configuration - Status: 200",
-      "success": true,
-      "timestamp": "2026-01-27T13:08:00.085589"
+      "timestamp": "2026-01-27T13:34:42.565404"
     },
     {
       "message": "List ETL connections - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:08:00.124077"
+      "timestamp": "2026-01-27T13:34:42.601116"
+    },
+    {
+      "message": "No connections available for schema discovery test",
+      "success": false,
+      "timestamp": "2026-01-27T13:34:42.601650"
+    },
+    {
+      "message": "GET /api/mapping-editor/entities - Get canonical entities from YAML - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-27T13:34:42.674170"
+    },
+    {
+      "message": "GET /api/mapping-editor/config - Get saved mapping configuration - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-27T13:34:42.753134"
+    },
+    {
+      "message": "List ETL connections - Status: 200",
+      "success": true,
+      "timestamp": "2026-01-27T13:34:42.787573"
     },
     {
       "message": "No connections available for sync status test",
       "success": false,
-      "timestamp": "2026-01-27T13:08:00.124628"
+      "timestamp": "2026-01-27T13:34:42.788108"
     },
     {
       "message": "List users - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:08:00.160728"
+      "timestamp": "2026-01-27T13:34:42.827763"
     },
     {
       "message": "List roles - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:08:00.197167"
+      "timestamp": "2026-01-27T13:34:42.861876"
     },
     {
       "message": "PUT /api/admin/users/{id}/roles - Update user roles - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:08:00.254083"
+      "timestamp": "2026-01-27T13:34:42.901343"
     },
     {
       "message": "List roles - Status: 200",
       "success": true,
-      "timestamp": "2026-01-27T13:08:00.290727"
+      "timestamp": "2026-01-27T13:34:42.935966"
     }
   ]
 }
