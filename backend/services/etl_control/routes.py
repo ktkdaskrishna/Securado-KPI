@@ -1694,9 +1694,9 @@ async def run_mapping_sync(
                                 value = record.get(source_field)
                                 transformed[target_field] = apply_transform(value, transform, target_field)
                         
-                        # Upsert to canonical collection
-                        collection_name = f"canonical_{target_entity}"
-                        await db[collection_name].update_one(
+                        # Upsert to canonical database (not app_db)
+                        collection_name = ENTITY_COLLECTION_MAP.get(target_entity, f"{target_entity}s")
+                        await canonical_db[collection_name].update_one(
                             {"canonical_id": transformed["canonical_id"]},
                             {"$set": transformed},
                             upsert=True
