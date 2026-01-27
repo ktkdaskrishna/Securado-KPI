@@ -513,6 +513,18 @@ async def get_available_filters(
     # Get unique owners
     owners = list(set(o.get("owner_name") for o in opps if o.get("owner_name")))
     
+    # Get years from close_date
+    years = set()
+    for opp in opps:
+        close_date = opp.get("close_date")
+        if close_date and close_date != 'False' and isinstance(close_date, str) and len(close_date) >= 4:
+            try:
+                year = close_date[:4]
+                if year.isdigit() and 1900 < int(year) < 2100:
+                    years.add(year)
+            except:
+                pass
+    
     return {
         "time_periods": [
             {"value": "week", "label": "This Week"},
@@ -521,8 +533,50 @@ async def get_available_filters(
             {"value": "year", "label": "This Year"},
             {"value": "all", "label": "All Time"}
         ],
+        "years": sorted(list(years), reverse=True),
+        "quarters": ["Q1", "Q2", "Q3", "Q4"],
         "stages": sorted(stages),
         "sales_reps": sorted(owners),
-        "teams": [{"id": t.get("source_record_id"), "name": t.get("name")} for t in teams],
-        "accounts": [{"id": a.get("canonical_id"), "name": a.get("name")} for a in accounts[:100]]
+        "teams": [{"id": str(t.get("source_record_id")), "name": t.get("name")} for t in teams if t.get("name")],
+        "accounts": [{"id": a.get("canonical_id"), "name": a.get("name")} for a in accounts[:100] if a.get("name")]
     }
+
+
+def apply_filters(opps: list, filters: dict) -> list:
+    """Apply filter parameters to opportunity list"""
+    filtered = opps
+    
+    # Filter by year (from close_date)
+    if filters.get("year"):
+        year = filters["year"]
+        filtered = [o for o in filtered if o.get("close_date") and str(o.get("close_date", ""))[:4] == year]
+    
+    # Filter by quarter
+    if filters.get("quarter"):
+        q = filters["quarter"]
+        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
+                         "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
+        months = quarter_months.get(q, [])
+        filtered = [o for o in filtered if o.get("close_date") and str(o.get("close_date", ""))[5:7] in months]
+    
+    # Filter by sales rep
+    if filters.get("sales_rep"):
+        rep = filters["sales_rep"]
+        filtered = [o for o in filtered if o.get("owner_name") == rep]
+    
+    # Filter by team
+    if filters.get("team_id"):
+        team_id = filters["team_id"]
+        filtered = [o for o in filtered if str(o.get("team_id")) == str(team_id)]
+    
+    # Filter by account
+    if filters.get("account"):
+        account = filters["account"]
+        filtered = [o for o in filtered if o.get("account_name") == account]
+    
+    # Filter by stage
+    if filters.get("stage"):
+        stage = filters["stage"]
+        filtered = [o for o in filtered if o.get("stage") == stage]
+    
+    return filtered
