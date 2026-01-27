@@ -226,7 +226,7 @@ export function RunsPage() {
       {selectedRun && (
         <Card>
           <CardHeader>
-            <CardTitle>Run Details: {selectedRun.id.slice(0, 8)}...</CardTitle>
+            <CardTitle>Run Details: {(selectedRun.id || 'unknown').slice(0, 8)}...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
