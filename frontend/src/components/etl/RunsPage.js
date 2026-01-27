@@ -47,8 +47,10 @@ export function RunsPage() {
   const loadRuns = async () => {
     try {
       const res = await etlAPI.listRuns(50);
-      // Ensure runs is always an array
-      const runsData = Array.isArray(res.data) ? res.data : (res.data?.runs || []);
+      // Ensure runs is always an array with valid objects only
+      let runsData = Array.isArray(res.data) ? res.data : (res.data?.runs || []);
+      // Filter out null/undefined entries and ensure each has required fields
+      runsData = runsData.filter(run => run && typeof run === 'object' && run.id);
       setRuns(runsData);
     } catch (error) {
       console.error('Failed to load runs:', error);
