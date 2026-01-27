@@ -934,12 +934,6 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
             completed += 1
         else:
             pending += 1
-            task_count += 1
-        
-        if act.get("state") == "done":
-            completed += 1
-        else:
-            pending += 1
     
     for act in app_activities:
         act_type = (act.get("type") or "").lower()
