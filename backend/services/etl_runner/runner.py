@@ -351,7 +351,7 @@ class ETLRunner:
                 domain = [[incremental_field, '>', high_watermark]]
                 log(f"Incremental mode: {incremental_field} > {high_watermark}")
             else:
-                log(f"Full sync mode")
+                log("Full sync mode")
             
             # Extract records
             extract_limit = config.get("extract_limit", 500)
