@@ -263,40 +263,91 @@ export function RelationshipDiagram({ targetModels = [], relationships = [], onU
     <Card className="h-full" data-testid="relationship-diagram">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Link2 className="h-5 w-5 text-purple-500" />
-            Entity Relationships
-          </CardTitle>
-          <Badge variant="secondary">{edges.length} relationships</Badge>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-purple-500" />
+              Entity Relationships
+            </CardTitle>
+            <Badge variant="secondary">{edges.length} relationships</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={discoverRelationships}
+              title="Discover relationships from field mappings"
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              Discover
+            </Button>
+            <Button 
+              variant={isEditing ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              className={isEditing ? "bg-orange-500 hover:bg-orange-600" : ""}
+            >
+              {isEditing ? (
+                <>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Click Edge to Delete
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Edit Mode
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Drag entities to reposition • Lines show 1:N relationships
+          {isEditing 
+            ? "Click an edge to delete • Drag from handle to handle to create new relationship"
+            : "Drag entities to reposition • Click 'Edit Mode' to modify relationships"
+          }
         </p>
       </CardHeader>
       
-      <CardContent className="p-0" style={{ height: 'calc(100% - 80px)' }}>
+      <CardContent className="p-0" style={{ height: 'calc(100% - 100px)' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
           nodeTypes={nodeTypes}
           fitView
           attributionPosition="bottom-left"
+          connectionMode={isEditing ? "loose" : "strict"}
+          className={isEditing ? "bg-orange-50/30" : ""}
         >
           <Controls />
           <Background variant="dots" gap={16} size={1} />
           
           <Panel position="top-left">
-            <Alert className="w-64">
+            <Alert className={`w-64 ${isEditing ? 'border-orange-300 bg-orange-50' : ''}`}>
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Legend:</strong>
-                <ul className="mt-1 space-y-1">
-                  <li>─── Solid line = 1:N relationship</li>
-                  <li>- - - Animated = 1:1 relationship</li>
-                  <li>Arrow points to &quot;many&quot; side</li>
-                </ul>
+                {isEditing ? (
+                  <>
+                    <strong className="text-orange-600">Edit Mode Active</strong>
+                    <ul className="mt-1 space-y-1">
+                      <li>• Click edge to <strong>delete</strong></li>
+                      <li>• Drag handle→handle to <strong>create</strong></li>
+                      <li>• Click Edit Mode again to exit</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <strong>Legend:</strong>
+                    <ul className="mt-1 space-y-1">
+                      <li>─── Solid line = 1:N relationship</li>
+                      <li>- - - Animated = 1:1 relationship</li>
+                      <li>Arrow points to "many" side</li>
+                    </ul>
+                  </>
+                )}
               </AlertDescription>
             </Alert>
           </Panel>
