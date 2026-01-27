@@ -401,3 +401,64 @@ Fixed critical data integrity issues reported by user after connecting to live O
 - Database: MongoDB (app + canonical)
 - Event Bus: Redpanda-compatible MongoDB implementation
 - Authentication: JWT with refresh tokens
+
+---
+
+## How to Add Custom Odoo Fields
+
+When you create a new custom field in Odoo (e.g., `x_studio_new_field`), follow these steps to sync it:
+
+### Step 1: Update the Data Model (`sales_model.yml`)
+Add the field definition to `/app/backend/services/data_modeling/sales_model.yml`:
+
+```yaml
+entities:
+  opportunity:
+    fields:
+      # Add your new field here
+      new_field_name:
+        type: string  # or number, boolean, datetime
+        required: false
+        description: "Description of the field"
+        source_field: x_studio_new_field  # Odoo field name
+```
+
+### Step 2: Run ETL Sync
+The field will be automatically picked up during the next sync. You can:
+- Use the UI: Go to ETL > Connections > Click "Sync" on your Odoo connection
+- Use API: POST `/api/mapping-editor/sync`
+
+### Step 3: Update Frontend (Optional)
+If you want to display the new field in the UI, update the relevant component:
+- **OpportunitiesPage.js** - For opportunity detail view
+- **DashboardPage.js** - For dashboard widgets
+
+### Common Odoo Field Types
+| Odoo Type | YAML Type | Transform |
+|-----------|-----------|-----------|
+| char/text | string | direct |
+| integer/float | number | direct |
+| boolean | boolean | direct |
+| date/datetime | datetime | direct |
+| many2one | string | extract_name |
+| selection | string | direct |
+
+### Already Mapped Custom Fields
+- `x_studio_opportunity_stages_1` → `custom_stage`
+- `x_studio_budget_status` → `budget_status`
+- `x_studio_sale_value` → `sale_value`
+- `x_studio_tech_buyer` → `technical_buyer_name`
+- `x_studio_comm_buyer` → `commercial_buyer_name`
+- `probabilitynew` → `user_probability`
+
+---
+
+## Obsolete/Removed Features
+
+### Pipeline Stages Settings (Removed)
+The local pipeline stages configuration under Settings is no longer needed since we now use:
+- `custom_stage` from Odoo's `x_studio_opportunity_stages_1` field
+- Stages are defined in Odoo and synced automatically
+
+### Mock Receivables (Replaced)
+The mock receivables endpoint has been replaced with real invoice data from Odoo's `account.move` model.
