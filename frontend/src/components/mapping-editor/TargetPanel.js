@@ -61,19 +61,25 @@ export function TargetPanel({
     );
   };
 
-  // Select a model
-  const handleSelectModel = (modelId) => {
-    onSelectModel(modelId);
+  // Toggle expand/collapse on click (more intuitive)
+  const handleModelClick = (modelId) => {
+    toggleModel(modelId);
+    // Also select if expanding
     if (!expandedModels.includes(modelId)) {
-      toggleModel(modelId);
+      onSelectModel(modelId);
     }
   };
 
   // Get mappings for a specific source-target pair
   const getMappingsForTarget = (targetModelId) => {
-    if (!selectedSourceModel) return [];
-    const key = `${selectedSourceModel}__${targetModelId}`;
-    return fieldMappings[key] || [];
+    // Get all mappings that target this entity (from any source)
+    const mappings = [];
+    Object.entries(fieldMappings).forEach(([key, mappingList]) => {
+      if (key.endsWith(`__${targetModelId}`)) {
+        mappings.push(...mappingList);
+      }
+    });
+    return mappings;
   };
 
   // Check if a target field is mapped
