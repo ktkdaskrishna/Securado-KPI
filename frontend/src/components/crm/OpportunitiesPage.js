@@ -278,8 +278,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <Building2 className="h-4 w-4" />
                   <span className="text-sm">{opportunity.account_name || 'No Account'}</span>
-                  <Badge className={stageColors[opportunity.stage]}>
-                    {formatStage(opportunity.stage)}
+                  <Badge className={stageColors[opportunity.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opportunity.stage] || 'bg-blue-100 text-blue-700'}>
+                    {opportunity.custom_stage || formatStage(opportunity.stage)}
                   </Badge>
                   {opportunity.opportunity_number && (
                     <span className="text-xs font-mono text-gray-400">{opportunity.opportunity_number}</span>
