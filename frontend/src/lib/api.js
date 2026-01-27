@@ -156,8 +156,8 @@ export const crmAPI = {
   updateBluesheet: (oppId, data) => api.put(`/opportunities/${oppId}/bluesheet`, data),
   calculateBluesheet: (oppId) => api.post(`/opportunities/${oppId}/bluesheet/calculate`),
   
-  // Accounts
-  listAccounts: () => api.get('/accounts'),
+  // Accounts - now supports filters
+  listAccounts: (params) => api.get('/accounts', { params }),
   createAccount: (data) => api.post('/accounts', data),
   getAccount360: (id) => api.get(`/accounts/${id}/360`),
   
