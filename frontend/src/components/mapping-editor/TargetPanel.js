@@ -144,9 +144,9 @@ export function TargetPanel({
                     isSelected ? 'ring-2 ring-primary' : ''
                   }`}
                 >
-                  {/* Model Header */}
+                  {/* Model Header - Click to toggle expand/collapse */}
                   <button
-                    onClick={() => handleSelectModel(model.id)}
+                    onClick={() => handleModelClick(model.id)}
                     className={`w-full flex items-center justify-between p-3 text-left transition-colors ${
                       isSelected ? 'bg-primary/5' : 'hover:bg-gray-50'
                     }`}
