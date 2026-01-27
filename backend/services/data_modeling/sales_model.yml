@@ -290,6 +290,9 @@ entities:
         required: false
 
   # --- Opportunity ---
+  # NOTE: crm.lead in Odoo stores BOTH leads and opportunities
+  # Opportunities have more complete data and are in the pipeline
+  # Many custom fields (x_studio_*) are specific to Securado's Odoo instance
   opportunity:
     label: "Opportunity"
     description: "Sales opportunity/deal in the pipeline"
@@ -300,6 +303,7 @@ entities:
       - source_system
       - source_record_id
     fields:
+      # === Core Identity Fields ===
       canonical_id:
         type: string
         required: true
@@ -312,52 +316,142 @@ entities:
       source_record_id:
         type: string
         required: true
+      
+      # === Basic Opportunity Info ===
       name:
         type: string
         required: true
         description: "Opportunity name/title"
+        source_field: name
+      opportunity_number:
+        type: string
+        required: false
+        description: "Opportunity reference number (e.g., SEC/OPP/2026/01/08242)"
+        source_field: x_studio_opportunity_number
+      description:
+        type: string
+        required: false
+        description: "Notes/description (HTML from Odoo)"
+        source_field: description
+      descriptions:
+        type: string
+        required: false
+        description: "Additional descriptions"
+        source_field: x_studio_descriptions
+      priority:
+        type: string
+        required: false
+        description: "Priority level (0-3)"
+        source_field: priority
+      
+      # === Account/Customer Info ===
       account_id:
         type: string
         required: false
         description: "FK to account"
+        source_field: partner_id
       account_name:
         type: string
         required: false
+        source_field: partner_id
+      customer_name:
+        type: string
+        required: false
+        description: "Company name from partner"
+        source_field: partner_name
+      
+      # === Contact Info ===
       contact_id:
         type: string
         required: false
         description: "FK to contact"
+        source_field: contact_id
+      contact_name:
+        type: string
+        required: false
+        source_field: contact_name
+      contact_email:
+        type: string
+        required: false
+        source_field: email_from
+      contact_phone:
+        type: string
+        required: false
+        source_field: phone
+      contact_mobile:
+        type: string
+        required: false
+        source_field: contact_mobile
+      contact_job_position:
+        type: string
+        required: false
+        source_field: contact_jobposition
+      
+      # === Sales Team/Owner ===
       owner_id:
         type: string
         required: false
-        description: "FK to sales_user"
+        description: "FK to sales_user (salesperson)"
+        source_field: user_id
       owner_name:
         type: string
         required: false
+        source_field: user_id
       team_id:
         type: string
         required: false
         description: "FK to sales_team"
+        source_field: team_id
+      
+      # === Pipeline/Stage Info ===
       stage:
         type: string
         required: false
         description: "Pipeline stage name"
+        source_field: stage_id
       stage_id:
         type: string
         required: false
         description: "Pipeline stage ID"
+        source_field: stage_id
+      
+      # === Financial Info ===
       probability:
         type: number
         required: false
         description: "Win probability (0-100)"
+        source_field: probability
+      automated_probability:
+        type: number
+        required: false
+        description: "AI-calculated probability"
+        source_field: automated_probability
       amount:
         type: number
         required: false
         description: "Expected revenue/deal value"
+        source_field: expected_revenue
+      sale_value:
+        type: number
+        required: false
+        description: "Sale value (custom field)"
+        source_field: x_studio_sale_value
+      budget_value:
+        type: number
+        required: false
+        description: "Budget value"
+        source_field: x_studio_budget_value
+      recurring_revenue:
+        type: number
+        required: false
+        description: "Recurring revenue amount"
+        source_field: recurring_revenue
       currency:
         type: string
         required: false
-        default: "USD"
+        default: "OMR"
+      
+      # === Status/Flags ===
       is_closed:
         type: boolean
         required: false
@@ -366,23 +460,158 @@ entities:
         type: boolean
         required: false
         default: false
-      contact_email:
-        type: string
+      active:
+        type: boolean
         required: false
-      contact_phone:
-        type: string
-        required: false
+        default: true
+        source_field: active
+      
+      # === Dates ===
       date_open:
         type: datetime
         required: false
-        description: "Date opportunity was opened"
+        description: "Date opportunity was opened/assigned"
+        source_field: date_open
       close_date:
         type: date
         required: false
         description: "Expected/actual close date"
+        source_field: date_deadline
+      date_closed:
+        type: datetime
+        required: false
+        description: "Actual close date"
+        source_field: date_closed
+      create_date:
+        type: datetime
+        required: false
+        source_field: create_date
+      
+      # === Buyers/Stakeholders (Custom Fields) ===
+      technical_buyer_id:
+        type: string
+        required: false
+        description: "Technical buyer contact"
+        source_field: techbuyer
+      technical_buyer_name:
+        type: string
+        required: false
+        source_field: techbuyer
+      commercial_buyer_id:
+        type: string
+        required: false
+        description: "Commercial buyer contact"
+        source_field: commbuyer
+      commercial_buyer_name:
+        type: string
+        required: false
+        source_field: commbuyer
+      is_tech_buyer_coach:
+        type: boolean
+        required: false
+        source_field: x_studio_is_a_technical_buyer
+      is_comm_buyer_coach:
+        type: boolean
+        required: false
+        source_field: x_studio_is_a_commercial_buyer
+      
+      # === Tender/RFP Fields (Custom) ===
+      is_tender:
+        type: string
+        required: false
+        description: "Is this a tender?"
+        source_field: x_studio_is_it_a_tender
+      rfp_invited:
+        type: boolean
+        required: false
+        description: "RFP/RFQ Invited"
+        source_field: x_studio_rfprfq_invited
+      assisted_in_rfp:
+        type: boolean
+        required: false
+        source_field: x_studio_assisted_in_rfp
+      tender_purchase_deadline:
+        type: date
+        required: false
+        source_field: x_studio_tender_purchase_end_date
+      query_submission_deadline:
+        type: date
+        required: false
+        source_field: x_studio_query_submission_date
+      tender_submission_deadline:
+        type: date
+        required: false
+        source_field: x_studio_tender_submission_date
+      is_bid_bond_needed:
+        type: string
+        required: false
+        source_field: x_studio_is_bid_bond_needed
+      
+      # === Budget/Pledge (Custom) ===
+      budget_status:
+        type: string
+        required: false
+        description: "Budget Status (Development and Approval, etc.)"
+        source_field: x_studio_budget_status
+      pledge:
+        type: string
+        required: false
+        description: "Pledge (No Commitment, etc.)"
+        source_field: x_studio_pledge
+      
+      # === POC/Demo (Custom) ===
+      poc_demo_done:
+        type: boolean
+        required: false
+        description: "POC/Demo done successfully"
+        source_field: x_studio_poc_demo_done_successfully
+      poc_demo_date:
+        type: datetime
+        required: false
+        source_field: x_studio_poc_demo_date
+      
+      # === Competition (Custom) ===
+      competitor_solution:
+        type: string
+        required: false
+        description: "Competitor's solution details"
+        source_field: x_studio_competitors_details_sales
+      competitor_price:
+        type: string
+        required: false
+        description: "Competitor's price details"
+        source_field: x_studio_competitors_details_tech_sales
+      
+      # === Products/Services (Custom) ===
+      product_service_class:
+        type: string
+        required: false
+        source_field: x_studio_product_service_class
+      deal_type:
+        type: string
+        required: false
+        description: "Type of enquiry"
+        source_field: x_studio_deal_type
+      segment:
+        type: string
+        required: false
+        source_field: x_studio_segment
+      customer_type:
+        type: string
+        required: false
+        source_field: x_studio_customer_type
+      
+      # === Lost Info ===
       lost_reason:
         type: string
         required: false
+        source_field: lost_reason_id
+      lost_reason_detail:
+        type: string
+        required: false
+        source_field: x_studio_lost_reason
+      
+      # === Related Records ===
       activity_ids:
         type: array
         items: string
@@ -398,6 +627,8 @@ entities:
         items: string
         required: false
         description: "List of related task IDs"
+      
+      # === Timestamps ===
       created_at:
         type: datetime
         required: false
