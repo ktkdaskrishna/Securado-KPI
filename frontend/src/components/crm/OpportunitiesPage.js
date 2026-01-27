@@ -44,7 +44,15 @@ const riskColors = {
 };
 
 const formatStage = (stage) => {
-  return stage?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Unknown';
+  if (!stage) return 'Unknown';
+  // Handle special cases
+  const stageMap = {
+    'review_negotiation': 'Review & Negotiation',
+    'closed_won': 'Closed Won',
+    'closed_lost': 'Closed Lost',
+  };
+  if (stageMap[stage.toLowerCase()]) return stageMap[stage.toLowerCase()];
+  return stage.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
 
 function SortableCard({ opportunity, onClick, formatCurrency }) {
