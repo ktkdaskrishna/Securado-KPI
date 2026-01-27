@@ -243,15 +243,15 @@ export function GlobalFilterBar({ className, compact = false }) {
 
       {/* Stage Filter */}
       <Select 
-        value={filters.stage || ''} 
-        onValueChange={(v) => updateFilter('stage', v || null)}
+        value={filters.stage || 'all'} 
+        onValueChange={(v) => updateFilter('stage', v === 'all' ? null : v)}
       >
         <SelectTrigger className="w-[140px] h-9" data-testid="filter-stage">
           <Target className="h-3 w-3 mr-1" />
           <SelectValue placeholder="Stage" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Stages</SelectItem>
+          <SelectItem value="all">All Stages</SelectItem>
           {options?.stages?.map(stage => (
             <SelectItem key={stage} value={stage}>{stage}</SelectItem>
           ))}
