@@ -380,5 +380,23 @@ After sync completes:
 
 ---
 
-*Document Version: 1.0*
+## ✅ Working Features (Verified After Fixes)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Source model search | ✅ Working | Auto-expands matching categories |
+| Source field drag | ✅ Working | Shows "drag →" hint on hover |
+| Target field drop | ✅ Working | Blue highlight on valid drop zone |
+| Mapping toast notification | ✅ Working | "Mapped X → Y" with transform info |
+| Mapped field indicator | ✅ Working | Green background + "← source" text |
+| Entity mapped count | ✅ Working | "X mapped" badge on entity header |
+| Remove mapping | ✅ Working | Trash icon on mapped fields |
+| Preview transformation | ✅ Working | Shows source vs transformed data |
+| Save mappings | ✅ Working | Persists to backend |
+| Relationships diagram | ✅ Working | Interactive React Flow with 10 edges |
+| Sync execution | ✅ Working | Creates records in canonical collections |
+
+---
+
+*Document Version: 2.0 (Updated after bug fixes)*
 *Last Updated: January 2025*
