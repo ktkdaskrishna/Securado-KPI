@@ -1658,7 +1658,7 @@ async def get_sync_status(
         try:
             count = await db[collection_name].count_documents({"org_id": org_id})
             entity_counts[entity] = count
-        except:
+        except Exception:
             entity_counts[entity] = 0
     
     return {
@@ -1675,7 +1675,6 @@ async def get_sync_status(
 async def get_canonical_entities(current_user: dict = Depends(get_current_user)):
     """Get canonical entity definitions from YAML spec"""
     import os
-    import yaml
     
     yaml_path = os.path.join(
         os.path.dirname(__file__), 
