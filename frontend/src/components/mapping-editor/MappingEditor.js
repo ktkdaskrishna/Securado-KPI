@@ -117,10 +117,15 @@ export function MappingEditor() {
   // Load canonical target models
   const loadTargetModels = async () => {
     try {
-      const res = await etlAPI.getDataModel();
-      setTargetModels(res.data?.entities || []);
+      const res = await etlAPI.getCanonicalEntities();
+      if (res.data?.entities?.length > 0) {
+        setTargetModels(res.data.entities);
+      } else {
+        throw new Error('No entities returned');
+      }
     } catch (error) {
-      // Use default models
+      // Use default models as fallback
+      console.log('Using default target models');
       setTargetModels([
         { id: 'opportunity', label: 'Opportunity', color: '#F59E0B', icon: 'target', sourceModels: ['crm.lead'], fields: [
           { name: 'canonical_id', type: 'string', required: true, pk: true },
