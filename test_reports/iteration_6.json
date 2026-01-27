@@ -1,0 +1,55 @@
+{
+  "summary": "Tested year filter functionality and routing for CRM pages. Backend filtering works correctly (898→504→17 opps for no filter→2025→2026). Frontend year filter works on Dashboard but filters don't persist across page navigation due to sidebar links not preserving URL query parameters.",
+  
+  "backend_issues": {
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  
+  "frontend_issues": {
+    "critical_bugs": [
+      {
+        "component": "Sidebar NavItem Links",
+        "issue": "Filter state not persisted when navigating between pages - URL query parameters are lost",
+        "description": "When user selects year=2025 on Dashboard (URL: /dashboard?year=2025) and clicks 'Opportunities' link, the URL changes to /opportunities without query params. The GlobalFilterContext syncs filters to URL, but sidebar Link components don't preserve existing query params when navigating.",
+        "affected_pages": ["All CRM pages - Dashboard, Opportunities, Accounts, Activities, Analytics, Timeline, Invoices"],
+        "root_cause": "Sidebar.js NavItem component uses plain <Link to={item.href}> without preserving search params",
+        "fix_priority": "CRITICAL",
+        "suggested_fix": "Modify NavItem component to use useSearchParams() and append current query string to navigation links: <Link to={`${item.href}${location.search}`}>"
+      }
+    ],
+    "ui_bugs": [],
+    "integration_issues": []
+  },
+  
+  "passed_tests": [
+    "✅ Backend API - Dashboard stats without filter (898 opportunities)",
+    "✅ Backend API - Dashboard stats with year=2025 filter (504 opportunities)",
+    "✅ Backend API - Dashboard stats with year=2026 filter (17 opportunities)",
+    "✅ Backend API - Dashboard stats with year=2025 quarter=Q1 filter (114 opportunities)",
+    "✅ Backend API - Opportunities list with year=2025 filter (100 opportunities returned)",
+    "✅ Backend API - Kanban view with year=2025 filter (504 total count, filtered=true)",
+    "✅ Backend API - Accounts list with year=2025 filter",
+    "✅ Backend API - Activities list with year=2025 filter",
+    "✅ Frontend - Login successful",
+    "✅ Frontend - Year filter dropdown works on Dashboard",
+    "✅ Frontend - Year filter adds ?year=2025 to URL",
+    "✅ Frontend - Dashboard shows filtered count (504 opportunities)",
+    "✅ Frontend - 'Filtered' badge appears when filter is active",
+    "✅ Frontend - Sidebar routes are correct (/dashboard, /opportunities, /accounts, /activities, /analytics, /activity-timeline, /invoices)"
+  ],
+  
+  "test_report_links": ["/app/backend_test.py"],
+  
+  "action_item_for_main_agent": "CRITICAL FIX REQUIRED: Modify Sidebar.js NavItem component to preserve URL query parameters when navigating. Change line 157 from `to={item.href}` to `to={item.href + location.search}` or use `to={{ pathname: item.href, search: location.search }}`. This will ensure filters persist across page navigation. All backend filtering is working correctly - this is purely a frontend navigation issue.",
+  
+  "updated_files": ["/app/backend_test.py"],
+  
+  "success_percentage": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "60% (6/10 tests passed - filter works but doesn't persist, routing tests couldn't complete due to navigation issue)"
+  },
+  
+  "should_call_test_agent_after_fix": "true",
+  "should_main_agent_test_itself": "false"
+}
