@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { crmAPI } from '../../lib/api';
+import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
-import { Plus, CheckSquare, Phone, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, CheckSquare, Phone, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeIcons = {
@@ -37,15 +38,25 @@ export function ActivitiesPage() {
     description: '',
     due_date: '',
   });
+  
+  // Global filters
+  const { filters, hasActiveFilters } = useGlobalFilters();
 
+  // Load data when filters change
   useEffect(() => {
     loadData();
-  }, []);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.team]);
 
   const loadData = async () => {
     try {
+      // Build filter params from global filters
+      const params = {};
+      if (filters.year) params.year = filters.year;
+      if (filters.quarter) params.quarter = filters.quarter;
+      if (filters.salesRep) params.sales_rep = filters.salesRep;
+      
       const [activitiesRes, statsRes] = await Promise.all([
-        crmAPI.listActivities(),
+        crmAPI.listActivities(params),
         crmAPI.getActivityStats(),
       ]);
       setActivities(activitiesRes.data);
