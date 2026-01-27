@@ -342,39 +342,39 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-4 space-y-4">
               {/* Key Metrics Row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-gray-500">Expected Revenue</span>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1">
+                      <DollarSign className="h-3 w-3 text-emerald-500" />
+                      <span className="text-xs text-gray-500">Expected Revenue</span>
                     </div>
-                    <p className="text-2xl font-bold mt-1">
+                    <p className="text-lg font-bold mt-1 truncate">
                       {formatCurrency(opportunity.amount || 0)}
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm text-gray-500">Sale Value</span>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-3 w-3 text-blue-500" />
+                      <span className="text-xs text-gray-500">Sale Value</span>
                     </div>
-                    <p className="text-2xl font-bold mt-1">
+                    <p className="text-lg font-bold mt-1 truncate">
                       {formatCurrency(opportunity.sale_value || 0)}
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-cyan-500" />
-                      <span className="text-sm text-gray-500">Probability</span>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1">
+                      <Target className="h-3 w-3 text-cyan-500" />
+                      <span className="text-xs text-gray-500">User Probability</span>
                     </div>
-                    <p className="text-2xl font-bold mt-1">
-                      {opportunity.probability || 0}%
+                    <p className="text-lg font-bold mt-1">
+                      {opportunity.user_probability || opportunity.probability || 0}%
                     </p>
-                    <Progress value={opportunity.probability || 0} className="mt-2 h-2" />
+                    <Progress value={opportunity.user_probability || opportunity.probability || 0} className="mt-2 h-1.5" />
                   </CardContent>
                 </Card>
                 <Card>
