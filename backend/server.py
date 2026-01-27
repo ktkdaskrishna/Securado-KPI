@@ -64,7 +64,8 @@ from services.etl_control.routes import (
     pipelines_router,
     runs_router,
     templates_router,
-    data_model_router
+    data_model_router,
+    mapping_editor_router
 )
 from services.etl_runner.runner import etl_runner
 from services.canonical_query.routes import router as canonical_router, search_router
