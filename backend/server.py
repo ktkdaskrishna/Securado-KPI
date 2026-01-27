@@ -179,6 +179,7 @@ app.include_router(mappings_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(runs_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
+app.include_router(data_model_router, prefix="/api")
 
 # Canonical/Data Lake
 app.include_router(canonical_router, prefix="/api")
