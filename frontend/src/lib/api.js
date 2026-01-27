@@ -110,6 +110,11 @@ export const etlAPI = {
   
   // Canonical/Data Lake
   getCanonicalModel: () => api.get('/integrations/canonical-model'),
+  
+  // Data Model
+  getDataModel: () => api.get('/data-model'),
+  saveDataModel: (data) => api.put('/data-model', data),
+  regenerateDataModel: () => api.post('/data-model/regenerate'),
 };
 
 // Data Lake APIs
