@@ -33,6 +33,9 @@ import { RunsPage } from './components/etl/RunsPage';
 import { DataLakePage } from './components/etl/DataLakePage';
 import { DLQPage } from './components/etl/DLQPage';
 
+// Data Modeling
+import { DataModelEditor } from './components/data-modeling/DataModelEditor';
+
 // Admin Pages
 import { UsersPage } from './components/admin/UsersPage';
 import { RolesPage } from './components/admin/RolesPage';
