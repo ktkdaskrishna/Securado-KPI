@@ -397,19 +397,16 @@ export function MappingEditor() {
       'opportunity_id': ['res_id'],
       
       // project.task -> task
-      'description': ['description'],
       'project_id': ['project_id'],
       'project_name': ['project_id'],
       'assignee_id': ['user_ids'],  // Odoo: user_ids (many2many)
       'assignee_name': ['user_ids'],
       'planned_hours': ['planned_hours'],
       'effective_hours': ['effective_hours'],
-      'priority': ['priority'],
       
       // Common timestamps
       'created_at': ['create_date'],
       'updated_at': ['write_date'],
-      'active': ['active'],
     };
     
     // Check precise mappings first
