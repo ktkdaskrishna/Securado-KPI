@@ -707,46 +707,105 @@ async def get_account_360(
     """Get 360 view of account"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
     
     # Try canonical first
     account = await canonical_db.accounts.find_one({
         "canonical_id": account_id,
-        "org_id": current_user.get("org_id", "default")
+        "org_id": org_id
     })
     
     # Try local accounts
     if not account:
         account = await app_db.local_accounts.find_one({
             "id": account_id,
-            "org_id": current_user.get("org_id", "default")
+            "org_id": org_id
         })
     
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    # Get related opportunities
+    # Get related opportunities by account_id or account_name
     account_name = account.get("name")
-    opps = await canonical_db.opportunities.find({
-        "account_name": account_name,
-        "org_id": current_user.get("org_id", "default")
-    }).to_list(100)
+    source_record_id = account.get("source_record_id")
+    
+    opp_query = {"org_id": org_id, "$or": [{"account_name": account_name}]}
+    if source_record_id:
+        opp_query["$or"].append({"account_id": str(source_record_id)})
+    
+    opps = await canonical_db.opportunities.find(opp_query).to_list(100)
+    
+    # Get related contacts by account_id
+    contact_query = {"org_id": org_id}
+    if source_record_id:
+        contact_query["$or"] = [
+            {"account_id": str(source_record_id)},
+            {"account_name": account_name}
+        ]
+    else:
+        contact_query["account_name"] = account_name
+    
+    contacts = await canonical_db.contacts.find(contact_query).to_list(50)
+    
+    # Get related invoices by account_id or account_name
+    invoice_query = {"org_id": org_id}
+    if source_record_id:
+        invoice_query["$or"] = [
+            {"account_id": str(source_record_id)},
+            {"account_name": account_name}
+        ]
+    else:
+        invoice_query["account_name"] = account_name
+    
+    invoices = await canonical_db.invoices.find(invoice_query).sort("invoice_date", -1).to_list(20)
     
     # Get related activities
     activities = await app_db.activities.find({
         "account_id": account_id,
-        "org_id": current_user.get("org_id", "default")
+        "org_id": org_id
     }).to_list(100)
     
     result = serialize_doc(account)
     result["opportunities"] = serialize_doc(opps)
-    result["activities"] = serialize_doc(activities)
     result["total_value"] = sum(o.get("amount", 0) or 0 for o in opps)
     result["opportunities_count"] = len(opps)
+    
+    # Format contacts for display
+    result["contacts"] = []
+    for contact in contacts:
+        result["contacts"].append({
+            "id": contact.get("canonical_id") or str(contact.get("_id")),
+            "name": contact.get("name", "Unknown"),
+            "title": contact.get("title") or contact.get("function") or "",
+            "email": contact.get("email") or "",
+            "phone": contact.get("phone") or ""
+        })
+    
+    # Format invoices for display
+    result["invoices"] = []
+    total_invoiced = 0
+    total_outstanding = 0
+    for inv in invoices:
+        amount = inv.get("amount_total", 0) or 0
+        result["invoices"].append({
+            "id": inv.get("canonical_id") or str(inv.get("_id")),
+            "invoice_number": inv.get("invoice_number"),
+            "amount": amount,
+            "currency": inv.get("currency", "OMR"),
+            "invoice_date": inv.get("invoice_date"),
+            "due_date": inv.get("due_date"),
+            "status": inv.get("payment_state", "pending")
+        })
+        total_invoiced += amount
+        if inv.get("payment_state") != "paid":
+            total_outstanding += amount
+    
+    result["total_invoiced"] = total_invoiced
+    result["total_outstanding"] = total_outstanding
+    result["invoices_count"] = len(invoices)
+    
+    result["activities"] = serialize_doc(activities)
     result["activities_count"] = len(activities)
-    result["contacts"] = [
-        {"id": "1", "name": "John Smith", "title": "CEO", "email": "john@example.com"},
-        {"id": "2", "name": "Jane Doe", "title": "VP Sales", "email": "jane@example.com"}
-    ]
     
     return result
 
