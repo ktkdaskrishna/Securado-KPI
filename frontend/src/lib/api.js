@@ -115,6 +115,14 @@ export const etlAPI = {
   getDataModel: () => api.get('/data-model'),
   saveDataModel: (data) => api.put('/data-model', data),
   regenerateDataModel: () => api.post('/data-model/regenerate'),
+  
+  // Visual Mapping Editor
+  getMappingConfig: () => api.get('/mapping-editor/config'),
+  saveMappingConfig: (data) => api.put('/mapping-editor/config', data),
+  previewTransformation: (data) => api.post('/mapping-editor/preview', data),
+  runMappingSync: (data) => api.post('/mapping-editor/sync', data),
+  getSyncStatus: (connectionId) => api.get(`/mapping-editor/sync/status/${connectionId}`),
+  getCanonicalEntities: () => api.get('/mapping-editor/entities'),
 };
 
 // Data Lake APIs
