@@ -252,15 +252,18 @@ async def opportunities_kanban(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get opportunities organized by stage for kanban view"""
+    """Get opportunities (type=opportunity) organized by stage for kanban view"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
     logger.info(f"Kanban request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Build query for non-date filters
-    query = {"org_id": org_id}
+    # Build query for non-date filters - ONLY type=opportunity
+    query = {
+        "org_id": org_id,
+        "type": "opportunity"  # Filter to only opportunities
+    }
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
