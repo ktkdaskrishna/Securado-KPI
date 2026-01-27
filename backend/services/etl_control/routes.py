@@ -1581,6 +1581,9 @@ async def run_mapping_sync(
     if not field_mappings:
         raise HTTPException(status_code=400, detail="No field mappings configured")
     
+    # Get both databases
+    canonical_db = get_canonical_db()
+    
     # Get connection
     conn = await db.connections.find_one({
         "id": connection_id,
@@ -1594,6 +1597,19 @@ async def run_mapping_sync(
     run_id = generate_id()
     correlation_id = generate_correlation_id()
     org_id = current_user.get("org_id", "default")
+    
+    # Entity to collection name mapping for canonical database
+    ENTITY_COLLECTION_MAP = {
+        "opportunity": "opportunities",
+        "account": "accounts",
+        "contact": "contacts",
+        "activity": "activities",
+        "invoice": "invoices",
+        "task": "tasks",
+        "employee": "employees",
+        "sales_team": "sales_teams",
+        "sales_user": "sales_users",
+    }
     
     run_doc = {
         "id": run_id,
