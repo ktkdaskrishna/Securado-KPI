@@ -309,21 +309,36 @@ class ETLRunner:
         config: Dict,
         log
     ) -> List[Dict]:
-        """Extract from Odoo via XML-RPC"""
+        """Extract from Odoo via XML-RPC
+        
+        Odoo returns relational fields (Many2one) as [id, 'name'] tuples.
+        We need to ensure we request all source fields defined in the mapping.
+        """
         try:
+            log(f"Connecting to Odoo: {conn['url']}")
             common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
             uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
             
             if not uid:
-                raise Exception("Odoo authentication failed")
+                raise Exception("Odoo authentication failed - check credentials")
             
+            log(f"Authenticated as uid={uid}")
             models = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
             
             # Get fields from mapping
-            source_fields = [m["source_field"] for m in mapping.get("mappings", []) if m.get("source_field")]
-            if not source_fields:
-                source_fields = ['id', 'name', 'email_from', 'phone', 'stage_id', 'user_id', 
-                               'expected_revenue', 'probability', 'create_date', 'write_date']
+            source_fields = list(set([
+                m["source_field"] for m in mapping.get("mappings", []) 
+                if m.get("source_field")
+            ]))
+            
+            # Always include essential fields
+            essential_fields = ['id', 'create_date', 'write_date']
+            for ef in essential_fields:
+                if ef not in source_fields:
+                    source_fields.append(ef)
+            
+            log(f"Extracting from model: {mapping['source_model']}")
+            log(f"Fields to extract: {source_fields}")
             
             # Build domain filter
             domain = []
@@ -333,23 +348,40 @@ class ETLRunner:
             if sync_mode == "incremental" and high_watermark:
                 incremental_field = config.get("incremental_field", "write_date")
                 domain = [[incremental_field, '>', high_watermark]]
-                log(f"Incremental: {incremental_field} > {high_watermark}")
+                log(f"Incremental mode: {incremental_field} > {high_watermark}")
+            else:
+                log(f"Full sync mode")
             
-            # Extract
+            # Extract records
+            extract_limit = config.get("extract_limit", 500)
             records = models.execute_kw(
                 conn["database"], uid, conn["api_key"],
                 mapping["source_model"], 'search_read',
-                domain,
+                [domain],  # Domain must be in a list
                 {
                     'fields': source_fields,
-                    'limit': config.get("extract_limit", 500),
+                    'limit': extract_limit,
                     'order': 'write_date desc'
                 }
             )
             
+            log(f"Extracted {len(records)} records from Odoo")
+            
+            # Log sample record structure for debugging
+            if records:
+                sample = records[0]
+                log(f"Sample record keys: {list(sample.keys())}")
+                # Log relational field examples
+                for key, val in sample.items():
+                    if isinstance(val, (list, tuple)):
+                        log(f"  Relational field '{key}': {val}", "debug")
+            
             return records
+            
         except Exception as e:
             log(f"Odoo extraction failed: {e}", "error")
+            import traceback
+            log(f"Traceback: {traceback.format_exc()}", "error")
             raise
     
     async def _extract_mock(
