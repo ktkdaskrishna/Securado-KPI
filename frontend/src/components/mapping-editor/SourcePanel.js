@@ -49,6 +49,23 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
   const [modelFields, setModelFields] = useState({});
   const [loadingFields, setLoadingFields] = useState({});
 
+  // Auto-expand categories when searching
+  useEffect(() => {
+    if (searchQuery) {
+      // Find categories with matching models and expand them
+      const matchingCategories = Object.entries(sourceModels)
+        .filter(([_, models]) => models.some(m => 
+          m.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        ))
+        .map(([category]) => category);
+      
+      if (matchingCategories.length > 0) {
+        setExpandedCategories(prev => [...new Set([...prev, ...matchingCategories])]);
+      }
+    }
+  }, [searchQuery, sourceModels]);
+
   // Toggle category expansion
   const toggleCategory = (category) => {
     setExpandedCategories(prev => 
