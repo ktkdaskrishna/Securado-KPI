@@ -225,7 +225,142 @@ export function MappingEditor() {
     }
   };
 
-  // Auto-suggest mappings for a model pair
+  // Smart field name matching for auto-mapping
+  const getSmartFieldMatch = (sourceField, targetField) => {
+    const srcName = sourceField.name.toLowerCase();
+    const tgtName = targetField.name.toLowerCase();
+    
+    // Direct match
+    if (srcName === tgtName) return { match: true, transform: 'direct', confidence: 1.0 };
+    
+    // ID field matching
+    if (tgtName === 'source_record_id' && srcName === 'id') {
+      return { match: true, transform: 'to_string', confidence: 1.0 };
+    }
+    
+    // Name variations
+    if (tgtName === 'name' && (srcName === 'name' || srcName === 'display_name')) {
+      return { match: true, transform: 'direct', confidence: 0.9 };
+    }
+    
+    // Many2one field matching (_id suffix)
+    if (tgtName.endsWith('_id') && sourceField.type === 'many2one') {
+      const baseTarget = tgtName.replace('_id', '');
+      const baseSrc = srcName.replace('_id', '');
+      if (baseTarget === baseSrc || srcName === tgtName) {
+        return { match: true, transform: 'extract_id', confidence: 0.9 };
+      }
+    }
+    
+    // Many2one name extraction (_name suffix)
+    if (tgtName.endsWith('_name') && sourceField.type === 'many2one') {
+      const baseTarget = tgtName.replace('_name', '');
+      const baseSrc = srcName.replace('_id', '');
+      if (baseTarget === baseSrc) {
+        return { match: true, transform: 'extract_name', confidence: 0.8 };
+      }
+    }
+    
+    // Common field name synonyms
+    const synonyms = {
+      'phone': ['phone', 'mobile', 'telephone'],
+      'email': ['email', 'email_from', 'work_email'],
+      'website': ['website', 'url'],
+      'address': ['street', 'address', 'street2'],
+      'amount': ['expected_revenue', 'amount', 'amount_total', 'total'],
+      'stage': ['stage_id', 'stage', 'state'],
+      'close_date': ['date_deadline', 'date_closed', 'expected_date'],
+      'invoice_number': ['name', 'number', 'reference'],
+    };
+    
+    for (const [target, sources] of Object.entries(synonyms)) {
+      if (tgtName === target && sources.includes(srcName)) {
+        const transform = sourceField.type === 'many2one' ? 'extract_name' : 'direct';
+        return { match: true, transform, confidence: 0.7 };
+      }
+    }
+    
+    return { match: false };
+  };
+
+  // Auto-map all entities based on canonical model definitions
+  const handleAutoMapAll = async () => {
+    if (!selectedConnection) {
+      toast.error('Please select a connection first');
+      return;
+    }
+    
+    setAutoSuggesting(true);
+    toast.info('Auto-mapping entities...', { duration: 2000 });
+    
+    try {
+      const newMappings = { ...fieldMappings };
+      let totalMapped = 0;
+      
+      // For each target entity
+      for (const targetEntity of targetModels) {
+        const sourceModel = targetEntity.sourceModels?.[0];
+        if (!sourceModel) continue;
+        
+        // Find source model in discovered models
+        const allSourceModels = Object.values(sourceModels).flat();
+        const source = allSourceModels.find(m => m.model === sourceModel);
+        
+        if (!source) continue;
+        
+        // Get source fields
+        let sourceFields = [];
+        try {
+          const fieldsRes = await etlAPI.getModelFields(selectedConnection.id, sourceModel);
+          sourceFields = Object.entries(fieldsRes.data?.fields || {}).map(([name, field]) => ({
+            name,
+            type: field.type,
+            label: field.string
+          }));
+        } catch (e) {
+          continue;
+        }
+        
+        const key = `${sourceModel}__${targetEntity.id}`;
+        const mappings = [];
+        
+        // Match fields
+        for (const targetField of targetEntity.fields || []) {
+          // Skip system fields
+          if (['canonical_id', 'org_id', 'source_system'].includes(targetField.name)) continue;
+          
+          for (const sourceField of sourceFields) {
+            const match = getSmartFieldMatch(sourceField, targetField);
+            if (match.match) {
+              mappings.push({
+                sourceField: sourceField.name,
+                targetField: targetField.name,
+                transform: match.transform,
+                confidence: match.confidence
+              });
+              break; // Use first match
+            }
+          }
+        }
+        
+        if (mappings.length > 0) {
+          newMappings[key] = mappings;
+          totalMapped += mappings.length;
+        }
+      }
+      
+      setFieldMappings(newMappings);
+      toast.success(`Auto-mapped ${totalMapped} fields across entities!`);
+      
+    } catch (error) {
+      console.error('Auto-map failed:', error);
+      toast.error('Auto-mapping failed: ' + error.message);
+    } finally {
+      setAutoSuggesting(false);
+    }
+  };
+
+  // Auto-suggest mappings for a model pair (existing)
   const handleAutoSuggest = async (sourceModel, targetModel) => {
     if (!selectedConnection || !sourceModel || !targetModel) return;
     
