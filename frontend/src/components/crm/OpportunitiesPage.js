@@ -650,39 +650,46 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
               )}
             </TabsContent>
             
-            {/* Bluesheet Tab - Enhanced to show Odoo data */}
+            {/* Bluesheet Tab - Enhanced with manual input + history */}
             <TabsContent value="bluesheet" className="mt-4 space-y-4">
-              {/* AI Probability Score Card */}
+              {/* Probability Scores Comparison */}
+              <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Salesperson Input</p>
+                      <p className="text-3xl font-bold text-blue-600">{opportunity.user_probability || opportunity.probability || 0}%</p>
+                      <p className="text-xs text-gray-400">Manual estimate</p>
+                    </div>
+                    <div className="border-l border-r border-gray-200">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">AI Confidence</p>
+                      <p className="text-3xl font-bold text-purple-600">{opportunity.automated_probability || 0}%</p>
+                      <p className="text-xs text-gray-400">From Odoo AI</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Bluesheet Score</p>
+                      <p className="text-3xl font-bold text-emerald-600">{bluesheet?.calculated_probability?.probability || 0}%</p>
+                      <Badge className={riskColors[bluesheet?.calculated_probability?.risk_level || 'medium']} >
+                        {bluesheet?.calculated_probability?.risk_level || 'calculating'}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Score Breakdown */}
               {bluesheet?.calculated_probability && (
-                <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
+                <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Target className="h-4 w-4 text-purple-600" />
-                      AI Confidence Score
-                    </CardTitle>
+                    <CardTitle className="text-sm font-medium">Score Breakdown (Bluesheet Calculation)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-4xl font-bold text-purple-600">{bluesheet.calculated_probability.probability}%</p>
-                        <Badge className={riskColors[bluesheet.calculated_probability.risk_level]}>
-                          {bluesheet.calculated_probability.risk_level} risk
-                        </Badge>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">vs Salesperson: {opportunity.user_probability || opportunity.probability || 0}%</p>
-                        <p className="text-xs text-gray-400">Variance: {Math.abs((bluesheet.calculated_probability.probability || 0) - (opportunity.user_probability || opportunity.probability || 0)).toFixed(1)}%</p>
-                      </div>
-                    </div>
-                    
-                    {/* Score Breakdown */}
-                    <div className="space-y-2 border-t pt-3">
-                      <p className="text-xs font-medium text-gray-500 uppercase">Score Breakdown</p>
+                    <div className="space-y-2">
                       {Object.entries(bluesheet.calculated_probability.breakdown || {}).map(([key, score]) => (
                         <div key={key} className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
                           <div className="flex items-center gap-2">
-                            <Progress value={score} className="w-20 h-2" />
+                            <Progress value={score} className="w-24 h-2" />
                             <span className="font-medium w-10 text-right">{score}</span>
                           </div>
                         </div>
@@ -692,143 +699,150 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                 </Card>
               )}
               
-              {/* Synced from Odoo Card */}
+              {/* Synced from Odoo - Read Only Display */}
               <Card className="border-emerald-200">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700">
                     <CheckCircle className="h-4 w-4" />
-                    Data Synced from Odoo (Auto-calculated)
+                    Data from Odoo (Auto-synced)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Buying Influences from Odoo */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase flex items-center gap-1">
-                      <Users className="h-3 w-3" /> Buying Influences
-                      <Badge variant="outline" className="text-xs ml-2 text-emerald-600">From Odoo</Badge>
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {opportunity.commercial_buyer_name && (
-                        <div className="p-2 bg-blue-50 rounded border border-blue-100">
-                          <p className="text-xs text-gray-500">Commercial/Economic Buyer</p>
-                          <p className="font-medium text-sm">{opportunity.commercial_buyer_name}</p>
-                          {opportunity.is_comm_buyer_coach && (
-                            <Badge className="text-xs bg-emerald-100 text-emerald-700 mt-1">Coach ✓</Badge>
-                          )}
-                        </div>
-                      )}
-                      {opportunity.technical_buyer_name && (
-                        <div className="p-2 bg-purple-50 rounded border border-purple-100">
-                          <p className="text-xs text-gray-500">Technical Buyer</p>
-                          <p className="font-medium text-sm">{opportunity.technical_buyer_name}</p>
-                          {opportunity.is_tech_buyer_coach && (
-                            <Badge className="text-xs bg-emerald-100 text-emerald-700 mt-1">Coach ✓</Badge>
-                          )}
-                        </div>
-                      )}
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {/* Buying Influences */}
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Commercial Buyer</p>
+                      <p className="font-medium">{opportunity.commercial_buyer_name || 'Not identified'}</p>
+                      {opportunity.is_comm_buyer_coach && <Badge className="text-xs bg-emerald-100 text-emerald-700">Coach</Badge>}
                     </div>
-                    {!opportunity.commercial_buyer_name && !opportunity.technical_buyer_name && (
-                      <p className="text-sm text-gray-400 italic">No buying influences identified in Odoo</p>
-                    )}
-                  </div>
-                  
-                  {/* Budget Info from Odoo */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" /> Budget Information
-                      <Badge variant="outline" className="text-xs ml-2 text-emerald-600">From Odoo</Badge>
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">Budget Status</p>
-                        <p className="font-medium text-sm">{opportunity.budget_status || 'Not set'}</p>
-                      </div>
-                      <div className="p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">Commitment/Pledge</p>
-                        <Badge variant={opportunity.pledge === 'No Commitment' ? 'secondary' : 'default'} className="text-xs">
-                          {opportunity.pledge || 'Not set'}
-                        </Badge>
-                      </div>
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Technical Buyer</p>
+                      <p className="font-medium">{opportunity.technical_buyer_name || 'Not identified'}</p>
+                      {opportunity.is_tech_buyer_coach && <Badge className="text-xs bg-emerald-100 text-emerald-700">Coach</Badge>}
                     </div>
-                  </div>
-                  
-                  {/* Competition from Odoo */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" /> Competition
-                      <Badge variant="outline" className="text-xs ml-2 text-emerald-600">From Odoo</Badge>
-                    </p>
-                    {opportunity.competitor_solution ? (
-                      <div className="p-3 bg-red-50 rounded border border-red-100">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xs text-gray-500">Competitor's Solution</p>
-                            <p className="font-medium text-red-700">{opportunity.competitor_solution}</p>
-                          </div>
-                          <Badge className="bg-red-100 text-red-700">Direct Competition</Badge>
-                        </div>
-                        {opportunity.competitor_price && (
-                          <div className="mt-2 pt-2 border-t border-red-100">
-                            <p className="text-xs text-gray-500">Competitor's Price</p>
-                            <p className="font-mono text-sm text-red-600">{opportunity.competitor_price}</p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-emerald-50 rounded border border-emerald-100">
-                        <p className="text-sm text-emerald-700">No competitor identified - Favored position</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Stage from Odoo */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" /> Pipeline Stage
-                      <Badge variant="outline" className="text-xs ml-2 text-emerald-600">From Odoo</Badge>
-                    </p>
-                    <div className="p-2 bg-gray-50 rounded flex items-center justify-between">
-                      <span className="font-medium">{opportunity.custom_stage || opportunity.stage || 'Unknown'}</span>
-                      <Badge variant="outline">{bluesheet?.calculated_probability?.breakdown?.stage_score || 0} pts</Badge>
+                    {/* Budget & Competition */}
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Budget Status</p>
+                      <p className="font-medium">{opportunity.budget_status || 'Unknown'}</p>
+                    </div>
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Competitor</p>
+                      <p className="font-medium text-red-600">{opportunity.competitor_solution || 'None'}</p>
+                    </div>
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Pledge/Commitment</p>
+                      <p className="font-medium">{opportunity.pledge || 'Unknown'}</p>
+                    </div>
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="text-xs text-gray-500 mb-1">Stage</p>
+                      <p className="font-medium">{opportunity.custom_stage || opportunity.stage || 'Unknown'}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              {/* Manual Input Card - Only Win Strategy */}
+              {/* Manual Input Form */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Edit2 className="h-4 w-4" />
-                    Manual Input - Win Strategy
+                    Manual Input (Override/Add)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Competition Status Override */}
                   <div className="space-y-2">
-                    <Label>Win Strategy / Action Plan</Label>
+                    <Label className="text-xs">Competition Status (Override)</Label>
+                    <Select 
+                      value={bluesheetForm.competition_status} 
+                      onValueChange={(v) => setBluesheetForm({...bluesheetForm, competition_status: v})}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Use Odoo data (default)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unknown">Use Odoo data (default)</SelectItem>
+                        <SelectItem value="sole_source">Sole Source (100%)</SelectItem>
+                        <SelectItem value="favored">Favored Position (75%)</SelectItem>
+                        <SelectItem value="even">Even Competition (50%)</SelectItem>
+                        <SelectItem value="behind">Behind Competitor (25%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Budget Status Override */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Budget Status (Override)</Label>
+                    <Select 
+                      value={bluesheetForm.budget_status} 
+                      onValueChange={(v) => setBluesheetForm({...bluesheetForm, budget_status: v})}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Use Odoo data (default)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unknown">Use Odoo data (default)</SelectItem>
+                        <SelectItem value="confirmed">Budget Confirmed (100%)</SelectItem>
+                        <SelectItem value="identified">Budget Identified (75%)</SelectItem>
+                        <SelectItem value="in_process">Budget In Process (50%)</SelectItem>
+                        <SelectItem value="not_identified">Not Identified (25%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Additional Buying Influences */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Additional Buying Influences</Label>
+                      <Select onValueChange={addBuyingInfluence}>
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue placeholder="Add..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="economic_buyer">Economic Buyer</SelectItem>
+                          <SelectItem value="user_buyer">User Buyer</SelectItem>
+                          <SelectItem value="technical_buyer">Technical Buyer</SelectItem>
+                          <SelectItem value="coach">Coach/Champion</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {bluesheetForm.buying_influences.length > 0 && (
+                      <div className="space-y-2">
+                        {bluesheetForm.buying_influences.map((bi, index) => (
+                          <div key={index} className="p-2 border rounded bg-gray-50 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">{bi.role.replace('_', ' ')}</Badge>
+                              <Input
+                                placeholder="Name"
+                                value={bi.name || ''}
+                                onChange={(e) => updateBuyingInfluence(index, 'name', e.target.value)}
+                                className="h-7 w-32 text-xs"
+                              />
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => removeBuyingInfluence(index)} className="h-6 px-2 text-red-500">
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Win Strategy */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Win Strategy / Action Plan</Label>
                     <Textarea
                       value={bluesheetForm.win_strategy}
                       onChange={(e) => setBluesheetForm({...bluesheetForm, win_strategy: e.target.value})}
                       placeholder="Document your strategy to win this deal..."
-                      rows={4}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Key Issues to Address</Label>
-                    <Textarea
-                      value={(bluesheetForm.key_issues || []).join('\n')}
-                      onChange={(e) => setBluesheetForm({...bluesheetForm, key_issues: e.target.value.split('\n').filter(k => k.trim())})}
-                      placeholder="List key issues (one per line)..."
                       rows={3}
+                      className="text-sm"
                     />
                   </div>
                   
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveBluesheet} disabled={savingBluesheet}>
-                      {savingBluesheet ? 'Saving...' : 'Save Strategy'}
-                    </Button>
-                  </div>
+                  <Button onClick={handleSaveBluesheet} disabled={savingBluesheet} className="w-full">
+                    {savingBluesheet ? 'Saving...' : 'Save & Recalculate'}
+                  </Button>
                 </CardContent>
               </Card>
               
@@ -842,10 +856,10 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1">
                       {bluesheet.calculated_probability.recommendations.map((rec, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2 p-2 bg-amber-50 rounded">
-                          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                        <li key={i} className="text-xs flex items-start gap-2 p-1.5 bg-amber-50 rounded">
+                          <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 flex-shrink-0" />
                           <span>{rec}</span>
                         </li>
                       ))}
@@ -854,20 +868,37 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                 </Card>
               )}
               
-              {/* Calculation Log */}
+              {/* Calculation History Log */}
               <Card className="border-gray-200">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-gray-500 uppercase">Calculation Log</CardTitle>
+                  <CardTitle className="text-xs font-medium text-gray-500 uppercase flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    Calculation History
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xs font-mono text-gray-500 space-y-1 bg-gray-50 p-2 rounded max-h-40 overflow-y-auto">
-                    <p>📊 Stage: {opportunity.custom_stage || opportunity.stage} → {bluesheet?.calculated_probability?.breakdown?.stage_score || 0}pts (25% weight)</p>
-                    <p>👥 Buying Influences: {opportunity.commercial_buyer_name ? `Commercial: ${opportunity.commercial_buyer_name}` : 'None'}{opportunity.technical_buyer_name ? `, Technical: ${opportunity.technical_buyer_name}` : ''} → {bluesheet?.calculated_probability?.breakdown?.buying_influences_score || 0}pts (20% weight)</p>
-                    <p>⚔️ Competition: {opportunity.competitor_solution || 'No competitor'} → {bluesheet?.calculated_probability?.breakdown?.competition_score || 0}pts (15% weight)</p>
-                    <p>💰 Budget: {opportunity.budget_status || 'Unknown'}, Pledge: {opportunity.pledge || 'Unknown'} → {bluesheet?.calculated_probability?.breakdown?.budget_score || 0}pts (15% weight)</p>
-                    <p>📅 Timeline: Close {opportunity.close_date ? new Date(opportunity.close_date).toLocaleDateString() : 'Not set'} → {bluesheet?.calculated_probability?.breakdown?.timeline_score || 0}pts (15% weight)</p>
-                    <p>📈 Activity: {activities.length} activities → {bluesheet?.calculated_probability?.breakdown?.activity_score || 0}pts (10% weight)</p>
-                    <p className="border-t border-gray-200 pt-1 mt-1">🎯 Final Score: {bluesheet?.calculated_probability?.probability || 0}% (weighted average)</p>
+                  <div className="text-xs space-y-2 max-h-48 overflow-y-auto">
+                    {/* Current Calculation */}
+                    <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-blue-700">Latest Calculation</span>
+                        <span className="text-gray-400">{new Date().toLocaleString()}</span>
+                      </div>
+                      <div className="font-mono text-gray-600 space-y-0.5">
+                        <p>📊 Stage: {opportunity.custom_stage || opportunity.stage} → {bluesheet?.calculated_probability?.breakdown?.stage_score || 0}pts</p>
+                        <p>👥 Buyers: {opportunity.commercial_buyer_name || 'None'}{opportunity.technical_buyer_name ? `, ${opportunity.technical_buyer_name}` : ''} → {bluesheet?.calculated_probability?.breakdown?.buying_influences_score || 0}pts</p>
+                        <p>⚔️ Competition: {opportunity.competitor_solution || 'None'} → {bluesheet?.calculated_probability?.breakdown?.competition_score || 0}pts</p>
+                        <p>💰 Budget: {opportunity.budget_status || 'Unknown'} → {bluesheet?.calculated_probability?.breakdown?.budget_score || 0}pts</p>
+                        <p>📅 Timeline: {opportunity.close_date ? new Date(opportunity.close_date).toLocaleDateString() : 'Not set'} → {bluesheet?.calculated_probability?.breakdown?.timeline_score || 0}pts</p>
+                        <p>📈 Activity: {activities.length} activities → {bluesheet?.calculated_probability?.breakdown?.activity_score || 0}pts</p>
+                        <p className="font-bold text-blue-700 pt-1 border-t border-blue-200">🎯 Result: {bluesheet?.calculated_probability?.probability || 0}% ({bluesheet?.calculated_probability?.risk_level} risk)</p>
+                      </div>
+                    </div>
+                    
+                    {/* Historical note */}
+                    <p className="text-center text-gray-400 italic py-2">
+                      Odoo AI last calculated: {opportunity.automated_probability || 0}% probability
+                    </p>
                   </div>
                 </CardContent>
               </Card>
