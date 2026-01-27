@@ -167,9 +167,28 @@ async def test_connection(
     
     try:
         if conn["type"] == "odoo":
-            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
-            version = common.version()
-            uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            try:
+                common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+                version = common.version()
+                uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+            except xmlrpc.client.ProtocolError as pe:
+                # Handle 303 redirect - Odoo might be upgrading or moved
+                error_msg = str(pe)
+                if '303' in error_msg:
+                    await db.connections.update_one(
+                        {"id": conn_id},
+                        {"$set": {"status": "error", "health": "unhealthy", "last_test": now_utc(), "error": "Odoo instance unavailable (303 redirect)"}}
+                    )
+                    return {
+                        "status": "error", 
+                        "health": "unhealthy", 
+                        "message": f"Odoo server unavailable (303 redirect). The instance at {conn['url']} may be upgrading or under maintenance."
+                    }
+                await db.connections.update_one(
+                    {"id": conn_id},
+                    {"$set": {"status": "error", "health": "unhealthy", "last_test": now_utc(), "error": error_msg}}
+                )
+                return {"status": "error", "health": "unhealthy", "message": f"Odoo connection error: {error_msg}"}
             
             if uid:
                 await db.connections.update_one(
