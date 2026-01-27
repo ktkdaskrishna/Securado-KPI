@@ -33,7 +33,8 @@ import {
   Menu,
   FileText,
   Clock,
-  User
+  User,
+  Boxes
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 
