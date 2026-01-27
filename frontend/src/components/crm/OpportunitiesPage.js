@@ -29,6 +29,12 @@ const stageColors = {
   negotiation: 'bg-amber-100 text-amber-700 border-amber-200',
   closed_won: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   closed_lost: 'bg-red-100 text-red-700 border-red-200',
+  // Custom stages from Odoo
+  'review_negotiation': 'bg-amber-100 text-amber-700 border-amber-200',
+  'enquiry': 'bg-gray-100 text-gray-700 border-gray-200',
+  'won': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'lost': 'bg-red-100 text-red-700 border-red-200',
+  'hold': 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 const riskColors = {
