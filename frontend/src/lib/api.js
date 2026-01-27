@@ -148,6 +148,7 @@ export const crmAPI = {
   updateProbability: (id, probability) => api.post(`/opportunities/${id}/calculate-probability`, { probability }),
   getMessages: (id) => api.get(`/opportunities/${id}/messages`),
   getOpportunityActivities: (id) => api.get(`/opportunities/${id}/activities`),
+  getOpportunityLogs: (id) => api.get(`/opportunities/${id}/logs`),  // Log messages/chatter
   createOpportunityNote: (id, data) => api.post(`/opportunities/${id}/notes`, data),
   
   // Bluesheet
