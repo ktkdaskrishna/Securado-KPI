@@ -226,6 +226,7 @@ export function MappingEditor() {
   };
 
   // Smart field name matching for auto-mapping
+  // Based on official Odoo model documentation (15 PDFs analyzed)
   const getSmartFieldMatch = (sourceField, targetField) => {
     const srcName = sourceField.name.toLowerCase();
     const tgtName = targetField.name.toLowerCase();
@@ -261,16 +262,116 @@ export function MappingEditor() {
       }
     }
     
-    // Common field name synonyms
+    // PRECISE Odoo field mappings based on official documentation
+    // These are exact mappings from Odoo model fields to canonical fields
+    const odooFieldMappings = {
+      // crm.lead -> opportunity
+      'amount': ['expected_revenue'],  // Odoo uses expected_revenue for deal value
+      'probability': ['probability', 'automated_probability'],
+      'stage': ['stage_id'],
+      'stage_id': ['stage_id'],
+      'close_date': ['date_deadline'],  // Odoo: date_deadline = Expected Closing
+      'date_open': ['date_open'],  // Odoo: date_open = Assignment Date
+      'is_won': ['won_status'],  // Transform: won_status === 'won'
+      'is_closed': ['won_status'],  // Transform: won_status !== 'pending'
+      'contact_email': ['email_from'],  // Odoo: email_from for lead contact
+      'contact_phone': ['phone'],
+      'lost_reason': ['lost_reason'],
+      
+      // res.partner -> account/contact
+      'industry': ['industry_id'],  // Odoo: industry_id (many2one)
+      'phone': ['phone', 'mobile'],
+      'email': ['email', 'email_from', 'work_email'],
+      'website': ['website'],
+      'address': ['street', 'street2'],
+      'city': ['city'],
+      'state': ['state_id'],  // Odoo: state_id (many2one to res.country.state)
+      'zip': ['zip'],
+      'country': ['country_id'],  // Odoo: country_id (many2one to res.country)
+      'owner_id': ['user_id'],  // Odoo: user_id = Salesperson
+      'owner_name': ['user_id'],
+      'customer_rank': ['customer_rank'],
+      'account_id': ['parent_id', 'partner_id'],  // parent_id for contact->account
+      'account_name': ['parent_id', 'partner_id'],
+      'title': ['function'],  // Odoo: function = Job Position
+      'function': ['function'],
+      'mobile': ['mobile'],
+      
+      // crm.team -> sales_team
+      'use_opportunities': ['use_opportunities'],
+      'use_leads': ['use_leads'],
+      'alias_name': ['alias_name'],
+      'invoiced': ['invoiced'],
+      'invoiced_target': ['invoiced_target'],
+      'member_ids': ['member_ids'],
+      
+      // res.users -> sales_user
+      'login': ['login'],
+      'team_id': ['sale_team_id', 'team_id'],  // Odoo: sale_team_id for default team
+      
+      // hr.employee -> employee
+      'work_phone': ['work_phone'],
+      'mobile_phone': ['mobile_phone'],
+      'job_title': ['job_title', 'job_id'],  // job_title is computed from job_id
+      'department_id': ['department_id'],
+      'department_name': ['department_id'],
+      'manager_id': ['parent_id'],  // Odoo: parent_id = Manager (hr.employee)
+      'user_id': ['user_id'],  // Link to res.users
+      
+      // account.move -> invoice
+      'invoice_number': ['name'],  // Odoo: name = Invoice number (INV/2024/0001)
+      'invoice_date': ['invoice_date'],
+      'due_date': ['invoice_date_due'],  // Odoo: invoice_date_due
+      'amount_untaxed': ['amount_untaxed'],
+      'amount_tax': ['amount_tax'],
+      'amount_total': ['amount_total'],
+      'currency': ['currency_id'],  // Odoo: currency_id (many2one)
+      'payment_state': ['payment_state'],
+      
+      // mail.activity -> activity
+      'summary': ['summary'],
+      'activity_type': ['activity_type_id'],
+      'note': ['note'],
+      'date_deadline': ['date_deadline'],
+      'opportunity_id': ['res_id'],  // When res_model = 'crm.lead'
+      
+      // project.task -> task
+      'description': ['description'],
+      'project_id': ['project_id'],
+      'project_name': ['project_id'],
+      'assignee_id': ['user_ids'],  // Odoo: user_ids (many2many)
+      'assignee_name': ['user_ids'],
+      'planned_hours': ['planned_hours'],
+      'effective_hours': ['effective_hours'],
+      'priority': ['priority'],
+      
+      // Common timestamps
+      'created_at': ['create_date'],
+      'updated_at': ['write_date'],
+      'active': ['active'],
+    };
+    
+    // Check precise mappings first
+    if (odooFieldMappings[tgtName]) {
+      if (odooFieldMappings[tgtName].includes(srcName)) {
+        let transform = 'direct';
+        if (sourceField.type === 'many2one') {
+          transform = tgtName.endsWith('_name') || tgtName.endsWith('_id') === false ? 'extract_name' : 'extract_id';
+        } else if (sourceField.type === 'many2many' || sourceField.type === 'one2many') {
+          transform = tgtName.endsWith('_name') ? 'first_name' : 'first_id';
+        } else if (srcName === 'id') {
+          transform = 'to_string';
+        }
+        return { match: true, transform, confidence: 0.95 };
+      }
+    }
+    
+    // Fallback: Common field name synonyms for edge cases
     const synonyms = {
-      'phone': ['phone', 'mobile', 'telephone'],
+      'phone': ['phone', 'mobile', 'telephone', 'work_phone'],
       'email': ['email', 'email_from', 'work_email'],
       'website': ['website', 'url'],
       'address': ['street', 'address', 'street2'],
-      'amount': ['expected_revenue', 'amount', 'amount_total', 'total'],
-      'stage': ['stage_id', 'stage', 'state'],
-      'close_date': ['date_deadline', 'date_closed', 'expected_date'],
-      'invoice_number': ['name', 'number', 'reference'],
     };
     
     for (const [target, sources] of Object.entries(synonyms)) {
