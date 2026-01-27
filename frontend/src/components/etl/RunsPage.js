@@ -141,21 +141,19 @@ export function RunsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!runs || runs.length === 0 ? (
+                  {!Array.isArray(runs) || runs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         No runs yet. Run a pipeline to see history.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    runs.filter(Boolean).map((run) => {
-                      if (!run || typeof run !== 'object') return null;
-                      return (
+                    runs.map((run) => (
                       <TableRow 
-                        key={run.id || Math.random()} 
+                        key={run.id} 
                         className="cursor-pointer hover:bg-gray-50"
                         onClick={() => setSelectedRun(run)}
-                        data-testid={`run-row-${run.id || 'unknown'}`}
+                        data-testid={`run-row-${run.id}`}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -166,7 +164,7 @@ export function RunsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {String(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
+                          {(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {run.started_at ? new Date(run.started_at).toLocaleString() : '-'}
@@ -183,7 +181,7 @@ export function RunsPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    );})
+                    ))
                   )}
                 </TableBody>
               </Table>
