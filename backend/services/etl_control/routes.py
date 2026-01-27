@@ -18,7 +18,7 @@ import xmlrpc.client
 import yaml
 import re
 
-from libs.database import get_app_db
+from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, generate_correlation_id, now_utc, RunStatus
 from libs.event_bus import emit_event
 from libs.schemas import Topics
