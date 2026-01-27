@@ -279,47 +279,135 @@ dashboard_aggregator = DashboardAggregator()
 
 
 @router.get("/stats")
-async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
-    """Get dashboard statistics from serving cache"""
+async def get_dashboard_stats(
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
+    sales_rep: Optional[str] = None,
+    team_id: Optional[str] = None,
+    account: Optional[str] = None,
+    stage: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get dashboard statistics - real-time calculation with optional filters"""
+    canonical_db = get_canonical_db()
     app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
     
-    # Get from cache
-    stats = await app_db.serving_cache.find_one({
-        "entity_type": "dashboard_stats",
-        "org_id": current_user.get("org_id", "default")
-    })
+    # Check if any filter is applied
+    has_filters = any([year, quarter, sales_rep, team_id, account, stage])
     
-    if stats:
-        return serialize_doc(stats)
+    if not has_filters:
+        # Use cache for unfiltered view
+        stats = await app_db.serving_cache.find_one({
+            "entity_type": "dashboard_stats",
+            "org_id": org_id
+        })
+        
+        if stats:
+            return serialize_doc(stats)
+        
+        # Build cache if not exists
+        await dashboard_aggregator.rebuild_cache(org_id)
+        
+        stats = await app_db.serving_cache.find_one({
+            "entity_type": "dashboard_stats",
+            "org_id": org_id
+        })
+        
+        if stats:
+            return serialize_doc(stats)
     
-    # Build cache if not exists
-    await dashboard_aggregator.rebuild_cache(current_user.get("org_id", "default"))
+    # Calculate filtered stats in real-time
+    # Build query
+    query = {"org_id": org_id}
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    if team_id:
+        query["team_id"] = team_id
+    if account:
+        query["account_name"] = account
+    if stage:
+        query["stage"] = stage
     
-    stats = await app_db.serving_cache.find_one({
-        "entity_type": "dashboard_stats",
-        "org_id": current_user.get("org_id", "default")
-    })
+    opps = await canonical_db.opportunities.find(query).to_list(10000)
     
-    if stats:
-        return serialize_doc(stats)
+    # Apply date filters
+    if year:
+        opps = [o for o in opps if str(o.get("close_date", ""))[:4] == year or str(o.get("create_date", ""))[:4] == year]
+    if quarter:
+        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
+                        "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
+        months = quarter_months.get(quarter, [])
+        opps = [o for o in opps if str(o.get("close_date", ""))[5:7] in months]
     
-    # Return default stats
+    # Calculate stats
+    total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
+    
+    # By stage
+    stage_counts = {}
+    stage_values = {}
+    for s in PipelineStages.all():
+        normalized_opps = [o for o in opps if normalize_stage_for_dashboard(o.get("stage", "")) == s]
+        stage_counts[s] = len(normalized_opps)
+        stage_values[s] = sum(o.get("amount", 0) or 0 for o in normalized_opps)
+    
+    won_count = stage_counts.get(PipelineStages.CLOSED_WON, 0)
+    won_value = stage_values.get(PipelineStages.CLOSED_WON, 0)
+    lost_count = stage_counts.get(PipelineStages.CLOSED_LOST, 0)
+    open_count = sum(c for s, c in stage_counts.items() if s not in [PipelineStages.CLOSED_WON, PipelineStages.CLOSED_LOST])
+    win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
+    
+    # Build leaderboard from filtered data
+    owner_values = defaultdict(float)
+    owner_names = {}
+    for opp in opps:
+        owner_id = opp.get("owner_id")
+        owner_name = opp.get("owner_name")
+        if owner_id and owner_name:
+            owner_values[owner_id] += opp.get("amount", 0) or 0
+            owner_names[owner_id] = owner_name
+    
+    leaderboard = []
+    sorted_owners = sorted(owner_values.items(), key=lambda x: x[1], reverse=True)[:5]
+    for owner_id, value in sorted_owners:
+        leaderboard.append({
+            "id": str(owner_id),
+            "name": owner_names.get(owner_id, f"User {owner_id}"),
+            "value": value
+        })
+    
+    # Build pipeline by stage
+    pipeline_by_stage = [
+        {"stage": s.replace("_", " ").title(), "value": stage_values.get(s, 0), "count": stage_counts.get(s, 0)}
+        for s in PipelineStages.all()
+    ]
+    
     return {
         "entity_type": "dashboard_stats",
-        "org_id": current_user.get("org_id", "default"),
-        "total_pipeline": 0,
-        "pipeline_change": 0,
-        "won_value": 0,
-        "won_count": 0,
-        "open_count": 0,
+        "org_id": org_id,
+        "total_pipeline": total_pipeline,
+        "pipeline_change": 0,  # Not calculated for filtered view
+        "won_value": won_value,
+        "won_count": won_count,
+        "lost_count": lost_count,
+        "open_count": open_count,
         "open_change": 0,
-        "win_rate": 0,
+        "win_rate": round(win_rate, 1),
         "win_rate_change": 0,
-        "pipeline_by_stage": [],
-        "activity_stats": {},
-        "recent_activities": [],
-        "leaderboard": [],
-        "message": "No data available. Run ETL pipeline to populate data."
+        "total_opportunities": len(opps),
+        "stage_counts": stage_counts,
+        "stage_values": stage_values,
+        "pipeline_by_stage": pipeline_by_stage,
+        "leaderboard": leaderboard,
+        "filtered": has_filters,
+        "applied_filters": {
+            "year": year,
+            "quarter": quarter,
+            "sales_rep": sales_rep,
+            "team_id": team_id,
+            "account": account,
+            "stage": stage
+        }
     }
 
 
