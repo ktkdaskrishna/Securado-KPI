@@ -21,7 +21,7 @@ search_router = APIRouter(tags=["search"])
 
 @router.get("/canonical")
 async def list_canonical_records(
-    entity: str = Query("opportunities", description="Entity type: opportunities, accounts, contacts, users"),
+    entity: str = Query("opportunities", description="Entity type: opportunities, accounts, contacts, users, activities"),
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
@@ -31,6 +31,14 @@ async def list_canonical_records(
     """List canonical records with optional filtering"""
     canonical_db = get_canonical_db()
     
+    # Map entity names to collection names
+    collection_map = {
+        "users": "sales_users",
+        "activities": "activities",
+        "invoices": "invoices",
+    }
+    collection_name = collection_map.get(entity, entity)
+    
     # Build query
     query = {"org_id": current_user.get("org_id", "default")}
     if stage:
@@ -39,7 +47,7 @@ async def list_canonical_records(
         query["source_system"] = source_system
     
     # Get collection
-    collection = canonical_db[entity]
+    collection = canonical_db[collection_name]
     
     # Execute query
     records = await collection.find(query).skip(skip).limit(limit).to_list(limit)
