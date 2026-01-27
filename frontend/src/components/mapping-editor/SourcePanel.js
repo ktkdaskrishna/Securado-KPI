@@ -245,7 +245,7 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
                                       return (
                                         <div
                                           key={idx}
-                                          className="flex items-center justify-between py-1 px-2 rounded hover:bg-white text-xs group cursor-pointer"
+                                          className="flex items-center justify-between py-1 px-2 rounded hover:bg-white hover:shadow-sm text-xs group cursor-grab active:cursor-grabbing border border-transparent hover:border-blue-200 transition-all"
                                           draggable
                                           onDragStart={(e) => {
                                             e.dataTransfer.setData('sourceField', JSON.stringify({
@@ -253,11 +253,18 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
                                               field: field.name,
                                               type: field.type
                                             }));
+                                            e.dataTransfer.effectAllowed = 'copy';
+                                            // Visual feedback - add dragging class
+                                            e.target.classList.add('opacity-50', 'scale-95');
+                                          }}
+                                          onDragEnd={(e) => {
+                                            e.target.classList.remove('opacity-50', 'scale-95');
                                           }}
                                           data-testid={`source-field-${model.model}-${field.name}`}
+                                          title="Drag to a target field to create mapping"
                                         >
                                           <div className="flex items-center gap-2">
-                                            <FieldIcon className="h-3 w-3 text-gray-400" />
+                                            <FieldIcon className="h-3 w-3 text-gray-400 group-hover:text-blue-500" />
                                             <span className="font-mono">{field.name}</span>
                                           </div>
                                           <div className="flex items-center gap-1">
@@ -267,6 +274,9 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
                                             {field.required && (
                                               <Badge variant="destructive" className="text-[10px] px-1">REQ</Badge>
                                             )}
+                                            <span className="opacity-0 group-hover:opacity-100 text-blue-500 text-[10px] ml-1">
+                                              drag →
+                                            </span>
                                           </div>
                                         </div>
                                       );
