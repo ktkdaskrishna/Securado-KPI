@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Use the public endpoint
-BASE_URL = "https://unifystream.preview.emergentagent.com/api"
+BASE_URL = "https://dataflow-designer.preview.emergentagent.com/api"
 
 class APITester:
     def __init__(self):
