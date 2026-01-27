@@ -378,10 +378,10 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm text-gray-500">Expected Closing</span>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-amber-500" />
+                      <span className="text-xs text-gray-500">Expected Closing</span>
                     </div>
                     <p className="text-lg font-bold mt-1">
                       {opportunity.close_date ? new Date(opportunity.close_date).toLocaleDateString() : 'Not set'}
