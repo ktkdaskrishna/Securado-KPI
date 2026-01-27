@@ -62,12 +62,21 @@ function SortableCard({ opportunity, onClick, formatCurrency }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  
+  // Get display stage (custom_stage or stage)
+  const displayStage = opportunity.custom_stage || opportunity.stage || 'Unknown';
+  const probability = opportunity.user_probability || opportunity.probability || 0;
+  
+  // Risk color based on probability
+  const probColor = probability >= 60 ? 'text-emerald-600 bg-emerald-50' : 
+                    probability >= 40 ? 'text-amber-600 bg-amber-50' : 
+                    'text-red-600 bg-red-50';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-all hover:border-blue-200 cursor-pointer group"
       data-testid={`opps-card-${opportunity.canonical_id}`}
       onClick={onClick}
     >
@@ -75,30 +84,40 @@ function SortableCard({ opportunity, onClick, formatCurrency }) {
         <div
           {...attributes}
           {...listeners}
-          className="mt-1 cursor-grab active:cursor-grabbing"
+          className="mt-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="h-4 w-4 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate">{opportunity.name}</h4>
+          <h4 className="font-medium text-sm truncate text-gray-900">{opportunity.name}</h4>
           <p className="text-xs text-gray-500 truncate mt-1">
+            <Building2 className="h-3 w-3 inline mr-1" />
             {opportunity.account_name || 'No Account'}
           </p>
-          <div className="flex items-center gap-2 mt-2">
-            <DollarSign className="h-3 w-3 text-gray-400" />
-            <span className="text-sm font-semibold">
-              {formatCurrency(opportunity.amount || 0)}
+          
+          {/* Stage Badge */}
+          <Badge variant="outline" className="text-xs mt-2 mb-2">
+            {displayStage}
+          </Badge>
+          
+          {/* Amount - more prominent */}
+          <div className="flex items-center gap-2 mt-2 p-2 bg-gray-50 rounded">
+            <DollarSign className="h-4 w-4 text-emerald-500" />
+            <span className="text-base font-bold text-gray-900">
+              {formatCurrency(opportunity.amount || opportunity.sale_value || 0)}
             </span>
           </div>
-          <div className="flex items-center justify-between mt-2">
+          
+          {/* Bottom row: Owner + Probability */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t">
             <div className="flex items-center gap-1">
               <User className="h-3 w-3 text-gray-400" />
-              <span className="text-xs text-gray-500 truncate">
+              <span className="text-xs text-gray-600 truncate max-w-[100px]">
                 {opportunity.owner_name || 'Unassigned'}
               </span>
             </div>
-            <Badge variant="secondary" className="text-xs">
-              {opportunity.probability || 0}%
+            <Badge className={`text-xs font-semibold ${probColor}`}>
+              {probability}%
             </Badge>
           </div>
         </div>
