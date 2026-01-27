@@ -31,30 +31,48 @@ export function GlobalFilterBar({ className, compact = false }) {
 
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [repOpen, setRepOpen] = React.useState(false);
+  const [localLoading, setLocalLoading] = React.useState(true);
+  const [localOptions, setLocalOptions] = React.useState(null);
 
-  // Load filter options if not loaded yet
+  // Load filter options directly if not available
   React.useEffect(() => {
-    if (!filterOptions && !loading) {
-      loadFilterOptions();
+    async function fetchFilters() {
+      if (filterOptions) {
+        setLocalOptions(filterOptions);
+        setLocalLoading(false);
+        return;
+      }
+      
+      try {
+        const { analyticsAPI } = await import('../../lib/api');
+        const response = await analyticsAPI.getFilters();
+        setLocalOptions(response.data);
+        setLocalLoading(false);
+      } catch (error) {
+        console.error('Failed to load filters:', error);
+        setLocalLoading(false);
+      }
     }
-  }, [filterOptions, loading, loadFilterOptions]);
+    
+    fetchFilters();
+  }, [filterOptions]);
 
-  if (loading) {
+  const options = localOptions || filterOptions;
+
+  if (localLoading || loading) {
     return (
-      <div className={cn("flex items-center gap-2 p-3 bg-muted/50 rounded-lg animate-pulse", className)}>
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <div className="h-9 w-24 bg-muted rounded"></div>
-        <div className="h-9 w-24 bg-muted rounded"></div>
-        <div className="h-9 w-24 bg-muted rounded"></div>
+      <div className={cn("flex items-center gap-2 p-3 bg-muted/50 rounded-lg", className)}>
+        <Filter className="h-4 w-4 text-muted-foreground animate-pulse" />
+        <span className="text-sm text-muted-foreground">Loading filters...</span>
       </div>
     );
   }
 
-  if (!filterOptions) {
+  if (!options) {
     return (
       <div className={cn("flex items-center gap-2 p-3 bg-muted/30 rounded-lg border border-dashed", className)}>
         <Filter className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Filters loading...</span>
+        <span className="text-sm text-muted-foreground">Filters unavailable</span>
       </div>
     );
   }
