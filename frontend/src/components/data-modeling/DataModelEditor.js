@@ -323,9 +323,9 @@ export function DataModelEditor() {
   }
 
   return (
-    <div className="h-full flex flex-col" data-testid="data-model-editor">
+    <div className="h-screen flex flex-col" data-testid="data-model-editor">
       {/* Header */}
-      <div className="p-4 border-b bg-white">
+      <div className="p-4 border-b bg-white flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -375,7 +375,7 @@ export function DataModelEditor() {
       
       {/* Mermaid Diagram (collapsible) */}
       {showMermaid && (
-        <div className="p-4 bg-gray-50 border-b">
+        <div className="p-4 bg-gray-50 border-b flex-shrink-0">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -400,8 +400,8 @@ export function DataModelEditor() {
       )}
       
       {/* React Flow Canvas */}
-      <div className="flex-1 flex">
-        <div className="flex-1">
+      <div className="flex-1 flex" style={{ minHeight: '500px' }}>
+        <div className="flex-1" style={{ height: '100%', width: '100%' }}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -411,6 +411,7 @@ export function DataModelEditor() {
             nodeTypes={nodeTypes}
             fitView
             attributionPosition="bottom-left"
+            style={{ width: '100%', height: '100%' }}
           >
             <Controls />
             <MiniMap 
