@@ -168,6 +168,13 @@ export const crmAPI = {
   updateActivityStatus: (id, data) => api.patch(`/activities/${id}/status`, data),
   completeActivity: (id) => api.patch(`/activities/${id}/complete`),
   
+  // Leads
+  listLeads: (params) => api.get('/leads', { params }),
+  getLeadsKanban: (params) => api.get('/leads/kanban', { params }),
+  getLeadsStats: (params) => api.get('/leads/stats', { params }),
+  getLead: (id) => api.get(`/leads/${id}`),
+  convertLeadToOpportunity: (id) => api.post(`/leads/${id}/convert`),
+  
   // Goals
   listGoals: (params) => api.get('/goals', { params }),
   getGoalsStats: () => api.get('/goals/summary/stats'),
