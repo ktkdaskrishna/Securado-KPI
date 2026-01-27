@@ -1,0 +1,192 @@
+{
+  "version": "1.0",
+  "description": "Precise Odoo to Canonical field mappings based on official Odoo model documentation",
+  "mappings": {
+    "opportunity": {
+      "source_model": "crm.lead",
+      "source_filter": null,
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "expected_revenue", "target": "amount", "transform": "direct" },
+        { "source": "probability", "target": "probability", "transform": "direct" },
+        { "source": "stage_id", "target": "stage_id", "transform": "extract_id" },
+        { "source": "stage_id", "target": "stage", "transform": "extract_name" },
+        { "source": "partner_id", "target": "account_id", "transform": "extract_id" },
+        { "source": "partner_id", "target": "account_name", "transform": "extract_name" },
+        { "source": "user_id", "target": "owner_id", "transform": "extract_id" },
+        { "source": "user_id", "target": "owner_name", "transform": "extract_name" },
+        { "source": "team_id", "target": "team_id", "transform": "extract_id" },
+        { "source": "date_deadline", "target": "close_date", "transform": "direct" },
+        { "source": "date_open", "target": "date_open", "transform": "direct" },
+        { "source": "won_status", "target": "is_won", "transform": "equals:won" },
+        { "source": "won_status", "target": "is_closed", "transform": "not_equals:pending" },
+        { "source": "email_from", "target": "contact_email", "transform": "direct" },
+        { "source": "phone", "target": "contact_phone", "transform": "direct" },
+        { "source": "lost_reason", "target": "lost_reason", "transform": "extract_name" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "account": {
+      "source_model": "res.partner",
+      "source_filter": "is_company = True",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "industry_id", "target": "industry", "transform": "extract_name" },
+        { "source": "phone", "target": "phone", "transform": "direct" },
+        { "source": "email", "target": "email", "transform": "direct" },
+        { "source": "website", "target": "website", "transform": "direct" },
+        { "source": "street", "target": "address", "transform": "direct" },
+        { "source": "city", "target": "city", "transform": "direct" },
+        { "source": "state_id", "target": "state", "transform": "extract_name" },
+        { "source": "zip", "target": "zip", "transform": "direct" },
+        { "source": "country_id", "target": "country", "transform": "extract_name" },
+        { "source": "user_id", "target": "owner_id", "transform": "extract_id" },
+        { "source": "user_id", "target": "owner_name", "transform": "extract_name" },
+        { "source": "customer_rank", "target": "customer_rank", "transform": "direct" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "contact": {
+      "source_model": "res.partner",
+      "source_filter": "is_company = False",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "email", "target": "email", "transform": "direct" },
+        { "source": "phone", "target": "phone", "transform": "direct" },
+        { "source": "mobile", "target": "mobile", "transform": "direct" },
+        { "source": "function", "target": "title", "transform": "direct" },
+        { "source": "function", "target": "function", "transform": "direct" },
+        { "source": "parent_id", "target": "account_id", "transform": "extract_id" },
+        { "source": "parent_id", "target": "account_name", "transform": "extract_name" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "sales_team": {
+      "source_model": "crm.team",
+      "source_filter": null,
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "use_opportunities", "target": "use_opportunities", "transform": "direct" },
+        { "source": "use_leads", "target": "use_leads", "transform": "direct" },
+        { "source": "alias_name", "target": "alias_name", "transform": "direct" },
+        { "source": "invoiced", "target": "invoiced", "transform": "direct" },
+        { "source": "invoiced_target", "target": "invoiced_target", "transform": "direct" },
+        { "source": "member_ids", "target": "member_ids", "transform": "to_string_array" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "sales_user": {
+      "source_model": "res.users",
+      "source_filter": "active = True",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "login", "target": "login", "transform": "direct" },
+        { "source": "email", "target": "email", "transform": "direct" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        { "source": "sale_team_id", "target": "team_id", "transform": "extract_id" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "employee": {
+      "source_model": "hr.employee",
+      "source_filter": "active = True",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "work_email", "target": "email", "transform": "direct" },
+        { "source": "work_phone", "target": "work_phone", "transform": "direct" },
+        { "source": "mobile_phone", "target": "mobile_phone", "transform": "direct" },
+        { "source": "job_title", "target": "job_title", "transform": "direct" },
+        { "source": "department_id", "target": "department_id", "transform": "extract_id" },
+        { "source": "department_id", "target": "department_name", "transform": "extract_name" },
+        { "source": "parent_id", "target": "manager_id", "transform": "extract_id" },
+        { "source": "user_id", "target": "user_id", "transform": "extract_id" },
+        { "source": "active", "target": "active", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "invoice": {
+      "source_model": "account.move",
+      "source_filter": "move_type IN ('out_invoice', 'out_refund')",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "invoice_number", "transform": "direct" },
+        { "source": "partner_id", "target": "account_id", "transform": "extract_id" },
+        { "source": "partner_id", "target": "account_name", "transform": "extract_name" },
+        { "source": "invoice_date", "target": "invoice_date", "transform": "direct" },
+        { "source": "invoice_date_due", "target": "due_date", "transform": "direct" },
+        { "source": "amount_untaxed", "target": "amount_untaxed", "transform": "direct" },
+        { "source": "amount_tax", "target": "amount_tax", "transform": "direct" },
+        { "source": "amount_total", "target": "amount_total", "transform": "direct" },
+        { "source": "currency_id", "target": "currency", "transform": "extract_name" },
+        { "source": "state", "target": "state", "transform": "direct" },
+        { "source": "payment_state", "target": "payment_state", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "activity": {
+      "source_model": "mail.activity",
+      "source_filter": "res_model = 'crm.lead'",
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "summary", "target": "summary", "transform": "direct" },
+        { "source": "activity_type_id", "target": "activity_type", "transform": "extract_name" },
+        { "source": "note", "target": "note", "transform": "strip_html" },
+        { "source": "date_deadline", "target": "date_deadline", "transform": "direct" },
+        { "source": "res_id", "target": "opportunity_id", "transform": "to_string" },
+        { "source": "user_id", "target": "user_id", "transform": "extract_id" },
+        { "source": "state", "target": "state", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    },
+    "task": {
+      "source_model": "project.task",
+      "source_filter": null,
+      "fields": [
+        { "source": "id", "target": "source_record_id", "transform": "to_string" },
+        { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "description", "target": "description", "transform": "strip_html" },
+        { "source": "project_id", "target": "project_id", "transform": "extract_id" },
+        { "source": "project_id", "target": "project_name", "transform": "extract_name" },
+        { "source": "user_ids", "target": "assignee_id", "transform": "first_id" },
+        { "source": "user_ids", "target": "assignee_name", "transform": "first_name" },
+        { "source": "stage_id", "target": "stage", "transform": "extract_name" },
+        { "source": "priority", "target": "priority", "transform": "direct" },
+        { "source": "date_deadline", "target": "date_deadline", "transform": "direct" },
+        { "source": "planned_hours", "target": "planned_hours", "transform": "direct" },
+        { "source": "effective_hours", "target": "effective_hours", "transform": "direct" },
+        { "source": "state", "target": "state", "transform": "direct" },
+        { "source": "create_date", "target": "created_at", "transform": "direct" },
+        { "source": "write_date", "target": "updated_at", "transform": "direct" }
+      ]
+    }
+  },
+  "transforms": {
+    "direct": "Copy value as-is",
+    "to_string": "Convert to string",
+    "to_string_array": "Convert array of IDs to array of strings",
+    "extract_id": "Extract ID from many2one tuple [id, name] -> id as string",
+    "extract_name": "Extract name from many2one tuple [id, name] -> name",
+    "first_id": "Get first ID from many2many array",
+    "first_name": "Get first name from many2many array",
+    "strip_html": "Remove HTML tags from text",
+    "equals:value": "Return true if field equals value",
+    "not_equals:value": "Return true if field does not equal value"
+  }
+}
