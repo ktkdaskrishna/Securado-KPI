@@ -407,8 +407,9 @@ export function MappingEditor() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => loadSourceModels(selectedConnection?.id)}
+              onClick={() => loadSourceModels(selectedConnection?.id, true)}
               disabled={!selectedConnection || loading}
+              data-testid="refresh-schema-btn"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
