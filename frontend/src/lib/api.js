@@ -142,7 +142,7 @@ export const crmAPI = {
   
   // Opportunities - supports filters
   listOpportunities: (params) => api.get('/opportunities', { params }),
-  getKanban: () => api.get('/opportunities/kanban'),
+  getKanban: (params) => api.get('/opportunities/kanban', { params }),
   getOpportunity: (id) => api.get(`/opportunities/${id}`),
   updateStage: (id, stage) => api.patch(`/opportunities/${id}/stage`, { stage }),
   updateProbability: (id, probability) => api.post(`/opportunities/${id}/calculate-probability`, { probability }),
