@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { analyticsAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
+import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -42,13 +43,23 @@ export default function AnalyticsPage() {
   const [teamPerformance, setTeamPerformance] = useState(null);
   const [accountHealth, setAccountHealth] = useState(null);
   const [aiInsights, setAiInsights] = useState(null);
-  const [filters, setFilters] = useState(null);
+  const [localFilters, setLocalFilters] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
+  
+  // Use global filters
+  const { filters: globalFilters, hasActiveFilters } = useGlobalFilters();
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // Merge global filters with local period selection
       const params = { time_period: selectedPeriod };
+      if (globalFilters.year) params.year = globalFilters.year;
+      if (globalFilters.quarter) params.quarter = globalFilters.quarter;
+      if (globalFilters.salesRep) params.sales_rep = globalFilters.salesRep;
+      if (globalFilters.team) params.team_id = globalFilters.team;
+      if (globalFilters.account) params.account = globalFilters.account;
+      
       const [overviewRes, funnelRes, repRes, teamRes, accountRes, filtersRes] = await Promise.all([
         analyticsAPI.getOverview(params),
         analyticsAPI.getConversionFunnel(params),
@@ -63,14 +74,14 @@ export default function AnalyticsPage() {
       setRepPerformance(repRes.data);
       setTeamPerformance(teamRes.data);
       setAccountHealth(accountRes.data);
-      setFilters(filtersRes.data);
+      setLocalFilters(filtersRes.data);
     } catch (error) {
       console.error('Failed to load analytics:', error);
       toast.error('Failed to load analytics data');
     } finally {
       setLoading(false);
     }
-  }, [selectedPeriod]);
+  }, [selectedPeriod, globalFilters.year, globalFilters.quarter, globalFilters.salesRep, globalFilters.team, globalFilters.account]);
 
   const loadAIInsights = async () => {
     setAiLoading(true);
