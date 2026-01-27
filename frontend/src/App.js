@@ -158,8 +158,10 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <CurrencyProvider>
-          <AppRoutes />
-          <Toaster position="top-right" richColors closeButton />
+          <GlobalFilterProvider>
+            <AppRoutes />
+            <Toaster position="top-right" richColors closeButton />
+          </GlobalFilterProvider>
         </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>
