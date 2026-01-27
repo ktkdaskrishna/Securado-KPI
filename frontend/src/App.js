@@ -15,6 +15,7 @@ import { RegisterPage } from './components/auth/RegisterPage';
 // CRM Pages
 import { DashboardPage } from './components/crm/DashboardPage';
 import { OpportunitiesPage } from './components/crm/OpportunitiesPage';
+import LeadsPage from './components/crm/LeadsPage';
 import { AccountsPage } from './components/crm/AccountsPage';
 import { ActivitiesPage } from './components/crm/ActivitiesPage';
 import { GoalsPage } from './components/crm/GoalsPage';
