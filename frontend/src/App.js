@@ -120,6 +120,7 @@ function AppRoutes() {
         {/* CRM Platform */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/opportunities" element={<OpportunitiesPage />} />
+        <Route path="/leads" element={<LeadsPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/activities" element={<ActivitiesPage />} />
         <Route path="/activity-timeline" element={<ActivityTimelinePage />} />
