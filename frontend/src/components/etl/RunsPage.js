@@ -29,6 +29,7 @@ const statusIcons = {
 };
 
 export function RunsPage() {
+  // Component updated: 2026-01-27 19:20 - Fixed null safety for runs array
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRun, setSelectedRun] = useState(null);
