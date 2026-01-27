@@ -256,22 +256,65 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
     });
   };
 
+  // State for fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   if (!opportunity) return null;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+      <SheetContent 
+        className={`overflow-y-auto transition-all duration-300 ${isFullscreen ? 'w-full max-w-full sm:max-w-full' : 'w-full sm:max-w-2xl lg:max-w-3xl'}`}
+        onDoubleClick={() => setIsFullscreen(!isFullscreen)}
+      >
         <SheetHeader>
-          <SheetTitle>{opportunity.name}</SheetTitle>
-          <SheetDescription>
-            <div className="flex items-center gap-2 mt-1">
-              <Building2 className="h-4 w-4" />
-              {opportunity.account_name || 'No Account'}
-              <Badge className={stageColors[opportunity.stage]}>
-                {formatStage(opportunity.stage)}
-              </Badge>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <SheetTitle className="text-lg">{opportunity.name}</SheetTitle>
+              <SheetDescription>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Building2 className="h-4 w-4" />
+                  <span className="text-sm">{opportunity.account_name || 'No Account'}</span>
+                  <Badge className={stageColors[opportunity.stage]}>
+                    {formatStage(opportunity.stage)}
+                  </Badge>
+                  {opportunity.opportunity_number && (
+                    <span className="text-xs font-mono text-gray-400">{opportunity.opportunity_number}</span>
+                  )}
+                </div>
+              </SheetDescription>
             </div>
-          </SheetDescription>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="text-gray-500"
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
+          
+          {/* Probability Comparison Banner */}
+          <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Salesperson Estimate</p>
+                <p className="text-2xl font-bold text-blue-600">{opportunity.probability || 0}%</p>
+              </div>
+              <div className="h-12 w-px bg-gray-200"></div>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">AI Confidence</p>
+                <p className="text-2xl font-bold text-purple-600">{opportunity.automated_probability || bluesheet?.calculated_probability?.probability || 0}%</p>
+              </div>
+              <div className="h-12 w-px bg-gray-200"></div>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Variance</p>
+                <p className={`text-2xl font-bold ${Math.abs((opportunity.probability || 0) - (opportunity.automated_probability || 0)) > 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {Math.abs((opportunity.probability || 0) - (opportunity.automated_probability || 0)).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
         </SheetHeader>
         
         <div className="mt-6">
