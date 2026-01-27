@@ -285,15 +285,27 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
             
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Key Metrics Row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-gray-500">Amount</span>
+                      <span className="text-sm text-gray-500">Expected Revenue</span>
                     </div>
                     <p className="text-2xl font-bold mt-1">
                       {formatCurrency(opportunity.amount || 0)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm text-gray-500">Sale Value</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-1">
+                      {formatCurrency(opportunity.sale_value || 0)}
                     </p>
                   </CardContent>
                 </Card>
@@ -309,38 +321,184 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                     <Progress value={opportunity.probability || 0} className="mt-2 h-2" />
                   </CardContent>
                 </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-gray-500">Expected Closing</span>
+                    </div>
+                    <p className="text-lg font-bold mt-1">
+                      {opportunity.close_date ? new Date(opportunity.close_date).toLocaleDateString() : 'Not set'}
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
               
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-500">Owner:</span>
-                    <span className="text-sm font-medium">{opportunity.owner_name || 'Unassigned'}</span>
-                  </div>
-                  {opportunity.contact_email && (
+              {/* Contact & Sales Team Info */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Sales Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-500">Email:</span>
-                      <span className="text-sm">{opportunity.contact_email}</span>
+                      <span className="text-sm text-gray-500 w-24">Salesperson:</span>
+                      <span className="text-sm font-medium">{opportunity.owner_name || 'Unassigned'}</span>
                     </div>
-                  )}
-                  {opportunity.contact_phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-500">Phone:</span>
-                      <span className="text-sm">{opportunity.contact_phone}</span>
-                    </div>
-                  )}
-                  {opportunity.close_date && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-500">Close Date:</span>
-                      <span className="text-sm">{new Date(opportunity.close_date).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    {opportunity.team_id && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Sales Team:</span>
+                        <Badge variant="outline" className="text-xs">
+                          <Users className="h-3 w-3 mr-1" />
+                          {Array.isArray(opportunity.team_id) ? opportunity.team_id[1] : opportunity.team_id}
+                        </Badge>
+                      </div>
+                    )}
+                    {opportunity.deal_type && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Deal Type:</span>
+                        <Badge variant="secondary" className="text-xs">{opportunity.deal_type}</Badge>
+                      </div>
+                    )}
+                    {opportunity.priority && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Priority:</span>
+                        <div className="flex gap-1">
+                          {[1, 2, 3].map(star => (
+                            <span key={star} className={star <= opportunity.priority ? 'text-amber-400' : 'text-gray-200'}>★</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Contact Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {opportunity.customer_name && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-20">Company:</span>
+                        <span className="text-sm font-medium">{opportunity.customer_name}</span>
+                      </div>
+                    )}
+                    {(opportunity.contact_email || opportunity.contact_id) && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm">{opportunity.contact_email || (Array.isArray(opportunity.contact_id) ? opportunity.contact_id[1] : 'N/A')}</span>
+                      </div>
+                    )}
+                    {(opportunity.contact_phone || opportunity.contact_mobile) && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm">{opportunity.contact_phone || opportunity.contact_mobile}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Buying Influences & Tags */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Key Contacts (Buying Influences)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {opportunity.commercial_buyer_name && (
+                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                        <div>
+                          <p className="text-sm font-medium">{opportunity.commercial_buyer_name}</p>
+                          <p className="text-xs text-gray-500">Commercial Buyer</p>
+                        </div>
+                        {opportunity.is_comm_buyer_coach && (
+                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">Coach</Badge>
+                        )}
+                      </div>
+                    )}
+                    {opportunity.technical_buyer_name && (
+                      <div className="flex items-center justify-between p-2 bg-purple-50 rounded">
+                        <div>
+                          <p className="text-sm font-medium">{opportunity.technical_buyer_name}</p>
+                          <p className="text-xs text-gray-500">Technical Buyer</p>
+                        </div>
+                        {opportunity.is_tech_buyer_coach && (
+                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">Coach</Badge>
+                        )}
+                      </div>
+                    )}
+                    {!opportunity.commercial_buyer_name && !opportunity.technical_buyer_name && (
+                      <p className="text-sm text-gray-500 text-center py-4">No buying influences identified</p>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Deal Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {opportunity.is_tender && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-32">Is Tender:</span>
+                        <Badge variant={opportunity.is_tender === 'Yes' ? 'default' : 'secondary'} className="text-xs">
+                          {opportunity.is_tender}
+                        </Badge>
+                      </div>
+                    )}
+                    {opportunity.budget_status && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-32">Budget Status:</span>
+                        <span className="text-sm">{opportunity.budget_status}</span>
+                      </div>
+                    )}
+                    {opportunity.pledge && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-32">Commitment:</span>
+                        <span className="text-sm">{opportunity.pledge}</span>
+                      </div>
+                    )}
+                    {opportunity.competitor_solution && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-32">Competitor:</span>
+                        <Badge variant="outline" className="text-xs text-red-600">{opportunity.competitor_solution}</Badge>
+                      </div>
+                    )}
+                    {opportunity.opportunity_number && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-32">Opp #:</span>
+                        <span className="text-xs font-mono text-gray-600">{opportunity.opportunity_number}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Description */}
+              {opportunity.descriptions && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Description</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600">{opportunity.descriptions}</p>
+                  </CardContent>
+                </Card>
+              )}
               
               {bluesheet?.calculated_probability && (
                 <Card>
