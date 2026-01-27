@@ -206,26 +206,31 @@ export function RunsPage() {
             <CardContent>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-2">
-                  {liveEvents.length === 0 ? (
+                  {!Array.isArray(liveEvents) || liveEvents.length === 0 ? (
                     <p className="text-gray-500 text-sm text-center py-8">
                       Waiting for events...
                     </p>
                   ) : (
-                    liveEvents.map((event, index) => (
-                      <div key={index} className="p-2 rounded bg-gray-50 border text-xs font-mono">
-                        <div className="flex items-center justify-between mb-1">
-                          <Badge variant="outline" className="text-xs">
-                            {event.event_type?.split('.').slice(-2).join('.')}
-                          </Badge>
-                          <span className="text-gray-400">
-                            {event.occurred_at ? new Date(event.occurred_at).toLocaleTimeString() : ''}
-                          </span>
+                    liveEvents.map((event, index) => {
+                      if (!event) return null;
+                      const eventType = (event.event_type || '').split('.').slice(-2).join('.') || 'unknown';
+                      const payloadStr = JSON.stringify(event.payload || {}, null, 2) || '{}';
+                      return (
+                        <div key={index} className="p-2 rounded bg-gray-50 border text-xs font-mono">
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-xs">
+                              {eventType}
+                            </Badge>
+                            <span className="text-gray-400">
+                              {event.occurred_at ? new Date(event.occurred_at).toLocaleTimeString() : ''}
+                            </span>
+                          </div>
+                          <pre className="text-gray-600 overflow-hidden text-ellipsis">
+                            {payloadStr.slice(0, 200)}
+                          </pre>
                         </div>
-                        <pre className="text-gray-600 overflow-hidden text-ellipsis">
-                          {JSON.stringify(event.payload, null, 2).slice(0, 200)}
-                        </pre>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </ScrollArea>
