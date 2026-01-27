@@ -135,12 +135,12 @@ export const dataLakeAPI = {
 
 // CRM APIs
 export const crmAPI = {
-  // Dashboard
-  getDashboardStats: () => api.get('/dashboard/stats'),
+  // Dashboard - now supports filters
+  getDashboardStats: (params) => api.get('/dashboard/stats', { params }),
   refreshDashboard: () => api.post('/dashboard/refresh'),
   getSyncStatus: () => api.get('/dashboard/sync-status'),
   
-  // Opportunities
+  // Opportunities - supports filters
   listOpportunities: (params) => api.get('/opportunities', { params }),
   getKanban: () => api.get('/opportunities/kanban'),
   getOpportunity: (id) => api.get(`/opportunities/${id}`),
