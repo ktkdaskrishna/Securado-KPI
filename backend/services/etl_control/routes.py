@@ -1865,6 +1865,7 @@ async def clear_and_resync_entity(
         "sales_user": {"collection": "sales_users", "source_model": "res.users"},
         "task": {"collection": "tasks", "source_model": "project.task"},
         "employee": {"collection": "employees", "source_model": "hr.employee"},
+        "log_message": {"collection": "log_messages", "source_model": "mail.message"},
     }
     
     if entity not in ENTITY_CONFIG:
