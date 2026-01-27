@@ -27,7 +27,7 @@ import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
-import { MappingsPage } from './components/etl/MappingsPage';
+import { MappingEditor } from './components/mapping-editor';
 import { PipelinesPage } from './components/etl/PipelinesPage';
 import { RunsPage } from './components/etl/RunsPage';
 import { DataLakePage } from './components/etl/DataLakePage';
