@@ -1098,11 +1098,12 @@ async def auto_suggest_field_mappings(
     
     if conn["type"] == "odoo":
         try:
-            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+            # Use SSL-safe proxy for Odoo connections
+            common = create_odoo_proxy(conn["url"], "common")
             uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
             
             if uid:
-                models_proxy = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+                models_proxy = create_odoo_proxy(conn["url"], "object")
                 fields = models_proxy.execute_kw(
                     conn["database"], uid, conn["api_key"],
                     source_model, 'fields_get',
