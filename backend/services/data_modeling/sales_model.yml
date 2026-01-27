@@ -407,20 +407,35 @@ entities:
       stage:
         type: string
         required: false
-        description: "Pipeline stage name"
+        description: "Pipeline stage name (from standard stage_id)"
         source_field: stage_id
       stage_id:
         type: string
         required: false
         description: "Pipeline stage ID"
         source_field: stage_id
+      custom_stage:
+        type: string
+        required: false
+        description: "Custom stage name (from x_studio_opportunity_stages_1)"
+        source_field: x_studio_opportunity_stages_1
+      custom_stage_id:
+        type: string
+        required: false
+        description: "Custom stage ID"
+        source_field: x_studio_opportunity_stages_1
       
       # === Financial Info ===
       probability:
         type: number
         required: false
-        description: "Win probability (0-100)"
+        description: "Calculated probability from Odoo AI"
         source_field: probability
+      user_probability:
+        type: number
+        required: false
+        description: "User-input probability (salesperson's estimate)"
+        source_field: probabilitynew
       automated_probability:
         type: number
         required: false
