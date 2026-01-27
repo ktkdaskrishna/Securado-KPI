@@ -31,6 +31,7 @@ from services.crm_sales.bluesheet import (
 logger = logging.getLogger(__name__)
 
 opportunities_router = APIRouter(prefix="/opportunities", tags=["opportunities"])
+leads_router = APIRouter(prefix="/leads", tags=["leads"])
 accounts_router = APIRouter(prefix="/accounts", tags=["accounts"])
 activities_router = APIRouter(prefix="/activities", tags=["activities"])
 kpis_router = APIRouter(prefix="/kpis", tags=["kpis"])
