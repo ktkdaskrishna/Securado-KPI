@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { crmAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
+import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { ScrollArea } from '../ui/scroll-area';
-import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { toast } from 'sonner';
 
@@ -15,23 +16,40 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
+  const { filters, getQueryParams, hasActiveFilters } = useGlobalFilters();
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
-      const res = await crmAPI.getDashboardStats();
+      // Build filter params
+      const params = {};
+      if (filters.year) params.year = filters.year;
+      if (filters.quarter) params.quarter = filters.quarter;
+      if (filters.salesRep) params.sales_rep = filters.salesRep;
+      if (filters.team) params.team_id = filters.team;
+      if (filters.account) params.account = filters.account;
+      if (filters.stage) params.stage = filters.stage;
+      
+      const res = await crmAPI.getDashboardStats(params);
       setStats(res.data);
     } catch (error) {
       toast.error('Failed to load dashboard stats');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     loadStats();
     // Reload currency when dashboard mounts (useful after login)
     reloadCurrency();
-  }, []);
+  }, [loadStats]);
+
+  // Reload when filters change
+  useEffect(() => {
+    if (!loading) {
+      loadStats();
+    }
+  }, [filters.year, filters.quarter, filters.salesRep, filters.team, filters.account, filters.stage]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
