@@ -550,6 +550,23 @@ export function MappingEditor() {
               Refresh
             </Button>
             
+            {/* Auto-Map All Button - Always visible */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={handleAutoMapAll}
+              disabled={!selectedConnection || autoSuggesting || Object.keys(sourceModels).length === 0}
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
+              data-testid="auto-map-all-btn"
+            >
+              {autoSuggesting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4 mr-2" />
+              )}
+              Auto-Map All
+            </Button>
+            
             <Button 
               variant="outline" 
               size="sm" 
