@@ -78,7 +78,7 @@ export function RunsPage() {
         const data = JSON.parse(event.data);
         if (data.type === 'keepalive') return;
         
-        setLiveEvents(prev => [data, ...prev].slice(0, 100));
+        setLiveEvents(prev => [data, ...(prev || [])].slice(0, 100));
         
         // Refresh runs list when run events come in
         if (data.event_type === 'etl.pipeline_run.event.v1') {
