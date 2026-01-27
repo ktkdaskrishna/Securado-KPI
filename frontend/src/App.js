@@ -121,6 +121,7 @@ function AppRoutes() {
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/activities" element={<ActivitiesPage />} />
         <Route path="/activity-timeline" element={<ActivityTimelinePage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
