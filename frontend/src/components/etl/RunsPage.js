@@ -157,7 +157,7 @@ export function RunsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {run.pipeline_id.slice(0, 8)}...
+                          {(run.pipeline_id || run.id || 'unknown').slice(0, 8)}...
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {new Date(run.started_at).toLocaleString()}
