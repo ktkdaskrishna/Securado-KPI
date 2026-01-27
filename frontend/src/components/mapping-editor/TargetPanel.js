@@ -11,6 +11,7 @@ import {
   Building, Target, User, FileText, CheckSquare, Calendar as CalendarIcon,
   Briefcase, UserCircle, Trash2, ArrowLeft
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Entity icons
 const entityIcons = {
