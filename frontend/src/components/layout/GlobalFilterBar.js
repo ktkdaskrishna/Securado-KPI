@@ -175,17 +175,17 @@ export function GlobalFilterBar({ className, compact = false }) {
 
       {/* Team Filter */}
       <Select 
-        value={filters.team || ''} 
-        onValueChange={(v) => updateFilter('team', v || null)}
+        value={filters.team || 'all'} 
+        onValueChange={(v) => updateFilter('team', v === 'all' ? null : v)}
       >
         <SelectTrigger className="w-[130px] h-9" data-testid="filter-team">
           <Building2 className="h-3 w-3 mr-1" />
           <SelectValue placeholder="Team" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Teams</SelectItem>
+          <SelectItem value="all">All Teams</SelectItem>
           {options?.teams?.map(team => (
-            <SelectItem key={team.id} value={team.id?.toString()}>
+            <SelectItem key={team.id || team.name} value={team.id?.toString() || team.name}>
               {team.name}
             </SelectItem>
           ))}
