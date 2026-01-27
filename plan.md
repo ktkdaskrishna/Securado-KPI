@@ -285,6 +285,47 @@ ENTITY_SOURCE_FILTERS = {
 
 ---
 
+## Phase 14: End-to-End ETL Sync Testing (COMPLETED ✅)
+
+### Overview
+Successfully tested the complete ETL pipeline with a live Odoo connection (securadotest.odoo.com / Odoo 19.0+e).
+
+### Issues Found & Fixed
+1. **RunStatus missing attributes** - Added `RUNNING` and `COMPLETED_WITH_ERRORS` to `RunStatus` class
+2. **Wrong database target** - ETL sync was writing to `event_mesh_app` instead of `event_mesh_canonical`
+3. **Wrong collection names** - Changed from `canonical_opportunity` to `opportunities` (matching CRM service expectations)
+4. **Missing `mobile` field** - Odoo 19 doesn't have `mobile` on res.partner, removed from contact mapping
+
+### Sync Results
+| Entity | Source Model | Filter | Records Synced |
+|--------|-------------|--------|----------------|
+| **Opportunities** | crm.lead | None | 10 |
+| **Accounts** | res.partner | is_company=True | 8 |
+| **Contacts** | res.partner | is_company=False | 16 |
+| **Sales Teams** | crm.team | None | 1 |
+| **Sales Users** | res.users | None | 7 |
+
+### Data Transformations Verified
+- `expected_revenue` → `amount` (to_float)
+- `stage_id` → `stage` (extract_name) + `stage_id` (extract_id)
+- `partner_id` → `account_id` (extract_id) + `account_name` (extract_name)
+- `user_id` → `owner_id` (extract_id) + `owner_name` (extract_name)
+- `probability` → `probability` (to_float: 91.67%)
+- `country_id` → `country` (extract_name)
+
+### CRM Pages Showing Live Data
+- ✅ **Opportunities Page**: Displaying 10 opportunities with amounts, stages, probabilities
+- ✅ **Accounts Page**: Displaying 8 accounts with phone numbers, industries, owners
+- ✅ All data correctly linked between entities (account_id references)
+
+### Code Changes
+- Added `get_canonical_db()` import to ETL routes
+- Created `ENTITY_COLLECTION_MAP` for entity → collection mapping
+- Fixed sync endpoint to write to `canonical_db` instead of `app_db`
+- Fixed sync status endpoint to read from correct collections
+
+---
+
 ## Known Issues / Pending Fixes
 
 ### ~~P1 - RBAC Role Saving Bug~~ (RESOLVED ✅)
