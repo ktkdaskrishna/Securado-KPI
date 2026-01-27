@@ -978,10 +978,45 @@ async def delete_kpi(
 # ==================== RECEIVABLES ====================
 
 @receivables_router.get("")
-async def list_receivables(current_user: dict = Depends(get_current_user)):
-    """List receivables (mock data)"""
-    return [
-        {"id": "1", "account": "Acme Corp", "amount": 50000, "due_date": "2024-02-15", "status": "pending"},
-        {"id": "2", "account": "TechStart", "amount": 25000, "due_date": "2024-02-28", "status": "overdue"},
-        {"id": "3", "account": "Global Services", "amount": 100000, "due_date": "2024-03-15", "status": "pending"}
-    ]
+async def list_receivables(
+    current_user: dict = Depends(get_current_user),
+    status: str = Query(None, description="Filter by payment status: pending, paid, overdue"),
+    limit: int = Query(50, description="Maximum number of records")
+):
+    """List receivables/invoices from synced Odoo data"""
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Build query
+    query = {"org_id": org_id}
+    
+    # Filter by payment status if provided
+    if status:
+        if status == "pending":
+            query["payment_state"] = {"$in": ["not_paid", "partial"]}
+        elif status == "paid":
+            query["payment_state"] = "paid"
+        elif status == "overdue":
+            query["payment_state"] = {"$in": ["not_paid", "partial"]}
+            query["due_date"] = {"$lt": datetime.now(timezone.utc).strftime("%Y-%m-%d")}
+    
+    # Fetch invoices
+    invoices = await canonical_db.invoices.find(query).sort("due_date", -1).limit(limit).to_list(limit)
+    
+    # Format for frontend
+    result = []
+    for inv in invoices:
+        result.append({
+            "id": inv.get("canonical_id") or str(inv.get("_id")),
+            "invoice_number": inv.get("invoice_number"),
+            "account": inv.get("account_name") or "Unknown",
+            "account_id": inv.get("account_id"),
+            "amount": inv.get("amount_total") or 0,
+            "currency": inv.get("currency", "OMR"),
+            "due_date": inv.get("due_date"),
+            "invoice_date": inv.get("invoice_date"),
+            "status": inv.get("payment_state", "pending"),
+            "source_system": inv.get("source_system", "odoo")
+        })
+    
+    return serialize_doc(result)
