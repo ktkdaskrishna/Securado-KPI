@@ -211,7 +211,8 @@ async def test_connection(
     try:
         if conn["type"] == "odoo":
             try:
-                common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+                # Use SSL-safe proxy for Odoo connections
+                common = create_odoo_proxy(conn["url"], "common")
                 version = common.version()
                 uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
             except xmlrpc.client.ProtocolError as pe:
@@ -232,6 +233,14 @@ async def test_connection(
                     {"$set": {"status": "error", "health": "unhealthy", "last_test": now_utc(), "error": error_msg}}
                 )
                 return {"status": "error", "health": "unhealthy", "message": f"Odoo connection error: {error_msg}"}
+            except ssl.SSLError as ssl_err:
+                # Handle SSL certificate errors
+                error_msg = str(ssl_err)
+                await db.connections.update_one(
+                    {"id": conn_id},
+                    {"$set": {"status": "error", "health": "unhealthy", "last_test": now_utc(), "error": f"SSL Error: {error_msg}"}}
+                )
+                return {"status": "error", "health": "unhealthy", "message": f"SSL certificate error: {error_msg}"}
             
             if uid:
                 await db.connections.update_one(
