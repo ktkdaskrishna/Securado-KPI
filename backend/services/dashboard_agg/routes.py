@@ -214,14 +214,29 @@ class DashboardAggregator:
                 for stage in PipelineStages.all()
             ]
             
-            # Mock leaderboard
-            leaderboard = [
-                {"id": "1", "name": "Sarah Johnson", "value": random.randint(200000, 300000)},
-                {"id": "2", "name": "Michael Chen", "value": random.randint(150000, 250000)},
-                {"id": "3", "name": "Emily Davis", "value": random.randint(100000, 200000)},
-                {"id": "4", "name": "James Wilson", "value": random.randint(80000, 150000)},
-                {"id": "5", "name": "Lisa Anderson", "value": random.randint(50000, 120000)},
-            ]
+            # Build REAL leaderboard from opportunity data (group by owner)
+            owner_values = defaultdict(float)
+            owner_names = {}
+            for opp in opps:
+                owner_id = opp.get("owner_id")
+                owner_name = opp.get("owner_name")
+                if owner_id and owner_name:
+                    owner_values[owner_id] += opp.get("amount", 0) or 0
+                    owner_names[owner_id] = owner_name
+            
+            # Sort by value and get top 5
+            leaderboard = []
+            sorted_owners = sorted(owner_values.items(), key=lambda x: x[1], reverse=True)[:5]
+            for i, (owner_id, value) in enumerate(sorted_owners):
+                leaderboard.append({
+                    "id": str(owner_id),
+                    "name": owner_names.get(owner_id, f"User {owner_id}"),
+                    "value": value
+                })
+            
+            # If no real data, show placeholder
+            if not leaderboard:
+                leaderboard = [{"id": "0", "name": "No sales data", "value": 0}]
             
             # Save to serving cache
             cache_doc = {
