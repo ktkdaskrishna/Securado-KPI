@@ -139,12 +139,12 @@ def parse_date_from_string(date_str):
         for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S']:
             try:
                 return datetime.strptime(date_str[:len(fmt.replace('%', ''))].strip(), fmt)
-            except:
+            except (ValueError, TypeError):
                 continue
         try:
             if len(date_str) >= 10:
                 return datetime.strptime(date_str[:10], '%Y-%m-%d')
-        except:
+        except (ValueError, TypeError):
             pass
     return None
 
