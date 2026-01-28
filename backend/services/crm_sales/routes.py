@@ -1250,17 +1250,22 @@ async def list_activities(
     all_activities = []
     
     for act in canonical_activities:
+        # Get the original activity type and use it directly (not normalized to generic bucket)
+        original_type = act.get("activity_type") or "To Do"
         normalized = {
             "id": act.get("canonical_id") or str(act.get("_id")),
-            "type": (act.get("activity_type") or "task").lower().replace(" ", "_"),
-            "subject": act.get("summary") or "Activity",
+            "type": original_type.lower().replace(" ", "_"),
+            "type_display": original_type,  # Original type for display
+            "subject": act.get("summary") or act.get("opportunity_name") or "Activity",
             "description": act.get("note") or "",
-            "status": "completed" if act.get("state") == "done" else "pending",
-            "owner_name": act.get("assigned_user") or "System",
+            "status": "completed" if (act.get("state") == "done" or act.get("completed_at")) else "pending",
+            "owner_name": act.get("assigned_user") or act.get("salesperson") or "System",
             "due_date": act.get("date_deadline"),
-            "created_at": act.get("created_at") or act.get("synced_at"),
-            "create_date": act.get("create_date") or act.get("synced_at"),
+            "created_at": act.get("created_at") or act.get("completed_at") or act.get("synced_at"),
+            "create_date": act.get("create_date") or act.get("completed_at") or act.get("synced_at"),
             "opportunity_id": act.get("opportunity_id"),
+            "opportunity_name": act.get("opportunity_name"),
+            "customer_name": act.get("customer_name"),
             "source": "odoo"
         }
         # Apply status filter if provided
