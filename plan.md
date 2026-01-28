@@ -1,6 +1,51 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - Data Accuracy Fix (COMPLETED)
+## Latest Session - Won Date Filtering & Custom Fields (COMPLETED) ✅
+
+### Issue Fixed: Won Deal Year Filtering Using Correct Date Field
+
+**Problem:** The application was using `date_closed` for filtering Won deals by year, but in Odoo this field is often `None` for Won deals. The correct field is `date_last_stage_update` (when the stage was changed to Won).
+
+**Solution:**
+1. **Added new ETL field mappings** for `crm.lead`:
+   - `date_last_stage_update` → `won_at` (correct date for Won filtering)
+   - `productcategory_id` → `solution_category`, `solution_category_id`
+   - `productmanager_id` → `product_manager`, `product_manager_id`
+   - `x_studio_budget_status` → `budget_status`
+   - `solserv_id` → `solution_services`
+   - `product_directors_ids` → `product_directors`
+
+2. **Updated backend filtering logic** in both:
+   - `/app/backend/services/dashboard_agg/routes.py` - `apply_date_filters_for_won_lost()` now uses `won_at` first
+   - `/app/backend/services/ai_analytics/routes.py` - `apply_filters()` now uses `won_at` for Won deals
+
+3. **Full data re-sync** with new fields populated
+
+**Results:**
+| Metric | All Time | 2025 Filtered |
+|--------|----------|---------------|
+| Won Count | 395 | 170 |
+| Won Value | 14,759,891.93 OMR | 8,695,988.55 OMR |
+
+**New Fields Available:**
+- `won_at` - Accurate date when deal was marked as Won
+- `solution_category` - Product/Solution Category name
+- `solution_category_id` - Solution Category ID
+- `product_manager` - Product Manager name
+- `product_manager_id` - Product Manager ID
+- `budget_status` - Budget approval status
+- `solution_services` - Solution & Services IDs
+- `product_directors` - Product Director IDs
+
+**Files Modified:**
+- `/app/backend/services/etl_runner/runner.py` - Field mappings (existing)
+- `/app/backend/services/dashboard_agg/routes.py` - Use `won_at` for Won filtering
+- `/app/backend/services/ai_analytics/routes.py` - Use `won_at` for Won filtering
+- MongoDB `event_mesh_app.mappings` collection - Added 8 new field mappings
+
+---
+
+## Previous Session - Data Accuracy Fix (COMPLETED)
 
 ### Issue Fixed: Dashboard KPIs Not Matching Odoo Data ✅ (CRITICAL FIX)
 
@@ -23,12 +68,13 @@
 | Won Value | ~2.77M OMR | ~14.76M OMR |
 | Total Pipeline | ~8.6M OMR | ~58.5M OMR |
 
-**Won Deals by Year:**
-- 2025: 150 deals, 8,055,158.80 OMR
-- 2024: 90 deals, 3,531,786.94 OMR
-- 2023: 78 deals, 1,172,575.94 OMR
-- 2022: 45 deals, 1,241,663.75 OMR
-- 2021: 30 deals, 738,350.50 OMR
+**Won Deals by Year (using won_at):**
+- 2026: 8 deals, 81,509.00 OMR
+- 2025: 170 deals, 8,695,988.55 OMR
+- 2024: 70 deals, 2,183,743.54 OMR
+- 2023: 74 deals, 2,076,935.44 OMR
+- 2022: 45 deals, 1,169,249.90 OMR
+- 2021: 28 deals, 552,465.50 OMR
 
 **Files Modified:**
 - `/app/backend/services/etl_runner/runner.py` - Removed 500-record limit for crm.lead, improved transformation logic
