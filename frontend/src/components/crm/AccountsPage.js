@@ -31,7 +31,7 @@ export function AccountsPage() {
   const loadAccounts = async () => {
     setLoading(true);
     try {
-      const response = await crmAPI.getAccounts(getQueryParams());
+      const response = await crmAPI.listAccounts(getQueryParams());
       setAccounts(response.data || []);
     } catch (error) {
       console.error('Failed to load accounts:', error);
