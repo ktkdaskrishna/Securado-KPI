@@ -4,7 +4,9 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
+import { Input } from '../ui/input';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { 
   Webhook, 
   RefreshCw, 
@@ -14,7 +16,8 @@ import {
   CheckCircle2,
   XCircle,
   Settings,
-  Server
+  Server,
+  Key
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
