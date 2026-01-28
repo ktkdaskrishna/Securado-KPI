@@ -361,14 +361,14 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
               </div>
               <div className="h-12 w-px bg-gray-200"></div>
               <div className="text-center flex-1">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">AI Confidence</p>
-                <p className="text-2xl font-bold text-purple-600">{opportunity.automated_probability || bluesheet?.calculated_probability?.probability || 0}%</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Bluesheet Score</p>
+                <p className="text-2xl font-bold text-purple-600">{bluesheet?.calculated_probability?.probability || opportunity.automated_probability || 0}%</p>
               </div>
               <div className="h-12 w-px bg-gray-200"></div>
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Variance</p>
-                <p className={`text-2xl font-bold ${Math.abs((opportunity.user_probability || opportunity.probability || 0) - (opportunity.automated_probability || 0)) > 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {Math.abs((opportunity.user_probability || opportunity.probability || 0) - (opportunity.automated_probability || 0)).toFixed(1)}%
+                <p className={`text-2xl font-bold ${Math.abs((opportunity.user_probability || opportunity.probability || 0) - (bluesheet?.calculated_probability?.probability || opportunity.automated_probability || 0)) > 15 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {Math.abs((opportunity.user_probability || opportunity.probability || 0) - (bluesheet?.calculated_probability?.probability || opportunity.automated_probability || 0)).toFixed(1)}%
                 </p>
               </div>
             </div>
