@@ -493,6 +493,141 @@ async def update_user_roles(
     return {"success": True, "message": "User roles updated"}
 
 
+# ============== User Invite ==============
+
+def generate_temp_password(length: int = 12) -> str:
+    """Generate a secure temporary password"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def generate_invite_token() -> str:
+    """Generate a secure invite token"""
+    return secrets.token_urlsafe(32)
+
+
+@admin_router.post("/users/invite", response_model=UserInviteResponse)
+async def invite_user(
+    invite_data: UserInvite,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Invite a new user to the system.
+    
+    Two modes:
+    1. Email Invite (send_email=True): Creates user with 'invited' status and generates invite token.
+       User will receive email with link to set password.
+    2. Direct Creation (send_email=False): Creates user with temp password and 'approved' status.
+       Admin provides or system generates temporary password.
+    """
+    db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": invite_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user_id = generate_id()
+    invite_token = None
+    temp_password = None
+    
+    if invite_data.send_email:
+        # Email invite mode
+        invite_token = generate_invite_token()
+        user_doc = {
+            "id": user_id,
+            "email": invite_data.email,
+            "name": invite_data.name,
+            "password_hash": None,  # No password yet
+            "status": "invited",
+            "org_id": org_id,
+            "roles": invite_data.roles,
+            "permissions": [],
+            "invite_token": invite_token,
+            "invite_expires_at": now_utc(),  # TODO: Add expiration
+            "invited_by": current_user["id"],
+            "created_at": now_utc()
+        }
+        logger.info(f"User invited via email: {invite_data.email} by {current_user['email']}")
+    else:
+        # Direct creation mode
+        temp_password = invite_data.temp_password or generate_temp_password()
+        user_doc = {
+            "id": user_id,
+            "email": invite_data.email,
+            "name": invite_data.name,
+            "password_hash": hash_password(temp_password),
+            "status": UserStatus.APPROVED,
+            "org_id": org_id,
+            "roles": invite_data.roles,
+            "permissions": [],
+            "must_change_password": True,
+            "created_by": current_user["id"],
+            "created_at": now_utc(),
+            "approved_at": now_utc(),
+            "approved_by": current_user["id"]
+        }
+        logger.info(f"User created directly: {invite_data.email} by {current_user['email']}")
+    
+    await db.users.insert_one(user_doc)
+    
+    # Emit user invited event
+    await emit_event(
+        event_type=Topics.USER_REGISTERED,
+        payload={
+            "user_id": user_id,
+            "email": invite_data.email,
+            "name": invite_data.name,
+            "status": user_doc["status"],
+            "invited_by": current_user["id"],
+            "method": "email" if invite_data.send_email else "direct"
+        },
+        producer="identity-service",
+        org_id=org_id
+    )
+    
+    return UserInviteResponse(
+        id=user_id,
+        email=invite_data.email,
+        name=invite_data.name,
+        status=user_doc["status"],
+        roles=invite_data.roles,
+        invite_token=invite_token,
+        temp_password=temp_password
+    )
+
+
+@router.post("/accept-invite")
+async def accept_invite(
+    token: str,
+    password: str
+):
+    """Accept an invitation and set password"""
+    db = get_app_db()
+    
+    user = await db.users.find_one({"invite_token": token, "status": "invited"})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired invite token")
+    
+    # Set password and activate user
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {
+                "password_hash": hash_password(password),
+                "status": UserStatus.APPROVED,
+                "invite_token": None,
+                "activated_at": now_utc()
+            }
+        }
+    )
+    
+    logger.info(f"User accepted invite: {user['email']}")
+    
+    return {"success": True, "message": "Account activated. You can now login."}
+
+
 # ============== Settings ==============
 
 class OrgSettings(BaseModel):
