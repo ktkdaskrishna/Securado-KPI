@@ -1212,13 +1212,52 @@ export function OpportunitiesPage() {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const { formatCurrency } = useCurrency();
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [] });
 
-  // Import filter context
-  const { filters, hasActiveFilters } = useGlobalFilters();
+  // Contextual filters for Opportunities page
+  const [filters, setFilters] = useState({
+    year: null,
+    quarter: null,
+    salesRep: null,
+    account: null,
+    stage: null
+  });
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null });
+  };
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(v => v !== null);
+  };
+
+  const loadFilterOptions = useCallback(async () => {
+    try {
+      const res = await analyticsAPI.getFilters();
+      if (res.data) {
+        setFilterOptions({
+          years: res.data.years || [],
+          salesReps: res.data.salesReps || [],
+          accounts: res.data.accounts || [],
+          stages: res.data.stages || []
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.team, filters.account, filters.stage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage]);
 
   const loadData = async () => {
     try {
