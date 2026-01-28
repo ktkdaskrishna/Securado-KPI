@@ -3,13 +3,16 @@ import { adminAPI } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
-import { Users, CheckCircle, XCircle, Clock, Trash2, UserCheck, UserX, Shield, Settings } from 'lucide-react';
+import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Users, CheckCircle, XCircle, Clock, Trash2, UserCheck, UserX, Shield, Settings, UserPlus, Mail, Key, Copy, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusColors = {
@@ -17,12 +20,14 @@ const statusColors = {
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-700',
   suspended: 'bg-gray-100 text-gray-700',
+  invited: 'bg-blue-100 text-blue-700',
 };
 
 const statusIcons = {
   pending: <Clock className="h-4 w-4" />,
   approved: <CheckCircle className="h-4 w-4" />,
   rejected: <XCircle className="h-4 w-4" />,
+  invited: <Mail className="h-4 w-4" />,
 };
 
 export function UsersPage() {
@@ -31,8 +36,18 @@ export function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedRoles, setSelectedRoles] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [inviteResult, setInviteResult] = useState(null);
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    name: '',
+    roles: [],
+    send_email: false,
+    temp_password: ''
+  });
 
   useEffect(() => {
     loadData();
