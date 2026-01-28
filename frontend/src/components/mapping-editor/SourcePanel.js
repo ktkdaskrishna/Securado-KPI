@@ -250,6 +250,17 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
                             {/* Model Fields */}
                             {expandedModels[model.model] && (
                               <div className="border-t bg-gray-50 p-2">
+                                {/* Field Search */}
+                                <div className="relative mb-2">
+                                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Search fields... (e.g., x_studio)"
+                                    value={fieldSearchQuery}
+                                    onChange={(e) => setFieldSearchQuery(e.target.value)}
+                                    className="pl-7 h-7 text-xs"
+                                  />
+                                </div>
+                                
                                 {loadingFields[model.model] ? (
                                   <div className="space-y-1">
                                     {[1, 2, 3].map(i => (
@@ -257,54 +268,97 @@ export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loadin
                                     ))}
                                   </div>
                                 ) : (modelFields[model.model] || model.fields || []).length > 0 ? (
-                                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                                    {(modelFields[model.model] || model.fields || []).slice(0, 20).map((field, idx) => {
-                                      const FieldIcon = fieldTypeIcons[field.type] || Type;
-                                      return (
-                                        <div
-                                          key={idx}
-                                          className="flex items-center justify-between py-1 px-2 rounded hover:bg-white hover:shadow-sm text-xs group cursor-grab active:cursor-grabbing border border-transparent hover:border-blue-200 transition-all"
-                                          draggable
-                                          onDragStart={(e) => {
-                                            e.dataTransfer.setData('sourceField', JSON.stringify({
-                                              model: model.model,
-                                              field: field.name,
-                                              type: field.type
-                                            }));
-                                            e.dataTransfer.effectAllowed = 'copy';
-                                            // Visual feedback - add dragging class
-                                            e.target.classList.add('opacity-50', 'scale-95');
-                                          }}
-                                          onDragEnd={(e) => {
-                                            e.target.classList.remove('opacity-50', 'scale-95');
-                                          }}
-                                          data-testid={`source-field-${model.model}-${field.name}`}
-                                          title="Drag to a target field to create mapping"
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <FieldIcon className="h-3 w-3 text-gray-400 group-hover:text-blue-500" />
-                                            <span className="font-mono">{field.name}</span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <Badge variant="outline" className="text-[10px] px-1">
-                                              {field.type}
-                                            </Badge>
-                                            {field.required && (
-                                              <Badge variant="destructive" className="text-[10px] px-1">REQ</Badge>
-                                            )}
-                                            <span className="opacity-0 group-hover:opacity-100 text-blue-500 text-[10px] ml-1">
-                                              drag →
-                                            </span>
-                                          </div>
+                                  (() => {
+                                    const allFields = modelFields[model.model] || model.fields || [];
+                                    const filteredFields = fieldSearchQuery 
+                                      ? allFields.filter(f => 
+                                          f.name?.toLowerCase().includes(fieldSearchQuery.toLowerCase()) ||
+                                          f.label?.toLowerCase().includes(fieldSearchQuery.toLowerCase())
+                                        )
+                                      : allFields;
+                                    
+                                    // Sort fields: custom (x_studio) first, then alphabetically
+                                    const sortedFields = [...filteredFields].sort((a, b) => {
+                                      const aIsCustom = a.name?.startsWith('x_');
+                                      const bIsCustom = b.name?.startsWith('x_');
+                                      if (aIsCustom && !bIsCustom) return -1;
+                                      if (!aIsCustom && bIsCustom) return 1;
+                                      return (a.name || '').localeCompare(b.name || '');
+                                    });
+                                    
+                                    return (
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between text-xs text-muted-foreground px-1 mb-1">
+                                          <span>Showing {sortedFields.length} of {allFields.length} fields</span>
+                                          {fieldSearchQuery && (
+                                            <button 
+                                              onClick={() => setFieldSearchQuery('')}
+                                              className="text-blue-500 hover:underline"
+                                            >
+                                              Clear
+                                            </button>
+                                          )}
                                         </div>
-                                      );
-                                    })}
-                                    {(modelFields[model.model] || model.fields || []).length > 20 && (
-                                      <p className="text-xs text-muted-foreground text-center py-1">
-                                        +{(modelFields[model.model] || model.fields || []).length - 20} more fields
-                                      </p>
-                                    )}
-                                  </div>
+                                        <ScrollArea className="h-64">
+                                          <div className="space-y-1 pr-2">
+                                            {sortedFields.map((field, idx) => {
+                                              const FieldIcon = fieldTypeIcons[field.type] || Type;
+                                              const isCustom = field.name?.startsWith('x_');
+                                              const isStudio = field.name?.startsWith('x_studio_');
+                                              return (
+                                                <div
+                                                  key={idx}
+                                                  className={`flex items-center justify-between py-1.5 px-2 rounded hover:bg-white hover:shadow-sm text-xs group cursor-grab active:cursor-grabbing border transition-all ${
+                                                    isStudio ? 'border-purple-200 bg-purple-50' :
+                                                    isCustom ? 'border-yellow-200 bg-yellow-50' :
+                                                    'border-transparent hover:border-blue-200'
+                                                  }`}
+                                                  draggable
+                                                  onDragStart={(e) => {
+                                                    e.dataTransfer.setData('sourceField', JSON.stringify({
+                                                      model: model.model,
+                                                      field: field.name,
+                                                      type: field.type
+                                                    }));
+                                                    e.dataTransfer.effectAllowed = 'copy';
+                                                    e.target.classList.add('opacity-50', 'scale-95');
+                                                  }}
+                                                  onDragEnd={(e) => {
+                                                    e.target.classList.remove('opacity-50', 'scale-95');
+                                                  }}
+                                                  data-testid={`source-field-${model.model}-${field.name}`}
+                                                  title={`${field.label || field.name}\nType: ${field.type}\nDrag to target field to create mapping`}
+                                                >
+                                                  <div className="flex items-center gap-2 min-w-0">
+                                                    <FieldIcon className={`h-3 w-3 flex-shrink-0 ${
+                                                      isStudio ? 'text-purple-500' :
+                                                      isCustom ? 'text-yellow-600' :
+                                                      'text-gray-400 group-hover:text-blue-500'
+                                                    }`} />
+                                                    <span className="font-mono truncate">{field.name}</span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                                    <Badge variant="outline" className="text-[10px] px-1">
+                                                      {field.type}
+                                                    </Badge>
+                                                    {isStudio && (
+                                                      <Badge className="text-[10px] px-1 bg-purple-100 text-purple-700">Studio</Badge>
+                                                    )}
+                                                    {field.required && (
+                                                      <Badge variant="destructive" className="text-[10px] px-1">REQ</Badge>
+                                                    )}
+                                                    <span className="opacity-0 group-hover:opacity-100 text-blue-500 text-[10px] ml-1">
+                                                      drag →
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </ScrollArea>
+                                      </div>
+                                    );
+                                  })()
                                 ) : (
                                   <p className="text-xs text-muted-foreground text-center py-2">
                                     No fields available
