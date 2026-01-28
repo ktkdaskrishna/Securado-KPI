@@ -116,8 +116,15 @@ export function OdooModelBrowserPage() {
       );
       setFields(res.data);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to fetch fields');
+      const errorMessage = error.response?.data?.detail || 'Failed to fetch fields';
+      // Check if it's an Odoo "Object doesn't exist" error
+      if (errorMessage.includes("doesn't exist") || errorMessage.includes("does not exist")) {
+        toast.error(`Model "${modelName}" doesn't exist in Odoo. It may have been removed or renamed.`);
+      } else {
+        toast.error(errorMessage);
+      }
       console.error('Error fetching fields:', error);
+      setFields(null);
     } finally {
       setLoadingFields(false);
     }
