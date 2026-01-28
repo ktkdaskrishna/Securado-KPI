@@ -34,6 +34,7 @@ const formatDate = (dateStr) => {
 export function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState(null);
+  const [salespersonData, setSalespersonData] = useState([]);
   const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
