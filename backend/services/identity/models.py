@@ -42,3 +42,22 @@ class UserUpdate(BaseModel):
     status: Optional[str] = None
     roles: Optional[List[str]] = None
     department_id: Optional[str] = None
+
+
+class UserInvite(BaseModel):
+    """Model for inviting a new user"""
+    email: EmailStr
+    name: str
+    roles: List[str] = []
+    send_email: bool = True  # If True, send invite email; if False, create with temp password
+    temp_password: Optional[str] = None  # Required if send_email is False
+
+
+class UserInviteResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    status: str
+    roles: List[str]
+    invite_token: Optional[str] = None  # Token for email invite flow
+    temp_password: Optional[str] = None  # Temp password for direct creation
