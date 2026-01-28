@@ -240,7 +240,7 @@ export function ActivitiesPage() {
       </PageFilters>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         {[
           { label: 'Calls', value: stats?.by_type?.calls || 0, icon: Phone, color: 'blue' },
           { label: 'Emails', value: stats?.by_type?.emails || 0, icon: Mail, color: 'cyan' },
@@ -260,6 +260,24 @@ export function ActivitiesPage() {
           </Card>
         ))}
       </div>
+
+      {/* Detailed Activity Types */}
+      {stats?.detailed_types && Object.keys(stats.detailed_types).length > 0 && (
+        <Card className="mb-4">
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm font-medium text-gray-600">Activity Types Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.detailed_types).map(([type, count]) => (
+                <Badge key={type} variant="outline" className="text-xs py-1 px-2">
+                  {type}: <span className="font-bold ml-1">{count}</span>
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activities List */}
       <Card>
