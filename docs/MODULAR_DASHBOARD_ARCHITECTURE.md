@@ -260,24 +260,222 @@ async def list_opportunities(
 
 ---
 
-## 4. Key Design Decisions Required
+## 4. Concrete API Endpoint Shapes (From Your Specification)
 
-### Decision 1: Per-Card Endpoints vs Batch Endpoint
+### A. Template Resolution Endpoint (NEW)
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Per-Card** (current) | Simple, independent | N API calls per dashboard |
-| **Batch Endpoint** | Single request | Complex response handling |
-| **Hybrid** (recommended) | Best of both | Some complexity |
+**`GET /api/dashboard/templates/active?scope=main`**
 
-**Recommendation:** Add a `/api/dashboard/batch` endpoint that accepts card IDs and returns all data in one response, while keeping per-card endpoints for drill-down.
+Returns the resolved template for the logged-in user (role-based + user override):
 
-### Decision 2: Filter Contract
+```json
+{
+  "template": {
+    "id": "tpl_sales_rep_v1",
+    "name": "Sales Rep Dashboard",
+    "layout": { ... }
+  },
+  "resolvedFor": {
+    "userId": "U123",
+    "roles": ["sales_user_own"],
+    "recordAccess": "own"
+  }
+}
+```
 
-```typescript
-// Canonical filter schema (already mostly exists)
-interface GlobalFilters {
-  year?: string;        // "2025"
+### B. Batch Data Endpoint (CRITICAL for Performance)
+
+**`POST /api/dashboard/data/batch`**
+
+Request:
+```json
+{
+  "scope": "main",
+  "templateId": "tpl_sales_rep_v1",
+  "filters": {
+    "year": "2026",
+    "quarter": "Q1",
+    "sales_rep": "Nabi",
+    "team_id": null,
+    "account": null,
+    "stage": null,
+    "date_field": "create_date"
+  },
+  "dataSources": ["dashboard.stats", "dashboard.pmLeaderboard", "dashboard.categoryStats"]
+}
+```
+
+Response:
+```json
+{
+  "filtersEcho": { ... },
+  "data": {
+    "dashboard.stats": { /* existing /dashboard/stats response */ },
+    "dashboard.pmLeaderboard": { /* existing PM leaderboard response */ },
+    "dashboard.categoryStats": { /* existing category stats response */ }
+  },
+  "meta": {
+    "generatedAt": "2026-01-28T10:00:00Z"
+  }
+}
+```
+
+### C. Template CRUD Endpoints (Admin)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/dashboard/templates?scope=main` | List all templates |
+| `POST /api/dashboard/templates` | Create new template |
+| `PUT /api/dashboard/templates/{templateId}` | Update template |
+| `DELETE /api/dashboard/templates/{templateId}` | Delete template |
+| `POST /api/dashboard/templates/{templateId}/assign` | Assign to roles |
+
+---
+
+## 5. Template JSON Schema (react-grid-layout Compatible)
+
+```json
+{
+  "id": "tpl_sales_rep_v1",
+  "org_id": "default",
+  "scope": "main",
+  "name": "Sales Rep Dashboard",
+  "description": "Focus on my pipeline + my activities",
+  "version": 1,
+  "status": "active",
+
+  "assignment": {
+    "roles": ["sales_user_own"],
+    "priority": 50,
+    "is_default_for_scope": false
+  },
+
+  "layout": {
+    "schemaVersion": 1,
+    "breakpoints": { "lg": 1200, "md": 996, "sm": 768, "xs": 480 },
+    "cols": { "lg": 12, "md": 10, "sm": 6, "xs": 2 },
+
+    "items": [
+      {
+        "i": "pipeline_overview_1",
+        "cardId": "pipeline.overview",
+        "x": 0, "y": 0, "w": 6, "h": 4,
+        "minW": 3, "minH": 3,
+        "props": { "mode": "valueAndTrend" }
+      },
+      {
+        "i": "activity_overview_1",
+        "cardId": "activity.overview",
+        "x": 6, "y": 0, "w": 6, "h": 4,
+        "minW": 3, "minH": 3,
+        "props": { "showCompleted": true }
+      },
+      {
+        "i": "leaderboard_1",
+        "cardId": "sales.leaderboard",
+        "x": 0, "y": 4, "w": 6, "h": 5,
+        "minW": 4, "minH": 4,
+        "props": { "limit": 10 }
+      },
+      {
+        "i": "pm_leaderboard_1",
+        "cardId": "pm.leaderboard",
+        "x": 6, "y": 4, "w": 6, "h": 5,
+        "minW": 4, "minH": 4,
+        "props": {}
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 6. Card Registry (Frontend Constant)
+
+```javascript
+// frontend/src/components/dashboard/registry/cardRegistry.js
+
+export const CARD_REGISTRY = {
+  "kpi.totalPipeline": {
+    title: "Total Pipeline",
+    component: "KPICard",
+    requiredPermissions: ["view_dashboard"],
+    dataSources: ["dashboard.stats"],
+    supportedFilters: ["year", "quarter", "sales_rep", "team_id", "account", "stage"],
+    defaultSize: { w: 3, h: 2 },
+    minSize: { w: 2, h: 2 },
+    props: { metric: "total_pipeline", icon: "DollarSign", color: "cyan" }
+  },
+  
+  "kpi.winRate": {
+    title: "Win Rate",
+    component: "KPICard",
+    requiredPermissions: ["view_dashboard"],
+    dataSources: ["dashboard.stats"],
+    supportedFilters: ["year", "quarter", "sales_rep", "team_id"],
+    defaultSize: { w: 3, h: 2 },
+    minSize: { w: 2, h: 2 },
+    props: { metric: "win_rate", icon: "Target", color: "emerald", format: "percent" }
+  },
+  
+  "pipeline.overview": {
+    title: "Pipeline by Stage",
+    component: "PipelineOverviewCard",
+    requiredPermissions: ["view_opportunities"],
+    dataSources: ["dashboard.stats"],
+    supportedFilters: ["year", "quarter", "sales_rep", "team_id", "account"],
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 }
+  },
+  
+  "activity.overview": {
+    title: "Activity Overview",
+    component: "ActivityOverviewCard",
+    requiredPermissions: ["view_activities"],
+    dataSources: ["dashboard.stats"],
+    supportedFilters: ["year", "quarter", "sales_rep", "team_id"],
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 }
+  },
+  
+  "sales.leaderboard": {
+    title: "Sales Leaderboard",
+    component: "LeaderboardCard",
+    requiredPermissions: ["view_dashboard"],
+    dataSources: ["dashboard.stats"],
+    supportedFilters: ["year", "quarter", "team_id"],
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 4, h: 4 },
+    roleVisibility: ["sales_admin", "sales_director", "sales_user_all"]  // Hide from sales_user_own
+  },
+  
+  "pm.leaderboard": {
+    title: "Product Manager Leaderboard",
+    component: "PMLeaderboardCard",
+    requiredPermissions: ["view_dashboard"],
+    dataSources: ["dashboard.pmLeaderboard"],
+    supportedFilters: ["year", "quarter"],
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 4, h: 4 },
+    roleVisibility: ["sales_admin", "sales_director"]  // Admin/Director only
+  },
+  
+  "category.performance": {
+    title: "Category Performance",
+    component: "CategoryPerformanceCard",
+    requiredPermissions: ["view_dashboard"],
+    dataSources: ["dashboard.categoryStats"],
+    supportedFilters: ["year", "quarter", "sales_rep"],
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 4, h: 4 }
+  }
+};
+```
+
+---
+
+## 7. Key Design Decisions (CONFIRMED)
   quarter?: string;     // "Q1"
   month?: number;       // 1-12
   salesRep?: string;    // owner_name
