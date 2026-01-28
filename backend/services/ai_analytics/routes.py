@@ -244,11 +244,19 @@ async def get_rep_performance(
     team_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get sales rep performance metrics"""
+    """Get sales rep performance metrics - OPPORTUNITIES ONLY"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    # Get opportunities only (not leads)
+    all_opps = await canonical_db.opportunities.find({
+        "org_id": org_id,
+        "type": "opportunity"
+    }).to_list(10000)
+    
+    # Apply filters
+    filters = {"year": year, "quarter": quarter, "team_id": team_id}
+    opps = apply_filters(all_opps, filters)
     
     # Group by owner
     rep_data = defaultdict(lambda: {
@@ -263,18 +271,18 @@ async def get_rep_performance(
     for opp in opps:
         owner = opp.get("owner_name") or "Unassigned"
         stage = normalize_stage(opp.get("stage", ""))
-        amount = opp.get("amount", 0) or 0
+        value = get_opp_value(opp)  # Use sale_value
         
         rep_data[owner]["total_opps"] += 1
-        rep_data[owner]["total_value"] += amount
+        rep_data[owner]["total_value"] += value
         
         if stage == "won":
             rep_data[owner]["won_count"] += 1
-            rep_data[owner]["won_value"] += amount
+            rep_data[owner]["won_value"] += value
         elif stage == "lost":
             rep_data[owner]["lost_count"] += 1
         else:
-            rep_data[owner]["pipeline_value"] += amount
+            rep_data[owner]["pipeline_value"] += value
     
     # Calculate metrics and rank
     performance = []
@@ -302,7 +310,8 @@ async def get_rep_performance(
         "reps": performance,
         "total_reps": len(performance),
         "top_performer": performance[0]["name"] if performance else None,
-        "avg_win_rate": round(sum(p["win_rate"] for p in performance) / len(performance), 1) if performance else 0
+        "avg_win_rate": round(sum(p["win_rate"] for p in performance) / len(performance), 1) if performance else 0,
+        "applied_filters": {k: v for k, v in filters.items() if v}
     }
 
 
