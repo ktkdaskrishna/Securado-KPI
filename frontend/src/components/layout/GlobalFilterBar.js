@@ -209,13 +209,13 @@ export function GlobalFilterBar({ className, compact = false }) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[300px] p-0">
-          <Command>
+          <Command shouldFilter={true}>
             <CommandInput placeholder="Search account..." />
             <CommandList>
               <CommandEmpty>No account found.</CommandEmpty>
               <CommandGroup>
                 <CommandItem
-                  value=""
+                  value="all-accounts"
                   onSelect={() => {
                     updateFilter('account', null);
                     setAccountOpen(false);
@@ -223,16 +223,16 @@ export function GlobalFilterBar({ className, compact = false }) {
                 >
                   All Accounts
                 </CommandItem>
-                {options?.accounts?.slice(0, 50).map((acc) => (
+                {(options?.accounts || []).map((acc) => (
                   <CommandItem
-                    key={acc.id}
-                    value={acc.name}
+                    key={acc.id || acc.name || acc}
+                    value={typeof acc === 'string' ? acc : acc.name}
                     onSelect={(value) => {
                       updateFilter('account', value);
                       setAccountOpen(false);
                     }}
                   >
-                    {acc.name}
+                    {typeof acc === 'string' ? acc : acc.name}
                   </CommandItem>
                 ))}
               </CommandGroup>
