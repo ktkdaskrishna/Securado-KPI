@@ -483,11 +483,30 @@ Focus on:
 Keep insights concise, data-driven, and actionable. Use bullet points. Do not include generic advice - be specific to the data provided."""
         ).with_model("openai", "gpt-5.2")
         
-        prompt = f"""Analyze this sales data and provide insights:
+        prompt = f"""Analyze this CRM sales data for a software/IT services company in Oman and provide specific business insights:
 
 SALES DATA SUMMARY:
 - Total Opportunities: {data_summary['total_opportunities']}
 - Total Pipeline Value: OMR {data_summary['total_pipeline_value']:,.2f}
+- Won Deals: {data_summary['won_deals']} (Value: OMR {data_summary['won_value']:,.2f})
+- Lost Deals: {data_summary['lost_deals']}
+- Win Rate: {data_summary['win_rate']}%
+- Average Deal Size: OMR {data_summary['avg_deal_size']:,.2f}
+
+PIPELINE STAGE DISTRIBUTION:
+{json.dumps(data_summary['stage_distribution'], indent=2)}
+
+TOP PERFORMERS (by Won Revenue):
+{json.dumps(data_summary['top_performers'], indent=2)}
+
+Based on this data, provide:
+1. **Performance Analysis**: Key metrics analysis (is this win rate good? Is pipeline healthy?)
+2. **Risk Areas**: Identify bottlenecks or concerns (e.g., stage with too many deals stuck)
+3. **Sales Team Insights**: Analysis of top performers and recommendations for others
+4. **Revenue Optimization**: Specific recommendations to improve conversion and revenue
+5. **Action Items**: 3 concrete next steps the sales team should take
+
+Be specific to the numbers provided. Include specific OMR values and percentages where relevant."""
 - Won Deals: {data_summary['won_deals']} (Value: OMR {data_summary['won_value']:,.2f})
 - Lost Deals: {data_summary['lost_deals']}
 - Win Rate: {data_summary['win_rate']}%
