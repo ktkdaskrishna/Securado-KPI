@@ -713,7 +713,11 @@ async def get_opportunity_activities(
     opp_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all activities for an opportunity (from both canonical and app DB)"""
+    """
+    Get all activities for an opportunity (from both canonical and app DB)
+    
+    See /app/docs/CRM_DATA_MODEL_REFERENCE.md for data linking rules.
+    """
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
@@ -724,26 +728,57 @@ async def get_opportunity_activities(
         "org_id": org_id
     })
     
+    # Also try finding by source_record_id if canonical_id doesn't match
+    if not opp:
+        opp = await canonical_db.opportunities.find_one({
+            "source_record_id": opp_id,
+            "org_id": org_id
+        })
+    
     # Build query conditions for activities
-    # Activities can be linked by:
-    # 1. opportunity_id (canonical_id format)
-    # 2. opportunity_id (source_record_id format - integer from Odoo)
+    # Activities can be linked by multiple patterns (see CRM_DATA_MODEL_REFERENCE.md):
+    # 1. opportunity_id == canonical_id (our internal ID)
+    # 2. opportunity_id == source_record_id (Odoo ID as string)
+    # 3. opportunity_id == source_record_id (Odoo ID as int)
+    # 4. res_id == source_record_id (for mail.activity pattern)
     query_conditions = [
-        {"opportunity_id": opp_id, "org_id": org_id},
+        {"opportunity_id": opp_id},
     ]
     
     if opp and opp.get("source_record_id"):
-        # Also look for activities linked by the Odoo record ID
         source_id = opp.get("source_record_id")
+        source_id_int = int(source_id) if str(source_id).isdigit() else None
+        
         query_conditions.extend([
-            {"opportunity_id": source_id, "org_id": org_id},
-            {"opportunity_id": int(source_id) if source_id.isdigit() else source_id, "org_id": org_id},
+            {"opportunity_id": source_id},
         ])
+        
+        if source_id_int:
+            query_conditions.extend([
+                {"opportunity_id": source_id_int},
+                {"res_id": source_id_int, "res_model": "crm.lead"},
+            ])
     
     # Fetch from canonical DB (synced from Odoo)
-    canonical_activities = await canonical_db.activities.find({
-        "$or": query_conditions
-    }).sort("date_deadline", -1).to_list(100)
+    # Filter by org_id and prefer CRM activities
+    canonical_query = {
+        "$and": [
+            {"$or": query_conditions},
+            {"$or": [
+                {"org_id": org_id},
+                {"org_id": {"$exists": False}}
+            ]},
+            {"$or": [
+                {"res_model": "crm.lead"},
+                {"res_model": {"$exists": False}},
+                {"res_model": None}
+            ]}
+        ]
+    }
+    
+    canonical_activities = await canonical_db.activities.find(
+        canonical_query
+    ).sort("date_deadline", -1).to_list(100)
     
     # Fetch from app DB (manually created)
     app_activities = await app_db.activities.find({
@@ -751,8 +786,14 @@ async def get_opportunity_activities(
         "org_id": org_id
     }).sort("created_at", -1).to_list(100)
     
-    # Combine and deduplicate
-    all_activities = canonical_activities + app_activities
+    # Combine and deduplicate by canonical_id
+    seen_ids = set()
+    all_activities = []
+    for act in canonical_activities + app_activities:
+        act_id = act.get("canonical_id") or act.get("id") or str(act.get("_id"))
+        if act_id not in seen_ids:
+            seen_ids.add(act_id)
+            all_activities.append(act)
     
     # Normalize activity format for frontend
     normalized = []
@@ -767,7 +808,7 @@ async def get_opportunity_activities(
             "created_at": act.get("created_at") or act.get("synced_at"),
             "date_deadline": act.get("date_deadline"),
             "user_id": act.get("user_id") or act.get("assigned_user_id"),
-            "assigned_user": act.get("assigned_user"),  # Added: user name for display
+            "assigned_user": act.get("assigned_user"),
             "source_system": act.get("source_system", "local"),
         })
     
