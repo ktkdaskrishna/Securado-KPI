@@ -525,26 +525,45 @@ export default function AnalyticsPage() {
 
         {/* Account Health Tab */}
         <TabsContent value="accounts" className="space-y-4">
+          {/* Account Summary Cards - Now Clickable */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="bg-emerald-50 border-emerald-200">
+            <Card 
+              className="bg-emerald-50 border-emerald-200 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+              onClick={() => { setRiskModalType('healthy'); setRiskModalOpen(true); }}
+            >
               <CardContent className="pt-6 text-center">
                 <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-600 mb-2" />
                 <p className="text-3xl font-bold text-emerald-700">{accountHealth?.summary?.healthy || 0}</p>
                 <p className="text-sm text-emerald-600">Healthy Accounts</p>
+                <p className="text-xs text-emerald-500 mt-2 flex items-center justify-center gap-1">
+                  Click to view <ChevronRight className="h-3 w-3" />
+                </p>
               </CardContent>
             </Card>
-            <Card className="bg-amber-50 border-amber-200">
+            <Card 
+              className="bg-amber-50 border-amber-200 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+              onClick={() => { setRiskModalType('at_risk'); setRiskModalOpen(true); }}
+            >
               <CardContent className="pt-6 text-center">
                 <AlertTriangle className="h-8 w-8 mx-auto text-amber-600 mb-2" />
                 <p className="text-3xl font-bold text-amber-700">{accountHealth?.summary?.at_risk || 0}</p>
                 <p className="text-sm text-amber-600">At Risk</p>
+                <p className="text-xs text-amber-500 mt-2 flex items-center justify-center gap-1">
+                  Click to view <ChevronRight className="h-3 w-3" />
+                </p>
               </CardContent>
             </Card>
-            <Card className="bg-red-50 border-red-200">
+            <Card 
+              className="bg-red-50 border-red-200 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+              onClick={() => { setRiskModalType('dormant'); setRiskModalOpen(true); }}
+            >
               <CardContent className="pt-6 text-center">
                 <Clock className="h-8 w-8 mx-auto text-red-600 mb-2" />
                 <p className="text-3xl font-bold text-red-700">{accountHealth?.summary?.dormant || 0}</p>
                 <p className="text-sm text-red-600">Dormant</p>
+                <p className="text-xs text-red-500 mt-2 flex items-center justify-center gap-1">
+                  Click to view <ChevronRight className="h-3 w-3" />
+                </p>
               </CardContent>
             </Card>
           </div>
