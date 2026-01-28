@@ -292,8 +292,10 @@ async def get_conversion_funnel(
     overall_conversion = round(won_count / lead_count * 100, 1) if lead_count > 0 else 0
     
     return {
-        "funnel": funnel,
-        "overall_conversion": overall_conversion,
+        "stages": funnel,  # Renamed from 'funnel' to 'stages' for frontend compatibility
+        "funnel": funnel,  # Keep both for backward compatibility
+        "overall_conversion_rate": overall_conversion,
+        "overall_conversion": overall_conversion,  # Keep both naming conventions
         "lost_count": stage_data.get("lost", {}).get("count", 0),
         "lost_value": stage_data.get("lost", {}).get("value", 0),
         "applied_filters": {k: v for k, v in filters.items() if v}
