@@ -1437,7 +1437,7 @@ export function OpportunitiesPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCurrency(opp.amount || 0)}
+                          {formatCurrency(opp.sale_value || opp.amount || 0)}
                         </TableCell>
                         <TableCell>{opp.owner_name || '-'}</TableCell>
                         <TableCell>
