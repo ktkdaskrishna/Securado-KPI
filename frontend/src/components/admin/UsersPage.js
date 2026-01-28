@@ -125,11 +125,61 @@ export function UsersPage() {
     }
   };
 
+  const openInviteDialog = () => {
+    setInviteForm({
+      email: '',
+      name: '',
+      roles: [],
+      send_email: false,
+      temp_password: ''
+    });
+    setInviteResult(null);
+    setInviteDialogOpen(true);
+  };
+
+  const handleInviteUser = async () => {
+    if (!inviteForm.email || !inviteForm.name) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    if (!inviteForm.send_email && !inviteForm.temp_password) {
+      toast.error('Please provide a temporary password');
+      return;
+    }
+    
+    try {
+      const response = await adminAPI.inviteUser(inviteForm);
+      setInviteResult(response.data);
+      toast.success(inviteForm.send_email 
+        ? 'Invitation sent successfully!' 
+        : 'User created successfully!');
+      loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to invite user');
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
+  const toggleInviteRole = (roleId) => {
+    setInviteForm(prev => ({
+      ...prev,
+      roles: prev.roles.includes(roleId)
+        ? prev.roles.filter(r => r !== roleId)
+        : [...prev.roles, roleId]
+    }));
+  };
+
   const filteredUsers = statusFilter === 'all' 
     ? users 
     : users.filter(u => u.status === statusFilter);
 
   const pendingCount = users.filter(u => u.status === 'pending').length;
+  const invitedCount = users.filter(u => u.status === 'invited').length;
 
   if (loading) {
     return (
@@ -147,17 +197,24 @@ export function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-500">Manage user accounts, approvals, and roles</p>
         </div>
-        {pendingCount > 0 && (
-          <Badge className="bg-amber-100 text-amber-700" data-testid="users-pending-pill">
-            {pendingCount} pending approval
-          </Badge>
-        )}
+        <div className="flex items-center gap-3">
+          {pendingCount > 0 && (
+            <Badge className="bg-amber-100 text-amber-700" data-testid="users-pending-pill">
+              {pendingCount} pending approval
+            </Badge>
+          )}
+          <Button onClick={openInviteDialog} data-testid="invite-user-button">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Invite User
+          </Button>
+        </div>
       </div>
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList>
           <TabsTrigger value="all">All Users ({users.length})</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
+          <TabsTrigger value="invited">Invited ({invitedCount})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({users.filter(u => u.status === 'approved').length})</TabsTrigger>
           <TabsTrigger value="rejected">Rejected ({users.filter(u => u.status === 'rejected').length})</TabsTrigger>
         </TabsList>
