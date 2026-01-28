@@ -171,17 +171,9 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [navPreferences, setNavPreferences] = useState(getStoredNavigation);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [, forceUpdate] = useState(0); // Force re-render trigger
   const location = useLocation();
   const { user, logout } = useAuth();
   const { hasPermission, loading: rbacLoading, roles, permissions } = useRBAC();
-
-  // Force re-render when RBAC finishes loading
-  useEffect(() => {
-    if (!rbacLoading && permissions && permissions.length > 0) {
-      forceUpdate(prev => prev + 1);
-    }
-  }, [rbacLoading, permissions]);
 
   useEffect(() => {
     saveNavigationPreferences(navPreferences);
@@ -195,7 +187,8 @@ export function Sidebar() {
   };
 
   // Filter items based on both preferences AND permissions
-  const getVisibleItems = (items) => {
+  // Memoized to recalculate when rbacLoading or permissions change
+  const getVisibleItems = React.useCallback((items) => {
     return items.filter(item => {
       // Check if user disabled it in preferences
       if (navPreferences[item.id] === false) return false;
@@ -218,7 +211,7 @@ export function Sidebar() {
       const permitted = hasPermission(requiredPermission);
       return permitted;
     });
-  };
+  }, [navPreferences, rbacLoading, hasPermission]);
 
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
