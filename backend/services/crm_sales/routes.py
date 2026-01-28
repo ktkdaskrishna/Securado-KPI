@@ -1305,11 +1305,15 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get CRM activities from canonical DB (res_model='crm.lead')
+    # Get CRM activities from canonical DB 
+    # Include activities with res_model='crm.lead' OR activities with opportunity_id (from crm.activity.report)
     canonical_activities = await canonical_db.activities.find({
         "org_id": org_id,
-        "res_model": "crm.lead"  # Only CRM activities
-    }).to_list(1000)
+        "$or": [
+            {"res_model": "crm.lead"},
+            {"opportunity_id": {"$exists": True, "$ne": None}}
+        ]
+    }).to_list(10000)
     
     # Get activities from app DB
     app_activities = await app_db.activities.find({"org_id": org_id}).to_list(1000)
@@ -1331,12 +1335,13 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
             calls += 1
         elif "email" in act_type or "mail" in act_type:
             emails += 1
-        elif "meet" in act_type or "event" in act_type:
+        elif "meet" in act_type or "event" in act_type or "demo" in act_type or "site visit" in act_type:
             meetings += 1
         else:
             task_count += 1
         
-        if act.get("state") == "done":
+        # Check for completion
+        if act.get("state") == "done" or act.get("completed_at"):
             completed += 1
         else:
             pending += 1
