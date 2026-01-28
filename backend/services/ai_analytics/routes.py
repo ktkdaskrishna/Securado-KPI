@@ -176,13 +176,25 @@ async def get_analytics_overview(
 
 @router.get("/conversion-funnel")
 async def get_conversion_funnel(
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
+    sales_rep: Optional[str] = None,
+    team_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get detailed conversion funnel analysis"""
+    """Get detailed conversion funnel analysis - OPPORTUNITIES ONLY"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    # Get all opportunities (type='opportunity' - exclude leads)
+    all_opps = await canonical_db.opportunities.find({
+        "org_id": org_id,
+        "type": "opportunity"
+    }).to_list(10000)
+    
+    # Apply filters
+    filters = {"year": year, "quarter": quarter, "sales_rep": sales_rep, "team_id": team_id}
+    opps = apply_filters(all_opps, filters)
     
     # Stage mapping for funnel
     funnel_stages = ["lead", "qualified", "proposal", "negotiation", "won"]
@@ -192,7 +204,7 @@ async def get_conversion_funnel(
     for opp in opps:
         stage = normalize_stage(opp.get("stage", ""))
         stage_data[stage]["count"] += 1
-        stage_data[stage]["value"] += opp.get("amount", 0) or 0
+        stage_data[stage]["value"] += get_opp_value(opp)
     
     # Calculate conversion rates between stages
     funnel = []
@@ -220,12 +232,16 @@ async def get_conversion_funnel(
         "funnel": funnel,
         "overall_conversion": overall_conversion,
         "lost_count": stage_data.get("lost", {}).get("count", 0),
-        "lost_value": stage_data.get("lost", {}).get("value", 0)
+        "lost_value": stage_data.get("lost", {}).get("value", 0),
+        "applied_filters": {k: v for k, v in filters.items() if v}
     }
 
 
 @router.get("/rep-performance")
 async def get_rep_performance(
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
+    team_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Get sales rep performance metrics"""
