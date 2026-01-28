@@ -536,8 +536,16 @@ async def get_available_filters(
     owners = list(set(o.get("owner_name") for o in opps if o.get("owner_name")))
     
     # Get unique account names from opportunities (not from accounts collection)
-    # This ensures we show accounts that actually have opportunities
-    opp_accounts = list(set(o.get("account_name") for o in opps if o.get("account_name") and o.get("account_name") != 'None'))
+    # Build a dict to preserve account_id -> account_name mapping
+    account_map = {}
+    for o in opps:
+        acc_name = o.get("account_name")
+        acc_id = o.get("account_id")
+        if acc_name and acc_name != 'None' and acc_id:
+            account_map[str(acc_id)] = acc_name
+    
+    # Convert to list of objects for the frontend
+    opp_accounts = [{"id": aid, "name": aname} for aid, aname in account_map.items()]
     
     # Get years from create_date (not close_date since many don't have close dates)
     years = set()
@@ -574,7 +582,7 @@ async def get_available_filters(
         "stages": sorted(stages),
         "sales_reps": sorted(owners),
         "teams": [{"id": str(t.get("source_record_id")), "name": t.get("name")} for t in teams if t.get("name")],
-        "accounts": sorted(opp_accounts)  # Return account names from opportunities, sorted alphabetically
+        "accounts": sorted(opp_accounts, key=lambda x: x["name"])  # Return as objects with id/name
     }
 
 
