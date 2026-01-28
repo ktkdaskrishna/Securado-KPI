@@ -114,13 +114,24 @@ export default function AnalyticsPage() {
 
   const loadAIInsights = async () => {
     setAiLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     try {
-      const response = await analyticsAPI.getAIInsights();
+      const response = await analyticsAPI.getAIInsights({ signal: controller.signal });
+      clearTimeout(timeoutId);
       setAiInsights(response.data);
       toast.success('AI insights generated');
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Failed to generate AI insights:', error);
-      toast.error('Failed to generate AI insights');
+      if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+        toast.error('AI insights generation timed out. Please try again.');
+      } else if (error.response?.status === 500) {
+        toast.error('AI service error. Please try again later.');
+      } else {
+        toast.error('Failed to generate AI insights');
+      }
     } finally {
       setAiLoading(false);
     }
