@@ -807,6 +807,207 @@ async def get_custom_fields(
     }
 
 
+# ==================== ODOO MODEL BROWSER ====================
+
+@connections_router.get("/{conn_id}/odoo/models")
+async def get_odoo_models(
+    conn_id: str,
+    search: str = "",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get list of all Odoo models.
+    
+    Args:
+        conn_id: Connection ID
+        search: Optional search term to filter models by name
+    """
+    db = get_app_db()
+    conn = await db.connections.find_one({
+        "id": conn_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    if conn["type"] != "odoo":
+        raise HTTPException(status_code=400, detail="This endpoint is only for Odoo connections")
+    
+    try:
+        common = create_odoo_proxy(conn["url"], "common")
+        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+        
+        if not uid:
+            raise HTTPException(status_code=401, detail="Odoo authentication failed")
+        
+        models_proxy = create_odoo_proxy(conn["url"], "object")
+        
+        # Search for models
+        domain = []
+        if search:
+            domain = ['|', ('model', 'ilike', search), ('name', 'ilike', search)]
+        
+        # Get all models
+        model_list = models_proxy.execute_kw(
+            conn["database"], uid, conn["api_key"],
+            'ir.model', 'search_read',
+            [domain],
+            {'fields': ['id', 'model', 'name', 'state', 'transient'], 'order': 'model', 'limit': 200}
+        )
+        
+        # Categorize models
+        crm_models = []
+        account_models = []
+        hr_models = []
+        project_models = []
+        custom_models = []
+        other_models = []
+        
+        for m in model_list:
+            model_name = m.get('model', '')
+            if model_name.startswith('crm.') or model_name.startswith('sale.'):
+                crm_models.append(m)
+            elif model_name.startswith('account.'):
+                account_models.append(m)
+            elif model_name.startswith('hr.'):
+                hr_models.append(m)
+            elif model_name.startswith('project.'):
+                project_models.append(m)
+            elif model_name.startswith('x_'):
+                custom_models.append(m)
+            else:
+                other_models.append(m)
+        
+        return {
+            "total": len(model_list),
+            "categories": {
+                "crm_sales": crm_models,
+                "accounting": account_models,
+                "hr": hr_models,
+                "project": project_models,
+                "custom": custom_models,
+                "other": other_models
+            },
+            "all_models": model_list
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching Odoo models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@connections_router.get("/{conn_id}/odoo/models/{model_name}/fields")
+async def get_odoo_model_fields(
+    conn_id: str,
+    model_name: str,
+    search: str = "",
+    show_all: bool = False,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get all fields for a specific Odoo model.
+    
+    Args:
+        conn_id: Connection ID
+        model_name: Odoo model name (e.g., 'crm.lead')
+        search: Optional search term to filter fields
+        show_all: Include computed/related fields (default False for cleaner output)
+    """
+    db = get_app_db()
+    conn = await db.connections.find_one({
+        "id": conn_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    if conn["type"] != "odoo":
+        raise HTTPException(status_code=400, detail="This endpoint is only for Odoo connections")
+    
+    try:
+        common = create_odoo_proxy(conn["url"], "common")
+        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+        
+        if not uid:
+            raise HTTPException(status_code=401, detail="Odoo authentication failed")
+        
+        models_proxy = create_odoo_proxy(conn["url"], "object")
+        
+        # Get fields for the model using fields_get
+        fields_data = models_proxy.execute_kw(
+            conn["database"], uid, conn["api_key"],
+            model_name, 'fields_get',
+            [],
+            {'attributes': ['string', 'type', 'required', 'readonly', 'relation', 'selection', 'store', 'help']}
+        )
+        
+        # Convert to list and categorize
+        fields_list = []
+        custom_fields = []
+        relation_fields = []
+        standard_fields = []
+        
+        for field_name, field_info in fields_data.items():
+            # Apply search filter
+            if search and search.lower() not in field_name.lower() and search.lower() not in field_info.get('string', '').lower():
+                continue
+            
+            # Skip computed fields unless show_all is True
+            if not show_all and not field_info.get('store', True):
+                continue
+            
+            field_entry = {
+                'name': field_name,
+                'label': field_info.get('string', field_name),
+                'type': field_info.get('type'),
+                'required': field_info.get('required', False),
+                'readonly': field_info.get('readonly', False),
+                'stored': field_info.get('store', True),
+                'relation': field_info.get('relation'),
+                'help': field_info.get('help', ''),
+                'is_custom': field_name.startswith('x_'),
+                'is_studio': field_name.startswith('x_studio_')
+            }
+            
+            # Add selection options if it's a selection field
+            if field_info.get('type') == 'selection' and field_info.get('selection'):
+                field_entry['selection_options'] = field_info.get('selection')
+            
+            fields_list.append(field_entry)
+            
+            # Categorize
+            if field_name.startswith('x_'):
+                custom_fields.append(field_entry)
+            elif field_info.get('relation'):
+                relation_fields.append(field_entry)
+            else:
+                standard_fields.append(field_entry)
+        
+        # Sort fields
+        custom_fields.sort(key=lambda x: x['name'])
+        relation_fields.sort(key=lambda x: x['name'])
+        standard_fields.sort(key=lambda x: x['name'])
+        fields_list.sort(key=lambda x: x['name'])
+        
+        return {
+            "model": model_name,
+            "total_fields": len(fields_list),
+            "custom_fields_count": len(custom_fields),
+            "categories": {
+                "custom": custom_fields,
+                "relations": relation_fields,
+                "standard": standard_fields
+            },
+            "all_fields": fields_list
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching fields for model {model_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== PIPELINES ====================
 
 @pipelines_router.post("")
