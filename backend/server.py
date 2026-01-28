@@ -151,10 +151,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health check
+# Health check endpoints
+@app.get("/health")
+async def root_health_check():
+    """Root health check endpoint for Kubernetes/deployment"""
+    return {"status": "ok"}
+
+
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint"""
+    """Detailed health check endpoint"""
     return {
         "status": "healthy",
         "service": "event-mesh-crm",
