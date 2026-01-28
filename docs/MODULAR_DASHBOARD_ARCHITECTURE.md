@@ -6,6 +6,50 @@ After reviewing your current codebase, I've identified **strong existing foundat
 
 ---
 
+## 🎯 REFINED ARCHITECTURE (Based on Your Input)
+
+Your architectural specification provides excellent concrete patterns that align with the codebase. Here's the refined implementation plan:
+
+### Key Architectural Decisions Confirmed
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Layout Library | `react-grid-layout` | Drag/resize built-in, JSON layout native |
+| State Management | Two new contexts (no Redux needed) | Keep it simple, align with existing patterns |
+| Data Fetching | Batch endpoint + TanStack Query | Minimize API calls, automatic caching |
+| Security | Backend is source of truth | Row-level security at query level |
+
+### New Frontend Structure
+```
+frontend/src/components/dashboard/
+├── ModularDashboardPage.js          # Main page (replaces DashboardPage.js)
+├── DashboardRenderer.js             # Renders template layout
+├── DashboardTemplateContext.js      # Which template to show
+├── DashboardDataContext.js          # Batch data fetching
+├── registry/
+│   ├── cardRegistry.js              # Card metadata + component mapping
+│   └── dataSourceRegistry.js        # Endpoint definitions
+└── cards/
+    ├── PipelineOverviewCard.js
+    ├── ActivityOverviewCard.js
+    ├── LeaderboardCard.js
+    ├── PMLeaderboardCard.js
+    ├── CategoryPerformanceCard.js
+    └── KPICard.js
+```
+
+### Backend RBAC Middleware (Already Exists!)
+```python
+# /app/backend/libs/rbac_middleware.py - ALREADY IMPLEMENTED:
+- get_user_rbac(current_user)           # Get permissions, record_access, field_access
+- require_permission(permission)         # Decorator for permission gating
+- filter_records_by_access(records, user_odoo_id, record_access)
+- filter_fields_by_access(record, field_access)
+- apply_rbac_filters(records, rbac)
+```
+
+---
+
 ## 1. Current State Analysis
 
 ### ✅ What Already Exists (Strong Foundations)
