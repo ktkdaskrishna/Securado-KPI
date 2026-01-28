@@ -307,10 +307,17 @@ export function ActivitiesPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-gray-400" />
-                        <span className="capitalize">{activity.type}</span>
+                        <span className="capitalize">{activity.type_display || activity.type}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{activity.subject}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>
+                        {activity.subject}
+                        {activity.opportunity_name && (
+                          <p className="text-xs text-gray-500">Opp: {activity.opportunity_name}</p>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge className={statusColors[activity.status] || statusColors.pending}>
                         {activity.status}
