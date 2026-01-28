@@ -249,3 +249,12 @@ export const analyticsAPI = {
   getAIInsights: () => api.post('/analytics/ai-insights'),
   getFilters: () => api.get('/analytics/filters'),
 };
+
+// Odoo RBAC APIs
+export const rbacAPI = {
+  getCurrentUserRBAC: () => api.get('/odoo-rbac/current-user-rbac'),
+  getUserPermissions: (userId) => api.get(`/odoo-rbac/user-permissions/${userId}`),
+  syncGroups: () => api.post('/odoo-rbac/sync-groups'),
+  syncUsers: () => api.post('/odoo-rbac/sync-users'),
+  getWebhookInstructions: () => api.get('/webhooks/setup-instructions'),
+};
