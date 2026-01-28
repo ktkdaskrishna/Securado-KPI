@@ -258,7 +258,7 @@ export default function LeadsPage() {
                         {lead.stage || 'Unknown'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatCurrency(lead.amount || 0)}</TableCell>
+                    <TableCell>{formatCurrency(lead.sale_value || lead.amount || 0)}</TableCell>
                     <TableCell>
                       {lead.create_date ? new Date(lead.create_date).toLocaleDateString() : '-'}
                     </TableCell>
