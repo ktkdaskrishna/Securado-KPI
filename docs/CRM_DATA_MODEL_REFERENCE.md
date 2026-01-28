@@ -14,30 +14,71 @@ This document is the authoritative reference for all CRM data field mappings bet
 ## 1. Known Data Issues (Current Status)
 
 ### Issue #1: Activities Not Linked to Opportunities
-**Status:** REGRESSION - Previously fixed but broken again
-**Impact:** Opportunity detail view shows "0 activities" even when activities exist
+**Status:** REGRESSION - ROOT CAUSE IDENTIFIED
+**Impact:** Opportunity detail view shows "0 activities" even when activities exist in Odoo
 
-**Root Cause:**
-- Activities have `opportunity_id` as integer (Odoo ID, e.g., `3028`)
-- Opportunities use `source_record_id` as string (e.g., `"2158"`)
-- The linking query doesn't account for type mismatch
-- Most activities have `res_model: None` instead of `crm.lead`
+**Root Cause Analysis:**
+1. ETL mappings for `mail.activity` and `crm.activity.report` exist BUT have **empty field mappings**
+2. Without field mapping rules, activities are synced but without proper linking fields
+3. Activities have `opportunity_id: 3028` (integer) but no opportunity has `source_record_id: 3028`
 
 **Current Data State:**
 ```
+ETL Mappings Status:
+- crm.lead: target_collection=None, field_mappings=[]
+- mail.activity: target_collection=None, field_mappings=[]  <-- NEEDS CONFIGURATION
+- crm.activity.report: target_collection=None, field_mappings=[]  <-- NEEDS CONFIGURATION
+
 Total activities in canonical DB: 702
-- res_model=None: 681
-- res_model=crm.lead: 2
+- res_model=None: 681  <-- These are not properly categorized
+- res_model=crm.lead: 2  <-- Only 2 properly linked
 - res_model=hr.leave: 10
 - res_model=hr.appraisal: 4
 - res_model=hr.expense.sheet: 3
 - res_model=sale.order: 2
 ```
 
-**Fix Required:**
-1. Update activity ETL sync to properly set `res_model='crm.lead'` for CRM activities
-2. Ensure `opportunity_id` matches the opportunity's `source_record_id`
-3. Update the API query to handle both string and integer matching
+**FIX REQUIRED:**
+1. Configure ETL field mappings for `mail.activity`:
+   ```json
+   {
+     "source_model": "mail.activity",
+     "target_collection": "activities",
+     "target_entity": "activity",
+     "field_mappings": [
+       {"source_field": "id", "target_field": "canonical_id", "transform": "direct"},
+       {"source_field": "summary", "target_field": "summary", "transform": "direct"},
+       {"source_field": "activity_type_id", "target_field": "activity_type", "transform": "extract_name"},
+       {"source_field": "user_id", "target_field": "assigned_user", "transform": "extract_name"},
+       {"source_field": "user_id", "target_field": "user_id", "transform": "extract_id"},
+       {"source_field": "res_id", "target_field": "opportunity_id", "transform": "to_int"},
+       {"source_field": "res_model", "target_field": "res_model", "transform": "direct"},
+       {"source_field": "date_deadline", "target_field": "date_deadline", "transform": "direct"},
+       {"source_field": "note", "target_field": "note", "transform": "direct"},
+       {"source_field": "state", "target_field": "state", "transform": "direct"}
+     ]
+   }
+   ```
+
+2. Alternative: Use `crm.activity.report` which has direct `lead_id`:
+   ```json
+   {
+     "source_model": "crm.activity.report",
+     "target_collection": "activities",
+     "target_entity": "activity",
+     "field_mappings": [
+       {"source_field": "id", "target_field": "canonical_id", "transform": "direct"},
+       {"source_field": "lead_id", "target_field": "opportunity_id", "transform": "extract_id"},
+       {"source_field": "activity_type_id", "target_field": "activity_type", "transform": "extract_name"},
+       {"source_field": "user_id", "target_field": "assigned_user", "transform": "extract_name"},
+       {"source_field": "date_deadline", "target_field": "date_deadline", "transform": "direct"}
+     ]
+   }
+   ```
+
+3. Re-run ETL sync after configuring mappings
+
+4. API endpoint `/api/opportunities/{opp_id}/activities` has been updated to handle multiple linking patterns
 
 ### Issue #2: AI Confidence Shows 0%
 **Status:** Data dependency issue
@@ -46,6 +87,7 @@ Total activities in canonical DB: 702
 **Root Cause:**
 - AI confidence depends on activity data
 - No activities linked → no activity score → 0% AI confidence
+- Will auto-resolve when activity sync is fixed
 
 ---
 
