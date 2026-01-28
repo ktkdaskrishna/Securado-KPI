@@ -94,17 +94,30 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     logger.info("Starting Event Mesh CRM Platform...")
     
-    # Connect to database
-    await db_manager.connect()
+    try:
+        # Connect to database
+        await db_manager.connect()
+    except Exception as e:
+        logger.error(f"Database connection failed during startup: {e}")
+        # Continue - allow app to start even if DB is unavailable
     
-    # Initialize event bus
-    await event_bus.initialize(db_manager.app_db)
+    try:
+        # Initialize event bus
+        await event_bus.initialize(db_manager.app_db)
+    except Exception as e:
+        logger.error(f"Event bus initialization failed: {e}")
     
-    # Start ETL runner
-    await etl_runner.start()
+    try:
+        # Start ETL runner
+        await etl_runner.start()
+    except Exception as e:
+        logger.error(f"ETL runner start failed: {e}")
     
-    # Start dashboard aggregator
-    await dashboard_aggregator.start()
+    try:
+        # Start dashboard aggregator
+        await dashboard_aggregator.start()
+    except Exception as e:
+        logger.error(f"Dashboard aggregator start failed: {e}")
     
     logger.info("Event Mesh CRM Platform started successfully")
     
@@ -113,10 +126,25 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down Event Mesh CRM Platform...")
     
-    await dashboard_aggregator.stop()
-    await etl_runner.stop()
-    await event_bus.shutdown()
-    await db_manager.disconnect()
+    try:
+        await dashboard_aggregator.stop()
+    except Exception as e:
+        logger.error(f"Dashboard aggregator stop failed: {e}")
+    
+    try:
+        await etl_runner.stop()
+    except Exception as e:
+        logger.error(f"ETL runner stop failed: {e}")
+    
+    try:
+        await event_bus.shutdown()
+    except Exception as e:
+        logger.error(f"Event bus shutdown failed: {e}")
+    
+    try:
+        await db_manager.disconnect()
+    except Exception as e:
+        logger.error(f"Database disconnect failed: {e}")
     
     logger.info("Event Mesh CRM Platform shutdown complete")
 
