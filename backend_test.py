@@ -159,8 +159,8 @@ class CRMAPITester:
         # 6. Analytics
         print("\n📋 Analytics APIs")
         print("-" * 80)
-        self.test_api("Analytics Stats", "GET", "/api/analytics/stats")
-        self.test_api("Analytics Insights", "GET", "/api/analytics/insights")
+        self.test_api("Analytics Overview", "GET", "/api/analytics/overview")
+        self.test_api("Analytics Conversion Funnel", "GET", "/api/analytics/conversion-funnel")
         
         # 7. Performance Summary
         print("\n📋 Performance Summary")
