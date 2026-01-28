@@ -353,8 +353,14 @@ class ETLRunner:
             else:
                 log("Full sync mode")
             
-            # Extract records
+            # Extract records - IMPORTANT: Include archived records (lost deals in Odoo are archived)
+            # Use 'context': {'active_test': False} to get both active and archived records
             extract_limit = config.get("extract_limit", 500)
+            
+            # For CRM leads, we need both active and inactive records
+            # Lost deals are archived (active=False) in Odoo
+            include_archived = mapping["source_model"] == "crm.lead"
+            
             records = models.execute_kw(
                 conn["database"], uid, conn["api_key"],
                 mapping["source_model"], 'search_read',
@@ -362,11 +368,12 @@ class ETLRunner:
                 {
                     'fields': source_fields,
                     'limit': extract_limit,
-                    'order': 'write_date desc'
+                    'order': 'write_date desc',
+                    'context': {'active_test': False} if include_archived else {}
                 }
             )
             
-            log(f"Extracted {len(records)} records from Odoo")
+            log(f"Extracted {len(records)} records from Odoo" + (" (including archived)" if include_archived else ""))
             
             # Log sample record structure for debugging
             if records:
