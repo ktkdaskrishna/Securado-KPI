@@ -508,28 +508,45 @@ async def get_dashboard_stats(
     
     # Apply date filters (year and quarter) using the helper function
     # For open opportunities, filter by create_date
-    # For closed (won/lost), we'll filter separately by date_closed
+    # For closed (won/lost), filter by date_closed
     
-    # First filter open opportunities by create_date
-    open_opps = [o for o in opps if o.get("active", True) not in [False, 'False'] and not o.get("lost_reason_id")]
-    won_lost_opps = [o for o in opps if o.get("active", True) in [False, 'False'] or o.get("lost_reason_id") or 
-                     (o.get("stage") and "won" in o.get("stage", "").lower())]
+    # Classify opportunities:
+    # - Won = stage is 'Won' (use date_closed)
+    # - Lost = active=False and has lost_reason_id (use date_closed)
+    # - Open = everything else (use create_date)
     
-    # Apply date filter to open opps using create_date
+    def is_won(o):
+        stage = o.get("stage", "").lower()
+        return stage == "won" or "closed won" in stage
+    
+    def is_lost(o):
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
+        return False
+    
+    open_opps = [o for o in opps if not is_won(o) and not is_lost(o)]
+    won_opps = [o for o in opps if is_won(o)]
+    lost_opps = [o for o in opps if is_lost(o)]
+    
+    # Apply date filters
     if year or quarter:
+        # Open opportunities: filter by create_date
         open_opps = apply_date_filters(open_opps, year=year, quarter=quarter, date_field='create_date')
-        # Apply date filter to won/lost using date_closed
-        won_lost_opps = apply_date_filters_for_won_lost(won_lost_opps, year=year, quarter=quarter)
+        # Won opportunities: filter by date_closed
+        won_opps = apply_date_filters_for_won_lost(won_opps, year=year, quarter=quarter)
+        # Lost opportunities: filter by date_closed  
+        lost_opps = apply_date_filters_for_won_lost(lost_opps, year=year, quarter=quarter)
     
-    # Combine
-    opps = open_opps + won_lost_opps
+    # Combine all
+    opps = open_opps + won_opps + lost_opps
     
     # Separate leads from opportunities by type field
     opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
     leads_only = [o for o in opps if o.get("type") == "lead"]
     
     logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
-    logger.info(f"  Open: {len(open_opps)}, Won/Lost: {len(won_lost_opps)}")
+    logger.info(f"  Open: {len(open_opps)}, Won: {len(won_opps)}, Lost: {len(lost_opps)}")
     
     # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
     def get_opp_value(opp):
