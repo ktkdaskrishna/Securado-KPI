@@ -141,13 +141,13 @@ export function GlobalFilterBar({ className, compact = false }) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[250px] p-0">
-          <Command>
+          <Command shouldFilter={true}>
             <CommandInput placeholder="Search sales rep..." />
             <CommandList>
               <CommandEmpty>No rep found.</CommandEmpty>
               <CommandGroup>
                 <CommandItem
-                  value=""
+                  value="all-reps"
                   onSelect={() => {
                     updateFilter('salesRep', null);
                     setRepOpen(false);
@@ -155,7 +155,7 @@ export function GlobalFilterBar({ className, compact = false }) {
                 >
                   All Sales Reps
                 </CommandItem>
-                {options?.sales_reps?.map((rep) => (
+                {(options?.sales_reps || []).map((rep) => (
                   <CommandItem
                     key={rep}
                     value={rep}
