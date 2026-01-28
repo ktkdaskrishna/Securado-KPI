@@ -429,6 +429,10 @@ export function InvoicesPage() {
                 <TabsTrigger value="paid" data-testid="tab-paid">
                   Paid ({stats?.count_paid || 0})
                 </TabsTrigger>
+                <TabsTrigger value="salesperson" data-testid="tab-salesperson" className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  By Salesperson
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="relative w-64">
