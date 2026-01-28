@@ -262,7 +262,20 @@ class DashboardAggregator:
                         opp["probability"] = override["probability"]
                 
                 # Normalize stage for dashboard grouping
-                opp["normalized_stage"] = normalize_stage_for_dashboard(opp.get("stage", ""))
+                # Pass active status and lost_reason_id to properly identify Lost deals
+                active = opp.get("active", True)
+                # Handle 'False' string from Odoo
+                if active == 'False' or active is False:
+                    active = False
+                else:
+                    active = True
+                
+                lost_reason = opp.get("lost_reason_id") or opp.get("lost_reason")
+                opp["normalized_stage"] = normalize_stage_for_dashboard(
+                    opp.get("stage", ""), 
+                    active=active,
+                    lost_reason_id=lost_reason
+                )
             
             # Separate leads from opportunities by type field
             opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
