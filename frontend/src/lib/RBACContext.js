@@ -16,10 +16,6 @@ export function RBACProvider({ children }) {
     userId: null
   });
 
-  useEffect(() => {
-    fetchRBAC();
-  }, []);
-
   const fetchRBAC = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -62,6 +58,33 @@ export function RBACProvider({ children }) {
       });
     }
   };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchRBAC();
+  }, []);
+
+  // Listen for storage changes (when token is set after login)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'access_token') {
+        fetchRBAC();
+      }
+    };
+    
+    // Also listen for custom login event
+    const handleLogin = () => {
+      fetchRBAC();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userLoggedIn', handleLogin);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userLoggedIn', handleLogin);
+    };
+  }, []);
 
   const hasPermission = (permission) => {
     if (rbac.permissions.includes('admin:*')) return true;
