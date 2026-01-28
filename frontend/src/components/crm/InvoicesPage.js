@@ -448,76 +448,196 @@ export function InvoicesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Invoice Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.length === 0 ? (
+          {activeTab === 'salesperson' ? (
+            /* Salesperson Performance Table */
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <Award className="h-4 w-4" />
+                <span>Salesperson receivables performance breakdown</span>
+              </div>
+              <ScrollArea className="h-[500px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>Salesperson</TableHead>
+                      <TableHead className="text-right">Won Value</TableHead>
+                      <TableHead className="text-right">Won Deals</TableHead>
+                      <TableHead className="text-right">Billed</TableHead>
+                      <TableHead className="text-right">Collected</TableHead>
+                      <TableHead className="text-right">Overdue</TableHead>
+                      <TableHead className="text-right">Invoices</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salespersonData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No salesperson data available
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      salespersonData.map((sp, index) => {
+                        const collectionRate = sp.billed > 0 ? (sp.collected / sp.billed) * 100 : 0;
+                        return (
+                          <TableRow key={sp.salesperson} data-testid={`sp-row-${index}`}>
+                            <TableCell>
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium
+                                ${index === 0 ? 'bg-amber-100 text-amber-700' : 
+                                  index === 1 ? 'bg-gray-200 text-gray-700' : 
+                                  index === 2 ? 'bg-orange-100 text-orange-700' : 
+                                  'bg-gray-50 text-gray-500'}`}>
+                                {index + 1}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-xs font-medium">
+                                  {sp.salesperson.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-medium truncate max-w-[150px]">{sp.salesperson}</span>
+                                  <div className="flex items-center gap-1">
+                                    <Progress value={collectionRate} className="w-16 h-1.5" />
+                                    <span className="text-xs text-muted-foreground">{collectionRate.toFixed(0)}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-emerald-600">
+                              {formatCurrency(sp.won_value, selectedCurrency)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline">{sp.won_count}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(sp.billed, selectedCurrency)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-emerald-600">
+                              {formatCurrency(sp.collected, selectedCurrency)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {sp.overdue > 0 ? (
+                                <span className="font-mono text-red-600 font-medium">
+                                  {formatCurrency(sp.overdue, selectedCurrency)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="secondary">{sp.count_invoices}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+              {/* Totals Row */}
+              {salespersonData.length > 0 && (
+                <div className="border-t pt-4 grid grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Won</p>
+                    <p className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(salespersonData.reduce((sum, sp) => sum + sp.won_value, 0), selectedCurrency)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Billed</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(salespersonData.reduce((sum, sp) => sum + sp.billed, 0), selectedCurrency)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Collected</p>
+                    <p className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(salespersonData.reduce((sum, sp) => sum + sp.collected, 0), selectedCurrency)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Overdue</p>
+                    <p className="text-lg font-bold text-red-600">
+                      {formatCurrency(salespersonData.reduce((sum, sp) => sum + sp.overdue, 0), selectedCurrency)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Regular Invoice Table */
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No invoices found
-                  </TableCell>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Invoice Date</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        {invoice.invoice_number}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {invoice.account}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono font-medium">
-                      {formatCurrency(invoice.amount, selectedCurrency)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(invoice.invoice_date)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(invoice.due_date)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => viewInvoice(invoice)} data-testid={`view-invoice-${invoice.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {invoice.status !== 'paid' && (
-                          <Button variant="ghost" size="sm">
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No invoices found
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          {invoice.invoice_number}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {invoice.account}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono font-medium">
+                        {formatCurrency(invoice.amount, selectedCurrency)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {formatDate(invoice.invoice_date)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {formatDate(invoice.due_date)}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => viewInvoice(invoice)} data-testid={`view-invoice-${invoice.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {invoice.status !== 'paid' && (
+                            <Button variant="ghost" size="sm">
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
