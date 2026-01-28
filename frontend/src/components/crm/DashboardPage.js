@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { crmAPI } from '../../lib/api';
+import { crmAPI, analyticsAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
-import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -10,13 +9,49 @@ import { ScrollArea } from '../ui/scroll-area';
 import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { toast } from 'sonner';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } from '../layout/PageFilters';
 
 export function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [] });
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
-  const { filters, getQueryParams, hasActiveFilters } = useGlobalFilters();
+  
+  // Contextual filters specific to Dashboard
+  const [filters, setFilters] = useState({
+    year: null,
+    quarter: null,
+    salesRep: null,
+    stage: null
+  });
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({ year: null, quarter: null, salesRep: null, stage: null });
+  };
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(v => v !== null);
+  };
+
+  const loadFilterOptions = useCallback(async () => {
+    try {
+      const res = await analyticsAPI.getFilters();
+      if (res.data) {
+        setFilterOptions({
+          years: res.data.years || [],
+          salesReps: res.data.salesReps || [],
+          stages: res.data.stages || []
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+    }
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
@@ -25,8 +60,6 @@ export function DashboardPage() {
       if (filters.year) params.year = filters.year;
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
-      if (filters.team) params.team_id = filters.team;
-      if (filters.account) params.account = filters.account;
       if (filters.stage) params.stage = filters.stage;
       
       const res = await crmAPI.getDashboardStats(params);
@@ -39,17 +72,16 @@ export function DashboardPage() {
   }, [filters]);
 
   useEffect(() => {
+    loadFilterOptions();
     loadStats();
     // Reload currency when dashboard mounts (useful after login)
     reloadCurrency();
-  }, [loadStats]);
+  }, []);
 
   // Reload when filters change
   useEffect(() => {
-    if (!loading) {
-      loadStats();
-    }
-  }, [filters.year, filters.quarter, filters.salesRep, filters.team, filters.account, filters.stage]);
+    loadStats();
+  }, [filters.year, filters.quarter, filters.salesRep, filters.stage]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
