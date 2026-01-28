@@ -7,7 +7,7 @@ import requests
 import sys
 from datetime import datetime
 
-BASE_URL = "https://filter-connect.preview.emergentagent.com"
+BASE_URL = "https://crm-win-fix.preview.emergentagent.com"
 
 class LeadsAPITester:
     def __init__(self):
