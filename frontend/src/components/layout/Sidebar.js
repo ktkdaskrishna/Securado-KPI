@@ -137,6 +137,7 @@ const defaultNavigation = {
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
     { id: 'system-logs', name: 'System Logs', href: '/admin/logs', icon: 'AlertTriangle', default: true },
     { id: 'webhooks', name: 'Webhooks', href: '/admin/webhooks', icon: 'Webhook', default: true },
+    { id: 'custom-fields', name: 'Custom Fields', href: '/admin/custom-fields', icon: 'Boxes', default: true },
   ],
 };
 
