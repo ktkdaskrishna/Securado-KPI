@@ -1266,7 +1266,6 @@ export function OpportunitiesPage() {
       if (filters.year) params.year = filters.year;
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
-      if (filters.team) params.team_id = filters.team;
       if (filters.account) params.account = filters.account;
       if (filters.stage) params.stage = filters.stage;
 
