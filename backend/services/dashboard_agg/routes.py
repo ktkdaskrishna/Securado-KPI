@@ -702,6 +702,128 @@ async def refresh_dashboard(current_user: dict = Depends(get_current_user)):
     }
 
 
+@router.get("/product-manager-leaderboard")
+async def get_product_manager_leaderboard(
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get Product Manager leaderboard based on Won deals"""
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get all opportunities
+    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    
+    # Filter to Won opportunities only
+    won_opps = []
+    for o in opportunities:
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            active = False
+        else:
+            active = True
+        lost_reason = o.get("lost_reason_id") or o.get("lost_reason")
+        normalized = normalize_stage_for_dashboard(o.get("stage", ""), active=active, lost_reason_id=lost_reason)
+        if normalized == "closed_won":
+            won_opps.append(o)
+    
+    # Apply year/quarter filter using won_at
+    if year or quarter:
+        won_opps = apply_date_filters_for_won_lost(won_opps, year, quarter)
+    
+    # Aggregate by Product Manager
+    pm_values = defaultdict(float)
+    pm_counts = defaultdict(int)
+    
+    for opp in won_opps:
+        pm_name = opp.get("product_manager")
+        if pm_name:
+            pm_values[pm_name] += opp.get("sale_value", 0) or 0
+            pm_counts[pm_name] += 1
+    
+    # Build leaderboard
+    leaderboard = []
+    sorted_pms = sorted(pm_values.items(), key=lambda x: x[1], reverse=True)[:10]
+    for pm_name, value in sorted_pms:
+        leaderboard.append({
+            "name": pm_name,
+            "value": value,
+            "deals_won": pm_counts[pm_name]
+        })
+    
+    if not leaderboard:
+        leaderboard = [{"name": "No Product Manager data", "value": 0, "deals_won": 0}]
+    
+    return {
+        "leaderboard": leaderboard,
+        "total_won_value": sum(pm_values.values()),
+        "total_deals": sum(pm_counts.values()),
+        "filters": {"year": year, "quarter": quarter}
+    }
+
+
+@router.get("/category-stats")
+async def get_category_stats(
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get Solution Category statistics based on Won deals"""
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get all opportunities
+    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    
+    # Filter to Won opportunities only
+    won_opps = []
+    for o in opportunities:
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            active = False
+        else:
+            active = True
+        lost_reason = o.get("lost_reason_id") or o.get("lost_reason")
+        normalized = normalize_stage_for_dashboard(o.get("stage", ""), active=active, lost_reason_id=lost_reason)
+        if normalized == "closed_won":
+            won_opps.append(o)
+    
+    # Apply year/quarter filter using won_at
+    if year or quarter:
+        won_opps = apply_date_filters_for_won_lost(won_opps, year, quarter)
+    
+    # Aggregate by Solution Category
+    cat_values = defaultdict(float)
+    cat_counts = defaultdict(int)
+    
+    for opp in won_opps:
+        cat_name = opp.get("solution_category")
+        if cat_name:
+            cat_values[cat_name] += opp.get("sale_value", 0) or 0
+            cat_counts[cat_name] += 1
+    
+    # Build category stats - sorted by value
+    categories = []
+    sorted_cats = sorted(cat_values.items(), key=lambda x: x[1], reverse=True)
+    for cat_name, value in sorted_cats:
+        categories.append({
+            "name": cat_name,
+            "value": value,
+            "count": cat_counts[cat_name]
+        })
+    
+    if not categories:
+        categories = [{"name": "No Category data", "value": 0, "count": 0}]
+    
+    return {
+        "categories": categories,
+        "total_won_value": sum(cat_values.values()),
+        "total_deals": sum(cat_counts.values()),
+        "filters": {"year": year, "quarter": quarter}
+    }
+
+
 @router.get("/sync-status")
 async def get_sync_status(current_user: dict = Depends(get_current_user)):
     """Get sync status"""
