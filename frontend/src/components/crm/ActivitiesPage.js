@@ -97,7 +97,7 @@ export function ActivitiesPage() {
       
       const [activitiesRes, statsRes] = await Promise.all([
         crmAPI.listActivities(params),
-        crmAPI.getActivityStats(),
+        crmAPI.getActivityStats(params),  // Pass same filters to stats
       ]);
       setActivities(activitiesRes.data);
       setStats(statsRes.data);
