@@ -327,6 +327,137 @@ async def export_opportunities_excel(
     )
 
 
+@opportunities_router.get("/won-with-invoices")
+async def get_won_opportunities_with_invoices(
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get Won opportunities with their invoice status"""
+    canonical_db = get_canonical_db()
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Build query for Won opportunities
+    query = {
+        "org_id": org_id,
+        "type": "opportunity"
+    }
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    
+    # Get all opportunities
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
+    
+    # Filter to Won only
+    won_opps = [o for o in all_opps if (o.get("stage") or "").lower() == "won"]
+    
+    # Apply date filters using won_at
+    if year or quarter:
+        quarter_months = {
+            "Q1": [1, 2, 3], "Q2": [4, 5, 6], "Q3": [7, 8, 9], "Q4": [10, 11, 12]
+        }
+        filtered = []
+        for opp in won_opps:
+            won_date = opp.get("won_at") or opp.get("date_closed") or opp.get("create_date")
+            if not won_date:
+                continue
+            
+            won_date_parsed = parse_date_from_string(won_date)
+            if not won_date_parsed:
+                continue
+            
+            if year and str(won_date_parsed.year) != str(year):
+                continue
+            
+            if quarter:
+                months = quarter_months.get(quarter, [])
+                if won_date_parsed.month not in months:
+                    continue
+            
+            filtered.append(opp)
+        won_opps = filtered
+    
+    # Get all invoices
+    invoices = await canonical_db.invoices.find({"org_id": org_id}).to_list(5000)
+    
+    # Build invoice lookup by account_name
+    invoices_by_account = {}
+    for inv in invoices:
+        acc = inv.get("account_name")
+        if acc:
+            if acc not in invoices_by_account:
+                invoices_by_account[acc] = []
+            invoices_by_account[acc].append(inv)
+    
+    # Merge with overrides
+    merged = await merge_with_overrides(won_opps, org_id, app_db)
+    
+    # Calculate invoice status for each Won opportunity
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    result = []
+    for opp in merged:
+        acc_name = opp.get("account_name")
+        acc_invoices = invoices_by_account.get(acc_name, [])
+        
+        # Calculate invoice totals for this account
+        total_invoiced = 0
+        total_paid = 0
+        total_pending = 0
+        total_overdue = 0
+        
+        for inv in acc_invoices:
+            amount = inv.get("amount_total", 0) or 0
+            payment_state = inv.get("payment_state", "not_paid")
+            due_date = inv.get("due_date", "")
+            
+            total_invoiced += amount
+            
+            if payment_state == "paid":
+                total_paid += amount
+            elif due_date and due_date < today:
+                total_overdue += amount
+            else:
+                total_pending += amount
+        
+        # Determine overall invoice status
+        sale_value = opp.get("sale_value", 0) or 0
+        if total_paid >= sale_value:
+            invoice_status = "fully_paid"
+        elif total_overdue > 0:
+            invoice_status = "overdue"
+        elif total_invoiced > 0:
+            invoice_status = "partially_paid"
+        else:
+            invoice_status = "not_invoiced"
+        
+        result.append({
+            **serialize_doc(opp),
+            "invoice_status": invoice_status,
+            "total_invoiced": total_invoiced,
+            "total_paid": total_paid,
+            "total_pending": total_pending,
+            "total_overdue": total_overdue,
+            "invoices_count": len(acc_invoices)
+        })
+    
+    # Sort by overdue first, then by value
+    result.sort(key=lambda x: (x["invoice_status"] != "overdue", -x.get("sale_value", 0)))
+    
+    return {
+        "data": result,
+        "summary": {
+            "total_won": len(result),
+            "fully_paid": len([r for r in result if r["invoice_status"] == "fully_paid"]),
+            "partially_paid": len([r for r in result if r["invoice_status"] == "partially_paid"]),
+            "overdue": len([r for r in result if r["invoice_status"] == "overdue"]),
+            "not_invoiced": len([r for r in result if r["invoice_status"] == "not_invoiced"])
+        }
+    }
+
+
 @opportunities_router.get("/kanban")
 async def opportunities_kanban(
     year: Optional[str] = Query(None, description="Filter by year"),
