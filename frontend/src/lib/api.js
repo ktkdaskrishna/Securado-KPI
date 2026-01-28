@@ -49,6 +49,7 @@ export const adminAPI = {
   rejectUser: (id, reason) => api.post(`/admin/users/${id}/reject`, null, { params: { reason } }),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  inviteUser: (data) => api.post('/admin/users/invite', data),
   listRoles: () => api.get('/admin/roles'),
   createRole: (data) => api.post('/admin/roles', data),
   updateRole: (id, data) => api.put(`/admin/roles/${id}`, data),
