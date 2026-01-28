@@ -757,13 +757,16 @@ def apply_filters(opps: list, filters: dict) -> list:
     """Apply filter parameters to opportunity list"""
     filtered = opps
     
-    # Filter by year (from close_date or date_closed for Won deals, or create_date as fallback)
+    # Filter by year - use won_at for Won deals (date_last_stage_update from Odoo)
     if filters.get("year"):
         year = filters["year"]
         def get_date_for_filtering(o):
-            # For Won deals, use date_closed (the actual closing date)
-            if is_won(o) and o.get("date_closed"):
-                return str(o.get("date_closed", ""))
+            # For Won deals, use won_at (the actual date they were marked as won)
+            # This is date_last_stage_update from Odoo which is reliable
+            if is_won(o):
+                for field in ['won_at', 'stage_changed_at', 'date_closed']:
+                    if o.get(field):
+                        return str(o.get(field, ""))
             # Otherwise use close_date (expected close)
             if o.get("close_date"):
                 return str(o.get("close_date", ""))
@@ -779,9 +782,11 @@ def apply_filters(opps: list, filters: dict) -> list:
                          "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
         months = quarter_months.get(q, [])
         def get_month_for_filtering(o):
-            # For Won deals, use date_closed
-            if is_won(o) and o.get("date_closed"):
-                return str(o.get("date_closed", ""))[5:7]
+            # For Won deals, use won_at (date_last_stage_update from Odoo)
+            if is_won(o):
+                for field in ['won_at', 'stage_changed_at', 'date_closed']:
+                    if o.get(field):
+                        return str(o.get(field, ""))[5:7]
             if o.get("close_date"):
                 return str(o.get("close_date", ""))[5:7]
             return str(o.get("create_date", ""))[5:7]
@@ -795,8 +800,16 @@ def apply_filters(opps: list, filters: dict) -> list:
         tp = filters["time_period"]
         
         def get_opp_date(o):
-            """Get relevant date from opportunity"""
-            date_str = o.get("date_closed") or o.get("close_date") or o.get("create_date")
+            """Get relevant date from opportunity - use won_at for Won deals"""
+            # For Won deals, prioritize won_at
+            if is_won(o):
+                for field in ['won_at', 'stage_changed_at', 'date_closed']:
+                    date_str = o.get(field)
+                    if date_str:
+                        break
+            else:
+                date_str = o.get("close_date") or o.get("create_date")
+            
             if not date_str:
                 return None
             try:
