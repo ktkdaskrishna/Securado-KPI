@@ -376,7 +376,7 @@ export function AccountsPage() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="font-mono font-medium">{formatCurrency(opp.amount || 0)}</p>
+                                <p className="font-mono font-medium">{formatCurrency(opp.sale_value || opp.amount || 0)}</p>
                                 {opp.owner_name && (
                                   <p className="text-xs text-muted-foreground">{opp.owner_name}</p>
                                 )}
