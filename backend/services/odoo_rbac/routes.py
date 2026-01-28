@@ -964,15 +964,10 @@ async def delete_odoo_automations(current_user: dict = Depends(get_current_user)
     """
     Delete all webhook automations from Odoo.
     
-    This will remove all automated actions we created in Odoo to stop webhooks.
+    This will search for and remove all automated actions we created in Odoo to stop webhooks.
     """
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
-    
-    # Get stored automation IDs
-    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
-    if not config or not config.get("automation_ids"):
-        return {"success": True, "message": "No automations to delete", "deleted": 0}
     
     # Get Odoo connection
     conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
@@ -990,33 +985,62 @@ async def delete_odoo_automations(current_user: dict = Depends(get_current_user)
         
         models = create_odoo_proxy(conn["url"], "object")
         
-        deleted_count = 0
+        deleted_automations = 0
+        deleted_actions = 0
         errors = []
         
+        # Search for automations by name pattern (our automations have specific names)
+        automation_names = [
+            "CRM Webhook Sync - CREATE",
+            "CRM Webhook Sync - WRITE", 
+            "CRM Webhook Sync - UNLINK",
+            "Partner Webhook Sync - CREATE",
+            "Partner Webhook Sync - WRITE",
+            "Partner Webhook Sync - UNLINK",
+            "User Webhook Sync - WRITE",
+            "Invoice Webhook Sync - CREATE",
+            "Invoice Webhook Sync - WRITE",
+            "Activity Webhook Sync - CREATE",
+            "Activity Webhook Sync - WRITE",
+            "Activity Webhook Sync - UNLINK"
+        ]
+        
         # Delete automations
-        automation_ids = [a["automation_id"] for a in config.get("automation_ids", []) if a.get("automation_id")]
-        if automation_ids:
-            try:
+        try:
+            automation_ids = models.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'base.automation', 'search',
+                [[('name', 'in', automation_names)]]
+            )
+            if automation_ids:
                 models.execute_kw(
                     conn["database"], uid, conn["api_key"],
                     'base.automation', 'unlink', [automation_ids]
                 )
-                deleted_count += len(automation_ids)
-                logger.info(f"Deleted {len(automation_ids)} automations from Odoo")
-            except Exception as e:
-                errors.append(f"Failed to delete automations: {str(e)}")
+                deleted_automations = len(automation_ids)
+                logger.info(f"Deleted {deleted_automations} automations from Odoo")
+        except Exception as e:
+            errors.append(f"Failed to delete automations: {str(e)}")
+            logger.error(f"Failed to delete automations: {e}")
         
         # Delete server actions
-        server_action_ids = [a["server_action_id"] for a in config.get("automation_ids", []) if a.get("server_action_id")]
-        if server_action_ids:
-            try:
+        server_action_names = [f"Webhook: {name}" for name in automation_names]
+        try:
+            action_ids = models.execute_kw(
+                conn["database"], uid, conn["api_key"],
+                'ir.actions.server', 'search',
+                [[('name', 'in', server_action_names)]]
+            )
+            if action_ids:
                 models.execute_kw(
                     conn["database"], uid, conn["api_key"],
-                    'ir.actions.server', 'unlink', [server_action_ids]
+                    'ir.actions.server', 'unlink', [action_ids]
                 )
-                logger.info(f"Deleted {len(server_action_ids)} server actions from Odoo")
-            except Exception as e:
-                errors.append(f"Failed to delete server actions: {str(e)}")
+                deleted_actions = len(action_ids)
+                logger.info(f"Deleted {deleted_actions} server actions from Odoo")
+        except Exception as e:
+            errors.append(f"Failed to delete server actions: {str(e)}")
+            logger.error(f"Failed to delete server actions: {e}")
         
         # Update config
         await app_db.webhook_config.update_one(
@@ -1028,14 +1052,16 @@ async def delete_odoo_automations(current_user: dict = Depends(get_current_user)
                     "automation_ids": [],
                     "deleted_at": datetime.utcnow().isoformat()
                 }
-            }
+            },
+            upsert=True
         )
         
         return {
             "success": len(errors) == 0,
-            "deleted": deleted_count,
+            "deleted_automations": deleted_automations,
+            "deleted_server_actions": deleted_actions,
             "errors": errors,
-            "message": f"Deleted {deleted_count} automations from Odoo" + (f" with errors: {errors}" if errors else "")
+            "message": f"Deleted {deleted_automations} automations and {deleted_actions} server actions from Odoo"
         }
         
     except Exception as e:
