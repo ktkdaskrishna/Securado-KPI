@@ -772,7 +772,6 @@ async def setup_odoo_automations(
                 action_name = f"{config['name']} - {action_type.upper()}"
                 
                 # Build Python code for webhook call
-                fields_str = ", ".join([f'"{f}": record.{f}' for f in config["fields"][:5]])  # First 5 fields
                 python_code = f'''
 import requests
 import json
