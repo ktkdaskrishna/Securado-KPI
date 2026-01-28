@@ -362,7 +362,7 @@ export default function LeadsPage() {
                   <DollarSign className="h-4 w-4 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">Value</p>
-                    <p className="text-sm font-medium">{formatCurrency(selectedLead.amount || 0)}</p>
+                    <p className="text-sm font-medium">{formatCurrency(selectedLead.sale_value || selectedLead.amount || 0)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
