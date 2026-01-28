@@ -308,29 +308,35 @@ class DashboardAggregator:
                 for stage in PipelineStages.all()
             ]
             
-            # Build REAL leaderboard from opportunity data (group by owner) - OPPORTUNITIES ONLY, use sale_value
-            owner_values = defaultdict(float)
+            # Build leaderboard from WON deals only (not total pipeline)
+            # This shows top performers by closed/won revenue
+            won_opps = [o for o in opportunities_only if 'won' in (o.get('stage') or '').lower()]
+            
+            owner_won_values = defaultdict(float)
+            owner_won_counts = defaultdict(int)
             owner_names = {}
-            for opp in opportunities_only:
+            for opp in won_opps:
                 owner_id = opp.get("owner_id")
                 owner_name = opp.get("owner_name")
                 if owner_id and owner_name:
-                    owner_values[owner_id] += get_opp_value(opp)
+                    owner_won_values[owner_id] += get_opp_value(opp)
+                    owner_won_counts[owner_id] += 1
                     owner_names[owner_id] = owner_name
             
-            # Sort by value and get top 5
+            # Sort by won value and get top 5
             leaderboard = []
-            sorted_owners = sorted(owner_values.items(), key=lambda x: x[1], reverse=True)[:5]
+            sorted_owners = sorted(owner_won_values.items(), key=lambda x: x[1], reverse=True)[:5]
             for i, (owner_id, value) in enumerate(sorted_owners):
                 leaderboard.append({
                     "id": str(owner_id),
                     "name": owner_names.get(owner_id, f"User {owner_id}"),
-                    "value": value
+                    "value": value,
+                    "deals_won": owner_won_counts[owner_id]
                 })
             
-            # If no real data, show placeholder
+            # If no won deals, show placeholder
             if not leaderboard:
-                leaderboard = [{"id": "0", "name": "No sales data", "value": 0}]
+                leaderboard = [{"id": "0", "name": "No won deals", "value": 0, "deals_won": 0}]
             
             # Save to serving cache
             cache_doc = {
