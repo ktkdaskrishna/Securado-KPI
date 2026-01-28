@@ -118,9 +118,14 @@ export function AccountsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />
-            Accounts
+            Accounts & Contacts
           </h1>
-          <p className="text-gray-500 text-sm mt-1">{filteredAccounts.length} accounts found</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {summary.companies || 0} companies, {summary.contacts || 0} contacts
+            {summary.with_overdue > 0 && (
+              <span className="text-red-500 ml-2">• {summary.with_overdue} with overdue invoices</span>
+            )}
+          </p>
         </div>
         
         {/* Search */}
@@ -136,6 +141,23 @@ export function AccountsPage() {
         </div>
       </div>
 
+      {/* Tabs for Companies/Contacts */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-gray-100/50 p-1 rounded-xl">
+          <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            All ({summary.total || filteredAccounts.length})
+          </TabsTrigger>
+          <TabsTrigger value="company" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Building2 className="h-4 w-4 mr-1" />
+            Companies ({summary.companies || 0})
+          </TabsTrigger>
+          <TabsTrigger value="contact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <User2 className="h-4 w-4 mr-1" />
+            Contacts ({summary.contacts || 0})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Accounts Grid - Modern Card Design */}
       {filteredAccounts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -148,11 +170,21 @@ export function AccountsPage() {
           {filteredAccounts.map((account) => (
             <Card 
               key={account.canonical_id || account.id}
-              className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 bg-white rounded-2xl overflow-hidden"
+              className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 bg-white rounded-2xl overflow-hidden ${
+                account.has_overdue ? 'ring-2 ring-red-400 border-red-200' : ''
+              }`}
               onClick={() => load360(account)}
               data-testid={`account-card-${account.canonical_id || account.id}`}
             >
               <CardContent className="p-5">
+                {/* Overdue Warning Banner */}
+                {account.has_overdue && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-3 -mt-1 -mx-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-xs font-medium">Overdue: {formatCurrency(account.overdue_amount || 0)}</span>
+                  </div>
+                )}
+                
                 {/* Header with Avatar */}
                 <div className="flex items-start gap-4">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(account.name)} flex items-center justify-center text-white font-semibold text-lg shadow-lg relative`}>
