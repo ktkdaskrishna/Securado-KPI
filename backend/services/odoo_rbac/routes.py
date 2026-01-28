@@ -819,6 +819,8 @@ except Exception as e:
                         continue
                     
                     # Create the automated action
+                    # Note: In Odoo 17, base.automation uses 'code' field directly
+                    # No 'state' field - the code field automatically implies code execution
                     action_id = models.execute_kw(
                         conn["database"], uid, conn["api_key"],
                         'base.automation', 'create',
@@ -826,7 +828,6 @@ except Exception as e:
                             'name': action_name,
                             'model_id': config["model_id"],
                             'trigger': trigger,
-                            'state': 'code',
                             'code': python_code,
                             'active': True
                         }]
