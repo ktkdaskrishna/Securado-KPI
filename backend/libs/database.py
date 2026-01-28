@@ -38,14 +38,28 @@ class DatabaseManager:
         app_db_name = os.environ.get('APP_DB_NAME', 'event_mesh_app')
         canonical_db_name = os.environ.get('CANONICAL_DB_NAME', 'event_mesh_canonical')
         
-        self.client = AsyncIOMotorClient(mongo_url)
-        self.app_db = self.client[app_db_name]
-        self.canonical_db = self.client[canonical_db_name]
-        
-        # Create indexes
-        await self._create_indexes()
-        
-        logger.info(f"Connected to MongoDB: app={app_db_name}, canonical={canonical_db_name}")
+        try:
+            self.client = AsyncIOMotorClient(
+                mongo_url,
+                serverSelectionTimeoutMS=10000,  # 10 second timeout
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000
+            )
+            self.app_db = self.client[app_db_name]
+            self.canonical_db = self.client[canonical_db_name]
+            
+            # Test connection with a ping
+            await self.client.admin.command('ping')
+            
+            # Create indexes
+            await self._create_indexes()
+            
+            logger.info(f"Connected to MongoDB: app={app_db_name}, canonical={canonical_db_name}")
+        except Exception as e:
+            logger.error(f"Failed to connect to MongoDB: {e}")
+            # Don't raise - allow app to start even if DB is temporarily unavailable
+            # Health check will report disconnected status
+    
     
     async def disconnect(self):
         """Disconnect from MongoDB"""
