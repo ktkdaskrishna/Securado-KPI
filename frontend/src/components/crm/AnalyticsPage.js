@@ -154,21 +154,45 @@ export default function AnalyticsPage() {
           <p className="text-muted-foreground">AI-powered insights into your sales performance</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-40" data-testid="period-filter">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Time Period" />
+          {/* Year Filter */}
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-32" data-testid="analytics-year-filter">
+              <SelectValue placeholder="All Years" />
             </SelectTrigger>
             <SelectContent>
-              {localFilters?.time_periods?.map(p => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              <SelectItem value="">All Years</SelectItem>
+              {localFilters?.years?.map(year => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={loadData} data-testid="refresh-analytics">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          
+          {/* Quarter Filter */}
+          <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
+            <SelectTrigger className="w-28" data-testid="analytics-quarter-filter">
+              <SelectValue placeholder="All Qtrs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Quarters</SelectItem>
+              <SelectItem value="Q1">Q1</SelectItem>
+              <SelectItem value="Q2">Q2</SelectItem>
+              <SelectItem value="Q3">Q3</SelectItem>
+              <SelectItem value="Q4">Q4</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Active filter badge */}
+          {(selectedYear || selectedQuarter) && (
+            <Badge variant="secondary" className="px-2 py-1">
+              {selectedYear || 'All'} {selectedQuarter || ''}
+              <button 
+                className="ml-2 hover:text-destructive"
+                onClick={() => { setSelectedYear(''); setSelectedQuarter(''); }}
+              >
+                ×
+              </button>
+            </Badge>
+          )}
         </div>
       </div>
 
