@@ -165,6 +165,7 @@ export function Sidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { hasPermission, loading: rbacLoading, roles } = useRBAC();
 
   useEffect(() => {
     saveNavigationPreferences(navPreferences);
@@ -177,8 +178,27 @@ export function Sidebar() {
     }));
   };
 
+  // Filter items based on both preferences AND permissions
   const getVisibleItems = (items) => {
-    return items.filter(item => navPreferences[item.id] !== false);
+    return items.filter(item => {
+      // Check if user disabled it
+      if (navPreferences[item.id] === false) return false;
+      
+      // Check permission requirement
+      const requiredPermission = permissionRequirements[item.id];
+      if (requiredPermission === null) return true; // Always visible
+      if (!requiredPermission) return true; // No requirement defined
+      
+      return hasPermission(requiredPermission);
+    });
+  };
+
+  // Check if user has access to a section
+  const hasSectionAccess = (section) => {
+    if (section === 'crm') return true; // CRM always visible
+    if (section === 'etl') return hasPermission('manage_dashboard');
+    if (section === 'admin') return hasPermission('manage_users');
+    return true;
   };
 
   // List of pages that should preserve filter params
