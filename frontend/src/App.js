@@ -45,6 +45,7 @@ import { UsersPage } from './components/admin/UsersPage';
 import { RolesPage } from './components/admin/RolesPage';
 import { DepartmentsPage } from './components/admin/DepartmentsPage';
 import { SettingsPage } from './components/admin/SettingsPage';
+import { SystemLogsPage } from './components/admin/SystemLogsPage';
 
 import './App.css';
 
