@@ -1329,13 +1329,22 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
     pending = 0
     overdue = 0
     
+    # Track all detailed activity types
+    detailed_types = {}
+    
     for act in canonical_activities:
-        act_type = (act.get("activity_type") or "").lower()
-        if "call" in act_type or "phone" in act_type:
+        act_type = (act.get("activity_type") or "To Do")
+        act_type_lower = act_type.lower()
+        
+        # Count detailed types
+        detailed_types[act_type] = detailed_types.get(act_type, 0) + 1
+        
+        # Also categorize into main buckets for backward compatibility
+        if "call" in act_type_lower or "phone" in act_type_lower:
             calls += 1
-        elif "email" in act_type or "mail" in act_type:
+        elif "email" in act_type_lower or "mail" in act_type_lower:
             emails += 1
-        elif "meet" in act_type or "event" in act_type or "demo" in act_type or "site visit" in act_type:
+        elif "meet" in act_type_lower or "demo" in act_type_lower or "site visit" in act_type_lower or "poc" in act_type_lower or "workshop" in act_type_lower or "roundtable" in act_type_lower:
             meetings += 1
         else:
             task_count += 1
@@ -1347,12 +1356,17 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
             pending += 1
     
     for act in app_activities:
-        act_type = (act.get("type") or "").lower()
-        if act_type == "call":
+        act_type = (act.get("type") or "task")
+        act_type_lower = act_type.lower()
+        
+        # Count detailed types
+        detailed_types[act_type] = detailed_types.get(act_type, 0) + 1
+        
+        if act_type_lower == "call":
             calls += 1
-        elif act_type == "email":
+        elif act_type_lower == "email":
             emails += 1
-        elif act_type == "meeting":
+        elif act_type_lower == "meeting":
             meetings += 1
         else:
             task_count += 1
@@ -1367,6 +1381,9 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
     
     total = calls + emails + meetings + task_count
     
+    # Sort detailed types by count
+    sorted_detailed_types = dict(sorted(detailed_types.items(), key=lambda x: -x[1]))
+    
     return {
         "total": total,
         "completed": completed,
@@ -1377,7 +1394,8 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
             "emails": emails,
             "meetings": meetings,
             "tasks": task_count
-        }
+        },
+        "detailed_types": sorted_detailed_types
     }
 
 
