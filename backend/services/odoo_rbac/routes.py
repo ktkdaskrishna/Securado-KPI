@@ -37,10 +37,12 @@ ODOO_GROUP_MAPPING = {
             "view_goals", "manage_goals", "delete_goals",
             "view_teams", "manage_teams", "delete_teams",
             "view_kpis", "manage_kpis",
-            "view_users", "manage_users"
+            "view_users", "manage_users",
+            "view_invoices", "manage_invoices",
+            "view_analytics", "manage_analytics"
         ],
-        "record_access": "all",  # Can see all records
-        "field_access": "all"   # Can see all fields
+        "record_access": "all",
+        "field_access": "all"
     },
     # CRM / Sales Director (ID 448)
     448: {
@@ -54,7 +56,9 @@ ODOO_GROUP_MAPPING = {
             "view_goals", "manage_goals",
             "view_teams", "manage_teams",
             "view_kpis", "manage_kpis",
-            "view_users"
+            "view_users",
+            "view_invoices", "manage_invoices",
+            "view_analytics", "manage_analytics"
         ],
         "record_access": "all",
         "field_access": "all"
@@ -68,10 +72,43 @@ ODOO_GROUP_MAPPING = {
             "view_opportunities", "manage_opportunities", "update_stage",
             "view_accounts", "manage_accounts",
             "view_activities", "manage_activities",
-            "view_goals"
+            "view_goals",
+            "view_invoices",
+            "view_analytics"
         ],
         "record_access": "all",
-        "field_access": "standard"  # Can see standard fields, not sensitive
+        "field_access": "standard"
+    },
+    # Sales / User: All Documents Read only (ID 447)
+    447: {
+        "role": "sales_user_readonly",
+        "name": "Sales User (All Documents Read Only)",
+        "permissions": [
+            "view_dashboard",
+            "view_opportunities",
+            "view_accounts",
+            "view_activities",
+            "view_goals",
+            "view_invoices",
+            "view_analytics"
+        ],
+        "record_access": "all",
+        "field_access": "standard"
+    },
+    # Sales / User: department Documents (ID 74)
+    74: {
+        "role": "sales_user_department",
+        "name": "Sales User (Department Documents)",
+        "permissions": [
+            "view_dashboard",
+            "view_opportunities", "manage_opportunities", "update_stage",
+            "view_accounts", "manage_accounts",
+            "view_activities", "manage_activities",
+            "view_goals",
+            "view_invoices"
+        ],
+        "record_access": "department",  # Can see department records
+        "field_access": "standard"
     },
     # Sales / User: Own Documents Only (ID 12)
     12: {
@@ -84,7 +121,20 @@ ODOO_GROUP_MAPPING = {
             "view_activities", "manage_activities",
             "view_goals"
         ],
-        "record_access": "own",  # Can only see own records
+        "record_access": "own",
+        "field_access": "standard"
+    },
+    # Sales / User: own leads (ID 370)
+    370: {
+        "role": "sales_user_own_leads",
+        "name": "Sales User (Own Leads)",
+        "permissions": [
+            "view_dashboard",
+            "view_opportunities", "manage_opportunities",
+            "view_accounts",
+            "view_activities"
+        ],
+        "record_access": "own",
         "field_access": "standard"
     },
     # Sales / Non sales / CRM Readonly (ID 449)
@@ -99,13 +149,71 @@ ODOO_GROUP_MAPPING = {
             "view_goals"
         ],
         "record_access": "all",
-        "field_access": "limited"  # Limited field visibility
+        "field_access": "limited"
+    },
+    # Accounting / Accountant (ID 302)
+    302: {
+        "role": "accountant",
+        "name": "Accountant",
+        "permissions": [
+            "view_dashboard",
+            "view_invoices", "manage_invoices",
+            "view_accounts",
+            "view_analytics"
+        ],
+        "record_access": "all",
+        "field_access": "all"  # Accountants need full financial visibility
+    },
+    # Accounting / Billing (ID 300)
+    300: {
+        "role": "billing",
+        "name": "Billing User",
+        "permissions": [
+            "view_invoices", "manage_invoices",
+            "view_accounts"
+        ],
+        "record_access": "all",
+        "field_access": "standard"
+    },
+    # Accounting / Bookkeeper (ID 301)
+    301: {
+        "role": "bookkeeper",
+        "name": "Bookkeeper",
+        "permissions": [
+            "view_invoices",
+            "view_accounts"
+        ],
+        "record_access": "all",
+        "field_access": "standard"
+    },
+    # Accounting / Read-only (ID 299)
+    299: {
+        "role": "accounting_readonly",
+        "name": "Accounting Read-only",
+        "permissions": [
+            "view_invoices",
+            "view_accounts"
+        ],
+        "record_access": "all",
+        "field_access": "limited"
+    },
+    # CRM Checklists Super User (ID 394)
+    394: {
+        "role": "crm_checklist_admin",
+        "name": "CRM Checklist Admin",
+        "permissions": [
+            "view_dashboard",
+            "view_opportunities", "manage_opportunities",
+            "view_activities", "manage_activities"
+        ],
+        "record_access": "all",
+        "field_access": "standard"
     },
     # Administration / Access Rights (ID 2)
     2: {
         "role": "admin",
         "name": "Administrator",
-        "permissions": ["admin:*"],  # Full access
+        "permissions": ["admin:*"],
         "record_access": "all",
         "field_access": "all"
     }
