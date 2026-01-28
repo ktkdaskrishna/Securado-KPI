@@ -215,8 +215,24 @@ class DashboardAggregator:
             opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
             leads_only = [o for o in opps if o.get("type") == "lead"]
             
-            # Calculate aggregates for OPPORTUNITIES only
-            total_pipeline = sum(o.get("amount", 0) or 0 for o in opportunities_only)
+            # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
+            def get_opp_value(opp):
+                sale_val = opp.get("sale_value", 0)
+                if sale_val and sale_val != 'False':
+                    try:
+                        return float(sale_val)
+                    except:
+                        pass
+                amount = opp.get("amount", 0)
+                if amount and amount != 'False':
+                    try:
+                        return float(amount)
+                    except:
+                        pass
+                return 0
+            
+            # Calculate aggregates for OPPORTUNITIES only - use sale_value as primary
+            total_pipeline = sum(get_opp_value(o) for o in opportunities_only)
             
             # By normalized stage (for opportunities)
             stage_counts = {}
@@ -224,7 +240,7 @@ class DashboardAggregator:
             for stage in PipelineStages.all():
                 stage_opps = [o for o in opportunities_only if o.get("normalized_stage") == stage]
                 stage_counts[stage] = len(stage_opps)
-                stage_values[stage] = sum(o.get("amount", 0) or 0 for o in stage_opps)
+                stage_values[stage] = sum(get_opp_value(o) for o in stage_opps)
             
             won_count = stage_counts.get(PipelineStages.CLOSED_WON, 0)
             won_value = stage_values.get(PipelineStages.CLOSED_WON, 0)
