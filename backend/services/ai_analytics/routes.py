@@ -403,36 +403,60 @@ async def get_ai_insights(
     # Gather data for analysis
     opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
     
-    # Prepare summary data for AI
-    total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
-    won_opps = [o for o in opps if normalize_stage(o.get("stage", "")) == "won"]
-    lost_opps = [o for o in opps if normalize_stage(o.get("stage", "")) == "lost"]
+    # Prepare summary data for AI - use sale_value and proper lost detection
+    total_pipeline = sum(get_opp_value(o) for o in opps)
     
-    # Stage distribution
+    # Proper Won/Lost classification
+    def is_won(o):
+        stage = o.get("stage", "").lower()
+        return stage == "won" or "closed won" in stage
+    
+    def is_lost(o):
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
+        return False
+    
+    won_opps = [o for o in opps if is_won(o)]
+    lost_opps = [o for o in opps if is_lost(o)]
+    
+    # Stage distribution - with proper lost detection
     stage_counts = defaultdict(int)
     for opp in opps:
-        stage = normalize_stage(opp.get("stage", ""))
+        active = opp.get("active", True)
+        if active == 'False' or active is False:
+            active = False
+        else:
+            active = True
+        lost_reason = opp.get("lost_reason_id") or opp.get("lost_reason")
+        stage = normalize_stage(opp.get("stage", ""), active=active, lost_reason_id=lost_reason)
         stage_counts[stage] += 1
     
-    # Rep performance
-    rep_won = defaultdict(int)
+    # Rep performance - by won deals
+    rep_won = defaultdict(lambda: {"count": 0, "value": 0})
     for opp in won_opps:
         owner = opp.get("owner_name", "Unknown")
-        rep_won[owner] += 1
+        rep_won[owner]["count"] += 1
+        rep_won[owner]["value"] += get_opp_value(opp)
     
-    top_reps = sorted(rep_won.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_reps = sorted(rep_won.items(), key=lambda x: x[1]["value"], reverse=True)[:5]
+    
+    # Calculate win rate correctly
+    closed_total = len(won_opps) + len(lost_opps)
+    win_rate = round(len(won_opps) / closed_total * 100, 1) if closed_total > 0 else 0
     
     # Prepare data summary for AI
+    won_value = sum(get_opp_value(o) for o in won_opps)
     data_summary = {
         "total_opportunities": len(opps),
         "total_pipeline_value": total_pipeline,
         "won_deals": len(won_opps),
-        "won_value": sum(o.get("amount", 0) or 0 for o in won_opps),
+        "won_value": won_value,
         "lost_deals": len(lost_opps),
-        "win_rate": round(len(won_opps) / (len(won_opps) + len(lost_opps)) * 100, 1) if (won_opps or lost_opps) else 0,
+        "win_rate": win_rate,
         "stage_distribution": dict(stage_counts),
-        "top_performers": [{"name": name, "won_count": count} for name, count in top_reps],
-        "avg_deal_size": round(sum(o.get("amount", 0) or 0 for o in won_opps) / len(won_opps), 2) if won_opps else 0
+        "top_performers": [{"name": name, "won_count": data["count"], "won_value": data["value"]} for name, data in top_reps],
+        "avg_deal_size": round(won_value / len(won_opps), 2) if won_opps else 0
     }
     
     # Try to get AI insights
