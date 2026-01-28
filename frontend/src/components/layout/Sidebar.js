@@ -124,6 +124,7 @@ const defaultNavigation = {
   ],
   etl: [
     { id: 'connections', name: 'Connections', href: '/etl/connections', icon: 'Link', default: true },
+    { id: 'model-browser', name: 'Model Browser', href: '/etl/model-browser', icon: 'Database', default: true },
     { id: 'mappings', name: 'Mappings', href: '/etl/mappings', icon: 'GitMerge', default: true },
     { id: 'data-model', name: 'Data Model', href: '/etl/data-model', icon: 'Boxes', default: true },
     { id: 'pipelines', name: 'Pipelines', href: '/etl/pipelines', icon: 'Workflow', default: true },
