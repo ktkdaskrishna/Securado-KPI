@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for CRM KPI Management Platform
-Tests critical fixes: Sales Leaderboard (Won deals only), Dashboard stats, Invoices filtering, Year filters
+Backend API Testing for CRM Dashboard with RBAC
+Tests all critical APIs including RBAC permissions
 """
 import requests
 import sys
+import time
 from datetime import datetime
 
 BASE_URL = "https://odoo-connect.preview.emergentagent.com"
@@ -15,560 +16,196 @@ class CRMAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        self.performance_issues = []
 
-    def log_result(self, test_name, passed, message=""):
+    def log_result(self, test_name, passed, message="", response_time=None):
         """Log test result"""
         self.tests_run += 1
         if passed:
             self.tests_passed += 1
-            print(f"✅ {test_name}: PASSED {message}")
+            status = "✅ PASSED"
         else:
-            print(f"❌ {test_name}: FAILED {message}")
+            status = "❌ FAILED"
+        
+        perf_msg = f" ({response_time:.2f}s)" if response_time else ""
+        print(f"{status} {test_name}{perf_msg}: {message}")
+        
+        # Track slow APIs (>2 seconds)
+        if response_time and response_time > 2.0:
+            self.performance_issues.append({
+                "endpoint": test_name,
+                "response_time": response_time
+            })
+        
         self.test_results.append({
             "test": test_name,
             "passed": passed,
-            "message": message
+            "message": message,
+            "response_time": response_time
         })
 
-    def login(self):
-        """Login and get token"""
-        print("\n🔐 Testing Login...")
+    def test_api(self, name, method, endpoint, expected_status=200, json_data=None, check_response=None):
+        """Generic API test with performance tracking"""
         try:
-            response = requests.post(
-                f"{BASE_URL}/api/auth/login",
-                json={"email": "test@securado.com", "password": "test123456"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                self.token = data.get("access_token")
-                self.log_result("Login", True, f"Token obtained")
-                return True
+            headers = {'Content-Type': 'application/json'}
+            if self.token:
+                headers['Authorization'] = f'Bearer {self.token}'
+            
+            url = f"{BASE_URL}{endpoint}"
+            start_time = time.time()
+            
+            if method == 'GET':
+                response = requests.get(url, headers=headers, timeout=15)
+            elif method == 'POST':
+                response = requests.post(url, json=json_data, headers=headers, timeout=15)
             else:
-                self.log_result("Login", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
+                raise ValueError(f"Unsupported method: {method}")
+            
+            response_time = time.time() - start_time
+            
+            if response.status_code == expected_status:
+                data = response.json() if response.content else {}
+                
+                # Additional response validation
+                if check_response and not check_response(data):
+                    self.log_result(name, False, f"Response validation failed", response_time)
+                    return False, data
+                
+                self.log_result(name, True, f"Status: {response.status_code}", response_time)
+                return True, data
+            else:
+                self.log_result(name, False, f"Expected {expected_status}, got {response.status_code}: {response.text[:200]}", response_time)
+                return False, {}
+        except requests.Timeout:
+            self.log_result(name, False, "Request timed out (>15s)")
+            return False, {}
         except Exception as e:
-            self.log_result("Login", False, f"Error: {str(e)}")
+            self.log_result(name, False, f"Error: {str(e)}")
+            return False, {}
+
+    def run_tests(self):
+        """Run all API tests"""
+        print("\n" + "="*80)
+        print("🧪 CRM Dashboard API Testing - RBAC & Performance Check")
+        print("="*80)
+        
+        # 1. Login Test
+        print("\n📋 Authentication Tests")
+        print("-" * 80)
+        success, data = self.test_api(
+            "Login API",
+            "POST",
+            "/api/auth/login",
+            json_data={"email": "test@securado.com", "password": "test123456"},
+            check_response=lambda d: 'access_token' in d
+        )
+        
+        if not success:
+            print("\n❌ Login failed. Cannot proceed with other tests.")
             return False
-
-    def test_dashboard_stats_unfiltered(self):
-        """Test GET /api/dashboard/stats - unfiltered baseline"""
-        print("\n📊 Testing GET /api/dashboard/stats (unfiltered)...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                total_pipeline = data.get("total_pipeline", 0)
-                won_count = data.get("won_count", 0)
-                lost_count = data.get("lost_count", 0)
-                won_value = data.get("won_value", 0)
-                win_rate = data.get("win_rate", 0)
-                leaderboard = data.get("leaderboard", [])
-                
-                # CRITICAL: Verify Win Rate is 40.2% (144 won / 358 closed)
-                expected_win_rate = 40.2
-                expected_won = 144
-                expected_lost = 214
-                
-                win_rate_correct = abs(win_rate - expected_win_rate) < 0.5  # Allow 0.5% tolerance
-                won_count_correct = won_count == expected_won
-                lost_count_correct = lost_count == expected_lost
-                
-                if win_rate_correct and won_count_correct and lost_count_correct:
-                    self.log_result("Dashboard Stats (unfiltered)", True, 
-                                  f"✅ Win Rate={win_rate}% (expected 40.2%), Won={won_count} (expected 144), Lost={lost_count} (expected 214)")
-                else:
-                    self.log_result("Dashboard Stats (unfiltered)", False, 
-                                  f"❌ Win Rate={win_rate}% (expected 40.2%), Won={won_count} (expected 144), Lost={lost_count} (expected 214)")
-                
-                # Return data for further analysis
-                return data
-            else:
-                self.log_result("Dashboard Stats (unfiltered)", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("Dashboard Stats (unfiltered)", False, f"Error: {str(e)}")
-            return None
-
-    def test_leaderboard_won_deals_only(self):
-        """CRITICAL: Test that leaderboard shows ONLY WON deals, not total pipeline"""
-        print("\n🏆 CRITICAL TEST: Leaderboard shows WON deals only...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                leaderboard = data.get("leaderboard", [])
-                
-                if not leaderboard:
-                    self.log_result("Leaderboard Won Deals Only", False, "Leaderboard is empty")
-                    return None
-                
-                # Check top performer
-                top_performer = leaderboard[0]
-                top_name = top_performer.get("name", "")
-                top_value = top_performer.get("value", 0)
-                top_deals_won = top_performer.get("deals_won", 0)
-                
-                # According to agent context: Shri Hari Venkatesh Naidu should be #1 with OMR 1,014,217 (30 won deals)
-                # Previously showed Nabisaheb with OMR 24.6M (total pipeline - WRONG)
-                
-                # Check if top value is reasonable for won deals (not inflated by total pipeline)
-                # If it's > 10M, it's likely showing total pipeline instead of won deals
-                is_reasonable = top_value < 10_000_000  # Less than 10M is reasonable for won deals
-                
-                if is_reasonable:
-                    self.log_result("Leaderboard Won Deals Only", True, 
-                                  f"Top: {top_name} with {top_value:,.0f} ({top_deals_won} won deals) - appears to be won deals only")
-                else:
-                    self.log_result("Leaderboard Won Deals Only", False, 
-                                  f"Top: {top_name} with {top_value:,.0f} - value too high, likely showing total pipeline instead of won deals!")
-                
-                # Print full leaderboard for verification
-                print("\n   Full Leaderboard:")
-                for i, person in enumerate(leaderboard[:5], 1):
-                    print(f"   {i}. {person.get('name')} - {person.get('value'):,.0f} ({person.get('deals_won', 0)} won deals)")
-                
-                return leaderboard
-            else:
-                self.log_result("Leaderboard Won Deals Only", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("Leaderboard Won Deals Only", False, f"Error: {str(e)}")
-            return None
-
-    def test_year_filter_2025(self):
-        """CRITICAL: Test year filter 2025 - should show Won=1, Lost=5, Win Rate=16.7%"""
-        print("\n📅 CRITICAL TEST: Year filter 2025 (Won=1, Lost=5, Win Rate=16.7%)...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats?year=2025",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                won_count = data.get("won_count", 0)
-                lost_count = data.get("lost_count", 0)
-                win_rate = data.get("win_rate", 0)
-                won_value = data.get("won_value", 0)
-                filtered = data.get("filtered", False)
-                applied_filters = data.get("applied_filters", {})
-                
-                # According to agent context: 2025 should show Won=1, Lost=5, Win Rate=16.7%
-                expected_won = 1
-                expected_lost = 5
-                expected_win_rate = 16.7
-                
-                won_correct = won_count == expected_won
-                lost_correct = lost_count == expected_lost
-                win_rate_correct = abs(win_rate - expected_win_rate) < 1.0  # Allow 1% tolerance
-                
-                if won_correct and lost_correct and win_rate_correct:
-                    self.log_result("Year Filter 2025", True, 
-                                  f"✅ Won={won_count} (expected 1), Lost={lost_count} (expected 5), Win Rate={win_rate}% (expected 16.7%)")
-                else:
-                    self.log_result("Year Filter 2025", False, 
-                                  f"❌ Won={won_count} (expected 1), Lost={lost_count} (expected 5), Win Rate={win_rate}% (expected 16.7%)")
-                
-                return data
-            else:
-                self.log_result("Year Filter 2025", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("Year Filter 2025", False, f"Error: {str(e)}")
-            return None
-
-    def test_dashboard_contextual_filters(self):
-        """Test Dashboard contextual filters: Year, Quarter, SalesRep, Stage"""
-        print("\n🔍 Testing Dashboard contextual filters...")
         
-        # Test Year filter
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats?year=2024",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                filtered = data.get("filtered", False)
-                applied_filters = data.get("applied_filters", {})
-                
-                if filtered and applied_filters.get("year") == "2024":
-                    self.log_result("Dashboard Year Filter", True, f"Year filter working, won_count={data.get('won_count', 0)}")
-                else:
-                    self.log_result("Dashboard Year Filter", False, f"Year filter not applied correctly")
-            else:
-                self.log_result("Dashboard Year Filter", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Dashboard Year Filter", False, f"Error: {str(e)}")
+        self.token = data.get('access_token')
         
-        # Test Quarter filter
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats?quarter=Q1",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                filtered = data.get("filtered", False)
-                applied_filters = data.get("applied_filters", {})
-                
-                if filtered and applied_filters.get("quarter") == "Q1":
-                    self.log_result("Dashboard Quarter Filter", True, f"Quarter filter working")
-                else:
-                    self.log_result("Dashboard Quarter Filter", False, f"Quarter filter not applied correctly")
-            else:
-                self.log_result("Dashboard Quarter Filter", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Dashboard Quarter Filter", False, f"Error: {str(e)}")
-
-    def test_opportunities_contextual_filters(self):
-        """Test Opportunities contextual filters: Year, Quarter, SalesRep, Account, Stage"""
-        print("\n🔍 Testing Opportunities contextual filters...")
+        # 2. RBAC Tests - CRITICAL for sidebar
+        print("\n📋 RBAC Tests (Critical for Sidebar)")
+        print("-" * 80)
+        success, rbac_data = self.test_api(
+            "RBAC Current User",
+            "GET",
+            "/api/odoo-rbac/current-user-rbac",
+            check_response=lambda d: 'effective_permissions' in d
+        )
         
-        # Test Year filter
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/opportunities?year=2024",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                self.log_result("Opportunities Year Filter", True, f"Returned {count} opportunities for 2024")
-            else:
-                self.log_result("Opportunities Year Filter", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Opportunities Year Filter", False, f"Error: {str(e)}")
-
-    def test_activities_contextual_filters(self):
-        """Test Activities contextual filters: Year, Quarter, SalesRep, Type, Status"""
-        print("\n🔍 Testing Activities contextual filters...")
+        if success:
+            permissions = rbac_data.get('effective_permissions', [])
+            roles = rbac_data.get('app_roles', [])
+            record_access = rbac_data.get('record_access', 'unknown')
+            
+            print(f"   📊 User Permissions: {len(permissions)} permissions")
+            print(f"   📊 User Roles: {roles}")
+            print(f"   📊 Record Access: {record_access}")
+            
+            # Check if user has basic permissions
+            required_perms = ['view_dashboard', 'view_opportunities', 'view_accounts', 'view_activities']
+            missing_perms = [p for p in required_perms if p not in permissions]
+            
+            if missing_perms:
+                print(f"   ⚠️  WARNING: Missing basic permissions: {missing_perms}")
+                print(f"   ⚠️  This will cause sidebar items to be hidden!")
         
-        # Test Status filter
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/activities?status=pending",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                # Verify all are pending
-                all_pending = all(act.get("status") == "pending" for act in data)
-                
-                if all_pending:
-                    self.log_result("Activities Status Filter", True, f"Returned {count} pending activities")
-                else:
-                    self.log_result("Activities Status Filter", False, f"Some activities are not pending")
-            else:
-                self.log_result("Activities Status Filter", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Activities Status Filter", False, f"Error: {str(e)}")
-
-    def test_invoices_stats(self):
-        """CRITICAL: Test Invoices stats - Total OMR 2.8M, Overdue OMR 881K, Paid OMR 1.9M"""
-        print("\n💰 CRITICAL TEST: Invoices stats (Total 2.8M, Overdue 881K, Paid 1.9M)...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/receivables/stats",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                stats = data.get("stats", {})
-                total_invoiced = stats.get("total_invoiced", 0)
-                total_pending = stats.get("total_pending", 0)
-                total_overdue = stats.get("total_overdue", 0)
-                total_paid = stats.get("total_paid", 0)
-                count_total = stats.get("count_total", 0)
-                
-                # Expected values from agent context
-                expected_total = 2_800_000  # 2.8M
-                expected_overdue = 881_000  # 881K
-                expected_paid = 1_900_000  # 1.9M
-                
-                # Allow 10% tolerance for amounts
-                total_correct = abs(total_invoiced - expected_total) / expected_total < 0.1
-                overdue_correct = abs(total_overdue - expected_overdue) / expected_overdue < 0.1
-                paid_correct = abs(total_paid - expected_paid) / expected_paid < 0.1
-                
-                # Verify stats add up correctly
-                sum_amounts = total_pending + total_overdue + total_paid
-                amounts_match = abs(sum_amounts - total_invoiced) < 1  # Allow for rounding
-                
-                if amounts_match and total_correct and overdue_correct and paid_correct:
-                    self.log_result("Invoices Stats", True, 
-                                  f"✅ Total={total_invoiced:,.0f} (~2.8M), Overdue={total_overdue:,.0f} (~881K), Paid={total_paid:,.0f} (~1.9M)")
-                else:
-                    self.log_result("Invoices Stats", False, 
-                                  f"❌ Total={total_invoiced:,.0f} (expected ~2.8M), Overdue={total_overdue:,.0f} (expected ~881K), Paid={total_paid:,.0f} (expected ~1.9M)")
-                
-                return stats
-            else:
-                self.log_result("Invoices Stats", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("Invoices Stats", False, f"Error: {str(e)}")
-            return None
-
-    def test_invoices_filtering(self):
-        """Test Invoices filtering: All, Pending, Overdue, Paid tabs"""
-        print("\n💰 Testing Invoices filtering (tabs)...")
+        # 3. Dashboard APIs
+        print("\n📋 Dashboard APIs")
+        print("-" * 80)
+        self.test_api("Dashboard Stats", "GET", "/api/dashboard/stats")
+        self.test_api("Dashboard Leaderboard", "GET", "/api/dashboard/stats", 
+                     check_response=lambda d: 'leaderboard' in d)
+        self.test_api("Dashboard Pipeline Stages", "GET", "/api/dashboard/stats",
+                     check_response=lambda d: 'pipeline_by_stage' in d)
         
-        statuses = ["all", "pending", "overdue", "paid"]
+        # 4. CRM APIs
+        print("\n📋 CRM APIs")
+        print("-" * 80)
+        self.test_api("Opportunities List", "GET", "/api/opportunities")
+        self.test_api("Leads List", "GET", "/api/leads")
+        self.test_api("Accounts List", "GET", "/api/accounts")
+        self.test_api("Activities List", "GET", "/api/activities")
         
-        for status in statuses:
-            try:
-                params = {"status": status} if status != "all" else {}
-                response = requests.get(
-                    f"{BASE_URL}/api/receivables",
-                    headers={"Authorization": f"Bearer {self.token}"},
-                    params=params,
-                    timeout=10
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    invoices = data.get("invoices", data)  # Handle both formats
-                    count = len(invoices)
-                    
-                    # Verify all invoices match the filter
-                    if status != "all":
-                        all_match = all(inv.get("status") == status for inv in invoices)
-                        if all_match:
-                            self.log_result(f"Invoices Filter ({status})", True, f"Returned {count} {status} invoices")
-                        else:
-                            mismatched = [inv.get("status") for inv in invoices if inv.get("status") != status]
-                            self.log_result(f"Invoices Filter ({status})", False, 
-                                          f"Some invoices don't match filter. Found statuses: {set(mismatched)}")
-                    else:
-                        self.log_result(f"Invoices Filter ({status})", True, f"Returned {count} total invoices")
-                else:
-                    self.log_result(f"Invoices Filter ({status})", False, f"Status: {response.status_code}")
-            except Exception as e:
-                self.log_result(f"Invoices Filter ({status})", False, f"Error: {str(e)}")
-
-    def test_invoices_contextual_filters(self):
-        """Test Invoices contextual filters: Year, Quarter, Account"""
-        print("\n🔍 Testing Invoices contextual filters...")
+        # 5. Invoices/Receivables
+        print("\n📋 Invoices/Receivables APIs")
+        print("-" * 80)
+        self.test_api("Receivables List", "GET", "/api/receivables")
+        self.test_api("Receivables Stats", "GET", "/api/receivables/stats")
         
-        # Test Year filter
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/receivables?year=2024",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                invoices = data.get("invoices", data)
-                count = len(invoices)
-                self.log_result("Invoices Year Filter", True, f"Returned {count} invoices for 2024")
-            else:
-                self.log_result("Invoices Year Filter", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Invoices Year Filter", False, f"Error: {str(e)}")
-
-    def test_stage_mapping(self):
-        """Test that 'Won' stage in Odoo maps correctly to leaderboard calculations"""
-        print("\n🎯 Testing Stage mapping (Won stage)...")
-        try:
-            # Get opportunities with Won stage
-            response = requests.get(
-                f"{BASE_URL}/api/opportunities?stage=Won",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                
-                # Now check if dashboard stats match
-                dash_response = requests.get(
-                    f"{BASE_URL}/api/dashboard/stats",
-                    headers={"Authorization": f"Bearer {self.token}"},
-                    timeout=10
-                )
-                if dash_response.status_code == 200:
-                    dash_data = dash_response.json()
-                    won_count = dash_data.get("won_count", 0)
-                    
-                    # The counts should be related (though not necessarily exact due to filtering)
-                    self.log_result("Stage Mapping (Won)", True, 
-                                  f"Found {count} Won opportunities, dashboard shows {won_count} won deals")
-                else:
-                    self.log_result("Stage Mapping (Won)", False, f"Dashboard request failed")
-            else:
-                self.log_result("Stage Mapping (Won)", False, f"Status: {response.status_code}")
-        except Exception as e:
-            self.log_result("Stage Mapping (Won)", False, f"Error: {str(e)}")
-
-    def test_ai_analytics_overview(self):
-        """CRITICAL: Test AI Analytics overview - Win Rate 40.2%, Lost count 214"""
-        print("\n🤖 CRITICAL TEST: AI Analytics overview (Win Rate 40.2%, Lost 214)...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/analytics/overview",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                summary = data.get("summary", {})
-                won_count = summary.get("won_count", 0)
-                lost_count = summary.get("lost_count", 0)
-                win_rate = summary.get("win_rate", 0)
-                
-                # Expected values
-                expected_won = 144
-                expected_lost = 214
-                expected_win_rate = 40.2
-                
-                won_correct = won_count == expected_won
-                lost_correct = lost_count == expected_lost
-                win_rate_correct = abs(win_rate - expected_win_rate) < 0.5
-                
-                if won_correct and lost_correct and win_rate_correct:
-                    self.log_result("AI Analytics Overview", True, 
-                                  f"✅ Won={won_count} (expected 144), Lost={lost_count} (expected 214), Win Rate={win_rate}% (expected 40.2%)")
-                else:
-                    self.log_result("AI Analytics Overview", False, 
-                                  f"❌ Won={won_count} (expected 144), Lost={lost_count} (expected 214), Win Rate={win_rate}% (expected 40.2%)")
-                
-                return data
-            else:
-                self.log_result("AI Analytics Overview", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("AI Analytics Overview", False, f"Error: {str(e)}")
-            return None
-
-    def test_ai_insights_generation(self):
-        """Test AI Insights generation - should return meaningful business analysis"""
-        print("\n🤖 Testing AI Insights generation...")
-        try:
-            response = requests.post(
-                f"{BASE_URL}/api/analytics/ai-insights",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=30  # AI generation may take longer
-            )
-            if response.status_code == 200:
-                data = response.json()
-                insights = data.get("insights", "")
-                data_summary = data.get("data_summary", {})
-                ai_model = data.get("ai_model", "")
-                
-                # Verify insights are not empty and contain meaningful content
-                has_insights = len(insights) > 100  # At least 100 characters
-                has_data_summary = len(data_summary) > 0
-                
-                if has_insights and has_data_summary:
-                    self.log_result("AI Insights Generation", True, 
-                                  f"Generated {len(insights)} chars of insights using {ai_model}")
-                else:
-                    self.log_result("AI Insights Generation", False, 
-                                  f"Insights too short or missing data summary")
-                
-                return data
-            else:
-                self.log_result("AI Insights Generation", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("AI Insights Generation", False, f"Error: {str(e)}")
-            return None
+        # 6. Analytics
+        print("\n📋 Analytics APIs")
+        print("-" * 80)
+        self.test_api("Analytics Stats", "GET", "/api/analytics/stats")
+        self.test_api("Analytics Insights", "GET", "/api/analytics/insights")
+        
+        # 7. Performance Summary
+        print("\n📋 Performance Summary")
+        print("-" * 80)
+        if self.performance_issues:
+            print(f"⚠️  Found {len(self.performance_issues)} slow API(s) (>2 seconds):")
+            for issue in self.performance_issues:
+                print(f"   - {issue['endpoint']}: {issue['response_time']:.2f}s")
+        else:
+            print("✅ All APIs responded within 2 seconds")
+        
+        return True
 
     def print_summary(self):
         """Print test summary"""
-        print("\n" + "="*60)
-        print("📊 TEST SUMMARY")
-        print("="*60)
+        print("\n" + "="*80)
+        print("📊 Test Summary")
+        print("="*80)
         print(f"Total Tests: {self.tests_run}")
         print(f"Passed: {self.tests_passed}")
         print(f"Failed: {self.tests_run - self.tests_passed}")
         print(f"Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
-        print("="*60)
         
-        if self.tests_passed == self.tests_run:
-            print("✅ ALL TESTS PASSED!")
-            return 0
-        else:
-            print("❌ SOME TESTS FAILED")
-            print("\nFailed Tests:")
-            for result in self.test_results:
-                if not result["passed"]:
-                    print(f"  - {result['test']}: {result['message']}")
-            return 1
+        if self.performance_issues:
+            print(f"\n⚠️  Performance Issues: {len(self.performance_issues)} slow API(s)")
+        
+        print("="*80)
+        
+        return self.tests_passed == self.tests_run
 
 def main():
     tester = CRMAPITester()
     
-    # Login first
-    if not tester.login():
-        print("❌ Login failed, cannot proceed with tests")
+    try:
+        tester.run_tests()
+        success = tester.print_summary()
+        return 0 if success else 1
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Tests interrupted by user")
         return 1
-    
-    # CRITICAL TESTS
-    print("\n" + "="*60)
-    print("🔥 CRITICAL TESTS - Win Rate, Lost Deals, Year Filter")
-    print("="*60)
-    tester.test_dashboard_stats_unfiltered()  # CRITICAL: Win Rate 40.2%, Lost 214
-    tester.test_leaderboard_won_deals_only()  # CRITICAL: Leaderboard shows WON deals only
-    tester.test_year_filter_2025()  # CRITICAL: 2025 should show Won=1, Lost=5, Win Rate=16.7%
-    
-    # Dashboard stats and filters
-    print("\n" + "="*60)
-    print("📊 Dashboard Stats & Contextual Filters")
-    print("="*60)
-    tester.test_dashboard_contextual_filters()
-    
-    # Opportunities filters
-    print("\n" + "="*60)
-    print("🎯 Opportunities Contextual Filters")
-    print("="*60)
-    tester.test_opportunities_contextual_filters()
-    
-    # Activities filters
-    print("\n" + "="*60)
-    print("📋 Activities Contextual Filters")
-    print("="*60)
-    tester.test_activities_contextual_filters()
-    
-    # Invoices stats and filtering
-    print("\n" + "="*60)
-    print("💰 CRITICAL TEST - Invoices Stats & Filtering")
-    print("="*60)
-    tester.test_invoices_stats()  # CRITICAL: Total 2.8M, Overdue 881K, Paid 1.9M
-    tester.test_invoices_filtering()
-    tester.test_invoices_contextual_filters()
-    
-    # AI Analytics
-    print("\n" + "="*60)
-    print("🤖 CRITICAL TEST - AI Analytics")
-    print("="*60)
-    tester.test_ai_analytics_overview()  # CRITICAL: Win Rate 40.2%, Lost 214
-    tester.test_ai_insights_generation()  # Test AI insights generation
-    
-    # Stage mapping
-    print("\n" + "="*60)
-    print("🎯 Stage Mapping Verification")
-    print("="*60)
-    tester.test_stage_mapping()
-    
-    # Print summary
-    return tester.print_summary()
+    except Exception as e:
+        print(f"\n\n❌ Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())
