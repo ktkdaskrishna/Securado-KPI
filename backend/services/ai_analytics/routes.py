@@ -532,12 +532,26 @@ async def get_available_filters(
     # Get unique stages
     stages = list(set(o.get("stage") for o in opps if o.get("stage")))
     
-    # Get unique owners
+    # Get unique owners from opportunities (not from sales_users)
     owners = list(set(o.get("owner_name") for o in opps if o.get("owner_name")))
     
-    # Get years from close_date
+    # Get unique account names from opportunities (not from accounts collection)
+    # This ensures we show accounts that actually have opportunities
+    opp_accounts = list(set(o.get("account_name") for o in opps if o.get("account_name") and o.get("account_name") != 'None'))
+    
+    # Get years from create_date (not close_date since many don't have close dates)
     years = set()
     for opp in opps:
+        # Check create_date first
+        create_date = opp.get("create_date")
+        if create_date and create_date != 'False' and isinstance(create_date, str) and len(create_date) >= 4:
+            try:
+                year = create_date[:4]
+                if year.isdigit() and 1900 < int(year) < 2100:
+                    years.add(year)
+            except:
+                pass
+        # Also check close_date
         close_date = opp.get("close_date")
         if close_date and close_date != 'False' and isinstance(close_date, str) and len(close_date) >= 4:
             try:
@@ -560,7 +574,7 @@ async def get_available_filters(
         "stages": sorted(stages),
         "sales_reps": sorted(owners),
         "teams": [{"id": str(t.get("source_record_id")), "name": t.get("name")} for t in teams if t.get("name")],
-        "accounts": [{"id": a.get("canonical_id"), "name": a.get("name")} for a in accounts[:100] if a.get("name")]
+        "accounts": sorted(opp_accounts)  # Return account names from opportunities, sorted alphabetically
     }
 
 
