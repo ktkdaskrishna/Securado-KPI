@@ -1215,24 +1215,33 @@ async def list_activities(
     logger.info(f"Activities list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
     # Build query for canonical CRM activities ONLY
-    # res_model='crm.lead' ensures we only get CRM-related activities
+    # Include activities with res_model='crm.lead' OR activities with opportunity_id (from crm.activity.report)
     canonical_query = {
         "org_id": org_id,
-        "res_model": "crm.lead"  # Only CRM activities, not project tasks
+        "$or": [
+            {"res_model": "crm.lead"},
+            {"opportunity_id": {"$exists": True, "$ne": None}}
+        ]
     }
     app_query = {"org_id": org_id}
     
     if opportunity_id:
-        canonical_query["opportunity_id"] = opportunity_id
+        canonical_query = {
+            "org_id": org_id,
+            "opportunity_id": opportunity_id
+        }
         app_query["opportunity_id"] = opportunity_id
     if account_id:
         app_query["account_id"] = account_id
     if sales_rep:
-        canonical_query["assigned_user"] = sales_rep
+        canonical_query["$or"] = [
+            {"assigned_user": sales_rep},
+            {"salesperson": sales_rep}
+        ]
         app_query["owner_name"] = sales_rep
     
     # Fetch CRM activities from canonical DB (synced from Odoo)
-    canonical_activities = await canonical_db.activities.find(canonical_query).to_list(1000)
+    canonical_activities = await canonical_db.activities.find(canonical_query).to_list(10000)
     
     # Fetch from app DB (manually created)
     app_activities = await app_db.activities.find(app_query).to_list(1000)
