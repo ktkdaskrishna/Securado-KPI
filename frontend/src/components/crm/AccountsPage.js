@@ -290,12 +290,6 @@ export function AccountsPage() {
           })}
         </div>
       )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* 360° View Sheet - Modern Design */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
