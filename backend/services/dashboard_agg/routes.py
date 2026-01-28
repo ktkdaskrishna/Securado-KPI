@@ -80,8 +80,15 @@ def normalize_stage_for_dashboard(stage: str, active: bool = True, lost_reason_i
 
 
 def apply_date_filters_for_won_lost(records: list, year: str = None, quarter: str = None) -> list:
-    """Apply year and quarter filters based on date_closed (when deal was won/lost)
-    This is specifically for Won/Lost deals which should be filtered by their close date.
+    """Apply year and quarter filters based on won_at (date_last_stage_update from Odoo)
+    This is specifically for Won/Lost deals which should be filtered by their actual close date.
+    
+    Priority for date field:
+    1. won_at - The correct field (date_last_stage_update from Odoo)
+    2. stage_changed_at - Alias for won_at
+    3. date_closed - Fallback (often None in Odoo for Won deals)
+    4. close_date - Alternative field
+    5. write_date - Last resort
     """
     if not year and not quarter:
         return records
@@ -95,9 +102,10 @@ def apply_date_filters_for_won_lost(records: list, year: str = None, quarter: st
     }
     
     for record in records:
-        # For Won/Lost deals, use date_closed
+        # For Won/Lost deals, use won_at (date_last_stage_update) as primary
         date_value = None
-        for field in ['date_closed', 'close_date', 'write_date']:
+        # Priority: won_at > stage_changed_at > date_closed > close_date > write_date
+        for field in ['won_at', 'stage_changed_at', 'date_closed', 'close_date', 'write_date']:
             if record.get(field):
                 date_value = parse_date_from_string(record.get(field))
                 if date_value:
