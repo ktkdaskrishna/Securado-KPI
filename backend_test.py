@@ -522,11 +522,11 @@ def main():
     
     # CRITICAL TESTS
     print("\n" + "="*60)
-    print("🔥 CRITICAL TESTS - Sales Leaderboard & Year Filter")
+    print("🔥 CRITICAL TESTS - Win Rate, Lost Deals, Year Filter")
     print("="*60)
-    tester.test_dashboard_stats_unfiltered()
+    tester.test_dashboard_stats_unfiltered()  # CRITICAL: Win Rate 40.2%, Lost 214
     tester.test_leaderboard_won_deals_only()  # CRITICAL: Leaderboard shows WON deals only
-    tester.test_year_filter_2025()  # CRITICAL: 2025 should show 1 won deal
+    tester.test_year_filter_2025()  # CRITICAL: 2025 should show Won=1, Lost=5, Win Rate=16.7%
     
     # Dashboard stats and filters
     print("\n" + "="*60)
@@ -548,11 +548,18 @@ def main():
     
     # Invoices stats and filtering
     print("\n" + "="*60)
-    print("💰 Invoices Stats & Filtering")
+    print("💰 CRITICAL TEST - Invoices Stats & Filtering")
     print("="*60)
-    tester.test_invoices_stats()
+    tester.test_invoices_stats()  # CRITICAL: Total 2.8M, Overdue 881K, Paid 1.9M
     tester.test_invoices_filtering()
     tester.test_invoices_contextual_filters()
+    
+    # AI Analytics
+    print("\n" + "="*60)
+    print("🤖 CRITICAL TEST - AI Analytics")
+    print("="*60)
+    tester.test_ai_analytics_overview()  # CRITICAL: Win Rate 40.2%, Lost 214
+    tester.test_ai_insights_generation()  # Test AI insights generation
     
     # Stage mapping
     print("\n" + "="*60)
