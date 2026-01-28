@@ -310,7 +310,7 @@ export function DashboardPage() {
           <Card 
             key={index} 
             data-testid={`crm-kpi-card-${kpi.title.toLowerCase().replace(/\s/g, '-')}`}
-            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group"
+            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group overflow-hidden"
             onClick={() => {
               if (kpi.title === 'Total Pipeline' || kpi.title === 'Open Opportunities') {
                 handleNavigateToOpportunities();
@@ -322,13 +322,15 @@ export function DashboardPage() {
             }}
           >
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{kpi.title}</p>
-                  <p className="text-2xl font-bold mt-1">{formatValue(kpi.value, kpi.format)}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-500 truncate">{kpi.title}</p>
+                  <p className="text-xl font-bold mt-1 truncate" title={kpi.format === 'currency' ? formatCurrency(kpi.value) : kpi.value}>
+                    {formatValue(kpi.value, kpi.format)}
+                  </p>
                 </div>
-                <div className={`p-3 rounded-full bg-${kpi.color}-100 group-hover:scale-110 transition-transform`}>
-                  <kpi.icon className={`h-6 w-6 text-${kpi.color}-600`} />
+                <div className={`p-2 rounded-full bg-${kpi.color}-100 group-hover:scale-110 transition-transform flex-shrink-0`}>
+                  <kpi.icon className={`h-5 w-5 text-${kpi.color}-600`} />
                 </div>
               </div>
               {kpi.change !== 0 && (
