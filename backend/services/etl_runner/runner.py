@@ -371,22 +371,25 @@ class ETLRunner:
             
             # Extract records - IMPORTANT: Apply different rules based on model
             # - crm.lead: Include archived (lost deals are archived in Odoo), NO LIMIT for full sync
+            # - mail.activity: Include ALL activities (completed and pending), NO LIMIT
             # - res.users: Only active users
             # - res.partner: Only active accounts
-            # - Other models: Include all
+            # - Other models: Include all with default limit
             source_model = mapping["source_model"]
             
-            # For crm.lead (opportunities/leads), we need ALL records for accurate reporting
-            # Other models can use a limit for performance
-            if source_model == "crm.lead":
-                extract_limit = None  # No limit - get ALL opportunities/leads
+            # Models that need ALL records for accurate reporting
+            no_limit_models = ["crm.lead", "mail.activity"]
+            if source_model in no_limit_models:
+                extract_limit = None  # No limit - get ALL records
             else:
                 extract_limit = config.get("extract_limit", 500)
             
-            # Determine if we should include archived records
-            include_archived = source_model == "crm.lead"  # Lost deals are archived
+            # Determine if we should include archived/completed records
+            # - crm.lead: Include archived (lost deals are archived in Odoo)
+            # - mail.activity: Include ALL activities (done, overdue, today, planned)
+            include_all_states = source_model in ["crm.lead", "mail.activity"]
             
-            # Add active filter for users and partners
+            # Add active filter for users and partners only
             extraction_domain = list(domain)  # Copy domain
             if source_model in ["res.users", "res.partner"]:
                 # Only sync active users and accounts
@@ -397,7 +400,7 @@ class ETLRunner:
             search_options = {
                 'fields': source_fields,
                 'order': 'write_date desc',
-                'context': {'active_test': False} if include_archived else {}
+                'context': {'active_test': False} if include_all_states else {}
             }
             if extract_limit:
                 search_options['limit'] = extract_limit
