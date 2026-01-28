@@ -353,7 +353,7 @@ class DashboardAggregator:
                     activity_type_map["calls"] += 1
                 elif "email" in act_type or "mail" in act_type:
                     activity_type_map["emails"] += 1
-                elif "meet" in act_type or "event" in act_type or "demo" in act_type or "site visit" in act_type:
+                elif "meet" in act_type or "demo" in act_type or "site visit" in act_type or "poc" in act_type or "workshop" in act_type or "roundtable" in act_type:
                     activity_type_map["meetings"] += 1
                 else:
                     activity_type_map["tasks"] += 1
