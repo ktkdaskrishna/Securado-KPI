@@ -88,10 +88,15 @@ async def get_analytics_overview(
     
     # Helper functions for proper classification
     def is_won(o):
-        stage = o.get("stage", "").lower()
+        stage = (o.get("stage") or "").lower().strip()
         return stage == "won" or "closed won" in stage
     
     def is_lost(o):
+        stage = (o.get("stage") or "").lower().strip()
+        # Check stage first (most reliable)
+        if stage == "lost" or "closed lost" in stage:
+            return True
+        # Also check active flag with lost reason (archived deals in Odoo)
         active = o.get("active", True)
         if active == 'False' or active is False:
             return bool(o.get("lost_reason_id") or o.get("lost_reason"))
