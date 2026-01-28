@@ -487,24 +487,34 @@ async def get_dashboard_stats(
     new_leads = len([lead for lead in leads_only if "new" in (lead.get("stage") or "").lower() or "enquiry" in (lead.get("stage") or "").lower()])
     qualified_leads = len([lead for lead in leads_only if "qualified" in (lead.get("stage") or "").lower()])
     
-    # Build leaderboard from filtered opportunities - use sale_value
-    owner_values = defaultdict(float)
+    # Build leaderboard from WON deals only (not total pipeline) - use sale_value
+    # Filter to only "Won" stage opportunities
+    won_opps_for_leaderboard = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get("stage", "")) == "closed_won"]
+    
+    owner_won_values = defaultdict(float)
+    owner_won_counts = defaultdict(int)
     owner_names = {}
-    for opp in opportunities_only:
+    for opp in won_opps_for_leaderboard:
         owner_id = opp.get("owner_id")
         owner_name = opp.get("owner_name")
         if owner_id and owner_name:
-            owner_values[owner_id] += get_opp_value(opp)
+            owner_won_values[owner_id] += get_opp_value(opp)
+            owner_won_counts[owner_id] += 1
             owner_names[owner_id] = owner_name
     
     leaderboard = []
-    sorted_owners = sorted(owner_values.items(), key=lambda x: x[1], reverse=True)[:5]
+    sorted_owners = sorted(owner_won_values.items(), key=lambda x: x[1], reverse=True)[:5]
     for owner_id, value in sorted_owners:
         leaderboard.append({
             "id": str(owner_id),
             "name": owner_names.get(owner_id, f"User {owner_id}"),
-            "value": value
+            "value": value,
+            "deals_won": owner_won_counts[owner_id]
         })
+    
+    # If no won deals, show placeholder
+    if not leaderboard:
+        leaderboard = [{"id": "0", "name": "No won deals yet", "value": 0, "deals_won": 0}]
     
     # Build pipeline by stage
     pipeline_by_stage = [
