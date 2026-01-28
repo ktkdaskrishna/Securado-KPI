@@ -169,70 +169,127 @@ export function AccountsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAccounts.map((account) => (
-            <Card 
-              key={account.canonical_id || account.id}
-              className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 bg-white rounded-2xl overflow-hidden ${
-                account.has_overdue ? 'ring-2 ring-red-400 border-red-200' : ''
-              }`}
-              onClick={() => load360(account)}
-              data-testid={`account-card-${account.canonical_id || account.id}`}
-            >
-              <CardContent className="p-5">
-                {/* Overdue Warning Banner */}
-                {account.has_overdue && (
-                  <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-3 -mt-1 -mx-1">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-xs font-medium">Overdue: {formatCurrency(account.overdue_amount || 0)}</span>
+          {filteredAccounts.map((account) => {
+            // Only show overdue styling for companies
+            const showOverdue = account.is_company && account.has_overdue;
+            
+            return (
+              <Card 
+                key={account.canonical_id || account.id}
+                className={`group hover:shadow-xl transition-all duration-300 cursor-pointer bg-white rounded-2xl overflow-hidden relative ${
+                  showOverdue 
+                    ? 'border-2 border-orange-400/60 shadow-[0_0_20px_rgba(251,146,60,0.15)]' 
+                    : 'border border-gray-100 hover:border-gray-200'
+                }`}
+                onClick={() => load360(account)}
+                data-testid={`account-card-${account.canonical_id || account.id}`}
+              >
+                {/* Gen-Z Overdue Alert - Only for Companies */}
+                {showOverdue && (
+                  <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 px-4 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5">
+                          <Flame className="h-3.5 w-3.5 text-yellow-200 animate-pulse" />
+                          <span className="text-xs font-bold text-white">OVERDUE</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white">
+                          {formatCurrency(account.overdue_amount || 0)}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs bg-white/20 hover:bg-white/30 text-white border-0 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/invoices?account=${encodeURIComponent(account.name)}&status=overdue`);
+                        }}
+                      >
+                        <Receipt className="h-3 w-3 mr-1" />
+                        View Invoices
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 )}
                 
-                {/* Header with Avatar */}
-                <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(account.name)} flex items-center justify-center text-white font-semibold text-lg shadow-lg relative`}>
-                    {getInitials(account.name)}
-                    {/* Company/Contact indicator */}
-                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md ${account.is_company ? 'bg-blue-500' : 'bg-green-500'}`}>
-                      {account.is_company ? (
-                        <Building2 className="h-3 w-3" />
-                      ) : (
-                        <User2 className="h-3 w-3" />
+                <CardContent className={`p-5 ${showOverdue ? 'pt-14' : ''}`}>
+                  {/* Header with Avatar */}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(account.name)} flex items-center justify-center text-white font-semibold text-lg shadow-lg relative`}>
+                      {getInitials(account.name)}
+                      {/* Company/Contact indicator */}
+                      <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md ${account.is_company ? 'bg-blue-500' : 'bg-green-500'}`}>
+                        {account.is_company ? (
+                          <Building2 className="h-3 w-3" />
+                        ) : (
+                          <User2 className="h-3 w-3" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
+                        {account.name}
+                      </h3>
+                      {account.email && (
+                        <p className="text-sm text-gray-500 truncate flex items-center gap-1 mt-1">
+                          <Mail className="h-3 w-3" />
+                          {account.email}
+                        </p>
+                      )}
+                      {account.phone && (
+                        <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                          <Phone className="h-3 w-3" />
+                          {account.phone}
+                        </p>
                       )}
                     </div>
+                    <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
-                      {account.name}
-                    </h3>
-                    {account.email && (
-                      <p className="text-sm text-gray-500 truncate flex items-center gap-1 mt-1">
-                        <Mail className="h-3 w-3" />
-                        {account.email}
-                      </p>
-                    )}
-                    {account.phone && (
-                      <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                        <Phone className="h-3 w-3" />
-                        {account.phone}
-                      </p>
-                    )}
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </div>
 
-                {/* Location & Industry */}
-                <div className="flex items-center gap-3 mt-4 text-sm text-gray-500">
-                  {(account.city || account.country) && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {[account.city, account.country].filter(Boolean).join(', ')}
-                    </span>
+                  {/* Location & Industry */}
+                  <div className="flex items-center gap-3 mt-4 text-sm text-gray-500">
+                    {(account.city || account.country) && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {[account.city, account.country].filter(Boolean).join(', ')}
+                      </span>
+                    )}
+                    {account.industry && (
+                      <Badge variant="secondary" className="text-xs font-normal">
+                        {account.industry}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Quick Invoice Link for Companies with any invoice activity */}
+                  {account.is_company && (
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-xs text-gray-400">
+                        {account.is_company ? 'Company' : 'Contact'}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/invoices?account=${encodeURIComponent(account.name)}`);
+                        }}
+                      >
+                        <FileText className="h-3 w-3 mr-1" />
+                        Invoices
+                        <ExternalLink className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
                   )}
-                  {account.industry && (
-                    <Badge variant="secondary" className="text-xs font-normal">
-                      {account.industry}
-                    </Badge>
-                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
                 </div>
               </CardContent>
             </Card>
