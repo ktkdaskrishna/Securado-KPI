@@ -788,6 +788,7 @@ async def setup_odoo_automations(
                 continue
                 
             for trigger, action_type in config["triggers"]:
+                action_name = f"{config['name']} - {action_type.upper()}"
                 
                 try:
                     # Check if automation already exists
@@ -801,20 +802,25 @@ async def setup_odoo_automations(
                         logger.info(f"Automation '{action_name}' already exists, skipping")
                         continue
                     
-                    # Step 1: Create the ir.actions.server record first
-                    # In Odoo 17, base.automation links to server actions via action_server_ids
-                    server_action_name = f"Server Action: {action_name}"
+                    # Odoo 17 has a built-in 'webhook' state for server actions
+                    # This sends a POST request with record data to the specified URL
+                    # The webhook URL includes query params to identify the action type
+                    webhook_url_with_params = f"{webhook_url}?model={config['model']}&action={action_type}"
+                    
+                    # Step 1: Create the ir.actions.server with state='webhook'
+                    server_action_name = f"Webhook: {action_name}"
                     server_action_id = models.execute_kw(
                         conn["database"], uid, conn["api_key"],
                         'ir.actions.server', 'create',
                         [{
                             'name': server_action_name,
-                            'model_id': config["model_id"],
-                            'state': 'code',
-                            'code': python_code
+                            'model_id': model_id,
+                            'state': 'webhook',
+                            'webhook_url': webhook_url_with_params,
+                            'webhook_field_ids': []  # Empty means send all accessible fields
                         }]
                     )
-                    logger.info(f"Created server action: {server_action_name} (ID: {server_action_id})")
+                    logger.info(f"Created webhook server action: {server_action_name} (ID: {server_action_id})")
                     
                     # Step 2: Create the base.automation record that references the server action
                     automation_id = models.execute_kw(
@@ -822,7 +828,7 @@ async def setup_odoo_automations(
                         'base.automation', 'create',
                         [{
                             'name': action_name,
-                            'model_id': config["model_id"],
+                            'model_id': model_id,
                             'trigger': trigger,
                             'action_server_ids': [(4, server_action_id)],  # Link to server action
                             'active': True
