@@ -353,18 +353,28 @@ class ETLRunner:
             else:
                 log("Full sync mode")
             
-            # Extract records - IMPORTANT: Include archived records (lost deals in Odoo are archived)
-            # Use 'context': {'active_test': False} to get both active and archived records
+            # Extract records - IMPORTANT: Apply different rules based on model
+            # - crm.lead: Include archived (lost deals are archived in Odoo)
+            # - res.users: Only active users
+            # - res.partner: Only active accounts
+            # - Other models: Include all
             extract_limit = config.get("extract_limit", 500)
+            source_model = mapping["source_model"]
             
-            # For CRM leads, we need both active and inactive records
-            # Lost deals are archived (active=False) in Odoo
-            include_archived = mapping["source_model"] == "crm.lead"
+            # Determine if we should include archived records
+            include_archived = source_model == "crm.lead"  # Lost deals are archived
+            
+            # Add active filter for users and partners
+            extraction_domain = list(domain)  # Copy domain
+            if source_model in ["res.users", "res.partner"]:
+                # Only sync active users and accounts
+                extraction_domain.append(('active', '=', True))
+                log(f"Filtering {source_model} to active records only")
             
             records = models.execute_kw(
                 conn["database"], uid, conn["api_key"],
-                mapping["source_model"], 'search_read',
-                [domain],  # Domain must be in a list
+                source_model, 'search_read',
+                [extraction_domain],  # Domain must be in a list
                 {
                     'fields': source_fields,
                     'limit': extract_limit,
@@ -373,7 +383,7 @@ class ETLRunner:
                 }
             )
             
-            log(f"Extracted {len(records)} records from Odoo" + (" (including archived)" if include_archived else ""))
+            log(f"Extracted {len(records)} records from Odoo" + (" (including archived)" if include_archived else " (active only)"))
             
             # Log sample record structure for debugging
             if records:
