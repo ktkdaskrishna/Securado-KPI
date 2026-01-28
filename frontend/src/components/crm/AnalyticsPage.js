@@ -440,7 +440,7 @@ export default function AnalyticsPage() {
                           </div>
                           <div>
                             <p className="font-semibold text-sm">{pm.name}</p>
-                            <p className="text-xs text-muted-foreground">{pm.categories_count || 0} categories</p>
+                            <p className="text-xs text-muted-foreground">{pm.categories_count || 0} {(pm.categories_count || 0) === 1 ? 'category' : 'categories'}</p>
                           </div>
                         </div>
                         {index === 0 && <Badge className="bg-violet-500">Top PM</Badge>}
