@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="teams" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            Teams
+            PM & Categories
           </TabsTrigger>
           <TabsTrigger value="accounts" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
