@@ -234,6 +234,7 @@ FIELD_SIMILARITY_MAP = {
     "amount": ["amount", "expected_revenue", "value", "total", "deal_value", "revenue"],
     "probability": ["probability", "probability_pct", "win_probability", "confidence"],
     "stage": ["stage", "stage_id", "stage_name", "pipeline_stage", "dealstage", "status"],
+    "custom_stage": ["x_studio_opportunity_stages_1", "x_studio_stage", "custom_stage", "opportunity_stage"],
     "owner_id": ["owner_id", "user_id", "assigned_to", "salesperson_id", "hubspot_owner_id"],
     "owner_name": ["owner_name", "user_name", "salesperson", "assigned_name"],
     "account_id": ["account_id", "company_id", "partner_id", "organization_id"],
