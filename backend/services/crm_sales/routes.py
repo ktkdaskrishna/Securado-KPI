@@ -1674,7 +1674,11 @@ async def list_activities(
 
 
 @activities_router.get("/stats")
-async def get_activity_stats(current_user: dict = Depends(get_current_user)):
+async def get_activity_stats(
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    current_user: dict = Depends(get_current_user)
+):
     """Get CRM activity statistics. Only counts CRM-related activities, not project tasks."""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
@@ -1692,6 +1696,37 @@ async def get_activity_stats(current_user: dict = Depends(get_current_user)):
     
     # Get activities from app DB
     app_activities = await app_db.activities.find({"org_id": org_id}).to_list(1000)
+    
+    # Apply year/quarter filters
+    def filter_by_date(activities, year_filter, quarter_filter):
+        if not year_filter and not quarter_filter:
+            return activities
+        
+        quarter_months = {
+            "Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"],
+            "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]
+        }
+        
+        filtered = []
+        for act in activities:
+            date_str = act.get("date") or act.get("date_deadline") or act.get("created_at") or ""
+            if isinstance(date_str, str) and len(date_str) >= 10:
+                act_year = date_str[:4]
+                act_month = date_str[5:7]
+                
+                if year_filter and act_year != str(year_filter):
+                    continue
+                if quarter_filter:
+                    months = quarter_months.get(quarter_filter, [])
+                    if act_month not in months:
+                        continue
+                filtered.append(act)
+            elif not year_filter and not quarter_filter:
+                filtered.append(act)
+        return filtered
+    
+    canonical_activities = filter_by_date(canonical_activities, year, quarter)
+    app_activities = filter_by_date(app_activities, year, quarter)
     
     # NOTE: Project tasks (canonical_db.tasks) are NOT included in CRM activity stats
     
