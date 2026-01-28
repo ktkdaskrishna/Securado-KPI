@@ -1,100 +1,106 @@
 # CRM KPI Management Platform - Development Plan
 
 ## Current Session Focus
-Fixed critical filter issues and routing problems identified by user testing.
+Implemented contextual filters for each page, fixed Sales Leaderboard logic, and improved Invoices page functionality.
 
 ---
 
-## Phase 1: Fix Critical Filter Issues (Status: COMPLETED ✅)
+## Phase 4: Contextual Filters & Leaderboard Fix (Status: COMPLETED ✅)
 
-### 🔴 P0 - CRITICAL: Year Filter Not Working - FIXED ✅
-**Problem:** When selecting "2026" in the year filter, the API calls don't include year/date parameters.
+### 🔴 P0 - Sales Leaderboard Logic - FIXED ✅
+**Problem:** Leaderboard was showing total pipeline value for ALL deals instead of Won deals only.
 
 **Fix Implemented:**
-- ✅ Updated `GlobalFilterContext.js` to sync filters with URL parameters
-- ✅ Updated all API calls to pass filter parameters correctly via `getQueryParams()`
-- ✅ Fixed backend date filtering in `dashboard_agg/routes.py` and `crm_sales/routes.py`
-- ✅ Created `parse_date_from_string()` and `apply_date_filters()` helper functions
-- ✅ Applied filter logic to ALL endpoints: dashboard, opportunities, accounts, activities, analytics, kanban
+- ✅ Modified `dashboard_agg/routes.py` to filter opportunities by `stage: 'Won'` before aggregating
+- ✅ Leaderboard now shows top performers by closed/won revenue only
+- ✅ Added `deals_won` count to leaderboard entries
+- ✅ Verified: Shri Hari Venkatesh Naidu is now #1 with OMR 1,014,217 (30 won deals)
 
-### 🔴 P0 - CRITICAL: Filter State Not Persisted Across Pages - FIXED ✅
-**Problem:** Filter resets when navigating between pages.
+### 🟢 Contextual Filters Implementation - COMPLETED ✅
+**Removed global filter bar and implemented page-specific contextual filters:**
+
+| Page | Filters Available |
+|------|------------------|
+| Dashboard | Year, Quarter, Sales Rep, Stage |
+| Opportunities | Year, Quarter, Sales Rep, Account, Stage |
+| Activities | Year, Quarter, Sales Rep, Type, Status |
+| Invoices | Year, Quarter, Account |
+| Leads | Uses own inline filters |
+
+**Files Created/Modified:**
+- ✅ Created `/app/frontend/src/components/layout/PageFilters.js` - Reusable filter components
+- ✅ Updated `DashboardPage.js` - Added contextual filter bar
+- ✅ Updated `OpportunitiesPage.js` - Added contextual filter bar with Account filter
+- ✅ Updated `ActivitiesPage.js` - Added contextual filter bar with Type & Status filters
+- ✅ Updated `InvoicesPage.js` - Complete rewrite with proper filtering and stats
+- ✅ Updated `Layout.js` - Removed global filter bar
+
+### 🟢 Invoices Page Enhancement - COMPLETED ✅
+**Problem:** Invoices page wasn't showing proper stats or filtering.
 
 **Fix Implemented:**
-- ✅ Filters sync to URL query parameters automatically
-- ✅ URL shows params like `?year=2025&quarter=Q1`
-- ✅ Filters initialized from URL on page load
-- ✅ **CRITICAL FIX:** Modified Sidebar.js NavItem to preserve URL query params when navigating
+- ✅ Rewrote backend `/api/receivables` to support status, account, year, quarter filters
+- ✅ Added `/api/receivables/stats` endpoint for aggregated stats
+- ✅ Implemented proper status calculation (pending, overdue, paid)
+- ✅ Added Collection Progress bar with percentage
+- ✅ Stats now showing correctly: Total OMR 2.8M, Overdue OMR 881K (63), Paid OMR 1.9M (123)
 
 ---
 
-## Phase 2: Complete Global Filter Integration (Status: COMPLETED ✅)
+## Remaining Issues
 
-### Tasks Completed:
-- ✅ Connected filters to Dashboard page
-- ✅ Connected filters to Opportunities page (list and kanban)
-- ✅ Connected filters to Accounts page
-- ✅ Connected filters to Activities page
-- ✅ Connected filters to AI Analytics page
-- ✅ Updated Kanban view to respect filters
+### 🟡 P1 - Win Rate Logic Clarification (Status: PENDING USER INPUT)
+**Current:** Shows 100% because formula is `Won / (Won + Lost)` and there are 0 "Lost" deals.
+**Action Needed:** User needs to confirm which formula to use:
+- a) Keep current `Won / (Won + Lost)` 
+- b) `Won / (Won + Lost + Other Closed)`
+- c) Custom formula
 
----
-
-## Phase 3: Missing Page Routes (Status: COMPLETED ✅)
-
-### ✅ Timeline Page - WORKING
-- Route `/activity-timeline` works correctly
-- Shows chronological activity view with date grouping
-
-### ✅ Invoices Page - WORKING
-- Route `/invoices` works correctly
-- Shows invoices with proper data
-
-### ✅ AI Analytics Routing - FIXED
-- Route `/analytics` renders correctly (no redirect issue)
-- All tabs working: Conversion Funnel, Rep Performance, Teams, Account Health, AI Insights
+### 🟡 P1 - Leaderboard Role Filtering (Status: PENDING USER INPUT)
+**Problem:** User wants leaderboard to only show sales roles (Account Manager, Sales Manager).
+**Current:** Shows all users who have won deals.
+**Action Needed:** Determine how to identify user roles in the system.
 
 ---
 
-## Final Test Results ✅
+## Phase 1-3: Previous Work (Status: COMPLETED ✅)
 
-### Backend API Testing (100% Pass):
-| Endpoint | Filter | Result |
-|----------|--------|--------|
-| Dashboard Stats | No filter | 898 opportunities |
-| Dashboard Stats | year=2025 | 504 opportunities ✅ |
-| Dashboard Stats | year=2026 | 17 opportunities ✅ |
-| Dashboard Stats | year=2025&quarter=Q1 | 114 opportunities ✅ |
-| Opportunities | year=2025 | 100 returned ✅ |
-| Kanban | year=2025 | 504 total, filtered=true ✅ |
-| Accounts | year=2025 | Filtered correctly ✅ |
-| Activities | year=2025 | Filtered correctly ✅ |
-
-### Frontend Testing (100% Pass):
+### Filter Integration - COMPLETED ✅
 - ✅ Year filter dropdown works
 - ✅ URL updates with filter params (`?year=2025`)
-- ✅ Filter persistence: Dashboard → Opportunities → Activities (URL preserved)
+- ✅ Filter persistence across pages
+- ✅ All pages correctly filter data
+
+### Page Routes - COMPLETED ✅
 - ✅ Timeline page routing correct
 - ✅ Invoices page routing correct
-- ✅ AI Analytics page routing correct (no redirect)
-- ✅ Reset button clears filters and URL params
+- ✅ AI Analytics page routing correct
+
+### Critical ETL Regression - FIXED ✅
+- ✅ Fixed missing `account_name` and `owner_name` data
+- ✅ Fixed stage showing IDs instead of names
+
+### Leads vs Opportunities Separation - COMPLETED ✅
+- ✅ Created new `/leads` page
+- ✅ Added backend endpoints for leads
+- ✅ Dashboard shows separate counts
 
 ---
 
 ## Files Modified This Session
 
 ### Backend:
-- `/app/backend/services/dashboard_agg/routes.py` - Added date filtering helpers and filter params
-- `/app/backend/services/crm_sales/routes.py` - Added date filtering to opportunities, kanban, accounts, activities
+- `/app/backend/services/dashboard_agg/routes.py` - Fixed leaderboard to use Won deals only
+- `/app/backend/services/crm_sales/routes.py` - Rewrote receivables endpoints with proper filtering
 
 ### Frontend:
-- `/app/frontend/src/lib/GlobalFilterContext.js` - Added URL sync, improved getQueryParams
-- `/app/frontend/src/lib/api.js` - Updated getKanban to accept params
-- `/app/frontend/src/components/layout/Sidebar.js` - **CRITICAL FIX:** Added URL param preservation for navigation
-- `/app/frontend/src/components/crm/AccountsPage.js` - Integrated with global filters
-- `/app/frontend/src/components/crm/ActivitiesPage.js` - Integrated with global filters
-- `/app/frontend/src/components/crm/AnalyticsPage.js` - Integrated with global filters
-- `/app/frontend/src/components/crm/OpportunitiesPage.js` - Fixed kanban filter passing
+- `/app/frontend/src/components/layout/Layout.js` - Removed global filter bar
+- `/app/frontend/src/components/layout/PageFilters.js` - **NEW** Reusable contextual filter components
+- `/app/frontend/src/components/crm/DashboardPage.js` - Added contextual filters
+- `/app/frontend/src/components/crm/OpportunitiesPage.js` - Added contextual filters
+- `/app/frontend/src/components/crm/ActivitiesPage.js` - Added contextual filters
+- `/app/frontend/src/components/crm/InvoicesPage.js` - **REWRITTEN** with proper filtering and stats
+- `/app/frontend/src/lib/api.js` - Added getReceivablesStats API call
 
 ---
 
