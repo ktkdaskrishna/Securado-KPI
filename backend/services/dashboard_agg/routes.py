@@ -469,7 +469,7 @@ async def get_dashboard_stats(
         owner_id = opp.get("owner_id")
         owner_name = opp.get("owner_name")
         if owner_id and owner_name:
-            owner_values[owner_id] += opp.get("amount", 0) or 0
+            owner_values[owner_id] += get_opp_value(opp)
             owner_names[owner_id] = owner_name
     
     leaderboard = []
