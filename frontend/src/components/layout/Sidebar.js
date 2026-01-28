@@ -189,18 +189,26 @@ export function Sidebar() {
   // Filter items based on both preferences AND permissions
   const getVisibleItems = (items) => {
     return items.filter(item => {
-      // Check if user disabled it
+      // Check if user disabled it in preferences
       if (navPreferences[item.id] === false) return false;
       
       // Check permission requirement
       const requiredPermission = permissionRequirements[item.id];
-      if (requiredPermission === null) return true; // Always visible
-      if (!requiredPermission) return true; // No requirement defined
       
-      // While RBAC is loading, show items with default visibility
-      if (rbacLoading) return item.default !== false;
+      // Always show items with no permission requirement (like profile)
+      if (requiredPermission === null) return true;
       
-      return hasPermission(requiredPermission);
+      // If no specific permission defined, show by default
+      if (!requiredPermission) return true;
+      
+      // While RBAC is loading, show default items to prevent empty sidebar
+      if (rbacLoading) {
+        return item.default !== false;
+      }
+      
+      // Check if user has the required permission
+      const permitted = hasPermission(requiredPermission);
+      return permitted;
     });
   };
 
