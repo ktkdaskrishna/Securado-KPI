@@ -723,11 +723,29 @@ async def setup_odoo_automations(
         
         webhook_url = f"{webhook_base_url.rstrip('/')}/api/webhooks/odoo"
         
+        # First, we need to get the ir.model IDs for each model
+        # because we need to reference them properly
+        model_names = ['crm.lead', 'res.partner', 'res.users', 'account.move', 'mail.activity']
+        model_ids = {}
+        
+        for model_name in model_names:
+            try:
+                result = models.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    'ir.model', 'search_read',
+                    [[('model', '=', model_name)]],
+                    {'fields': ['id', 'model'], 'limit': 1}
+                )
+                if result:
+                    model_ids[model_name] = result[0]['id']
+                    logger.info(f"Found model {model_name} with ID {result[0]['id']}")
+            except Exception as e:
+                logger.error(f"Error fetching model ID for {model_name}: {e}")
+        
         # Model configurations for webhook setup
         model_configs = [
             {
                 "model": "crm.lead",
-                "model_id": 362,
                 "name": "CRM Webhook Sync",
                 "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
                 "fields": ["name", "stage_id", "user_id", "partner_id", "expected_revenue", 
@@ -735,21 +753,18 @@ async def setup_odoo_automations(
             },
             {
                 "model": "res.partner",
-                "model_id": 79,
                 "name": "Partner Webhook Sync",
                 "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
                 "fields": ["name", "email", "phone", "active", "company_type", "user_id"]
             },
             {
                 "model": "res.users",
-                "model_id": 91,
                 "name": "User Webhook Sync",
                 "triggers": [("on_write", "write")],
                 "fields": ["name", "login", "email", "groups_id", "active"]
             },
             {
                 "model": "account.move",
-                "model_id": 2784,
                 "name": "Invoice Webhook Sync",
                 "triggers": [("on_create", "create"), ("on_write", "write")],
                 "fields": ["name", "partner_id", "amount_total", "state", "payment_state", 
@@ -757,7 +772,6 @@ async def setup_odoo_automations(
             },
             {
                 "model": "mail.activity",
-                "model_id": 158,
                 "name": "Activity Webhook Sync",
                 "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
                 "fields": ["activity_type_id", "summary", "date_deadline", "user_id", "res_id", "res_model"]
@@ -768,43 +782,12 @@ async def setup_odoo_automations(
         errors = []
         
         for config in model_configs:
-            for trigger, action_type in config["triggers"]:
-                action_name = f"{config['name']} - {action_type.upper()}"
+            model_id = model_ids.get(config["model"])
+            if not model_id:
+                errors.append(f"Model ID not found for {config['model']}")
+                continue
                 
-                # Build Python code for webhook call
-                python_code = f'''
-import requests
-import json
-
-webhook_url = "{webhook_url}"
-
-# Build payload with key fields
-record_data = {{}}
-for field in {config["fields"]}:
-    try:
-        value = getattr(record, field, None)
-        if hasattr(value, 'id'):
-            record_data[field] = [value.id, value.name if hasattr(value, 'name') else str(value)]
-        elif hasattr(value, 'ids'):
-            record_data[field] = value.ids
-        else:
-            record_data[field] = value
-    except:
-        pass
-
-payload = {{
-    "model": "{config['model']}",
-    "action": "{action_type}",
-    "record_id": record.id,
-    "record_data": record_data
-}}
-
-try:
-    requests.post(webhook_url, json=payload, timeout=10)
-except Exception as e:
-    # Log to Odoo logs
-    pass
-'''
+            for trigger, action_type in config["triggers"]:
                 
                 try:
                     # Check if automation already exists
