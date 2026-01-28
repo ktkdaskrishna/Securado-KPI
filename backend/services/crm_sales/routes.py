@@ -982,14 +982,14 @@ async def update_bluesheet(
     """Update Bluesheet assessment for an opportunity"""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    # Verify opportunity exists
-    opp = await canonical_db.opportunities.find_one({
-        "canonical_id": opp_id,
-        "org_id": current_user.get("org_id", "default")
-    })
+    # Verify opportunity exists using helper
+    opp = await find_opportunity_by_id(opp_id, org_id, canonical_db)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    canonical_id = opp.get("canonical_id") or str(opp.get("_id"))
     
     # Prepare bluesheet document
     bluesheet_doc = {
