@@ -86,6 +86,17 @@ async def get_analytics_overview(
     # Get all opportunities
     all_opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
     
+    # Helper functions for proper classification
+    def is_won(o):
+        stage = o.get("stage", "").lower()
+        return stage == "won" or "closed won" in stage
+    
+    def is_lost(o):
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
+        return False
+    
     # Apply filters
     filters = {
         "year": year,
@@ -103,25 +114,31 @@ async def get_analytics_overview(
     # Get all sales users
     sales_users = await canonical_db.sales_users.find({"org_id": org_id}).to_list(1000)
     
-    # Calculate metrics
-    total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
-    won_opps = [o for o in opps if normalize_stage(o.get("stage", "")) == "won"]
-    lost_opps = [o for o in opps if normalize_stage(o.get("stage", "")) == "lost"]
+    # Calculate metrics using correct sale_value and Lost detection
+    total_pipeline = sum(get_opp_value(o) for o in opps)
+    won_opps = [o for o in opps if is_won(o)]
+    lost_opps = [o for o in opps if is_lost(o)]
     
-    won_value = sum(o.get("amount", 0) or 0 for o in won_opps)
-    lost_value = sum(o.get("amount", 0) or 0 for o in lost_opps)
+    won_value = sum(get_opp_value(o) for o in won_opps)
+    lost_value = sum(get_opp_value(o) for o in lost_opps)
     
     win_rate = (len(won_opps) / (len(won_opps) + len(lost_opps)) * 100) if (len(won_opps) + len(lost_opps)) > 0 else 0
     
     avg_deal_size = won_value / len(won_opps) if won_opps else 0
     
-    # Stage distribution
+    # Stage distribution - with proper lost detection
     stage_counts = defaultdict(int)
     stage_values = defaultdict(float)
     for opp in opps:
-        stage = normalize_stage(opp.get("stage", ""))
+        active = opp.get("active", True)
+        if active == 'False' or active is False:
+            active = False
+        else:
+            active = True
+        lost_reason = opp.get("lost_reason_id") or opp.get("lost_reason")
+        stage = normalize_stage(opp.get("stage", ""), active=active, lost_reason_id=lost_reason)
         stage_counts[stage] += 1
-        stage_values[stage] += opp.get("amount", 0) or 0
+        stage_values[stage] += get_opp_value(opp)
     
     # Get unique sales reps in filtered data
     unique_reps = len(set(o.get("owner_name") for o in opps if o.get("owner_name")))
