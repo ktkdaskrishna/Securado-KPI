@@ -384,7 +384,11 @@ async def get_team_performance(
     quarter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get sales team performance metrics - OPPORTUNITIES ONLY"""
+    """Get Product Manager and Category performance metrics - OPPORTUNITIES ONLY
+    
+    This shows performance by Product Manager and Solution Category rather than
+    sales teams, as it provides more value for the business.
+    """
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
@@ -392,56 +396,96 @@ async def get_team_performance(
         "org_id": org_id,
         "type": "opportunity"
     }).to_list(10000)
-    teams = await canonical_db.sales_teams.find({"org_id": org_id}).to_list(100)
     
     # Apply filters
     filters = {"year": year, "quarter": quarter}
     opps = apply_filters(all_opps, filters)
     
-    # Create team lookup
-    team_lookup = {str(t.get("source_record_id")): t.get("name", "Unknown") for t in teams}
-    
-    # Group by team
-    team_data = defaultdict(lambda: {
+    # Group by Product Manager
+    pm_data = defaultdict(lambda: {
         "total_opps": 0,
         "total_value": 0,
         "won_count": 0,
         "won_value": 0,
-        "reps": set()
+        "categories": set()
+    })
+    
+    # Group by Solution Category
+    cat_data = defaultdict(lambda: {
+        "total_opps": 0,
+        "total_value": 0,
+        "won_count": 0,
+        "won_value": 0,
+        "product_managers": set()
     })
     
     for opp in opps:
-        team_id = opp.get("team_id")
-        team_name = team_lookup.get(str(team_id), opp.get("team_name", "Unassigned")) if team_id else "Unassigned"
+        pm_name = opp.get("product_manager") or "Unassigned"
+        cat_name = opp.get("solution_category") or "Uncategorized"
         stage = normalize_stage(opp.get("stage", ""))
         value = get_opp_value(opp)
         
-        team_data[team_name]["total_opps"] += 1
-        team_data[team_name]["total_value"] += value
-        team_data[team_name]["reps"].add(opp.get("owner_name", "Unknown"))
+        # Product Manager metrics
+        pm_data[pm_name]["total_opps"] += 1
+        pm_data[pm_name]["total_value"] += value
+        pm_data[pm_name]["categories"].add(cat_name)
         
         if stage == "won":
-            team_data[team_name]["won_count"] += 1
-            team_data[team_name]["won_value"] += value
+            pm_data[pm_name]["won_count"] += 1
+            pm_data[pm_name]["won_value"] += value
+        
+        # Category metrics
+        cat_data[cat_name]["total_opps"] += 1
+        cat_data[cat_name]["total_value"] += value
+        cat_data[cat_name]["product_managers"].add(pm_name)
+        
+        if stage == "won":
+            cat_data[cat_name]["won_count"] += 1
+            cat_data[cat_name]["won_value"] += value
     
-    # Build response
-    performance = []
-    for team_name, data in team_data.items():
-        performance.append({
-            "name": team_name,
+    # Build Product Manager performance
+    pm_performance = []
+    for pm_name, data in pm_data.items():
+        closed = data["won_count"] + sum(1 for o in opps if normalize_stage(o.get("stage", "")) == "lost" and o.get("product_manager") == pm_name)
+        win_rate = round(data["won_count"] / closed * 100, 1) if closed > 0 else 0
+        
+        pm_performance.append({
+            "name": pm_name,
+            "type": "product_manager",
             "total_opportunities": data["total_opps"],
             "total_value": data["total_value"],
             "won_count": data["won_count"],
             "won_value": data["won_value"],
-            "rep_count": len(data["reps"]),
-            "avg_per_rep": round(data["won_value"] / len(data["reps"]), 2) if data["reps"] else 0
+            "categories_count": len(data["categories"]),
+            "win_rate": win_rate
         })
     
-    performance.sort(key=lambda x: x["won_value"], reverse=True)
+    pm_performance.sort(key=lambda x: x["won_value"], reverse=True)
+    
+    # Build Category performance
+    cat_performance = []
+    for cat_name, data in cat_data.items():
+        closed = data["won_count"] + sum(1 for o in opps if normalize_stage(o.get("stage", "")) == "lost" and o.get("solution_category") == cat_name)
+        win_rate = round(data["won_count"] / closed * 100, 1) if closed > 0 else 0
+        
+        cat_performance.append({
+            "name": cat_name,
+            "type": "category",
+            "total_opportunities": data["total_opps"],
+            "total_value": data["total_value"],
+            "won_count": data["won_count"],
+            "won_value": data["won_value"],
+            "product_managers_count": len(data["product_managers"]),
+            "win_rate": win_rate
+        })
+    
+    cat_performance.sort(key=lambda x: x["won_value"], reverse=True)
     
     return {
-        "teams": performance,
-        "total_teams": len(performance),
+        "product_managers": pm_performance,
+        "categories": cat_performance,
+        "total_product_managers": len(pm_performance),
+        "total_categories": len(cat_performance),
         "applied_filters": {k: v for k, v in filters.items() if v}
     }
 
