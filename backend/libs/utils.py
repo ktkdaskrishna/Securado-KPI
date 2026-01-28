@@ -10,8 +10,18 @@ import jwt
 import os
 
 
-# JWT Configuration
-JWT_SECRET = os.environ.get('JWT_SECRET', 'event-mesh-crm-secret-key-12345')
+# JWT Configuration - Use environment variable, fail if not set in production
+def get_jwt_secret():
+    """Get JWT secret from environment, with fallback for development only"""
+    secret = os.environ.get('JWT_SECRET')
+    if secret:
+        return secret
+    # Fallback for development - but log warning
+    import logging
+    logging.warning("JWT_SECRET not set - using development fallback. DO NOT use in production!")
+    return 'event-mesh-crm-secret-key-12345'
+
+JWT_SECRET = get_jwt_secret()
 JWT_ALGORITHM = 'HS256'
 JWT_ACCESS_EXPIRY_HOURS = 24
 JWT_REFRESH_EXPIRY_DAYS = 7
