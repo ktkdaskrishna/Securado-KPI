@@ -23,8 +23,11 @@ from libs.event_bus import emit_event
 from libs.schemas import Topics
 from services.identity.models import (
     UserCreate, UserLogin, RefreshTokenRequest,
-    TokenResponse, UserResponse, UserUpdate
+    TokenResponse, UserResponse, UserUpdate,
+    UserInvite, UserInviteResponse
 )
+import secrets
+import string
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
