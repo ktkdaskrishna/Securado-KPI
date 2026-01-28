@@ -10,29 +10,39 @@ import { Skeleton } from '../ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Building2, Search, Eye, Phone, Mail, MapPin, Users, FileText, Receipt, User2, Briefcase, Trophy, ChevronRight, ExternalLink } from 'lucide-react';
+import { Building2, Search, Eye, Phone, Mail, MapPin, Users, FileText, Receipt, User2, Briefcase, Trophy, ChevronRight, ExternalLink, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function AccountsPage() {
-  const [accounts, setAccounts] = useState([]);
+  const [accountsData, setAccountsData] = useState({ data: [], summary: {} });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [account360, setAccount360] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const { formatCurrency } = useCurrency();
   const { getQueryParams } = useGlobalFilters();
 
   // Load accounts
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [activeTab]);
 
   const loadAccounts = async () => {
     setLoading(true);
     try {
-      const response = await crmAPI.listAccounts(getQueryParams());
-      setAccounts(response.data || []);
+      const params = { ...getQueryParams() };
+      if (activeTab !== 'all') {
+        params.entity_type = activeTab;
+      }
+      const response = await crmAPI.listAccounts(params);
+      // Handle both old array response and new object response
+      if (Array.isArray(response.data)) {
+        setAccountsData({ data: response.data, summary: { total: response.data.length } });
+      } else {
+        setAccountsData(response.data || { data: [], summary: {} });
+      }
     } catch (error) {
       console.error('Failed to load accounts:', error);
       toast.error('Failed to load accounts');
@@ -40,6 +50,9 @@ export function AccountsPage() {
       setLoading(false);
     }
   };
+
+  const accounts = accountsData.data || [];
+  const summary = accountsData.summary || {};
 
   const load360 = async (account) => {
     setSelectedAccount(account);
