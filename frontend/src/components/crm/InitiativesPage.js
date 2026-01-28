@@ -132,12 +132,12 @@ export function InitiativesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Portfolio</Label>
-                <Select value={formData.portfolio_id} onValueChange={(v) => setFormData({ ...formData, portfolio_id: v })}>
+                <Select value={formData.portfolio_id || 'none'} onValueChange={(v) => setFormData({ ...formData, portfolio_id: v === 'none' ? '' : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select portfolio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {portfolios.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}

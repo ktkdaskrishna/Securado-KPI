@@ -155,12 +155,12 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex items-center gap-3">
           {/* Year Filter */}
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <Select value={selectedYear || 'all'} onValueChange={(v) => setSelectedYear(v === 'all' ? '' : v)}>
             <SelectTrigger className="w-32" data-testid="analytics-year-filter">
               <SelectValue placeholder="All Years" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Years</SelectItem>
+              <SelectItem value="all">All Years</SelectItem>
               {localFilters?.years?.map(year => (
                 <SelectItem key={year} value={year}>{year}</SelectItem>
               ))}
@@ -168,12 +168,12 @@ export default function AnalyticsPage() {
           </Select>
           
           {/* Quarter Filter */}
-          <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
+          <Select value={selectedQuarter || 'all'} onValueChange={(v) => setSelectedQuarter(v === 'all' ? '' : v)}>
             <SelectTrigger className="w-28" data-testid="analytics-quarter-filter">
               <SelectValue placeholder="All Qtrs" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Quarters</SelectItem>
+              <SelectItem value="all">All Quarters</SelectItem>
               <SelectItem value="Q1">Q1</SelectItem>
               <SelectItem value="Q2">Q2</SelectItem>
               <SelectItem value="Q3">Q3</SelectItem>
