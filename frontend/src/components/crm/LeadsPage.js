@@ -260,7 +260,7 @@ export default function LeadsPage() {
                     </TableCell>
                     <TableCell>{formatCurrency(lead.sale_value || lead.amount || 0)}</TableCell>
                     <TableCell>
-                      {lead.create_date ? new Date(lead.create_date).toLocaleDateString() : '-'}
+                      {(lead.created_at || lead.create_date) ? new Date(lead.created_at || lead.create_date).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
