@@ -138,7 +138,7 @@ Platform 1 can verify Platform 2 connectivity:
 
 **Endpoint:**
 ```
-GET https://fixmycrm.preview.emergentagent.com/api/data-lake/health
+GET https://crmdatahub.preview.emergentagent.com/api/data-lake/health
 ```
 
 **Response:**
@@ -207,13 +207,13 @@ Call the API:
 
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  https://fixmycrm.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities
+  https://crmdatahub.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities
 ```
 
 ### Step 3: Check Dashboard
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  https://fixmycrm.preview.emergentagent.com/api/dashboard/stats
+  https://crmdatahub.preview.emergentagent.com/api/dashboard/stats
 ```
 
 ## Support
@@ -224,5 +224,5 @@ For questions or issues with the integration, contact the Platform 2 team.
 
 Full API documentation is available at:
 ```
-https://fixmycrm.preview.emergentagent.com/docs
+https://crmdatahub.preview.emergentagent.com/docs
 ```

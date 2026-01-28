@@ -10,7 +10,7 @@
 - ✅ **NEW**: Compatibility layer for Platform 2's different field names (activity_type vs type, roles array vs role_name, access_token vs token).
 
 Assumptions/Constraints:
-- Backend is Platform 2 (already deployed at https://fixmycrm.preview.emergentagent.com); invoices route enabled only if endpoint exists.
+- Backend is Platform 2 (already deployed at https://crmdatahub.preview.emergentagent.com); invoices route enabled only if endpoint exists.
 - Environment: REACT_APP_BACKEND_URL points to local backend by default; Platform 2 can be enabled via UI toggle.
 - No ETL screens required; focus on UI/UX and API integrations listed below.
 
@@ -166,8 +166,8 @@ Potential enhancements for future iterations:
 The Platform 3 frontend is fully functional and integrated with Platform 2 backend.
 
 ### Live URLs
-- Frontend: https://fixmycrm.preview.emergentagent.com
-- Platform 2 Backend: https://fixmycrm.preview.emergentagent.com/api
+- Frontend: https://crmdatahub.preview.emergentagent.com
+- Platform 2 Backend: https://crmdatahub.preview.emergentagent.com/api
 
 ### Test Credentials
 **Platform 2 Backend:**

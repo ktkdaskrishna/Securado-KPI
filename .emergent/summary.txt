@@ -1,157 +1,186 @@
 <analysis>**original_problem_statement:**
-The initial request was to fix a CRM dashboard with incorrect data. This evolved to include fixing multiple broken pages, implementing contextual filters, correcting business logic, adding Role-Based Access Control (RBAC) and real-time sync from Odoo.
+The initial request was to fix a CRM dashboard with incorrect data. This has since expanded into a comprehensive set of bug fixes and new feature requests to improve data accuracy, add new analytics capabilities, and modernize the UI/UX.
 
-Most recently, the user reported several critical issues:
-1.  **Dashboard Data Inaccuracy:** The primary issue is a discrepancy in Won deal values and counts between the application and the user's Odoo instance, particularly when filtering by year (e.g., 2025). The user provided an Excel export and screenshots to highlight this.
-2.  **AI Analytics Bugs:** The AI Analytics page had incorrect logic (e.g., 100% win rate), and its filters were not functional. The analysis also incorrectly included leads.
-3.  **Incorrect Deal Values:** The  custom field was not being used across the application (e.g., on the Accounts page), showing OMR 0 for deals.
-4.  **Poor UI/UX:** The user criticized the Accounts page UI as looking bad and requested a more modern Gen-Z approach. They also pointed out that the logic for differentiating between a Company and a Contact was flawed.
-5.  **Activity Sync Issues:** The application was showing 0 for most activity types (Calls, Emails, Meetings) because it was not syncing historical activities. The displayed activity types were also not granular enough.
-6.  **Frontend Errors:** A recurring React error, Objects are not valid as a React child, was breaking parts of the UI.
+**PRODUCT REQUIREMENTS:**
+1.  **Data Accuracy:**
+    *   Fix Won deal counts and values, which were incorrect due to using the wrong date field ( instead of ).
+    *   Sync and display several new custom fields from Odoo, including , , and .
+    *   Correctly distinguish between 'Company' and 'Contact' entities.
+2.  **New Analytics & Features:**
+    *   Export opportunity data to an Excel file.
+    *   Add a Product Manager Leaderboard and Solution Category Performance stats to the dashboard.
+    *   Implement an Invoice tab showing salesperson performance (total won, collected, pending, overdue).
+    *   Display the invoice status next to each Won opportunity.
+3.  **UI/UX Enhancements:**
+    *   Segregate Accounts and Contacts on the Accounts page using tabs.
+    *   Highlight company accounts with overdue invoices using an appealing Gen-Z design.
+    *   Make the overdue invoice alert on a company card a direct link to the relevant invoices.
+    *   Make the At Risk cards on the AI Analytics page clickable to expand and view details.
+4.  **Bug Fixes:**
+    *   Resolve a recurring React error: Objects are not valid as a React child.
+    *   Ensure filters on the AI Analytics page apply globally to all data components.
+    *   Fix the missing Sales Rep filter on the Opportunities page.
+    *   Ensure the statistics on the Activities page update correctly when filtering by year.
+    *   The latest bug: The Activities page shows no data when filtered for the year 2026.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application (FastAPI + React) that syncs and visualizes data from a heavily customized Odoo instance.
--   **Data Sync:** An ETL system is in place that syncs  (opportunities),  (pending activities), and  (historical activities). The previous 500-record limit has been removed.
--   **Dashboard & Analytics:** The main dashboard and AI Analytics pages are functional. Filters on the AI Analytics page now work correctly, and the underlying business logic for win/loss calculations has been fixed.
--   **Core Pages:** The application has pages for Accounts, Opportunities, Leads, and Activities.
--   **UI/UX Improvements:**
-    -   The **Accounts page** has been completely redesigned with a modern, card-based grid layout and a redesigned 360° view, which was well-received by the user.
-    -   The **Activities page** now correctly displays a detailed breakdown of all custom activity types (e.g., Demo, Site Visit, POC).
-    -   The correct  field is now used for displaying deal values across the app, fixing the OMR 0 issue.
+A full-stack CRM application (FastAPI backend, React frontend) that syncs and visualizes data from a custom Odoo instance.
+
+*   **Data Sync & Accuracy:** The ETL has been updated to sync numerous custom fields from Odoo (, , , and  from ). The primary data discrepancy for Won deals was resolved by using the new  field for all time-based filtering. The database was also cleaned of duplicate records.
+*   **Backend:** New API endpoints have been created to support a Product Manager leaderboard, Solution Category stats, salesperson-specific invoice analytics, and an Excel export for opportunities. Existing endpoints for accounts, dashboards, and AI analytics were heavily refactored to incorporate the new data fields and filtering logic.
+*   **Frontend:**
+    *   **Accounts Page:** Completely redesigned with Company and Contact tabs. It now features a Gen-Z styled gradient banner on company cards with overdue invoices, which includes the overdue amount and a View Invoices link.
+    *   **AI Analytics Page:** The Team Performance section was replaced with new tables for Product Manager Performance and Solution Category Performance. Global year/quarter filters were added, and the At Risk cards were made clickable to filter a list of relevant accounts.
+    *   **Opportunities & Activities Pages:** An Export to Excel button and the missing Sales Rep filter were added to the Opportunities page. The summary statistics on the Activities page now update correctly based on the selected year.
+*   **Bugs Fixed:** The Objects are not valid as a React child error was resolved by adding backend data transformation for Odoo's relational fields.
 
 **Last working item**:
--   **Last item agent was working:** Debugging the final data discrepancy for Won deals. The user provided an Excel sheet showing 165 Won deals in 2025, while the application's database showed 161. The agent successfully identified the root cause: the application was filtering by , which is unreliable in Odoo for won deals. The correct field is .
+-   **Last item agent was working:** Investigating a user-reported bug where the Activities page shows no data when the year filter is set to 2026, despite data existing for that year.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both. First, use  to query the MongoDB database and verify that filtering by the new date field yields the correct counts and values against the user's Excel file. Then, use the screenshot tool to confirm the frontend dashboard and analytics pages display the correct, filtered data.
+-   **Which testing method agent to use?** both. First, use  to confirm that the backend API endpoint () returns the correct data. If the API is correct, use the screenshot tool to debug the frontend (), specifically checking the  hook that re-fetches data when filters change, as a regression was likely introduced here.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Final Data Discrepancy for Won Deals (P0)**
--   **Issue 2: Flawed logic for identifying Company vs. Contact (P1)**
+-   Issue 1: No activities are displayed on the Activities page when filtered for the year 2026 (P0)
+-   Issue 2: Minor discrepancy in Won deal count between the app and user's file (P2)
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Description:** The number and value of Won deals are incorrect when filtered by a specific period (e.g., 2025). The root cause is the use of the wrong date field (). There is also a 10-record discrepancy in the all-time Won count between the app (395) and Odoo (385).
-    -   **Attempted fixes:** The agent identified  as the correct source-of-truth field for the won date.
+    -   **Description:** The user selected 2026 on the Activities page filter, but the activity list is empty and all summary statistics show zero. This is a regression, as previous tests confirmed the backend API returns data for 2026.
+    -   **Attempted fixes:** None yet. The bug appeared after the agent modified the page to fix a related filter-stat update issue.
     -   **Next debug checklist:**
-        1.  Update the  ETL mapping in the database to sync Odoo's  field into a new field in the  collection, e.g., .
-        2.  Trigger a full re-sync of the  pipeline.
-        3.  Refactor all backend filtering logic in  and  to use the new  field for any time-based filtering of won deals.
-        4.  Investigate the 10-record discrepancy in the total Won count. This may require comparing the Won deals in the database with Odoo's list to find which records are incorrectly categorized.
-    -   **Why fix this issue and what will be achieved with the fix?** This is the highest priority issue. Fixing it will make the application's core KPIs accurate and trustworthy for the user.
+        1.  Verify the backend API is still correct using  or  to call  and inspect the JSON response.
+        2.  Inspect the frontend code in .
+        3.  Focus on the  function and the  hook that depends on the  state. A likely cause is that the  from the filter state is not being correctly passed in the API request params upon change.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical bug blocking a core user function. Fixing it will restore the user's ability to view historical and future activity data.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** None
 
 -   **Issue 2:**
-    -   **Description:** The user pointed out that the application incorrectly identifies some contacts as companies. The agent discovered that the  field from Odoo's  model is not being synced.
-    -   **Attempted fixes:** The UI was updated to show company/user icons, but the underlying data to drive this logic is missing.
+    -   **Description:** The agent's database query shows 170 Won deals in 2025, while the user's most recent Excel file reports 167.
+    -   **Attempted fixes:** The major discrepancy was fixed, this is a minor residual difference.
     -   **Next debug checklist:**
-        1.  The sync logic for accounts (likely in  or a hidden sync service, as there's no  ETL pipeline) needs to be located.
-        2.  Update this sync logic to fetch the  field from Odoo.
-        3.  Modify  to use the  boolean to conditionally render a  icon or a  icon.
-    -   **Why fix this issue and what will be achieved with the fix?** Improves data accuracy and the user's ability to distinguish between organizational accounts and individual contacts.
+        1.  Request the user's latest Excel file again to rule out timing differences.
+        2.  Write a script to compare the  of the 170 deals in the database against the list from the user's file to identify the 3 extra records.
+    -   **Why fix this issue and what will be achieved with the fix?** Achieves perfect data parity and builds user trust in the application's accuracy.
     -   **Status:** NOT STARTED
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue:** None
 
+**In progress Task List**:
+- None
+
 **Upcoming and Future Tasks**
+
 -   **Upcoming Tasks:**
-    -   **P1: Sync  from Odoo:** The debugging session revealed the Odoo opportunity ID (e.g., ) is not being synced. This field is essential for users to reconcile data between the app and Odoo exports. This requires updating the  mapping to include the source field for this number.
+    -   **P1: Add UI for New Analytics on Main Dashboard:** The backend APIs for the Product Manager Leaderboard and Solution Category Stats are complete. The next step is to add UI components to display this data on the main , as per the user's request.
+    -   **P2: Implement Export to Excel on Opportunities Page UI:** The backend endpoint is ready. Add the Export button to the  header and wire it to call the API and trigger a file download.
+
 -   **Future Tasks:**
-    -   **P2: Complete RBAC Implementation:** The middleware exists but has not been applied to secure API routes.
-    -   **P3: Filter Leaderboard by User Role:** An outstanding user request to filter the leaderboard by roles like account manager.
-    -   **P4: Make Sidebar Scrollable:** A recurring minor UX issue.
+    -   **P2: Sync  from Odoo:** This is a key field for users to reconcile data with Odoo. The  ETL mapping in the database must be updated to include it.
+    -   **P3: Complete RBAC Implementation:** The security middleware exists but has not been applied to all necessary API routes to enforce role-based access.
+    -   **P3: Improve AI Analytics Funnel Logic:** The current conversion rates are confusing due to Odoo's flexible stage progression. This requires rethinking the calculation or visualization to be more intuitive for users.
+    -   **P4: Make Sidebar Scrollable:** A recurring, low-priority UX issue.
 
 **Completed work in this session**
--   **Major Data Accuracy Fix:** Resolved the primary dashboard KPI discrepancy by removing the ETL record limit and correcting the mapping to use the  custom field. This increased the Won value from ~2.7M to a more accurate ~14.7M.
--   **Activity Sync Overhaul:** Fixed the 0 activities bug by creating a new ETL pipeline for the  model, which contains historical activities. All related backend endpoints and frontend pages were updated to use this complete dataset.
--   **AI Analytics Page Overhaul:**
-    -   Fixed incorrect business logic for win/loss calculations, resolving the 100% win rate bug.
-    -   Successfully implemented fully functional data filters (e.g., by time period, sales rep) that were previously broken.
--   **UI/UX Redesign and Fixes:**
-    -   Completely redesigned the **Accounts page** with a modern, card-based Gen-Z UI, which the user praised.
-    -   Updated the **Activities page** to display a detailed breakdown of all custom activity types (Demo, POC, Site Visit, etc.).
-    -   Corrected all pages to use  instead of  for deal values.
+-   **Data Sync Overhaul:** Synced several new custom fields from Odoo (, , , ) and fixed the core Won date issue by syncing  to a  field.
+-   **Database Cleanup:** Identified and removed 1333 duplicate opportunity records created by a faulty manual sync script.
+-   **Extensive API Development:**
+    -   Created new backend endpoints for a Product Manager Leaderboard, Category Performance stats, Salesperson Invoice Analytics, and an Excel export for opportunities.
+    -   Rewrote the  endpoint to serve both companies and contacts and to include data on overdue invoices.
+-   **Major UI/UX Enhancements:**
+    -   **Accounts Page:** Rebuilt with Company and Contact tabs and a Gen-Z styled gradient banner on company cards to highlight overdue invoices.
+    -   **AI Analytics Page:** Replaced the Team Performance section with new tables for Product Manager and Solution Category stats. Added global filters and made At Risk cards clickable.
+-   **Critical Bug Fixes:**
+    -   Resolved the Objects are not valid as a React child crash by properly transforming Odoo's relational array fields on the backend.
+    -   Fixed the missing Sales Rep filter on the Opportunities page.
+    -   Corrected the Activities page so that summary statistics now update dynamically when the year filter is changed.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Sidebar is not scrollable**
-    -   **Debug checklist:** Add  and a  to the sidebar's main container in .
-    -   **Why to solve this issue and what will be achieved with this?** A minor UX improvement for scalability.
+    -   **Debug checklist:** In , apply  and a  (e.g., ) to the main scrollable container.
+    -   **Why to solve this issue and what will be achieved with this?** A quality-of-life UX improvement that prevents the navigation menu from being cut off on smaller screens or when more items are added.
     -   **Should Test frontend/backend/both after fix:** Frontend
     -   **Is recurring issue?** Y
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Sidebar Navigation Not Scrollable
--   **Recurrence count:** 3
+-   **Recurrence count:** 4
 -   **Status:** NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Odoo Data Model Nuances:** Deep understanding of Odoo's data structure, especially the distinction between transactional models ( for pending tasks) and reporting views ( for history), and the unreliability of  for won deals.
--   **Advanced ETL:** The ETL runner was modified to handle model-specific logic, such as removing record limits for certain models and using different fields for sorting.
--   **Backend Refactoring:** The AI analytics and CRM sales services were significantly refactored to implement working filters, fix business logic, and use the correct data fields ().
--   **Component-level UI Redesign:** A complete rewrite of the  React component, moving from a basic table to a modern, responsive, card-based grid layout using TailwindCSS utility classes.
+-   **Backend Data Transformation:** Correctly parsing Odoo's relational field format (e.g., ) into simple strings on the backend before sending to the frontend to prevent React rendering errors.
+-   **Dynamic API Filtering:** Modifying multiple backend endpoints to accept and apply date-based filters (, ), which required refactoring data aggregation queries.
+-   **Data Aggregation (MongoDB):** Extensive use of MongoDB aggregation pipelines to calculate complex analytics like leaderboards, performance statistics, and invoice payment statuses.
+-   **File Streaming (FastAPI):** Implementation of an Excel file export feature using  and FastAPI's  for efficient memory usage.
+-   **Complex React State Management:** The  and  were rewritten to manage complex state, including multiple asynchronous data fetches, tabbed interfaces, and dynamic, interdependent filters.
+-   **Conditional UI & Styling:** Using conditional rendering and dynamic TailwindCSS classes to implement the Gen-Z overdue banner, which only appears on company cards with outstanding invoices.
 
 **key DB schema**
--   ****: The main collection for deals. Correctly uses  for revenue. It needs to be updated to include  (from Odoo's ) and .
--   ****: Now correctly populated with comprehensive historical data from Odoo's .
--   ****: Contains ETL mappings. New mappings for  and  were created. The  mapping needs to be updated again for the new date and opportunity number fields.
+-   ****: Now contains , , , , etc.
+-   ****: Now contains an  boolean field to distinguish from contacts.
+-   ****: A separate collection used to populate the Contacts tab on the Accounts page.
+-   ****: The ETL mapping for  has been significantly updated.
 
 **All files of reference**
--   : Core ETL logic.
--   : Contains all AI analytics endpoints; was heavily refactored.
--   : Contains logic for the Accounts 360° view and Activities list.
--   : The newly redesigned Accounts page.
--   : User-provided artifact for data reconciliation.
+-   : The most heavily modified file, containing new logic for accounts, opportunities, invoices, and the Excel export.
+-   : Contains new endpoints for PM/Category performance and fixed conversion funnel logic.
+-   : Rewritten with new features and a modern design.
+-   : Rewritten with new analytics displays and fixed filters.
+-   : Updated to add the export button and fix filters.
+-   : Updated to fix how stats respond to filters.
+-   : Updated to track the extensive new features and fixes.
 
 **Critical Info for New Agent**
--   **Top Priority is Final Data Reconciliation:** Your first task is to fix the Won deal discrepancy. The root cause is using  instead of . You must map this new date field in the ETL, re-sync, and update all backend filtering logic.
--   **User is Very UI/UX Sensitive:** The user has strong opinions on design. The redesigned Accounts page was a major success. Apply similar modern design principles (card layouts, good iconography, spacing, gradients) if you modify other UI components.
--   **Odoo is the Tricky Source of Truth:** Do not trust Odoo field names at face value.  is not the true close date. Historical activities are not in . Always verify data directly from Odoo () before implementing logic.
--   **The  is key for debugging:** The user references Odoo's opportunity ID (e.g., SEC/OPP/...) for debugging. This field is currently not being synced, which is a major gap. Prioritize adding it to the ETL mapping.
+-   **The immediate priority is the No activities in 2026 bug.** This is a critical regression. Start by verifying the backend API response for  and then debug the  hook in , as it's the most likely source of the error.
+-   **The user is very feature-driven and UI-sensitive.** They have a clear vision for new analytics (leaderboards, invoice stats) and modern UI (Gen-Z appeal). Be prepared for complex, multi-step feature requests that involve both backend and frontend work.
+-   **Data integrity is paramount.** The user frequently validates the app's data against their own Odoo exports. Prioritize fixing any data discrepancies, even minor ones. A good next step would be to finally sync the  from Odoo to make this reconciliation easier for everyone.
+-   **The codebase has multiple data sync patterns.** Opportunities are synced via the main ETL runner and database mappings. Accounts and contacts are synced via a different, less obvious mechanism. Be mindful of this when debugging data-related issues.
 
 **documents and test reports created in this job**
 -   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:** Asks to fix the Won deal discrepancy for 2025, providing a screenshot of the app and an Excel file from Odoo for comparison. **Status: IN PROGRESS**
-2.  **user:** Criticizes the Accounts page UI as looking bad and needing a Gen-Z redesign. Also points out the flawed logic for identifying companies vs. contacts. **Status: Completed (UI Redesign), Pending (Data Logic)**
-3.  **user:** Reports that AI analytics filters are not working and should only focus on opportunities. Requests a Won Deals card on the Accounts page and better UI to differentiate accounts/contacts. **Status: Completed**
-4.  **user:** Reports that the deal value on the Accounts page is still incorrect, reminding the agent to use the custom  field. **Status: Completed**
-5.  **user:** Reports a React frontend error and states that AI analytics data is not justified. Also requests that more granular activity types (POC, Demo, etc.) be displayed. **Status: Completed**
-6.  **user:** States there are 350+ activities in Odoo for 2025, which contradicted the small number initially synced by the app. **Status: Completed**
-7.  **user:** Asks the agent to investigate the activity field mappings, providing Odoo screenshots as a reference. **Status: Completed**
-8.  **user:** (Implicitly approved previous work) Continued the conversation by reporting new, more granular issues after the agent fixed the main dashboard value. **Status: Completed**
-9.  **user:**  - Approved the agent's initial plan to investigate the codebase. **Status: Completed**
-10. **agent:**  - Sent initial plan to user for confirmation. **Status: Completed**
+1.  **user:** Reports that no activities are showing for the year 2026 and provides screenshots. **Status: IN PROGRESS**
+2.  **user:** Reports that AI Analytics filters are not applying globally and the At Risk cards are not clickable. **Status: Completed**
+3.  **user:** Reports a missing Sales Rep filter, broken activity filters, and a non-functional Excel export. **Status: Completed**
+4.  **user:** Confirms the AI data structure is correct but states filtering is not working. **Status: Addressed and Completed**
+5.  **user:** Provides a detailed PDF with a list of issues on the AI Analytics page, including wrong data, missing filters, and incorrect performance metrics. **Status: Completed**
+6.  **user:** Reports a critical React crash: Objects are not valid as a React child. **Status: Completed**
+7.  **user:** Requests the new Gen-Z overdue alert be more appealing, apply only to companies, and link to the invoice details. **Status: Completed**
+8.  **user:** Asks for login credentials. **Status: Completed**
+9.  **user:** Approves the plan to implement a large batch of new features (Excel export, leaderboards, invoice tabs, etc.). **Status: Completed**
+10. **user:** Provides a long list of new feature requests and clarifications after the agent fixed the initial data discrepancy. **Status: Completed**
 
 **Project Health Check:**
--   **Broken:** The core data integrity for period-specific reporting (e.g., Won this Year) is broken due to the use of an incorrect date field for filtering. This misleads the user about business performance over time and is the highest priority issue to fix.
+-   **Broken:** The Activities page is currently non-functional for year-based filtering, which is a critical regression.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   **Odoo (v17.0):** Heavily customized. Integration is via Python's .
--   **MongoDB:** Primary application database.
--   **Emergent LLM (OpenAI):** Used for the AI Sales Analytics page.
+-   **Odoo (v17.0):** Integration via Python's .
+-   **MongoDB:** The primary application database.
+-   **Emergent LLM (OpenAI):** Used for the AI Sales Analytics page features.
 
 **Testing status**
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** []
--   **Known regressions:** None.
+-   **Known regressions:** Yes, the year filter on the Activities page is broken.
 
 **Credentials to test flow:**
 -   **Email**: 
 -   **Password**: 
 
 **What agent forgot to execute**
--   The agent did not fix the underlying data issue for identifying companies vs. contacts; the  field is still not being synced from Odoo.
--   The agent identified that  is a critical field for data reconciliation but did not create a task to add it to the ETL sync pipeline.</analysis>
+-   The agent implemented the backend APIs for the Product Manager Leaderboard and Solution Category Stats but did not add the corresponding UI components to the main  as requested, only to the separate .
+-   The task to sync the Odoo  field, which was identified as critical for debugging in a previous session, was not planned or implemented.
+-   The user's request to make At Risk cards on the AI Analytics page expand to a detailed view was only partially implemented; they currently filter a list on the same page.</analysis>
