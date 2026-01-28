@@ -272,19 +272,90 @@ export function WebhookConfigPage() {
               <p className="text-sm text-red-600 mb-4">
                 Delete all webhook automations from Odoo. This will stop real-time sync completely.
               </p>
-              <Button 
-                variant="destructive"
-                onClick={deleteWebhooks}
-                disabled={actionLoading}
-                className="w-full"
-              >
-                {actionLoading ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Delete Odoo Webhooks
-              </Button>
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="destructive"
+                    disabled={actionLoading}
+                    className="w-full"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Odoo Webhooks
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Key className="h-5 w-5" />
+                      Enter Odoo Credentials
+                    </DialogTitle>
+                    <DialogDescription>
+                      To delete webhook automations, we need to connect to your Odoo instance.
+                      Enter your Odoo credentials below.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="odoo_url">Odoo URL</Label>
+                      <Input
+                        id="odoo_url"
+                        placeholder="https://your-company.odoo.com"
+                        value={odooCredentials.url}
+                        onChange={(e) => setOdooCredentials(prev => ({ ...prev, url: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="odoo_database">Database Name</Label>
+                      <Input
+                        id="odoo_database"
+                        placeholder="your-database"
+                        value={odooCredentials.database}
+                        onChange={(e) => setOdooCredentials(prev => ({ ...prev, database: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="odoo_username">Username (Email)</Label>
+                      <Input
+                        id="odoo_username"
+                        type="email"
+                        placeholder="admin@company.com"
+                        value={odooCredentials.username}
+                        onChange={(e) => setOdooCredentials(prev => ({ ...prev, username: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="odoo_api_key">API Key / Password</Label>
+                      <Input
+                        id="odoo_api_key"
+                        type="password"
+                        placeholder="Your API key or password"
+                        value={odooCredentials.api_key}
+                        onChange={(e) => setOdooCredentials(prev => ({ ...prev, api_key: e.target.value }))}
+                      />
+                      <p className="text-xs text-gray-500">
+                        You can generate an API key in Odoo: User Preferences → Account Security → API Keys
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={deleteWebhooks}
+                      disabled={actionLoading || !odooCredentials.url || !odooCredentials.database || !odooCredentials.username || !odooCredentials.api_key}
+                    >
+                      {actionLoading ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete Webhooks
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </CardContent>
