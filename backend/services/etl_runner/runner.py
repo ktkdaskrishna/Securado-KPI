@@ -378,7 +378,7 @@ class ETLRunner:
             source_model = mapping["source_model"]
             
             # Models that need ALL records for accurate reporting
-            no_limit_models = ["crm.lead", "mail.activity"]
+            no_limit_models = ["crm.lead", "mail.activity", "crm.activity.report"]
             if source_model in no_limit_models:
                 extract_limit = None  # No limit - get ALL records
             else:
