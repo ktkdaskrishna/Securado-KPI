@@ -63,7 +63,7 @@ export function OdooModelBrowserPage() {
   const fetchConnections = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const res = await axios.get(`${API_BASE_URL}/api/integrations/connections`, {
+      const res = await axios.get(`${API_BASE_URL}/api/integrations`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const odooConns = (res.data || []).filter(c => c.type === 'odoo');
