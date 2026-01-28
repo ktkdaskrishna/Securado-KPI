@@ -1348,6 +1348,76 @@ async def get_account_360(
     result["total_outstanding"] = total_outstanding
     result["invoices_count"] = len(invoices)
     
+    # Calculate overdue invoices
+    today = datetime.now(timezone.utc).date()
+    total_overdue = 0
+    for inv in invoices:
+        if inv.get("payment_state") not in ["paid", "reversed"]:
+            due_date = inv.get("due_date")
+            if due_date:
+                if isinstance(due_date, str):
+                    try:
+                        due_date = datetime.strptime(due_date[:10], "%Y-%m-%d").date()
+                    except:
+                        continue
+                elif hasattr(due_date, 'date'):
+                    due_date = due_date.date()
+                if due_date < today:
+                    total_overdue += inv.get("amount_total", 0) or 0
+    
+    result["total_overdue"] = total_overdue
+    result["has_overdue"] = total_overdue > 0
+    
+    # Group opportunities by year (using won_at for Won, create_date for others)
+    opps_by_year = {}
+    for opp in opps:
+        # Get year from appropriate date field
+        date_str = None
+        if (opp.get("stage") or "").lower() == "won":
+            date_str = opp.get("won_at") or opp.get("create_date")
+        else:
+            date_str = opp.get("create_date")
+        
+        year_key = "Unknown"
+        if date_str:
+            if isinstance(date_str, str) and len(date_str) >= 4:
+                year_key = date_str[:4]
+            elif hasattr(date_str, 'year'):
+                year_key = str(date_str.year)
+        
+        if year_key not in opps_by_year:
+            opps_by_year[year_key] = []
+        opps_by_year[year_key].append(serialize_doc(opp))
+    
+    result["opportunities_by_year"] = opps_by_year
+    
+    # Group invoices by year
+    invoices_by_year = {}
+    for inv in invoices:
+        inv_date = inv.get("invoice_date")
+        year_key = "Unknown"
+        if inv_date:
+            if isinstance(inv_date, str) and len(inv_date) >= 4:
+                year_key = inv_date[:4]
+            elif hasattr(inv_date, 'year'):
+                year_key = str(inv_date.year)
+        
+        if year_key not in invoices_by_year:
+            invoices_by_year[year_key] = []
+        
+        amount = inv.get("amount_total", 0) or 0
+        invoices_by_year[year_key].append({
+            "id": inv.get("canonical_id") or str(inv.get("_id")),
+            "invoice_number": inv.get("invoice_number"),
+            "amount": amount,
+            "currency": inv.get("currency", "OMR"),
+            "invoice_date": inv.get("invoice_date"),
+            "due_date": inv.get("due_date"),
+            "status": inv.get("payment_state", "pending")
+        })
+    
+    result["invoices_by_year"] = invoices_by_year
+    
     result["activities"] = serialize_doc(activities)
     result["activities_count"] = len(activities)
     
