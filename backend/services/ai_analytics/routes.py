@@ -23,8 +23,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["ai-analytics"])
 
 
-def normalize_stage(stage: str) -> str:
-    """Normalize Odoo stages to funnel stages"""
+def normalize_stage(stage: str, active: bool = True, lost_reason_id = None) -> str:
+    """Normalize Odoo stages to funnel stages
+    
+    In Odoo, lost deals are archived (active=False) with a lost_reason_id.
+    They keep their original stage but are marked as lost.
+    """
+    # Check if it's a lost deal (archived with lost reason)
+    if not active and lost_reason_id:
+        return "lost"
+    
     if not stage:
         return "unknown"
     stage_lower = stage.lower().strip()
@@ -41,6 +49,23 @@ def normalize_stage(stage: str) -> str:
     if "enquiry" in stage_lower or "new" in stage_lower or "prospect" in stage_lower:
         return "lead"
     return "lead"
+
+
+def get_opp_value(opp):
+    """Get the value of an opportunity using sale_value (RFP quoted) if available, else amount"""
+    sale_val = opp.get("sale_value", 0)
+    if sale_val and sale_val != 'False':
+        try:
+            return float(sale_val)
+        except:
+            pass
+    amount = opp.get("amount", 0)
+    if amount and amount != 'False':
+        try:
+            return float(amount)
+        except:
+            pass
+    return 0
 
 
 @router.get("/overview")
