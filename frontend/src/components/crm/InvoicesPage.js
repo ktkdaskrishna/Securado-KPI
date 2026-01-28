@@ -104,10 +104,12 @@ export function InvoicesPage() {
       const invoiceData = invoicesRes.data?.invoices || invoicesRes.data || [];
       const statsData = statsRes.data?.stats || invoicesRes.data?.stats || {};
       const options = statsRes.data?.filter_options || { accounts: [], years: [] };
+      const spData = salespersonRes.data?.data || [];
       
       setInvoices(invoiceData);
       setStats(statsData);
       setFilterOptions(options);
+      setSalespersonData(spData);
       
     } catch (error) {
       console.error('Failed to load invoices:', error);
