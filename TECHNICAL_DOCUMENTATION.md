@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://crmdatahub.preview.emergentagent.com
+https://datahub-crm-1.preview.emergentagent.com
 ```
 
 ### Test Credentials
