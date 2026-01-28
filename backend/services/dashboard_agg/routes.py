@@ -310,7 +310,10 @@ class DashboardAggregator:
             
             # Build leaderboard from WON deals only (not total pipeline)
             # This shows top performers by closed/won revenue
-            won_opps = [o for o in opportunities_only if 'won' in (o.get('stage') or '').lower()]
+            # Filter to stage containing "won" (case insensitive)
+            won_opps = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get('stage', '')) == 'closed_won']
+            
+            logger.info(f"Leaderboard: Found {len(won_opps)} won opportunities for leaderboard")
             
             owner_won_values = defaultdict(float)
             owner_won_counts = defaultdict(int)
@@ -336,7 +339,7 @@ class DashboardAggregator:
             
             # If no won deals, show placeholder
             if not leaderboard:
-                leaderboard = [{"id": "0", "name": "No won deals", "value": 0, "deals_won": 0}]
+                leaderboard = [{"id": "0", "name": "No won deals yet", "value": 0, "deals_won": 0}]
             
             # Save to serving cache
             cache_doc = {
