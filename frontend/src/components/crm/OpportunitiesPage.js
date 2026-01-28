@@ -1343,6 +1343,38 @@ export function OpportunitiesPage() {
         </div>
       </div>
 
+      {/* Contextual Filters for Opportunities */}
+      <PageFilters 
+        onReset={resetFilters}
+        activeFilters={[filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage]}
+        title="Opportunity Filters"
+      >
+        <YearFilter 
+          value={filters.year} 
+          onChange={(v) => updateFilter('year', v)} 
+          years={filterOptions.years}
+        />
+        <QuarterFilter 
+          value={filters.quarter} 
+          onChange={(v) => updateFilter('quarter', v)} 
+        />
+        <SalesRepFilter 
+          value={filters.salesRep} 
+          onChange={(v) => updateFilter('salesRep', v)} 
+          salesReps={filterOptions.salesReps}
+        />
+        <AccountFilter 
+          value={filters.account} 
+          onChange={(v) => updateFilter('account', v)} 
+          accounts={filterOptions.accounts}
+        />
+        <StageFilter 
+          value={filters.stage} 
+          onChange={(v) => updateFilter('stage', v)} 
+          stages={filterOptions.stages}
+        />
+      </PageFilters>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
           <TabsList>
