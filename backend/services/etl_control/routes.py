@@ -1751,7 +1751,7 @@ async def run_mapping_sync(
                         essential_fields = [
                             "create_date", "write_date", "date_open", "date_closed", 
                             "date_deadline", "date_conversion", "day_open", "day_close",
-                            "expected_revenue", "planned_revenue", "probability", "active", "type",
+                            "expected_revenue", "probability", "active", "type",
                             # CRITICAL: Include relational fields for names
                             "partner_id", "user_id", "stage_id", "team_id", "lost_reason_id"
                         ]
