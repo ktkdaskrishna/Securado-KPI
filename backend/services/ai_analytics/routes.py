@@ -79,28 +79,15 @@ async def get_analytics_overview(
     stage: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get overview of all analytics metrics with optional filters"""
+    """Get overview of all analytics metrics with optional filters - OPPORTUNITIES ONLY"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get all opportunities
-    all_opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
-    
-    # Helper functions for proper classification
-    def is_won(o):
-        stage = (o.get("stage") or "").lower().strip()
-        return stage == "won" or "closed won" in stage
-    
-    def is_lost(o):
-        stage = (o.get("stage") or "").lower().strip()
-        # Check stage first (most reliable)
-        if stage == "lost" or "closed lost" in stage:
-            return True
-        # Also check active flag with lost reason (archived deals in Odoo)
-        active = o.get("active", True)
-        if active == 'False' or active is False:
-            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
-        return False
+    # Get OPPORTUNITIES only (exclude leads by filtering type='opportunity')
+    all_opps = await canonical_db.opportunities.find({
+        "org_id": org_id,
+        "type": "opportunity"
+    }).to_list(10000)
     
     # Apply filters
     filters = {
