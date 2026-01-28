@@ -160,6 +160,9 @@ export function AccountFilter({ value, onChange, accounts }) {
 }
 
 export function StageFilter({ value, onChange, stages }) {
+  // Filter out empty/null stage values
+  const validStages = stages?.filter(stage => stage && stage.trim() !== '') || [];
+  
   return (
     <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
       <SelectTrigger className="w-[150px] h-9" data-testid="filter-stage">
@@ -168,7 +171,7 @@ export function StageFilter({ value, onChange, stages }) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Stages</SelectItem>
-        {stages?.map(stage => (
+        {validStages.map(stage => (
           <SelectItem key={stage} value={stage}>{stage}</SelectItem>
         ))}
       </SelectContent>
