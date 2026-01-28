@@ -699,6 +699,114 @@ async def preview_mapping(
     }
 
 
+@mappings_router.post("/{mapping_id}/add-custom-field")
+async def add_custom_field_to_mapping(
+    mapping_id: str,
+    source_field: str,
+    target_field: str,
+    transform: str = "direct",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Add a custom field mapping to an existing mapping.
+    
+    This is a convenience endpoint for quickly adding custom Odoo Studio fields.
+    
+    Args:
+        mapping_id: ID of the mapping to modify
+        source_field: Source field name (e.g., 'x_studio_opportunity_stages_1')
+        target_field: Target canonical field name (e.g., 'custom_stage')
+        transform: Transformation type (direct, extract_name, extract_id, to_float, etc.)
+    """
+    db = get_app_db()
+    
+    mapping = await db.mappings.find_one({
+        "id": mapping_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not mapping:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+    
+    # Get existing field mappings
+    mappings_list = mapping.get("mappings", [])
+    
+    # Check if this source field is already mapped
+    for m in mappings_list:
+        if m.get("source_field") == source_field:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Source field '{source_field}' is already mapped to '{m.get('target_field')}'"
+            )
+    
+    # Add the new field mapping
+    new_mapping = {
+        "source_field": source_field,
+        "target_field": target_field,
+        "transform": transform
+    }
+    mappings_list.append(new_mapping)
+    
+    # Update the mapping with new version
+    new_version = mapping.get("version", 1) + 1
+    await db.mappings.update_one(
+        {"id": mapping_id},
+        {
+            "$set": {
+                "mappings": mappings_list,
+                "version": new_version,
+                "updated_at": now_utc()
+            }
+        }
+    )
+    
+    return {
+        "success": True,
+        "message": f"Added custom field '{source_field}' -> '{target_field}'",
+        "mapping_id": mapping_id,
+        "new_version": new_version,
+        "field_count": len(mappings_list)
+    }
+
+
+@mappings_router.get("/{mapping_id}/custom-fields")
+async def get_custom_fields(
+    mapping_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all custom field mappings (fields starting with 'x_studio_' or 'x_')"""
+    db = get_app_db()
+    
+    mapping = await db.mappings.find_one({
+        "id": mapping_id,
+        "org_id": current_user.get("org_id", "default")
+    })
+    
+    if not mapping:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+    
+    mappings_list = mapping.get("mappings", [])
+    
+    # Filter for custom fields (x_studio_* or x_*)
+    custom_fields = [
+        m for m in mappings_list 
+        if m.get("source_field", "").startswith("x_")
+    ]
+    
+    standard_fields = [
+        m for m in mappings_list 
+        if not m.get("source_field", "").startswith("x_")
+    ]
+    
+    return {
+        "mapping_id": mapping_id,
+        "source_model": mapping.get("source_model"),
+        "custom_fields": custom_fields,
+        "standard_fields": standard_fields,
+        "total_fields": len(mappings_list)
+    }
+
+
 # ==================== PIPELINES ====================
 
 @pipelines_router.post("")
