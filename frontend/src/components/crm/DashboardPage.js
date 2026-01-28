@@ -250,6 +250,14 @@ export function DashboardPage() {
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
+        <Button
+          onClick={handleExportDashboard}
+          variant="outline"
+          data-testid="dashboard-export-button"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export Excel
+        </Button>
       </div>
 
       {/* Contextual Filters for Dashboard */}
@@ -279,17 +287,30 @@ export function DashboardPage() {
         />
       </PageFilters>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
-          <Card key={index} data-testid={`crm-kpi-card-${kpi.title.toLowerCase().replace(/\s/g, '-')}`}>
+          <Card 
+            key={index} 
+            data-testid={`crm-kpi-card-${kpi.title.toLowerCase().replace(/\s/g, '-')}`}
+            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group"
+            onClick={() => {
+              if (kpi.title === 'Total Pipeline' || kpi.title === 'Open Opportunities') {
+                handleNavigateToOpportunities();
+              } else if (kpi.title === 'Won This Period') {
+                handleNavigateToOpportunities('Won');
+              } else if (kpi.title === 'Win Rate') {
+                handleNavigateToOpportunities();
+              }
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">{kpi.title}</p>
                   <p className="text-2xl font-bold mt-1">{formatValue(kpi.value, kpi.format)}</p>
                 </div>
-                <div className={`p-3 rounded-full bg-${kpi.color}-100`}>
+                <div className={`p-3 rounded-full bg-${kpi.color}-100 group-hover:scale-110 transition-transform`}>
                   <kpi.icon className={`h-6 w-6 text-${kpi.color}-600`} />
                 </div>
               </div>
@@ -306,6 +327,9 @@ export function DashboardPage() {
                   <span className="text-gray-500 text-sm ml-1">vs last period</span>
                 </div>
               )}
+              <div className="flex items-center justify-end mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs text-primary flex items-center">View Details <ExternalLink className="h-3 w-3 ml-1" /></span>
+              </div>
             </CardContent>
           </Card>
         ))}
