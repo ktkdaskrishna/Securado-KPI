@@ -63,13 +63,31 @@ export default function AnalyticsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Merge global filters with local period selection
-      const params = { time_period: selectedPeriod };
-      if (globalFilters.year) params.year = globalFilters.year;
-      if (globalFilters.quarter) params.quarter = globalFilters.quarter;
+      // Build params from local filters (which take precedence on this page)
+      const params = {};
+      
+      // Use local year/quarter selection if set, otherwise use global
+      if (selectedYear) {
+        params.year = selectedYear;
+      } else if (globalFilters.year) {
+        params.year = globalFilters.year;
+      }
+      
+      if (selectedQuarter) {
+        params.quarter = selectedQuarter;
+      } else if (globalFilters.quarter) {
+        params.quarter = globalFilters.quarter;
+      }
+      
+      // Add other global filters
       if (globalFilters.salesRep) params.sales_rep = globalFilters.salesRep;
       if (globalFilters.team) params.team_id = globalFilters.team;
       if (globalFilters.account) params.account = globalFilters.account;
+      
+      // Add time_period for backward compatibility
+      if (selectedPeriod && selectedPeriod !== 'all') {
+        params.time_period = selectedPeriod;
+      }
       
       const [overviewRes, funnelRes, repRes, teamRes, accountRes, filtersRes] = await Promise.all([
         analyticsAPI.getOverview(params),
@@ -92,7 +110,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedPeriod, globalFilters.year, globalFilters.quarter, globalFilters.salesRep, globalFilters.team, globalFilters.account]);
+  }, [selectedPeriod, selectedYear, selectedQuarter, globalFilters.year, globalFilters.quarter, globalFilters.salesRep, globalFilters.team, globalFilters.account]);
 
   const loadAIInsights = async () => {
     setAiLoading(true);
