@@ -622,7 +622,8 @@ class ETLRunner:
             "opportunity": "opportunities",
             "account": "accounts",
             "contact": "contacts",
-            "user": "users"
+            "user": "users",
+            "activity": "activities"
         }
         collection_name = entity_to_collection.get(target_entity, f"{target_entity}s")
         collection = canonical_db[collection_name]
