@@ -585,7 +585,7 @@ async def process_webhook_event(model: str, action: str, record_id: int, record_
         # if record_data is not provided
         if not record_data:
             # Trigger a sync for this specific record
-            logger.info(f"Record data not provided, will sync on next ETL run")
+            logger.info("Record data not provided, will sync on next ETL run")
             return
         
         # Update/insert the record
