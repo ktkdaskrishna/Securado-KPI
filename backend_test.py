@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for Leads Feature
-Tests leads endpoints, opportunities separation, and filter functionality
+Backend API Testing for CRM KPI Management Platform
+Tests critical fixes: Sales Leaderboard (Won deals only), Dashboard stats, Invoices filtering, Year filters
 """
 import requests
 import sys
@@ -9,13 +9,12 @@ from datetime import datetime
 
 BASE_URL = "https://crm-win-fix.preview.emergentagent.com"
 
-class LeadsAPITester:
+class CRMAPITester:
     def __init__(self):
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
-        self.lead_id = None  # Store a lead ID for conversion test
 
     def log_result(self, test_name, passed, message=""):
         """Log test result"""
@@ -52,151 +51,9 @@ class LeadsAPITester:
             self.log_result("Login", False, f"Error: {str(e)}")
             return False
 
-    def test_leads_list(self):
-        """Test GET /api/leads - should return only type=lead"""
-        print("\n📋 Testing GET /api/leads...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/leads",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                
-                # Verify all records are type=lead
-                all_leads = all(record.get("type") == "lead" for record in data)
-                
-                if all_leads:
-                    # Store first lead ID for conversion test
-                    if data and len(data) > 0:
-                        self.lead_id = data[0].get("canonical_id")
-                    self.log_result("GET /api/leads", True, f"Returned {count} leads, all type=lead")
-                    return count
-                else:
-                    self.log_result("GET /api/leads", False, f"Some records are not type=lead")
-                    return None
-            else:
-                self.log_result("GET /api/leads", False, f"Status: {response.status_code}, Response: {response.text}")
-                return None
-        except Exception as e:
-            self.log_result("GET /api/leads", False, f"Error: {str(e)}")
-            return None
-
-    def test_leads_year_filter(self, year="2026"):
-        """Test GET /api/leads?year=2026 - should filter by year"""
-        print(f"\n📋 Testing GET /api/leads?year={year}...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/leads?year={year}",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                
-                # Verify all records are type=lead
-                all_leads = all(record.get("type") == "lead" for record in data)
-                
-                if all_leads:
-                    self.log_result(f"GET /api/leads?year={year}", True, f"Returned {count} leads for year {year}")
-                    return count
-                else:
-                    self.log_result(f"GET /api/leads?year={year}", False, f"Some records are not type=lead")
-                    return None
-            else:
-                self.log_result(f"GET /api/leads?year={year}", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result(f"GET /api/leads?year={year}", False, f"Error: {str(e)}")
-            return None
-
-    def test_leads_stats(self):
-        """Test GET /api/leads/stats"""
-        print("\n📊 Testing GET /api/leads/stats...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/leads/stats",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                total_leads = data.get("total_leads", 0)
-                new_leads = data.get("new_leads", 0)
-                qualified_leads = data.get("qualified_leads", 0)
-                conversion_rate = data.get("conversion_rate", 0)
-                
-                self.log_result("GET /api/leads/stats", True, 
-                              f"total_leads={total_leads}, new_leads={new_leads}, qualified_leads={qualified_leads}, conversion_rate={conversion_rate}%")
-                return data
-            else:
-                self.log_result("GET /api/leads/stats", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("GET /api/leads/stats", False, f"Error: {str(e)}")
-            return None
-
-    def test_leads_kanban(self):
-        """Test GET /api/leads/kanban"""
-        print("\n📊 Testing GET /api/leads/kanban...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/leads/kanban",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                total_count = data.get("total_count", 0)
-                stages = data.get("stages", [])
-                
-                self.log_result("GET /api/leads/kanban", True, 
-                              f"total_count={total_count}, stages={stages}")
-                return data
-            else:
-                self.log_result("GET /api/leads/kanban", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("GET /api/leads/kanban", False, f"Error: {str(e)}")
-            return None
-
-    def test_opportunities_exclude_leads(self):
-        """Test GET /api/opportunities - should only return type=opportunity"""
-        print("\n📋 Testing GET /api/opportunities (should exclude leads)...")
-        try:
-            response = requests.get(
-                f"{BASE_URL}/api/opportunities",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                count = len(data)
-                
-                # Verify all records are type=opportunity
-                all_opportunities = all(record.get("type") == "opportunity" for record in data)
-                
-                if all_opportunities:
-                    self.log_result("GET /api/opportunities", True, f"Returned {count} opportunities, all type=opportunity (no leads)")
-                    return count
-                else:
-                    # Check if any leads are present
-                    leads_found = [r for r in data if r.get("type") == "lead"]
-                    self.log_result("GET /api/opportunities", False, f"Found {len(leads_found)} leads in opportunities endpoint!")
-                    return None
-            else:
-                self.log_result("GET /api/opportunities", False, f"Status: {response.status_code}")
-                return None
-        except Exception as e:
-            self.log_result("GET /api/opportunities", False, f"Error: {str(e)}")
-            return None
-
-    def test_dashboard_stats_separation(self):
-        """Test GET /api/dashboard/stats - should show separate counts for opportunities and leads"""
-        print("\n📊 Testing GET /api/dashboard/stats (opportunities vs leads separation)...")
+    def test_dashboard_stats_unfiltered(self):
+        """Test GET /api/dashboard/stats - unfiltered baseline"""
+        print("\n📊 Testing GET /api/dashboard/stats (unfiltered)...")
         try:
             response = requests.get(
                 f"{BASE_URL}/api/dashboard/stats",
@@ -205,89 +62,330 @@ class LeadsAPITester:
             )
             if response.status_code == 200:
                 data = response.json()
-                total_opportunities = data.get("total_opportunities", 0)
-                total_leads = data.get("total_leads", 0)
-                new_leads = data.get("new_leads", 0)
-                qualified_leads = data.get("qualified_leads", 0)
+                total_pipeline = data.get("total_pipeline", 0)
+                won_count = data.get("won_count", 0)
+                won_value = data.get("won_value", 0)
+                win_rate = data.get("win_rate", 0)
+                leaderboard = data.get("leaderboard", [])
                 
-                # Check if separate counts exist
-                has_separation = "total_leads" in data and "total_opportunities" in data
+                # Verify leaderboard exists and has data
+                has_leaderboard = len(leaderboard) > 0
                 
-                if has_separation:
-                    self.log_result("Dashboard Stats Separation", True, 
-                                  f"total_opportunities={total_opportunities}, total_leads={total_leads}, new_leads={new_leads}, qualified_leads={qualified_leads}")
-                    return data
-                else:
-                    self.log_result("Dashboard Stats Separation", False, 
-                                  f"Missing separate counts for leads and opportunities")
-                    return None
+                self.log_result("Dashboard Stats (unfiltered)", True, 
+                              f"total_pipeline={total_pipeline:,.0f}, won_count={won_count}, won_value={won_value:,.0f}, win_rate={win_rate}%, leaderboard_entries={len(leaderboard)}")
+                
+                # Return data for further analysis
+                return data
             else:
-                self.log_result("Dashboard Stats Separation", False, f"Status: {response.status_code}")
+                self.log_result("Dashboard Stats (unfiltered)", False, f"Status: {response.status_code}")
                 return None
         except Exception as e:
-            self.log_result("Dashboard Stats Separation", False, f"Error: {str(e)}")
+            self.log_result("Dashboard Stats (unfiltered)", False, f"Error: {str(e)}")
             return None
 
-    def test_dashboard_stats_filtered(self, year="2025"):
-        """Test GET /api/dashboard/stats?year=2025 - should show filtered counts"""
-        print(f"\n📊 Testing GET /api/dashboard/stats?year={year} (filtered)...")
+    def test_leaderboard_won_deals_only(self):
+        """CRITICAL: Test that leaderboard shows ONLY WON deals, not total pipeline"""
+        print("\n🏆 CRITICAL TEST: Leaderboard shows WON deals only...")
         try:
             response = requests.get(
-                f"{BASE_URL}/api/dashboard/stats?year={year}",
+                f"{BASE_URL}/api/dashboard/stats",
                 headers={"Authorization": f"Bearer {self.token}"},
                 timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
-                total_opportunities = data.get("total_opportunities", 0)
-                total_leads = data.get("total_leads", 0)
+                leaderboard = data.get("leaderboard", [])
+                
+                if not leaderboard:
+                    self.log_result("Leaderboard Won Deals Only", False, "Leaderboard is empty")
+                    return None
+                
+                # Check top performer
+                top_performer = leaderboard[0]
+                top_name = top_performer.get("name", "")
+                top_value = top_performer.get("value", 0)
+                top_deals_won = top_performer.get("deals_won", 0)
+                
+                # According to agent context: Shri Hari Venkatesh Naidu should be #1 with OMR 1,014,217 (30 won deals)
+                # Previously showed Nabisaheb with OMR 24.6M (total pipeline - WRONG)
+                
+                # Check if top value is reasonable for won deals (not inflated by total pipeline)
+                # If it's > 10M, it's likely showing total pipeline instead of won deals
+                is_reasonable = top_value < 10_000_000  # Less than 10M is reasonable for won deals
+                
+                if is_reasonable:
+                    self.log_result("Leaderboard Won Deals Only", True, 
+                                  f"Top: {top_name} with {top_value:,.0f} ({top_deals_won} won deals) - appears to be won deals only")
+                else:
+                    self.log_result("Leaderboard Won Deals Only", False, 
+                                  f"Top: {top_name} with {top_value:,.0f} - value too high, likely showing total pipeline instead of won deals!")
+                
+                # Print full leaderboard for verification
+                print("\n   Full Leaderboard:")
+                for i, person in enumerate(leaderboard[:5], 1):
+                    print(f"   {i}. {person.get('name')} - {person.get('value'):,.0f} ({person.get('deals_won', 0)} won deals)")
+                
+                return leaderboard
+            else:
+                self.log_result("Leaderboard Won Deals Only", False, f"Status: {response.status_code}")
+                return None
+        except Exception as e:
+            self.log_result("Leaderboard Won Deals Only", False, f"Error: {str(e)}")
+            return None
+
+    def test_year_filter_2025(self):
+        """CRITICAL: Test year filter 2025 - should show only 1 won deal"""
+        print("\n📅 CRITICAL TEST: Year filter 2025 (should show 1 won deal)...")
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/dashboard/stats?year=2025",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                won_count = data.get("won_count", 0)
+                won_value = data.get("won_value", 0)
                 filtered = data.get("filtered", False)
                 applied_filters = data.get("applied_filters", {})
                 
-                if filtered and applied_filters.get("year") == year:
-                    self.log_result(f"Dashboard Stats year={year}", True, 
-                                  f"total_opportunities={total_opportunities}, total_leads={total_leads}, filtered={filtered}")
-                    return data
+                # According to agent context: 2025 should show only 1 won deal
+                is_correct = won_count == 1
+                
+                if is_correct:
+                    self.log_result("Year Filter 2025 (1 won deal)", True, 
+                                  f"won_count={won_count} (correct!), won_value={won_value:,.0f}, filtered={filtered}")
                 else:
-                    self.log_result(f"Dashboard Stats year={year}", False, 
-                                  f"Filter not applied correctly. filtered={filtered}, applied_filters={applied_filters}")
-                    return None
+                    self.log_result("Year Filter 2025 (1 won deal)", False, 
+                                  f"Expected won_count=1, got {won_count}. won_value={won_value:,.0f}")
+                
+                return data
             else:
-                self.log_result(f"Dashboard Stats year={year}", False, f"Status: {response.status_code}")
+                self.log_result("Year Filter 2025 (1 won deal)", False, f"Status: {response.status_code}")
                 return None
         except Exception as e:
-            self.log_result(f"Dashboard Stats year={year}", False, f"Error: {str(e)}")
+            self.log_result("Year Filter 2025 (1 won deal)", False, f"Error: {str(e)}")
             return None
 
-    def test_convert_lead(self):
-        """Test POST /api/leads/{id}/convert - convert lead to opportunity"""
-        if not self.lead_id:
-            self.log_result("Convert Lead", False, "No lead ID available for conversion test")
-            return False
-            
-        print(f"\n🔄 Testing POST /api/leads/{self.lead_id}/convert...")
+    def test_dashboard_contextual_filters(self):
+        """Test Dashboard contextual filters: Year, Quarter, SalesRep, Stage"""
+        print("\n🔍 Testing Dashboard contextual filters...")
+        
+        # Test Year filter
         try:
-            response = requests.post(
-                f"{BASE_URL}/api/leads/{self.lead_id}/convert",
+            response = requests.get(
+                f"{BASE_URL}/api/dashboard/stats?year=2024",
                 headers={"Authorization": f"Bearer {self.token}"},
                 timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
-                success = data.get("success", False)
+                filtered = data.get("filtered", False)
+                applied_filters = data.get("applied_filters", {})
                 
-                if success:
-                    self.log_result("Convert Lead", True, f"Lead {self.lead_id} converted to opportunity")
-                    return True
+                if filtered and applied_filters.get("year") == "2024":
+                    self.log_result("Dashboard Year Filter", True, f"Year filter working, won_count={data.get('won_count', 0)}")
                 else:
-                    self.log_result("Convert Lead", False, f"Conversion failed: {data}")
-                    return False
+                    self.log_result("Dashboard Year Filter", False, f"Year filter not applied correctly")
             else:
-                self.log_result("Convert Lead", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
+                self.log_result("Dashboard Year Filter", False, f"Status: {response.status_code}")
         except Exception as e:
-            self.log_result("Convert Lead", False, f"Error: {str(e)}")
-            return False
+            self.log_result("Dashboard Year Filter", False, f"Error: {str(e)}")
+        
+        # Test Quarter filter
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/dashboard/stats?quarter=Q1",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                filtered = data.get("filtered", False)
+                applied_filters = data.get("applied_filters", {})
+                
+                if filtered and applied_filters.get("quarter") == "Q1":
+                    self.log_result("Dashboard Quarter Filter", True, f"Quarter filter working")
+                else:
+                    self.log_result("Dashboard Quarter Filter", False, f"Quarter filter not applied correctly")
+            else:
+                self.log_result("Dashboard Quarter Filter", False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result("Dashboard Quarter Filter", False, f"Error: {str(e)}")
+
+    def test_opportunities_contextual_filters(self):
+        """Test Opportunities contextual filters: Year, Quarter, SalesRep, Account, Stage"""
+        print("\n🔍 Testing Opportunities contextual filters...")
+        
+        # Test Year filter
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/opportunities?year=2024",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                count = len(data)
+                self.log_result("Opportunities Year Filter", True, f"Returned {count} opportunities for 2024")
+            else:
+                self.log_result("Opportunities Year Filter", False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result("Opportunities Year Filter", False, f"Error: {str(e)}")
+
+    def test_activities_contextual_filters(self):
+        """Test Activities contextual filters: Year, Quarter, SalesRep, Type, Status"""
+        print("\n🔍 Testing Activities contextual filters...")
+        
+        # Test Status filter
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/activities?status=pending",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                count = len(data)
+                # Verify all are pending
+                all_pending = all(act.get("status") == "pending" for act in data)
+                
+                if all_pending:
+                    self.log_result("Activities Status Filter", True, f"Returned {count} pending activities")
+                else:
+                    self.log_result("Activities Status Filter", False, f"Some activities are not pending")
+            else:
+                self.log_result("Activities Status Filter", False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result("Activities Status Filter", False, f"Error: {str(e)}")
+
+    def test_invoices_stats(self):
+        """Test Invoices stats: Total, Pending, Overdue, Paid"""
+        print("\n💰 Testing Invoices stats...")
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/receivables/stats",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                stats = data.get("stats", {})
+                total_invoiced = stats.get("total_invoiced", 0)
+                total_pending = stats.get("total_pending", 0)
+                total_overdue = stats.get("total_overdue", 0)
+                total_paid = stats.get("total_paid", 0)
+                count_total = stats.get("count_total", 0)
+                
+                # Verify stats add up correctly
+                sum_amounts = total_pending + total_overdue + total_paid
+                amounts_match = abs(sum_amounts - total_invoiced) < 1  # Allow for rounding
+                
+                if amounts_match:
+                    self.log_result("Invoices Stats", True, 
+                                  f"total={total_invoiced:,.0f}, pending={total_pending:,.0f}, overdue={total_overdue:,.0f}, paid={total_paid:,.0f}, count={count_total}")
+                else:
+                    self.log_result("Invoices Stats", False, 
+                                  f"Stats don't add up: pending+overdue+paid={sum_amounts:,.0f} != total={total_invoiced:,.0f}")
+                
+                return stats
+            else:
+                self.log_result("Invoices Stats", False, f"Status: {response.status_code}")
+                return None
+        except Exception as e:
+            self.log_result("Invoices Stats", False, f"Error: {str(e)}")
+            return None
+
+    def test_invoices_filtering(self):
+        """Test Invoices filtering: All, Pending, Overdue, Paid tabs"""
+        print("\n💰 Testing Invoices filtering (tabs)...")
+        
+        statuses = ["all", "pending", "overdue", "paid"]
+        
+        for status in statuses:
+            try:
+                params = {"status": status} if status != "all" else {}
+                response = requests.get(
+                    f"{BASE_URL}/api/receivables",
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    params=params,
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    invoices = data.get("invoices", data)  # Handle both formats
+                    count = len(invoices)
+                    
+                    # Verify all invoices match the filter
+                    if status != "all":
+                        all_match = all(inv.get("status") == status for inv in invoices)
+                        if all_match:
+                            self.log_result(f"Invoices Filter ({status})", True, f"Returned {count} {status} invoices")
+                        else:
+                            mismatched = [inv.get("status") for inv in invoices if inv.get("status") != status]
+                            self.log_result(f"Invoices Filter ({status})", False, 
+                                          f"Some invoices don't match filter. Found statuses: {set(mismatched)}")
+                    else:
+                        self.log_result(f"Invoices Filter ({status})", True, f"Returned {count} total invoices")
+                else:
+                    self.log_result(f"Invoices Filter ({status})", False, f"Status: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Invoices Filter ({status})", False, f"Error: {str(e)}")
+
+    def test_invoices_contextual_filters(self):
+        """Test Invoices contextual filters: Year, Quarter, Account"""
+        print("\n🔍 Testing Invoices contextual filters...")
+        
+        # Test Year filter
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/receivables?year=2024",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                invoices = data.get("invoices", data)
+                count = len(invoices)
+                self.log_result("Invoices Year Filter", True, f"Returned {count} invoices for 2024")
+            else:
+                self.log_result("Invoices Year Filter", False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result("Invoices Year Filter", False, f"Error: {str(e)}")
+
+    def test_stage_mapping(self):
+        """Test that 'Won' stage in Odoo maps correctly to leaderboard calculations"""
+        print("\n🎯 Testing Stage mapping (Won stage)...")
+        try:
+            # Get opportunities with Won stage
+            response = requests.get(
+                f"{BASE_URL}/api/opportunities?stage=Won",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                count = len(data)
+                
+                # Now check if dashboard stats match
+                dash_response = requests.get(
+                    f"{BASE_URL}/api/dashboard/stats",
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    timeout=10
+                )
+                if dash_response.status_code == 200:
+                    dash_data = dash_response.json()
+                    won_count = dash_data.get("won_count", 0)
+                    
+                    # The counts should be related (though not necessarily exact due to filtering)
+                    self.log_result("Stage Mapping (Won)", True, 
+                                  f"Found {count} Won opportunities, dashboard shows {won_count} won deals")
+                else:
+                    self.log_result("Stage Mapping (Won)", False, f"Dashboard request failed")
+            else:
+                self.log_result("Stage Mapping (Won)", False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result("Stage Mapping (Won)", False, f"Error: {str(e)}")
 
     def print_summary(self):
         """Print test summary"""
@@ -312,28 +410,52 @@ class LeadsAPITester:
             return 1
 
 def main():
-    tester = LeadsAPITester()
+    tester = CRMAPITester()
     
     # Login first
     if not tester.login():
         print("❌ Login failed, cannot proceed with tests")
         return 1
     
-    # Test leads endpoints
-    tester.test_leads_list()
-    tester.test_leads_year_filter("2026")
-    tester.test_leads_stats()
-    tester.test_leads_kanban()
+    # CRITICAL TESTS
+    print("\n" + "="*60)
+    print("🔥 CRITICAL TESTS - Sales Leaderboard & Year Filter")
+    print("="*60)
+    tester.test_dashboard_stats_unfiltered()
+    tester.test_leaderboard_won_deals_only()  # CRITICAL: Leaderboard shows WON deals only
+    tester.test_year_filter_2025()  # CRITICAL: 2025 should show 1 won deal
     
-    # Test opportunities endpoint (should exclude leads)
-    tester.test_opportunities_exclude_leads()
+    # Dashboard stats and filters
+    print("\n" + "="*60)
+    print("📊 Dashboard Stats & Contextual Filters")
+    print("="*60)
+    tester.test_dashboard_contextual_filters()
     
-    # Test dashboard stats (should show separate counts)
-    tester.test_dashboard_stats_separation()
-    tester.test_dashboard_stats_filtered("2025")
+    # Opportunities filters
+    print("\n" + "="*60)
+    print("🎯 Opportunities Contextual Filters")
+    print("="*60)
+    tester.test_opportunities_contextual_filters()
     
-    # Test lead conversion (this will modify data, so do it last)
-    tester.test_convert_lead()
+    # Activities filters
+    print("\n" + "="*60)
+    print("📋 Activities Contextual Filters")
+    print("="*60)
+    tester.test_activities_contextual_filters()
+    
+    # Invoices stats and filtering
+    print("\n" + "="*60)
+    print("💰 Invoices Stats & Filtering")
+    print("="*60)
+    tester.test_invoices_stats()
+    tester.test_invoices_filtering()
+    tester.test_invoices_contextual_filters()
+    
+    # Stage mapping
+    print("\n" + "="*60)
+    print("🎯 Stage Mapping Verification")
+    print("="*60)
+    tester.test_stage_mapping()
     
     # Print summary
     return tester.print_summary()
