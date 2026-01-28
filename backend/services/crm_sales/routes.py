@@ -1445,13 +1445,20 @@ async def get_account_360(
         for o in won_opps
     )
     
-    # Format contacts for display
+    # Format contacts for display (sanitize Odoo relational fields)
     result["contacts"] = []
     for contact in contacts:
+        # Extract string value from Odoo relational fields like [id, "name"]
+        title = contact.get("title") or contact.get("function") or ""
+        if isinstance(title, (list, tuple)) and len(title) >= 2:
+            title = str(title[1]) if title[1] else ""
+        elif isinstance(title, dict):
+            title = title.get("name", "")
+        
         result["contacts"].append({
             "id": contact.get("canonical_id") or str(contact.get("_id")),
             "name": contact.get("name", "Unknown"),
-            "title": contact.get("title") or contact.get("function") or "",
+            "title": str(title) if title else "",
             "email": contact.get("email") or "",
             "phone": contact.get("phone") or ""
         })
