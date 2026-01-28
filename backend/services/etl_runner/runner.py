@@ -396,10 +396,16 @@ class ETLRunner:
                 extraction_domain.append(('active', '=', True))
                 log(f"Filtering {source_model} to active records only")
             
+            # Determine the order field - some models (like crm.activity.report) don't have write_date
+            order_field_map = {
+                'crm.activity.report': 'date desc',  # Use completion date for activity reports
+            }
+            order_field = order_field_map.get(source_model, 'write_date desc')
+            
             # Build search_read options
             search_options = {
                 'fields': source_fields,
-                'order': 'write_date desc',
+                'order': order_field,
                 'context': {'active_test': False} if include_all_states else {}
             }
             if extract_limit:
