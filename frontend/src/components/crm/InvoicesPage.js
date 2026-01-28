@@ -82,7 +82,7 @@ export function InvoicesPage() {
       
       // Build params based on active tab and filters
       const params = {
-        status: activeTab === 'all' ? null : activeTab,
+        status: activeTab === 'all' || activeTab === 'salesperson' ? null : activeTab,
         year: filters.year,
         quarter: filters.quarter,
         account: filters.account,
@@ -94,9 +94,10 @@ export function InvoicesPage() {
         if (params[key] === null) delete params[key];
       });
       
-      const [invoicesRes, statsRes] = await Promise.all([
+      const [invoicesRes, statsRes, salespersonRes] = await Promise.all([
         crmAPI.listReceivables(params),
-        crmAPI.getReceivablesStats({ year: filters.year, quarter: filters.quarter })
+        crmAPI.getReceivablesStats({ year: filters.year, quarter: filters.quarter }),
+        crmAPI.getReceivablesBySalesperson({ year: filters.year, quarter: filters.quarter })
       ]);
       
       // Handle new API response format
