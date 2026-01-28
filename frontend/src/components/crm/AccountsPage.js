@@ -127,15 +127,41 @@ export function AccountsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAccounts.map((account) => (
+              filteredAccounts.map((account) => {
+                // Determine if this is a Company or Contact
+                const isCompany = account.is_company || 
+                  (account.company_type === 'company') || 
+                  (!account.parent_id && !account.company_name);
+                
+                return (
                 <TableRow key={account.canonical_id || account.id} data-testid={`account-row-${account.canonical_id || account.id}`}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white text-sm font-medium">
-                        {account.name?.charAt(0) || '?'}
+                      {/* Icon to differentiate Company vs Contact */}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                        isCompany 
+                          ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+                          : 'bg-gradient-to-br from-purple-500 to-purple-600'
+                      }`}>
+                        {isCompany ? (
+                          <Building2 className="h-4 w-4" />
+                        ) : (
+                          <User className="h-4 w-4" />
+                        )}
                       </div>
                       <div>
-                        <p className="font-medium">{account.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{account.name}</p>
+                          <Badge variant={isCompany ? "default" : "secondary"} className="text-xs py-0">
+                            {isCompany ? "Company" : "Contact"}
+                          </Badge>
+                        </div>
+                        {account.company_name && !isCompany && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {account.company_name}
+                          </p>
+                        )}
                         {account.email && (
                           <p className="text-xs text-muted-foreground">{account.email}</p>
                         )}
