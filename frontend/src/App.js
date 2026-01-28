@@ -162,8 +162,10 @@ function App() {
       <AuthProvider>
         <CurrencyProvider>
           <GlobalFilterProvider>
-            <AppRoutes />
-            <Toaster position="top-right" richColors closeButton />
+            <RBACProvider>
+              <AppRoutes />
+              <Toaster position="top-right" richColors closeButton />
+            </RBACProvider>
           </GlobalFilterProvider>
         </CurrencyProvider>
       </AuthProvider>
