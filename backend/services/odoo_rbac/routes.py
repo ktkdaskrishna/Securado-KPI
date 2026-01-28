@@ -960,19 +960,42 @@ async def update_webhook_config(
 
 
 @webhook_router.delete("/odoo-automations")
-async def delete_odoo_automations(current_user: dict = Depends(get_current_user)):
+async def delete_odoo_automations(
+    current_user: dict = Depends(get_current_user),
+    odoo_url: Optional[str] = None,
+    odoo_database: Optional[str] = None,
+    odoo_username: Optional[str] = None,
+    odoo_api_key: Optional[str] = None
+):
     """
     Delete all webhook automations from Odoo.
     
     This will search for and remove all automated actions we created in Odoo to stop webhooks.
+    
+    Can use either:
+    1. Stored Odoo connection (if available)
+    2. Provided credentials via query params
     """
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get Odoo connection
+    # Try to get stored connection first
     conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
+    
+    # If no stored connection, use provided credentials
     if not conn:
-        raise HTTPException(status_code=404, detail="No Odoo connection found")
+        if all([odoo_url, odoo_database, odoo_username, odoo_api_key]):
+            conn = {
+                "url": odoo_url,
+                "database": odoo_database,
+                "username": odoo_username,
+                "api_key": odoo_api_key
+            }
+        else:
+            raise HTTPException(
+                status_code=404, 
+                detail="No Odoo connection found. Please provide Odoo credentials (url, database, username, api_key)"
+            )
     
     try:
         from services.etl_control.routes import create_odoo_proxy
