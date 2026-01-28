@@ -267,6 +267,192 @@ export function UsersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Invite User Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Invite New User
+            </DialogTitle>
+            <DialogDescription>
+              Add a new user to the system
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!inviteResult ? (
+            <div className="space-y-4 py-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-name">Full Name *</Label>
+                  <Input
+                    id="invite-name"
+                    placeholder="John Doe"
+                    value={inviteForm.name}
+                    onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                    data-testid="invite-name-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Email Address *</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    placeholder="john@company.com"
+                    value={inviteForm.email}
+                    onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                    data-testid="invite-email-input"
+                  />
+                </div>
+              </div>
+
+              {/* Invite Method Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Send Email Invitation</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {inviteForm.send_email 
+                      ? "User will receive an email to set their password" 
+                      : "Create user directly with a temporary password"}
+                  </p>
+                </div>
+                <Switch
+                  checked={inviteForm.send_email}
+                  onCheckedChange={(checked) => setInviteForm({ ...inviteForm, send_email: checked })}
+                  data-testid="invite-send-email-toggle"
+                />
+              </div>
+
+              {/* Temporary Password (if not sending email) */}
+              {!inviteForm.send_email && (
+                <div className="space-y-2">
+                  <Label htmlFor="invite-password">Temporary Password *</Label>
+                  <div className="relative">
+                    <Input
+                      id="invite-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a temporary password"
+                      value={inviteForm.temp_password}
+                      onChange={(e) => setInviteForm({ ...inviteForm, temp_password: e.target.value })}
+                      data-testid="invite-password-input"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    User will be asked to change this on first login
+                  </p>
+                </div>
+              )}
+
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <Label>Assign Roles</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-lg">
+                  {roles.map((role) => (
+                    <div
+                      key={role.id}
+                      className={`flex items-center gap-2 p-2 border rounded cursor-pointer transition-all ${
+                        inviteForm.roles.includes(role.id) ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => toggleInviteRole(role.id)}
+                    >
+                      <Checkbox 
+                        checked={inviteForm.roles.includes(role.id)}
+                        onCheckedChange={() => toggleInviteRole(role.id)}
+                      />
+                      <div>
+                        <span className="text-sm font-medium">{role.name}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Success View */
+            <div className="py-6 space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold">User {inviteForm.send_email ? 'Invited' : 'Created'} Successfully!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {inviteResult.email}
+                </p>
+              </div>
+
+              {/* Show credentials if direct creation */}
+              {inviteResult.temp_password && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2 text-amber-700">
+                    <Key className="h-4 w-4" />
+                    <span className="font-medium">Login Credentials</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Email:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm bg-white px-2 py-1 rounded">{inviteResult.email}</code>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(inviteResult.email)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Password:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm bg-white px-2 py-1 rounded">{inviteResult.temp_password}</code>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(inviteResult.temp_password)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    ⚠️ Share these credentials securely. The user will be prompted to change their password on first login.
+                  </p>
+                </div>
+              )}
+
+              {/* Show invite info if email invite */}
+              {inviteForm.send_email && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Mail className="h-4 w-4" />
+                    <span className="font-medium">Email Invitation Sent</span>
+                  </div>
+                  <p className="text-sm text-blue-600 mt-2">
+                    The user will receive an email with instructions to set up their account.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            {!inviteResult ? (
+              <>
+                <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleInviteUser} data-testid="submit-invite-button">
+                  {inviteForm.send_email ? 'Send Invitation' : 'Create User'}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setInviteDialogOpen(false)}>Done</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <Table>
           <TableHeader>
