@@ -234,12 +234,22 @@ export function AccountsPage() {
           
           {account360 ? (
             <div className="mt-6">
-              {/* Stats Row */}
-              <div className="grid grid-cols-4 gap-3 mb-6">
+              {/* Stats Row - Updated with Won Deals */}
+              <div className="grid grid-cols-5 gap-3 mb-6">
                 <Card className="bg-emerald-50 border-emerald-200">
                   <CardContent className="pt-3 pb-3">
                     <p className="text-xs text-emerald-600">Pipeline Value</p>
                     <p className="text-lg font-bold text-emerald-700">{formatCurrency(account360.total_value || 0)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-amber-50 border-amber-200">
+                  <CardContent className="pt-3 pb-3">
+                    <div className="flex items-center gap-1">
+                      <Trophy className="h-3 w-3 text-amber-600" />
+                      <p className="text-xs text-amber-600">Won Deals</p>
+                    </div>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(account360.won_value || 0)}</p>
+                    <p className="text-xs text-amber-600">{account360.won_count || 0} deals</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-blue-50 border-blue-200">
@@ -248,10 +258,10 @@ export function AccountsPage() {
                     <p className="text-lg font-bold text-blue-700">{account360.opportunities_count || 0}</p>
                   </CardContent>
                 </Card>
-                <Card className="bg-amber-50 border-amber-200">
+                <Card className="bg-purple-50 border-purple-200">
                   <CardContent className="pt-3 pb-3">
-                    <p className="text-xs text-amber-600">Invoiced</p>
-                    <p className="text-lg font-bold text-amber-700">{formatCurrency(account360.total_invoiced || 0)}</p>
+                    <p className="text-xs text-purple-600">Invoiced</p>
+                    <p className="text-lg font-bold text-purple-700">{formatCurrency(account360.total_invoiced || 0)}</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-red-50 border-red-200">
