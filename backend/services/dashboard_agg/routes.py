@@ -323,9 +323,14 @@ class DashboardAggregator:
             
             # Get CRM activities ONLY from CANONICAL DB (synced from Odoo)
             # Only mail.activity where res_model='crm.lead' - NOT project tasks
+            # Get CRM activities from CANONICAL DB (synced from Odoo)
+            # Include activities with res_model='crm.lead' OR activities with opportunity_id (from crm.activity.report)
             canonical_activities = await canonical_db.activities.find({
                 "org_id": org_id,
-                "res_model": "crm.lead"  # Only CRM-related activities
+                "$or": [
+                    {"res_model": "crm.lead"},
+                    {"opportunity_id": {"$exists": True, "$ne": None}}
+                ]
             }).to_list(10000)
             
             # Also get app activities (manually created)
@@ -340,7 +345,7 @@ class DashboardAggregator:
                     activity_type_map["calls"] += 1
                 elif "email" in act_type or "mail" in act_type:
                     activity_type_map["emails"] += 1
-                elif "meet" in act_type or "event" in act_type:
+                elif "meet" in act_type or "event" in act_type or "demo" in act_type or "site visit" in act_type:
                     activity_type_map["meetings"] += 1
                 else:
                     activity_type_map["tasks"] += 1
@@ -351,7 +356,7 @@ class DashboardAggregator:
                 "meetings": activity_type_map["meetings"],
                 "tasks": activity_type_map["tasks"],
                 "total": len(all_activities),
-                "completed": len([a for a in all_activities if a.get("state") == "done" or a.get("status") == "completed"])
+                "completed": len([a for a in all_activities if a.get("state") == "done" or a.get("status") == "completed" or a.get("completed_at")])
             }
             
             # Recent activities - combine and sort
