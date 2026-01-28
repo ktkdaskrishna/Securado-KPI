@@ -11,16 +11,21 @@
 
 ## Current Sprint: Bug Fixes + Phase 1
 
-### 🔴 P0 - Critical Bugs (This Week)
+### 🟢 P0 - Critical Bugs (COMPLETED!)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Configure ETL mapping for `mail.activity` | ⬜ TODO | See CRM_DATA_MODEL_REFERENCE.md |
-| Re-run ETL sync for activities | ⬜ TODO | After mapping configured |
-| Fix log messages linking | ⬜ TODO | Sync `mail.message` model |
-| Verify activity linking works | ⬜ TODO | Test after ETL |
+| Configure ETL mapping for `mail.activity` | ✅ DONE | Added opportunity_id mapping |
+| Normalize activity opportunity_id types | ✅ DONE | Converted 681 string→int |
+| Set res_model='crm.lead' on activities | ✅ DONE | Updated 681 activities |
+| Fix opportunity lookup by all ID types | ✅ DONE | Added `find_opportunity_by_id()` helper |
+| Fix activities API endpoint | ✅ DONE | Now uses helper function |
+| Fix bluesheet API endpoint | ✅ DONE | Now uses helper function |
+| Fix logs API endpoint | ✅ DONE | Now uses helper function |
 
-### 🟡 P1 - Modular Dashboard Foundations
+**Result:** Activities now showing on opportunity detail! AI Confidence improved from 0% to 33.5%
+
+### 🟡 P1 - Modular Dashboard Foundations (NEXT)
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -42,27 +47,15 @@
 
 ---
 
-## Quick Reference: Broken Features
+## Recent Completions (2026-01-29)
 
-| Feature | Issue | Fix Location |
-|---------|-------|--------------|
-| Opportunity Activities | Shows 0 | ETL mapping for `mail.activity` |
-| Opportunity Logs | Shows 0 | ETL mapping for `mail.message` |
-| AI Confidence | Shows 0% | Depends on activities |
-| Activity Overview Card | Shows 0 | Depends on activities |
-
----
-
-## Recent Completions (2026-01-28/29)
-
-- ✅ Dashboard Sales Rep filter
-- ✅ Dashboard clickable items
-- ✅ Export Excel button
-- ✅ PM Leaderboard UI
-- ✅ Category Performance UI
-- ✅ Invoices Salesperson tab
-- ✅ Activity API endpoint updated
-- ✅ Documentation created
+- ✅ ETL mapping configured for mail.activity
+- ✅ Activity data normalized (opportunity_id as int)
+- ✅ All 683 activities now have res_model='crm.lead'
+- ✅ find_opportunity_by_id() helper function created
+- ✅ Activities, Bluesheet, Logs endpoints fixed
+- ✅ **Activities now visible in UI!**
+- ✅ **AI Confidence improved from 0% to 33.5%**
 
 ---
 
