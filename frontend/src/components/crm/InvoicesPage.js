@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { crmAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { getCurrencyOptions } from '../../lib/currency';
@@ -12,9 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Progress } from '../ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { 
   FileText, Search, Eye, DollarSign, Calendar, Clock, AlertTriangle,
-  CheckCircle, TrendingUp, Building2, Download, Send, Plus
+  CheckCircle, TrendingUp, Building2, Download, Send, Plus, Filter, 
+  RotateCcw, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,25 +32,23 @@ const formatDate = (dateStr) => {
 
 export function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [accountOpen, setAccountOpen] = useState(false);
   const { currency: globalCurrency, formatCurrency, updateCurrency } = useCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState(globalCurrency);
 
-  // Stats with currency support
-  const stats = {
-    totalInvoiced: invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
-    totalPending: invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + (inv.amount || 0), 0),
-    totalOverdue: invoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + (inv.amount || 0), 0),
-    totalPaid: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
-  };
-
-  useEffect(() => {
-    loadInvoices();
-  }, []);
+  // Contextual filters for Invoices page
+  const [filters, setFilters] = useState({
+    year: null,
+    quarter: null,
+    account: null
+  });
 
   // Sync with global currency setting
   useEffect(() => {
@@ -60,26 +61,62 @@ export function InvoicesPage() {
     updateCurrency(newCurrency);
   };
 
-  const loadInvoices = async () => {
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({ year: null, quarter: null, account: null });
+    setActiveTab('all');
+  };
+
+  const hasActiveFilters = () => {
+    return filters.year || filters.quarter || filters.account;
+  };
+
+  const loadInvoices = useCallback(async () => {
     try {
-      const res = await crmAPI.listReceivables();
-      // Enrich mock data with more details
-      const enrichedInvoices = (res.data || []).map((inv, i) => ({
-        ...inv,
-        invoice_number: `INV-2024-${String(i + 1001).padStart(4, '0')}`,
-        issued_date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        items: [
-          { description: 'Professional Services', quantity: 1, rate: inv.amount * 0.7, amount: inv.amount * 0.7 },
-          { description: 'Support & Maintenance', quantity: 1, rate: inv.amount * 0.3, amount: inv.amount * 0.3 }
-        ]
-      }));
-      setInvoices(enrichedInvoices);
+      setLoading(true);
+      
+      // Build params based on active tab and filters
+      const params = {
+        status: activeTab === 'all' ? null : activeTab,
+        year: filters.year,
+        quarter: filters.quarter,
+        account: filters.account,
+        limit: 200
+      };
+      
+      // Remove null values
+      Object.keys(params).forEach(key => {
+        if (params[key] === null) delete params[key];
+      });
+      
+      const [invoicesRes, statsRes] = await Promise.all([
+        crmAPI.listReceivables(params),
+        crmAPI.getReceivablesStats({ year: filters.year, quarter: filters.quarter })
+      ]);
+      
+      // Handle new API response format
+      const invoiceData = invoicesRes.data?.invoices || invoicesRes.data || [];
+      const statsData = statsRes.data?.stats || invoicesRes.data?.stats || {};
+      const options = statsRes.data?.filter_options || { accounts: [], years: [] };
+      
+      setInvoices(invoiceData);
+      setStats(statsData);
+      setFilterOptions(options);
+      
     } catch (error) {
+      console.error('Failed to load invoices:', error);
       toast.error('Failed to load invoices');
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, filters.year, filters.quarter, filters.account]);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -102,12 +139,7 @@ export function InvoicesPage() {
       inv.account?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesTab = activeTab === 'all' ||
-      (activeTab === 'pending' && inv.status === 'pending') ||
-      (activeTab === 'overdue' && inv.status === 'overdue') ||
-      (activeTab === 'paid' && inv.status === 'paid');
-    
-    return matchesSearch && matchesTab;
+    return matchesSearch;
   });
 
   const viewInvoice = (invoice) => {
@@ -115,9 +147,14 @@ export function InvoicesPage() {
     setSheetOpen(true);
   };
 
+  // Calculate collection rate
+  const collectionRate = stats?.total_invoiced > 0 
+    ? (stats.total_paid / stats.total_invoiced) * 100 
+    : 0;
+
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
@@ -127,8 +164,16 @@ export function InvoicesPage() {
     );
   }
 
+  const quarterOptions = [
+    { value: 'Q1', label: 'Q1 (Jan-Mar)' },
+    { value: 'Q2', label: 'Q2 (Apr-Jun)' },
+    { value: 'Q3', label: 'Q3 (Jul-Sep)' },
+    { value: 'Q4', label: 'Q4 (Oct-Dec)' }
+  ];
+
   return (
-    <div className="space-y-6" data-testid="invoices-page">
+    <div className="space-y-6 p-6" data-testid="invoices-page">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Invoices & Receivables</h1>
@@ -136,7 +181,7 @@ export function InvoicesPage() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={selectedCurrency} onValueChange={handleCurrencyChange}>
-            <SelectTrigger className="w-[140px]" data-testid="currency-selector">
+            <SelectTrigger className="w-[120px]" data-testid="currency-selector">
               <SelectValue placeholder="Currency" />
             </SelectTrigger>
             <SelectContent>
@@ -147,11 +192,128 @@ export function InvoicesPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button onClick={loadInvoices} variant="outline" data-testid="refresh-invoices">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button className="bg-primary hover:bg-primary/90" data-testid="create-invoice-btn">
             <Plus className="h-4 w-4 mr-2" />
             Create Invoice
           </Button>
         </div>
+      </div>
+
+      {/* Contextual Filters Bar */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-gradient-to-r from-muted/30 to-muted/50 rounded-lg border" data-testid="invoice-filters">
+        <div className="flex items-center gap-2 mr-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Filters</span>
+        </div>
+
+        {/* Year Filter */}
+        <Select 
+          value={filters.year || 'all'} 
+          onValueChange={(v) => updateFilter('year', v === 'all' ? null : v)}
+        >
+          <SelectTrigger className="w-[110px] h-9" data-testid="filter-year">
+            <Calendar className="h-3 w-3 mr-1" />
+            <SelectValue placeholder="Year" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {filterOptions.years?.map(year => (
+              <SelectItem key={year} value={year}>{year}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Quarter Filter */}
+        <Select 
+          value={filters.quarter || 'all'} 
+          onValueChange={(v) => updateFilter('quarter', v === 'all' ? null : v)}
+        >
+          <SelectTrigger className="w-[140px] h-9" data-testid="filter-quarter">
+            <SelectValue placeholder="Quarter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Quarters</SelectItem>
+            {quarterOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Account Filter - Searchable */}
+        <Popover open={accountOpen} onOpenChange={setAccountOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              role="combobox" 
+              className="w-[180px] h-9 justify-between"
+              data-testid="filter-account"
+            >
+              <Building2 className="h-3 w-3 mr-1 shrink-0" />
+              <span className="truncate">
+                {filters.account || "All Accounts"}
+              </span>
+              <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0">
+            <Command shouldFilter={true}>
+              <CommandInput placeholder="Search account..." />
+              <CommandList>
+                <CommandEmpty>No account found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="all-accounts"
+                    onSelect={() => {
+                      updateFilter('account', null);
+                      setAccountOpen(false);
+                    }}
+                  >
+                    All Accounts
+                  </CommandItem>
+                  {filterOptions.accounts?.map((acc) => (
+                    <CommandItem
+                      key={acc}
+                      value={acc}
+                      onSelect={(value) => {
+                        updateFilter('account', value);
+                        setAccountOpen(false);
+                      }}
+                    >
+                      {acc}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {/* Reset Button */}
+        {hasActiveFilters() && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={resetFilters}
+            className="h-9 text-muted-foreground hover:text-foreground"
+            data-testid="filter-reset"
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />
+            Reset
+          </Button>
+        )}
+
+        {/* Active Filter Summary */}
+        {hasActiveFilters() && (
+          <div className="ml-auto">
+            <Badge variant="secondary" className="text-xs">
+              {[filters.year, filters.quarter, filters.account].filter(Boolean).join(' • ')}
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -161,7 +323,10 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Invoiced</p>
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalInvoiced, selectedCurrency)}</p>
+                <p className="text-2xl font-bold text-foreground" data-testid="stat-total">
+                  {formatCurrency(stats?.total_invoiced || 0, selectedCurrency)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.count_total || 0} invoices</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <FileText className="h-6 w-6 text-primary" />
@@ -174,7 +339,10 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-amber-600">{formatCurrency(stats.totalPending, selectedCurrency)}</p>
+                <p className="text-2xl font-bold text-amber-600" data-testid="stat-pending">
+                  {formatCurrency(stats?.total_pending || 0, selectedCurrency)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.count_pending || 0} invoices</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-amber-600" />
@@ -187,7 +355,10 @@ export function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalOverdue, selectedCurrency)}</p>
+                <p className="text-2xl font-bold text-red-600" data-testid="stat-overdue">
+                  {formatCurrency(stats?.total_overdue || 0, selectedCurrency)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.count_overdue || 0} invoices</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
@@ -199,8 +370,11 @@ export function InvoicesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Paid</p>
-                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.totalPaid, selectedCurrency)}</p>
+                <p className="text-sm text-muted-foreground">Collected</p>
+                <p className="text-2xl font-bold text-emerald-600" data-testid="stat-paid">
+                  {formatCurrency(stats?.total_paid || 0, selectedCurrency)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.count_paid || 0} invoices</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-emerald-600" />
@@ -221,10 +395,13 @@ export function InvoicesPage() {
         <CardContent>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Collected this month</span>
-              <span className="font-medium">{formatCurrency(stats.totalPaid, selectedCurrency)} / {formatCurrency(stats.totalInvoiced, selectedCurrency)}</span>
+              <span className="text-muted-foreground">Collection Rate</span>
+              <span className="font-medium">
+                {formatCurrency(stats?.total_paid || 0, selectedCurrency)} / {formatCurrency(stats?.total_invoiced || 0, selectedCurrency)} 
+                ({collectionRate.toFixed(1)}%)
+              </span>
             </div>
-            <Progress value={stats.totalInvoiced > 0 ? (stats.totalPaid / stats.totalInvoiced) * 100 : 0} className="h-2" />
+            <Progress value={collectionRate} className="h-2" />
           </div>
         </CardContent>
       </Card>
@@ -235,10 +412,18 @@ export function InvoicesPage() {
           <div className="flex items-center justify-between">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
-                <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
-                <TabsTrigger value="pending" data-testid="tab-pending">Pending</TabsTrigger>
-                <TabsTrigger value="overdue" data-testid="tab-overdue">Overdue</TabsTrigger>
-                <TabsTrigger value="paid" data-testid="tab-paid">Paid</TabsTrigger>
+                <TabsTrigger value="all" data-testid="tab-all">
+                  All ({stats?.count_total || 0})
+                </TabsTrigger>
+                <TabsTrigger value="pending" data-testid="tab-pending">
+                  Pending ({stats?.count_pending || 0})
+                </TabsTrigger>
+                <TabsTrigger value="overdue" data-testid="tab-overdue">
+                  Overdue ({stats?.count_overdue || 0})
+                </TabsTrigger>
+                <TabsTrigger value="paid" data-testid="tab-paid">
+                  Paid ({stats?.count_paid || 0})
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="relative w-64">
@@ -260,6 +445,7 @@ export function InvoicesPage() {
                 <TableHead>Invoice #</TableHead>
                 <TableHead>Account</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Invoice Date</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -268,7 +454,7 @@ export function InvoicesPage() {
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No invoices found
                   </TableCell>
                 </TableRow>
@@ -287,7 +473,15 @@ export function InvoicesPage() {
                         {invoice.account}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono font-medium">{formatCurrency(invoice.amount, selectedCurrency)}</TableCell>
+                    <TableCell className="font-mono font-medium">
+                      {formatCurrency(invoice.amount, selectedCurrency)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(invoice.invoice_date)}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -340,36 +534,13 @@ export function InvoicesPage() {
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Issued Date</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.issued_date)}</p>
+                  <p className="text-muted-foreground">Invoice Date</p>
+                  <p className="font-medium">{formatDate(selectedInvoice.invoice_date)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Due Date</p>
                   <p className="font-medium">{formatDate(selectedInvoice.due_date)}</p>
                 </div>
-              </div>
-
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Rate</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedInvoice.items?.map((item, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.rate, selectedCurrency)}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.amount, selectedCurrency)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
 
               <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
