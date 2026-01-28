@@ -99,7 +99,7 @@ def get_opp_value(opp):
 
 @router.get("/overview")
 async def get_analytics_overview(
-    time_period: Optional[str] = "all",  # year, quarter, month
+    time_period: Optional[str] = "all",  # year, quarter, month, week
     year: Optional[str] = None,
     quarter: Optional[str] = None,
     sales_rep: Optional[str] = None,
@@ -118,6 +118,31 @@ async def get_analytics_overview(
         "type": "opportunity"
     }).to_list(10000)
     
+    # Convert time_period to specific year/quarter if not already set
+    if time_period != "all" and not year and not quarter:
+        from datetime import datetime
+        now = datetime.now()
+        current_year = str(now.year)
+        current_month = now.month
+        
+        if time_period == "year":
+            year = current_year
+        elif time_period == "quarter":
+            # Determine current quarter
+            if current_month <= 3:
+                quarter = "Q1"
+            elif current_month <= 6:
+                quarter = "Q2"
+            elif current_month <= 9:
+                quarter = "Q3"
+            else:
+                quarter = "Q4"
+            year = current_year
+        elif time_period == "month":
+            # For month, we'll filter to current month
+            year = current_year
+            # The apply_filters will handle month filtering
+    
     # Apply filters
     filters = {
         "year": year,
@@ -125,7 +150,8 @@ async def get_analytics_overview(
         "sales_rep": sales_rep,
         "team_id": team_id,
         "account": account,
-        "stage": stage
+        "stage": stage,
+        "time_period": time_period
     }
     opps = apply_filters(all_opps, filters)
     
