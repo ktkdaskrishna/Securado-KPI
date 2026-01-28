@@ -221,6 +221,7 @@ export const crmAPI = {
   // Receivables
   listReceivables: (params) => api.get('/receivables', { params }),
   getReceivablesStats: (params) => api.get('/receivables/stats', { params }),
+  getReceivablesBySalesperson: (params) => api.get('/receivables/by-salesperson', { params }),
 };
 
 // Events/DLQ APIs
