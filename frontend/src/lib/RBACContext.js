@@ -22,7 +22,7 @@ export function RBACProvider({ children }) {
 
   const fetchRBAC = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       if (!token) {
         setRbac({
           loading: false,
