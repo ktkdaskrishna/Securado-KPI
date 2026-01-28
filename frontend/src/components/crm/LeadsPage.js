@@ -317,7 +317,7 @@ export default function LeadsPage() {
                       <CardContent className="p-3">
                         <p className="font-medium text-sm line-clamp-2">{lead.name}</p>
                         <p className="text-xs text-gray-500 mt-1">{lead.owner_name}</p>
-                        <p className="text-sm font-semibold mt-2">{formatCurrency(lead.amount || 0)}</p>
+                        <p className="text-sm font-semibold mt-2">{formatCurrency(lead.sale_value || lead.amount || 0)}</p>
                       </CardContent>
                     </Card>
                   ))}
