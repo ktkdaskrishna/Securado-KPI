@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { crmAPI } from '../../lib/api';
-import { useGlobalFilters } from '../../lib/GlobalFilterContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { crmAPI, analyticsAPI } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -13,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { Plus, CheckSquare, Phone, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Filter } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, ActivityTypeFilter, ActivityStatusFilter } from '../layout/PageFilters';
 
 const typeIcons = {
   call: Phone,
@@ -38,22 +38,62 @@ export function ActivitiesPage() {
     description: '',
     due_date: '',
   });
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], types: ['call', 'email', 'meeting', 'task'] });
   
-  // Global filters
-  const { filters, hasActiveFilters } = useGlobalFilters();
+  // Contextual filters for Activities page
+  const [filters, setFilters] = useState({
+    year: null,
+    quarter: null,
+    salesRep: null,
+    type: null,
+    status: null
+  });
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({ year: null, quarter: null, salesRep: null, type: null, status: null });
+  };
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(v => v !== null);
+  };
+
+  const loadFilterOptions = useCallback(async () => {
+    try {
+      const res = await analyticsAPI.getFilters();
+      if (res.data) {
+        setFilterOptions({
+          years: res.data.years || [],
+          salesReps: res.data.salesReps || [],
+          types: ['call', 'email', 'meeting', 'task']
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
 
   // Load data when filters change
   useEffect(() => {
     loadData();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.team]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.type, filters.status]);
 
   const loadData = async () => {
     try {
-      // Build filter params from global filters
+      // Build filter params from contextual filters
       const params = {};
       if (filters.year) params.year = filters.year;
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
+      if (filters.type) params.activity_type = filters.type;
+      if (filters.status) params.status = filters.status;
       
       const [activitiesRes, statsRes] = await Promise.all([
         crmAPI.listActivities(params),
