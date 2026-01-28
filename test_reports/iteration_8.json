@@ -1,0 +1,67 @@
+{
+  "summary": "Completed comprehensive testing of Leads feature separation from Opportunities. Backend APIs and frontend UI are working correctly with minor cache issue in unfiltered dashboard stats.",
+  
+  "backend_issues": {
+    "critical_bugs": [],
+    "medium_priority_bugs": [
+      {
+        "endpoint": "/api/dashboard/stats (unfiltered)",
+        "issue": "Cached dashboard stats don't include separate counts for leads and opportunities (total_leads, new_leads, qualified_leads fields missing)",
+        "impact": "Unfiltered dashboard view doesn't show leads stats. Filtered views work correctly.",
+        "fix_priority": "MEDIUM",
+        "details": "The rebuild_cache function in dashboard_agg/routes.py (lines 185-342) doesn't separate leads from opportunities. It treats all records as opportunities. The filtered stats endpoint (lines 409-413) correctly separates them. Cache rebuild needs same logic.",
+        "workaround": "Use filtered dashboard view (with any filter) which calculates stats in real-time and correctly separates leads from opportunities"
+      }
+    ],
+    "flaky_endpoints": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Login authentication successful",
+    "GET /api/leads - returns 100 leads, all type=lead",
+    "GET /api/leads?year=2026 - returns 5 filtered leads",
+    "GET /api/leads/stats - returns stats (total_leads=203, new_leads=0, qualified_leads=0, conversion_rate=0.0%)",
+    "GET /api/leads/kanban - returns kanban data (total_count=203, stages=['new', 'qualified', 'proposition', 'won', 'lost'])",
+    "GET /api/opportunities - returns 100 opportunities, all type=opportunity (no leads mixed in)",
+    "GET /api/dashboard/stats?year=2025 - filtered stats correctly show total_opportunities=363, total_leads=141",
+    "POST /api/leads/{id}/convert - successfully converts lead to opportunity",
+    "Leads page navigation from sidebar",
+    "Leads stats cards display (Total Leads: 202, New Leads: 0, Qualified: 0, Conversion Rate: 0%)",
+    "Leads list view shows 100 leads in table",
+    "Leads kanban view toggle works",
+    "Convert lead button opens dialog and confirms conversion",
+    "Filter persistence: year=2026 filter persists from dashboard to leads page",
+    "Filtered leads page shows correct count (5 leads for year=2026)",
+    "Search functionality on leads page works",
+    "Opportunities page displays only opportunities (no leads)",
+    "Dashboard with year=2025 filter shows filtered data correctly"
+  ],
+  
+  "test_report_links": [
+    "/app/backend_test.py",
+    ".screenshots/leads-page-final.png",
+    ".screenshots/opportunities-page.png",
+    ".screenshots/dashboard-filtered.png"
+  ],
+  
+  "success_percentage": {
+    "backend": "88.9% (8/9 tests passed)",
+    "frontend": "100% (all UI features working)",
+    "overall": "94.4%"
+  },
+  
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  
+  "action_item_for_main_agent": "Fix dashboard cache rebuild function to separate leads from opportunities. Update rebuild_cache() in /app/backend/services/dashboard_agg/routes.py (lines 185-342) to use same logic as filtered stats endpoint (lines 409-413): separate records by type field and calculate separate stats for opportunities and leads.",
+  
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": true
+}
