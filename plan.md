@@ -1,27 +1,48 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - RBAC & Webhook Implementation (COMPLETED)
+## Current Session - Bug Fixes & System Improvements (COMPLETED)
 
-### Features Implemented
+### Issues Fixed
 
-#### 0. Webhook Auto-Setup Fixed ✅ (NEW)
-**Problem Solved:** The automatic Odoo webhook setup was failing with `Invalid field 'state'/'code' on model 'base.automation'`.
+#### 1. Sidebar Navigation Not Showing Items ✅ (CRITICAL FIX)
+**Problem:** Sidebar only showed "My Profile" instead of full navigation menu.
 
-**Root Cause:** Odoo 17's `base.automation` model doesn't have a `code` field directly - it requires creating a linked `ir.actions.server` record first. Also, Odoo's safe mode restricts `import` statements in server action code.
+**Root Causes Found:**
+1. RBACContext fetched permissions on mount (before user logged in), got empty array
+2. After login, RBACContext never re-fetched permissions
+3. Sidebar's `getVisibleItems` was filtering out items due to empty permissions
 
-**Solution:** 
-- Used Odoo 17's built-in `state='webhook'` type for `ir.actions.server` instead of custom Python code
-- Create server action first, then link it to base.automation via `action_server_ids`
-- Webhook URL includes query params (`?model=xxx&action=xxx`) to identify the source
+**Solution:**
+- Added event listener in RBACContext to refresh permissions on `userLoggedIn` custom event
+- Modified auth.js to dispatch `userLoggedIn` event after successful login
+- Used `useCallback` in Sidebar to properly depend on permissions changes
 
-**Result:** Successfully created 12 automated actions in Odoo:
-- CRM Lead: CREATE, WRITE, UNLINK
-- Partner: CREATE, WRITE, UNLINK  
-- Users: WRITE
-- Invoice: CREATE, WRITE
-- Activity: CREATE, WRITE, UNLINK
+**Result:** All sidebar items now visible (Dashboard, AI Analytics, Opportunities, Leads, Accounts, Activities, Timeline, Invoices, etc.)
 
-#### 1. Active-Only Sync for Users & Accounts ✅
+#### 2. Odoo Webhook Auto-Setup ✅ (Previously Fixed)
+- Used Odoo 17's built-in `state='webhook'` for server actions
+- 12 automated actions successfully created in Odoo
+
+### New Features Added
+
+#### 3. System Logs & Alerts Page ✅ (NEW)
+**Location:** `/admin/logs`
+
+**Features:**
+- System status monitoring (Backend, Database health)
+- Active alerts panel with severity levels
+- Activity logs with filtering and search
+- Real-time status polling (30 second intervals)
+- Clear all alerts functionality
+
+**Components:**
+- Status cards for Backend/Database/LastSync/ActiveAlerts
+- Tabs for Alerts and Logs
+- Search and filter controls
+
+---
+
+## Previous Session - RBAC & Webhook Implementation (COMPLETED)
 **Changes:**
 - ETL Runner now filters `res.users` to `active=True` only
 - ETL Runner now filters `res.partner` (accounts) to `active=True` only
