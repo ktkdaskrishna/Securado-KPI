@@ -880,6 +880,22 @@ async def setup_odoo_automations(
                     errors.append(error_msg)
                     logger.error(error_msg)
         
+        # Store the automation IDs in config for later deletion
+        await app_db.webhook_config.update_one(
+            {"type": "odoo_webhooks"},
+            {
+                "$set": {
+                    "enabled": True,  # Enable by default after creation
+                    "odoo_automations_created": True,
+                    "automation_ids": created_actions,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "webhook_url": webhook_url,
+                    "models": [c["model"] for c in model_configs]
+                }
+            },
+            upsert=True
+        )
+        
         return {
             "success": len(errors) == 0,
             "created_actions": created_actions,
