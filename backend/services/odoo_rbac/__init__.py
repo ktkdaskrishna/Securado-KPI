@@ -1,0 +1,1 @@
+"""Odoo RBAC Sync Service"""
