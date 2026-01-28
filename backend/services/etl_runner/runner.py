@@ -414,7 +414,7 @@ class ETLRunner:
                 search_options
             )
             
-            log(f"Extracted {len(records)} records from Odoo" + (" (including archived)" if include_archived else " (active only)"))
+            log(f"Extracted {len(records)} records from Odoo" + (" (including all states)" if include_all_states else " (active only)"))
             
             # Log sample record structure for debugging
             if records:
