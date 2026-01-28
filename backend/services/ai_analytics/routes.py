@@ -23,6 +23,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["ai-analytics"])
 
 
+# Helper function to get opportunity value (sale_value first, then amount)
+def get_opp_value(opp: dict) -> float:
+    """Get the opportunity value, preferring sale_value (custom field) over amount"""
+    sale_value = opp.get("sale_value")
+    if sale_value and float(sale_value) > 0:
+        return float(sale_value)
+    return float(opp.get("amount", 0) or 0)
+
+
+# Helper functions for proper classification
+def is_won(o: dict) -> bool:
+    """Check if opportunity is won"""
+    stage = (o.get("stage") or "").lower().strip()
+    return stage == "won" or "closed won" in stage
+
+
+def is_lost(o: dict) -> bool:
+    """Check if opportunity is lost"""
+    stage = (o.get("stage") or "").lower().strip()
+    # Check stage first (most reliable)
+    if stage == "lost" or "closed lost" in stage:
+        return True
+    # Also check active flag with lost reason (archived deals in Odoo)
+    active = o.get("active", True)
+    if active == 'False' or active is False:
+        return bool(o.get("lost_reason_id") or o.get("lost_reason"))
+    return False
+
+
 def normalize_stage(stage: str, active: bool = True, lost_reason_id = None) -> str:
     """Normalize Odoo stages to funnel stages
     
