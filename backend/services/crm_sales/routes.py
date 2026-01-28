@@ -1229,13 +1229,16 @@ async def leads_stats(
     total_leads = len(records)
     total_value = sum(r.get("amount", 0) or 0 for r in records)
     
-    # By stage
+    # By stage - leads are typically in: Enquiry, Qualified Opportunity
     new_leads = len([r for r in records if "new" in (r.get("stage") or "").lower() or "enquiry" in (r.get("stage") or "").lower()])
     qualified_leads = len([r for r in records if "qualified" in (r.get("stage") or "").lower()])
     converted_leads = len([r for r in records if "won" in (r.get("stage") or "").lower()])
     lost_leads = len([r for r in records if "lost" in (r.get("stage") or "").lower()])
     
-    conversion_rate = (converted_leads / total_leads * 100) if total_leads > 0 else 0
+    # Conversion rate for leads = Qualified / Total (leads become "Qualified" before converting to opportunities)
+    # If no qualified leads but have won, use won count
+    converted_count = qualified_leads if qualified_leads > 0 else converted_leads
+    conversion_rate = (converted_count / total_leads * 100) if total_leads > 0 else 0
     
     return {
         "total_leads": total_leads,
