@@ -206,7 +206,7 @@ export function AccountsPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>
