@@ -1156,6 +1156,14 @@ async def get_account_360(
     )
     result["opportunities_count"] = len(opps)
     
+    # Calculate Won Deals for this account
+    won_opps = [o for o in opps if (o.get("stage") or "").lower() == "won"]
+    result["won_count"] = len(won_opps)
+    result["won_value"] = sum(
+        float(o.get("sale_value", 0) or 0) or float(o.get("amount", 0) or 0) 
+        for o in won_opps
+    )
+    
     # Format contacts for display
     result["contacts"] = []
     for contact in contacts:
