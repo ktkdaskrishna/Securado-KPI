@@ -317,14 +317,23 @@ async def get_rep_performance(
 
 @router.get("/team-performance")
 async def get_team_performance(
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get sales team performance metrics"""
+    """Get sales team performance metrics - OPPORTUNITIES ONLY"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    all_opps = await canonical_db.opportunities.find({
+        "org_id": org_id,
+        "type": "opportunity"
+    }).to_list(10000)
     teams = await canonical_db.sales_teams.find({"org_id": org_id}).to_list(100)
+    
+    # Apply filters
+    filters = {"year": year, "quarter": quarter}
+    opps = apply_filters(all_opps, filters)
     
     # Create team lookup
     team_lookup = {str(t.get("source_record_id")): t.get("name", "Unknown") for t in teams}
@@ -340,17 +349,17 @@ async def get_team_performance(
     
     for opp in opps:
         team_id = opp.get("team_id")
-        team_name = team_lookup.get(str(team_id), "Unassigned") if team_id else "Unassigned"
+        team_name = team_lookup.get(str(team_id), opp.get("team_name", "Unassigned")) if team_id else "Unassigned"
         stage = normalize_stage(opp.get("stage", ""))
-        amount = opp.get("amount", 0) or 0
+        value = get_opp_value(opp)
         
         team_data[team_name]["total_opps"] += 1
-        team_data[team_name]["total_value"] += amount
+        team_data[team_name]["total_value"] += value
         team_data[team_name]["reps"].add(opp.get("owner_name", "Unknown"))
         
         if stage == "won":
             team_data[team_name]["won_count"] += 1
-            team_data[team_name]["won_value"] += amount
+            team_data[team_name]["won_value"] += value
     
     # Build response
     performance = []
@@ -369,24 +378,37 @@ async def get_team_performance(
     
     return {
         "teams": performance,
-        "total_teams": len(performance)
+        "total_teams": len(performance),
+        "applied_filters": {k: v for k, v in filters.items() if v}
     }
 
 
 @router.get("/account-health")
 async def get_account_health(
+    year: Optional[str] = None,
+    quarter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get account health metrics and engagement scores"""
+    """Get account health metrics and engagement scores - OPPORTUNITIES ONLY"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
     accounts = await canonical_db.accounts.find({"org_id": org_id}).to_list(10000)
-    opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    all_opps = await canonical_db.opportunities.find({
+        "org_id": org_id,
+        "type": "opportunity"
+    }).to_list(10000)
     activities = await canonical_db.activities.find({
         "org_id": org_id,
-        "res_model": "crm.lead"
+        "$or": [
+            {"res_model": "crm.lead"},
+            {"opportunity_id": {"$exists": True, "$ne": None}}
+        ]
     }).to_list(10000)
+    
+    # Apply filters
+    filters = {"year": year, "quarter": quarter}
+    opps = apply_filters(all_opps, filters)
     
     # Group opportunities by account
     account_opps = defaultdict(list)
