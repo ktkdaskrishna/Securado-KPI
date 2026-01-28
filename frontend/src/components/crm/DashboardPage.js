@@ -47,7 +47,7 @@ export function DashboardPage() {
       if (res.data) {
         setFilterOptions({
           years: res.data.years || [],
-          salesReps: res.data.salesReps || [],
+          salesReps: res.data.sales_reps || res.data.salesReps || [],
           stages: res.data.stages || []
         });
       }
