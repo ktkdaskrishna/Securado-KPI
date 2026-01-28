@@ -189,6 +189,9 @@ export function Sidebar() {
       if (requiredPermission === null) return true; // Always visible
       if (!requiredPermission) return true; // No requirement defined
       
+      // While RBAC is loading, show items with default visibility
+      if (rbacLoading) return item.default !== false;
+      
       return hasPermission(requiredPermission);
     });
   };
