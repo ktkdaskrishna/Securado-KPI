@@ -500,38 +500,54 @@ async def get_current_user_rbac(
 @webhook_router.post("/odoo")
 async def odoo_webhook(
     request: Request,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    model: Optional[str] = None,
+    action: Optional[str] = None
 ):
     """
     Receive webhook notifications from Odoo for real-time sync.
     
-    This endpoint should be registered in Odoo's Automated Actions (ir.actions.server).
+    Odoo's built-in webhook sends data as:
+    - Query params: model={model}&action={action}
+    - Body: JSON with record data (id, field values)
     
-    Expected payload:
+    Example payload from Odoo webhook:
     {
-        "model": "crm.lead",
-        "action": "create" | "write" | "unlink",
-        "record_id": 123,
-        "record_data": {...}  // Optional - full record data
+        "id": 123,
+        "name": "Test Lead",
+        "stage_id": [1, "Won"],
+        ...
     }
     """
     try:
         payload = await request.json()
-        logger.info(f"Received Odoo webhook: {payload}")
+        logger.info(f"Received Odoo webhook: model={model}, action={action}, payload={payload}")
         
-        model = payload.get("model")
-        action = payload.get("action")
-        record_id = payload.get("record_id")
-        record_data = payload.get("record_data", {})
+        # Get model and action from query params (set by our webhook URL)
+        # or fall back to payload fields for backwards compatibility
+        webhook_model = model or payload.get("model")
+        webhook_action = action or payload.get("action")
         
-        if not all([model, action, record_id]):
-            raise HTTPException(status_code=400, detail="Missing required fields: model, action, record_id")
+        # Odoo's webhook sends record data directly, with 'id' as the record ID
+        record_id = payload.get("id") or payload.get("record_id")
+        
+        # The rest of the payload is the record data
+        record_data = payload.get("record_data") or payload
+        
+        if not webhook_model:
+            raise HTTPException(status_code=400, detail="Missing required field: model (in query params or payload)")
+        if not record_id:
+            raise HTTPException(status_code=400, detail="Missing required field: id or record_id")
+        
+        # Default action to 'write' if not specified
+        if not webhook_action:
+            webhook_action = "write"
         
         # Process in background
         background_tasks.add_task(
             process_webhook_event,
-            model=model,
-            action=action,
+            model=webhook_model,
+            action=webhook_action,
             record_id=record_id,
             record_data=record_data
         )
