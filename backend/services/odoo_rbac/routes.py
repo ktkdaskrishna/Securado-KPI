@@ -570,7 +570,7 @@ async def process_webhook_event(model: str, action: str, record_id: int, record_
     
     if action == "unlink":
         # Soft delete - mark as deleted instead of removing
-        result = await collection.update_one(
+        await collection.update_one(
             {"odoo_id": record_id, "org_id": org_id},
             {"$set": {
                 "deleted": True,
