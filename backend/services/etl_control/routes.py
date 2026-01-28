@@ -2395,6 +2395,10 @@ async def clear_and_resync_entity(
                     if record.get("type"):
                         transformed["type"] = record.get("type")
                 
+                # ALWAYS add is_company for accounts/contacts (to distinguish companies vs individuals)
+                if entity in ["account", "contact"]:
+                    transformed["is_company"] = bool(record.get("is_company", False))
+                
                 # Upsert to canonical
                 await canonical_db[collection_name].update_one(
                     {"canonical_id": transformed["canonical_id"]},
