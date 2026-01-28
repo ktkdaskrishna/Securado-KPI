@@ -254,7 +254,16 @@ export function Sidebar() {
     return content;
   };
 
-  const NavigationSettings = () => (
+  const NavigationSettings = () => {
+    // Helper to check if item is accessible
+    const canAccessItem = (item) => {
+      const requiredPermission = permissionRequirements[item.id];
+      if (requiredPermission === null) return true;
+      if (!requiredPermission) return true;
+      return hasPermission(requiredPermission);
+    };
+    
+    return (
     <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
       <SheetTrigger asChild>
         <Button
@@ -270,7 +279,12 @@ export function Sidebar() {
         <SheetHeader>
           <SheetTitle className="text-white">Navigation Settings</SheetTitle>
           <SheetDescription className="text-gray-400">
-            Select which menu items to show in the sidebar
+            Select which menu items to show in the sidebar.
+            {roles.length > 0 && (
+              <span className="block mt-1 text-xs">
+                Your roles: {roles.join(', ')}
+              </span>
+            )}
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
@@ -281,81 +295,109 @@ export function Sidebar() {
                 CRM Platform
               </h4>
               <div className="space-y-3">
-                {defaultNavigation.crm.map((item) => (
+                {defaultNavigation.crm.map((item) => {
+                  const accessible = canAccessItem(item);
+                  return (
                   <div key={item.id} className="flex items-center space-x-3">
                     <Checkbox
                       id={`nav-${item.id}`}
-                      checked={navPreferences[item.id] !== false}
-                      onCheckedChange={() => toggleNavItem(item.id)}
-                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                      checked={navPreferences[item.id] !== false && accessible}
+                      onCheckedChange={() => accessible && toggleNavItem(item.id)}
+                      disabled={!accessible}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000] disabled:opacity-50"
                     />
                     <Label 
                       htmlFor={`nav-${item.id}`} 
-                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                      className={cn(
+                        "text-sm cursor-pointer flex items-center gap-2",
+                        accessible ? "text-gray-300" : "text-gray-500"
+                      )}
                     >
                       {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
                       {item.name}
+                      {!accessible && <Lock className="h-3 w-3 text-gray-500" />}
                     </Label>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <Separator className="bg-gray-700" />
 
             {/* ETL Section */}
+            {hasSectionAccess('etl') && (
             <div>
               <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
                 ETL Platform
               </h4>
               <div className="space-y-3">
-                {defaultNavigation.etl.map((item) => (
+                {defaultNavigation.etl.map((item) => {
+                  const accessible = canAccessItem(item);
+                  return (
                   <div key={item.id} className="flex items-center space-x-3">
                     <Checkbox
                       id={`nav-${item.id}`}
-                      checked={navPreferences[item.id] !== false}
-                      onCheckedChange={() => toggleNavItem(item.id)}
-                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                      checked={navPreferences[item.id] !== false && accessible}
+                      onCheckedChange={() => accessible && toggleNavItem(item.id)}
+                      disabled={!accessible}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000] disabled:opacity-50"
                     />
                     <Label 
                       htmlFor={`nav-${item.id}`} 
-                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                      className={cn(
+                        "text-sm cursor-pointer flex items-center gap-2",
+                        accessible ? "text-gray-300" : "text-gray-500"
+                      )}
                     >
                       {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
                       {item.name}
+                      {!accessible && <Lock className="h-3 w-3 text-gray-500" />}
                     </Label>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
+            )}
 
-            <Separator className="bg-gray-700" />
+            {hasSectionAccess('etl') && <Separator className="bg-gray-700" />}
 
             {/* Admin Section */}
+            {hasSectionAccess('admin') && (
             <div>
               <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
                 Admin
               </h4>
               <div className="space-y-3">
-                {defaultNavigation.admin.map((item) => (
+                {defaultNavigation.admin.map((item) => {
+                  const accessible = canAccessItem(item);
+                  return (
                   <div key={item.id} className="flex items-center space-x-3">
                     <Checkbox
                       id={`nav-${item.id}`}
-                      checked={navPreferences[item.id] !== false}
-                      onCheckedChange={() => toggleNavItem(item.id)}
-                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                      checked={navPreferences[item.id] !== false && accessible}
+                      onCheckedChange={() => accessible && toggleNavItem(item.id)}
+                      disabled={!accessible}
+                      className="border-gray-600 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000] disabled:opacity-50"
                     />
                     <Label 
                       htmlFor={`nav-${item.id}`} 
-                      className="text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                      className={cn(
+                        "text-sm cursor-pointer flex items-center gap-2",
+                        accessible ? "text-gray-300" : "text-gray-500"
+                      )}
                     >
                       {React.createElement(iconMap[item.icon], { className: "h-4 w-4" })}
                       {item.name}
+                      {!accessible && <Lock className="h-3 w-3 text-gray-500" />}
                     </Label>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
+            )}
             
             <div className="pt-4">
               <Button 
@@ -376,7 +418,8 @@ export function Sidebar() {
         </ScrollArea>
       </SheetContent>
     </Sheet>
-  );
+    );
+  };
 
   return (
     <aside
