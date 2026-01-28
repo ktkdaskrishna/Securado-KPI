@@ -2338,6 +2338,11 @@ async def clear_and_resync_entity(
                     if field not in source_fields:
                         source_fields.append(field)
             
+            # IMPORTANT: Always include is_company for accounts/contacts
+            if entity in ["account", "contact"]:
+                if "is_company" not in source_fields:
+                    source_fields.append("is_company")
+            
             # Apply entity-specific filters - CRITICAL for activities!
             domain_filter = ENTITY_SOURCE_FILTERS.get(entity, [])
             
