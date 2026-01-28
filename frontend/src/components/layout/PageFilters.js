@@ -180,6 +180,9 @@ export function StageFilter({ value, onChange, stages }) {
 }
 
 export function ActivityTypeFilter({ value, onChange, types }) {
+  // Filter out empty/null type values
+  const validTypes = types?.filter(type => type && type.trim() !== '') || [];
+  
   return (
     <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
       <SelectTrigger className="w-[140px] h-9" data-testid="filter-activity-type">
@@ -188,7 +191,7 @@ export function ActivityTypeFilter({ value, onChange, types }) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Types</SelectItem>
-        {types?.map(type => (
+        {validTypes.map(type => (
           <SelectItem key={type} value={type}>{type}</SelectItem>
         ))}
       </SelectContent>
