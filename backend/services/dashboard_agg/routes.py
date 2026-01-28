@@ -211,14 +211,18 @@ class DashboardAggregator:
                 # Normalize stage for dashboard grouping
                 opp["normalized_stage"] = normalize_stage_for_dashboard(opp.get("stage", ""))
             
-            # Calculate aggregates
-            total_pipeline = sum(o.get("amount", 0) or 0 for o in opps)
+            # Separate leads from opportunities by type field
+            opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
+            leads_only = [o for o in opps if o.get("type") == "lead"]
             
-            # By normalized stage
+            # Calculate aggregates for OPPORTUNITIES only
+            total_pipeline = sum(o.get("amount", 0) or 0 for o in opportunities_only)
+            
+            # By normalized stage (for opportunities)
             stage_counts = {}
             stage_values = {}
             for stage in PipelineStages.all():
-                stage_opps = [o for o in opps if o.get("normalized_stage") == stage]
+                stage_opps = [o for o in opportunities_only if o.get("normalized_stage") == stage]
                 stage_counts[stage] = len(stage_opps)
                 stage_values[stage] = sum(o.get("amount", 0) or 0 for o in stage_opps)
             
@@ -229,6 +233,11 @@ class DashboardAggregator:
             open_count = sum(c for s, c in stage_counts.items() if s not in [PipelineStages.CLOSED_WON, PipelineStages.CLOSED_LOST])
             
             win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
+            
+            # Leads stats
+            total_leads = len(leads_only)
+            new_leads = len([lead for lead in leads_only if "new" in (lead.get("stage") or "").lower() or "enquiry" in (lead.get("stage") or "").lower()])
+            qualified_leads = len([lead for lead in leads_only if "qualified" in (lead.get("stage") or "").lower()])
             
             # Get CRM activities ONLY from CANONICAL DB (synced from Odoo)
             # Only mail.activity where res_model='crm.lead' - NOT project tasks
