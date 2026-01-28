@@ -139,6 +139,8 @@ export const crmAPI = {
   getDashboardStats: (params) => api.get('/dashboard/stats', { params }),
   refreshDashboard: () => api.post('/dashboard/refresh'),
   getSyncStatus: () => api.get('/dashboard/sync-status'),
+  getProductManagerLeaderboard: (params) => api.get('/dashboard/product-manager-leaderboard', { params }),
+  getCategoryStats: (params) => api.get('/dashboard/category-stats', { params }),
   
   // Opportunities - supports filters
   listOpportunities: (params) => api.get('/opportunities', { params }),
@@ -150,13 +152,15 @@ export const crmAPI = {
   getOpportunityActivities: (id) => api.get(`/opportunities/${id}/activities`),
   getOpportunityLogs: (id) => api.get(`/opportunities/${id}/logs`),  // Log messages/chatter
   createOpportunityNote: (id, data) => api.post(`/opportunities/${id}/notes`, data),
+  exportOpportunities: (params) => api.get('/opportunities/export', { params, responseType: 'blob' }),
+  getWonWithInvoices: (params) => api.get('/opportunities/won-with-invoices', { params }),
   
   // Bluesheet
   getBluesheet: (oppId) => api.get(`/opportunities/${oppId}/bluesheet`),
   updateBluesheet: (oppId, data) => api.put(`/opportunities/${oppId}/bluesheet`, data),
   calculateBluesheet: (oppId) => api.post(`/opportunities/${oppId}/bluesheet/calculate`),
   
-  // Accounts - now supports filters
+  // Accounts - now supports filters and entity_type
   listAccounts: (params) => api.get('/accounts', { params }),
   createAccount: (data) => api.post('/accounts', data),
   getAccount360: (id) => api.get(`/accounts/${id}/360`),
