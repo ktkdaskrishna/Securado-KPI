@@ -1867,8 +1867,6 @@ async def run_mapping_sync(
                             # Expected revenue / amount
                             if record.get("expected_revenue"):
                                 transformed["amount"] = float(record.get("expected_revenue") or 0)
-                            elif record.get("planned_revenue"):
-                                transformed["amount"] = float(record.get("planned_revenue") or 0)
                             
                             # Probability
                             if record.get("probability"):
