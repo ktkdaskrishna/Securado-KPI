@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { crmAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { useGlobalFilters } from '../../lib/GlobalFilterContext';
@@ -10,7 +11,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Building2, Search, Eye, Phone, Mail, MapPin, Users, FileText, Receipt, User2, Briefcase, Trophy, ChevronRight, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Building2, Search, Eye, Phone, Mail, MapPin, Users, FileText, Receipt, User2, Briefcase, Trophy, ChevronRight, ExternalLink, AlertTriangle, Flame, Zap, Clock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function AccountsPage() {
