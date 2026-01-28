@@ -36,7 +36,8 @@ import {
   User,
   Boxes,
   Brain,
-  Lock
+  Lock,
+  Webhook
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useRBAC } from '../../lib/RBACContext';
