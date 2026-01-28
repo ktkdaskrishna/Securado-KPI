@@ -1,107 +1,131 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - COMPLETED ✅
+## Current Session - RBAC & Webhook Implementation
 
-### Critical Issues Fixed This Session
+### Features Implemented
 
-#### 1. Lost Deals Sync - FIXED ✅
-**Problem:** Lost deals in Odoo were not being synced because they are ARCHIVED (active=False) with a `lost_reason_id` set, NOT in a separate "Lost" stage.
-**Solution:** 
-- Updated ETL sync to include archived records with `context: {'active_test': False}`
-- Manually synced 214 Lost deals into MongoDB
-- Updated `normalize_stage_for_dashboard()` to detect lost deals by checking `active=False AND lost_reason_id`
+#### 1. Active-Only Sync for Users & Accounts ✅
+**Changes:**
+- ETL Runner now filters `res.users` to `active=True` only
+- ETL Runner now filters `res.partner` (accounts) to `active=True` only
+- `crm.lead` (opportunities) still syncs archived records for Lost deals
 
-#### 2. Date Filtering for Won/Lost - FIXED ✅
-**Problem:** User wanted "Won in 2025" to mean deals CLOSED in 2025 (by `date_closed`), not created in 2025.
-**Solution:**
-- Created `apply_date_filters_for_won_lost()` function that uses `date_closed` for filtering
-- Dashboard now correctly classifies:
-  - Open opportunities: filter by `create_date`
-  - Won deals: filter by `date_closed`
-  - Lost deals: filter by `date_closed`
+**Result:** 70 active users synced (down from 140 total)
 
-#### 3. Win Rate Calculation - FIXED ✅
-**Before:** 100% (no lost deals detected)
-**After:** 
-- Overall: 40.2% (144 won / 358 closed)
-- 2025: 16.7% (1 won / 6 closed)
+#### 2. Odoo RBAC Sync ✅
+**New Endpoints:**
+- `POST /api/odoo-rbac/sync-groups` - Syncs all 159 Odoo user groups
+- `POST /api/odoo-rbac/sync-users` - Syncs active users with their group memberships
+- `GET /api/odoo-rbac/current-user-rbac` - Get current user's permissions
+- `GET /api/odoo-rbac/user-permissions/{user_id}` - Get specific user's permissions
 
-#### 4. Leaderboard Logic - FIXED ✅
-**Before:** Showed total pipeline value for all deals
-**After:** Shows Won deals value only
-- #1 Shri Hari Venkatesh Naidu: OMR 1,014,217 (30 won deals)
-- #2 Nabisaheb: OMR 693,598 (16 won deals)
+**Permission Levels:**
+| Level | Access |
+|-------|--------|
+| Page/Menu | Based on role (sales_admin, sales_director, sales_user_all, sales_user_own, crm_readonly) |
+| Record | "all" - see all records, "own" - only own records |
+| Field | "all" - all fields, "standard" - basic fields, "limited" - minimal fields |
 
-#### 5. AI Analytics - FIXED ✅
-**Before:** Showed incorrect Win Rate (100%) and used wrong value field
-**After:** 
-- Uses correct `sale_value` field
-- Properly detects lost deals (active=False + lost_reason_id)
-- Win Rate: 40.2%
-- Generates meaningful business insights with GPT-5.2
+**Odoo Group Mapping:**
+- Sales / Administrator (ID 14) → `sales_admin` (all access)
+- CRM / Sales Director (ID 448) → `sales_director` (all access)
+- Sales / User: All Documents (ID 13) → `sales_user_all` (all records, standard fields)
+- Sales / User: Own Documents (ID 12) → `sales_user_own` (own records only)
+- Sales / Non sales / CRM Readonly (ID 449) → `crm_readonly` (view only, limited fields)
+- Administration / Access Rights (ID 2) → `admin` (full access)
 
-#### 6. Contextual Filters - IMPLEMENTED ✅
-Replaced global filter bar with page-specific filters:
-| Page | Filters |
-|------|---------|
-| Dashboard | Year, Quarter, Sales Rep, Stage |
-| Opportunities | Year, Quarter, Sales Rep, Account, Stage |
-| Activities | Year, Quarter, Sales Rep, Type, Status |
-| Invoices | Year, Quarter, Account |
+**Hidden Fields by Access Level:**
+- `all`: None
+- `standard`: `expected_revenue`, `margin`, `cost`
+- `limited`: `sale_value`, `expected_revenue`, `margin`, `cost`, `commission`, `probability`
 
-#### 7. Invoices Page - FIXED ✅
-- Stats now correct: Total OMR 2.8M | Overdue OMR 881K | Paid OMR 1.9M
-- Tabs working: All (186), Pending (0), Overdue (63), Paid (123)
-- Collection progress: 68.8%
+#### 3. Webhook Integration for Real-time Sync ✅
+**New Endpoint:**
+- `POST /api/webhooks/odoo` - Receives webhook notifications from Odoo
+- `GET /api/webhooks/setup-instructions` - Returns setup guide for Odoo
 
----
+**Supported Events:**
+- `create` - New record created in Odoo
+- `write` - Record updated in Odoo
+- `unlink` - Record deleted/archived in Odoo
 
-## Testing Results
+**Supported Models:**
+- `crm.lead` → `opportunities` collection
+- `res.partner` → `accounts` collection
+- `res.users` → `sales_users` collection
+- `account.move` → `invoices` collection
+- `mail.activity` → `activities` collection
 
-### Test Report: iteration_10.json
-- **Backend:** 94% (16/17 tests passed)
-- **Frontend:** 100%
-- **Overall:** 97%
+**Deletion Handling:** Soft delete (marks `deleted=True` and `active=False`)
 
-### All Passed Tests:
-- ✅ Login and authentication
-- ✅ Dashboard KPIs (Total Pipeline, Win Rate, Won Value)
-- ✅ Leaderboard shows Won deals only
-- ✅ 2025 year filter (Won=1, Lost=5, Win Rate=16.7%)
-- ✅ All contextual filters working
-- ✅ Invoices stats correct
-- ✅ AI Analytics overview correct
-- ✅ AI Insights generation working
+#### 4. Frontend RBAC Context ✅
+**New File:** `/app/frontend/src/lib/RBACContext.js`
 
----
-
-## Data Verification
-
-### Odoo vs MongoDB Comparison
-| Metric | Odoo | MongoDB | Match |
-|--------|------|---------|-------|
-| Total Won | 149 (all) | 144 (opps only) | ✅ |
-| Total Lost | 214 | 214 | ✅ |
-| Won 2025 | 1 | 1 | ✅ |
-| Lost 2025 | 5 | 5 | ✅ |
+**Features:**
+- `useRBAC()` hook for accessing permissions
+- `hasPermission(permission)` - Check single permission
+- `hasAnyPermission([permissions])` - Check multiple permissions
+- `hasRole(role)` - Check role
+- `canSeeField(fieldName)` - Check field visibility
+- `canAccessAllRecords()` - Check record access level
+- `filterHiddenFields(record)` - Remove hidden fields from record
+- `<RequirePermission permission="...">` - Component wrapper
+- `<RequireRole role="...">` - Component wrapper
 
 ---
 
-## Files Modified
+## Files Created/Modified
 
 ### Backend:
-- `/app/backend/services/dashboard_agg/routes.py` - Fixed leaderboard and date filtering
-- `/app/backend/services/ai_analytics/routes.py` - Fixed Win Rate and value calculations
-- `/app/backend/services/crm_sales/routes.py` - Fixed Invoices endpoints
-- `/app/backend/services/etl_runner/runner.py` - Added archived records support
+- **NEW** `/app/backend/services/odoo_rbac/routes.py` - RBAC sync and webhook endpoints
+- **NEW** `/app/backend/services/odoo_rbac/__init__.py`
+- **NEW** `/app/backend/libs/rbac_middleware.py` - RBAC enforcement middleware
+- `/app/backend/services/etl_runner/runner.py` - Updated to filter active users/accounts
+- `/app/backend/server.py` - Added RBAC and webhook routers
 
 ### Frontend:
-- `/app/frontend/src/components/layout/PageFilters.js` - NEW: Reusable filter components
-- `/app/frontend/src/components/layout/Layout.js` - Removed global filter bar
-- `/app/frontend/src/components/crm/DashboardPage.js` - Added contextual filters
-- `/app/frontend/src/components/crm/OpportunitiesPage.js` - Added contextual filters
-- `/app/frontend/src/components/crm/ActivitiesPage.js` - Added contextual filters
-- `/app/frontend/src/components/crm/InvoicesPage.js` - Rewritten with proper filtering
+- **NEW** `/app/frontend/src/lib/RBACContext.js` - RBAC context and hooks
+- `/app/frontend/src/lib/api.js` - Added RBAC API calls
+- `/app/frontend/src/App.js` - Added RBACProvider
+
+---
+
+## How to Use
+
+### 1. Initial Sync
+```bash
+# Sync groups first
+curl -X POST /api/odoo-rbac/sync-groups
+
+# Then sync users with their permissions
+curl -X POST /api/odoo-rbac/sync-users
+```
+
+### 2. Get User Permissions
+```javascript
+// In React component
+import { useRBAC } from '../lib/RBACContext';
+
+function MyComponent() {
+  const { hasPermission, canSeeField } = useRBAC();
+  
+  if (!hasPermission('view_opportunities')) {
+    return <AccessDenied />;
+  }
+  
+  return (
+    <div>
+      {canSeeField('sale_value') && <span>{opportunity.sale_value}</span>}
+    </div>
+  );
+}
+```
+
+### 3. Setup Odoo Webhooks
+1. Enable Developer Mode in Odoo
+2. Go to Settings > Technical > Automation > Automated Actions
+3. Create actions for each model (crm.lead, res.partner, etc.)
+4. Configure to POST to `https://your-app/api/webhooks/odoo`
 
 ---
 
