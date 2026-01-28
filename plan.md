@@ -1,20 +1,14 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - Feature Enhancements (COMPLETED)
-
-### Issue Investigated: Activities Page Year Filter Not Working
-
-**Status: RESOLVED** ✅
-
-**Investigation Result:** The year filter is **working correctly**. Testing confirmed all functionality works as expected.
+## Current Session - Feature Enhancements (ALL COMPLETED)
 
 ---
 
 ## Feature Enhancement Status
 
-### Completed Tasks ✅
+### All Tasks COMPLETED ✅
 
-#### 1. Backend API Endpoints - COMPLETED
+#### 1. Backend API Endpoints - COMPLETED ✅
 - ✅ **Product Manager Leaderboard**: `/api/dashboard/product-manager-leaderboard`
 - ✅ **Category Stats**: `/api/dashboard/category-stats`
 - ✅ **Excel Export**: `/api/opportunities/export`
@@ -49,13 +43,20 @@
   - Exports filtered opportunities as .xlsx file
   - Respects year/quarter/salesRep filters
 
-### Pending Tasks ⬜
+#### 6. Invoices Page - Salesperson Analytics - COMPLETED ✅
+- ✅ Added **"By Salesperson"** tab with performance table
+  - Shows Won Value, Won Deals, Billed, Collected, Overdue, Invoice counts
+  - Ranking badges (gold, silver, bronze) for top performers
+  - Collection rate progress bars per salesperson
+  - Summary totals at bottom
 
-#### 6. Invoice Analytics Page - TODO
-- ⬜ Add Salesperson analytics table (Won, Billed, Pending, Overdue)
+---
 
-#### 7. Minor Data Discrepancy - TODO (P2)
-- ⬜ Investigate 170 vs 167 Won deal count discrepancy
+### Remaining Low Priority Items (P2-P4)
+
+- ⬜ **P2:** Investigate 170 vs 167 Won deal count discrepancy
+- ⬜ **P3:** Sync `opportunity_number` from Odoo
+- ⬜ **P4:** Make sidebar scrollable
 
 ---
 
