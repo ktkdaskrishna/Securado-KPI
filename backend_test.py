@@ -145,8 +145,8 @@ class CRMAPITester:
             return None
 
     def test_year_filter_2025(self):
-        """CRITICAL: Test year filter 2025 - should show only 1 won deal"""
-        print("\n📅 CRITICAL TEST: Year filter 2025 (should show 1 won deal)...")
+        """CRITICAL: Test year filter 2025 - should show Won=1, Lost=5, Win Rate=16.7%"""
+        print("\n📅 CRITICAL TEST: Year filter 2025 (Won=1, Lost=5, Win Rate=16.7%)...")
         try:
             response = requests.get(
                 f"{BASE_URL}/api/dashboard/stats?year=2025",
@@ -156,26 +156,34 @@ class CRMAPITester:
             if response.status_code == 200:
                 data = response.json()
                 won_count = data.get("won_count", 0)
+                lost_count = data.get("lost_count", 0)
+                win_rate = data.get("win_rate", 0)
                 won_value = data.get("won_value", 0)
                 filtered = data.get("filtered", False)
                 applied_filters = data.get("applied_filters", {})
                 
-                # According to agent context: 2025 should show only 1 won deal
-                is_correct = won_count == 1
+                # According to agent context: 2025 should show Won=1, Lost=5, Win Rate=16.7%
+                expected_won = 1
+                expected_lost = 5
+                expected_win_rate = 16.7
                 
-                if is_correct:
-                    self.log_result("Year Filter 2025 (1 won deal)", True, 
-                                  f"won_count={won_count} (correct!), won_value={won_value:,.0f}, filtered={filtered}")
+                won_correct = won_count == expected_won
+                lost_correct = lost_count == expected_lost
+                win_rate_correct = abs(win_rate - expected_win_rate) < 1.0  # Allow 1% tolerance
+                
+                if won_correct and lost_correct and win_rate_correct:
+                    self.log_result("Year Filter 2025", True, 
+                                  f"✅ Won={won_count} (expected 1), Lost={lost_count} (expected 5), Win Rate={win_rate}% (expected 16.7%)")
                 else:
-                    self.log_result("Year Filter 2025 (1 won deal)", False, 
-                                  f"Expected won_count=1, got {won_count}. won_value={won_value:,.0f}")
+                    self.log_result("Year Filter 2025", False, 
+                                  f"❌ Won={won_count} (expected 1), Lost={lost_count} (expected 5), Win Rate={win_rate}% (expected 16.7%)")
                 
                 return data
             else:
-                self.log_result("Year Filter 2025 (1 won deal)", False, f"Status: {response.status_code}")
+                self.log_result("Year Filter 2025", False, f"Status: {response.status_code}")
                 return None
         except Exception as e:
-            self.log_result("Year Filter 2025 (1 won deal)", False, f"Error: {str(e)}")
+            self.log_result("Year Filter 2025", False, f"Error: {str(e)}")
             return None
 
     def test_dashboard_contextual_filters(self):
