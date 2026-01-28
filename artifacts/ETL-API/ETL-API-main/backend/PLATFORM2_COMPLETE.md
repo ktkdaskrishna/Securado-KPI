@@ -185,7 +185,7 @@ mongodb://localhost:27017
 
 **Health Check:**
 ```bash
-curl https://odoo-connect.preview.emergentagent.com/api/data-lake/health
+curl https://data-sync-fix-7.preview.emergentagent.com/api/data-lake/health
 ```
 
 Full documentation: `/app/backend/RECEIVING_CONNECTOR.md`
@@ -243,7 +243,7 @@ cd /app/backend && python seed_database.py
 **Manual Trigger:**
 ```bash
 curl -X POST -H "Authorization: Bearer <token>" \
-  https://odoo-connect.preview.emergentagent.com/api/dashboard/refresh
+  https://data-sync-fix-7.preview.emergentagent.com/api/dashboard/refresh
 ```
 
 ---
@@ -303,12 +303,12 @@ curl -X POST -H "Authorization: Bearer <token>" \
 
 Interactive API docs available at:
 ```
-https://odoo-connect.preview.emergentagent.com/docs
+https://data-sync-fix-7.preview.emergentagent.com/docs
 ```
 
 OpenAPI schema:
 ```
-https://odoo-connect.preview.emergentagent.com/openapi.json
+https://data-sync-fix-7.preview.emergentagent.com/openapi.json
 ```
 
 ---
@@ -411,18 +411,18 @@ Dashboard, Opportunities, Accounts, Activities, Goals, Teams, Reports, Admin
 ### Example 1: User Registration & Approval
 ```bash
 # 1. Register user
-curl -X POST https://odoo-connect.preview.emergentagent.com/api/auth/register \
+curl -X POST https://data-sync-fix-7.preview.emergentagent.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"john@example.com","name":"John Doe","password":"secure123"}'
 
 # Response: {"id":"...", "status":"pending", ...}
 
 # 2. Admin approves user
-curl -X POST https://odoo-connect.preview.emergentagent.com/api/admin/users/{user_id}/approve \
+curl -X POST https://data-sync-fix-7.preview.emergentagent.com/api/admin/users/{user_id}/approve \
   -H "Authorization: Bearer <admin_token>"
 
 # 3. User can now login
-curl -X POST https://odoo-connect.preview.emergentagent.com/api/auth/login \
+curl -X POST https://data-sync-fix-7.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"john@example.com","password":"secure123"}'
 ```
@@ -431,23 +431,23 @@ curl -X POST https://odoo-connect.preview.emergentagent.com/api/auth/login \
 ```bash
 # Get opportunity from canonical
 curl -H "Authorization: Bearer <token>" \
-  https://odoo-connect.preview.emergentagent.com/api/opportunities/{opp_id}
+  https://data-sync-fix-7.preview.emergentagent.com/api/opportunities/{opp_id}
 
 # Update stage (stored as override)
-curl -X PATCH https://odoo-connect.preview.emergentagent.com/api/opportunities/{opp_id}/stage \
+curl -X PATCH https://data-sync-fix-7.preview.emergentagent.com/api/opportunities/{opp_id}/stage \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"stage":"Closed Won"}'
 
 # Get opportunity again - shows updated stage
 curl -H "Authorization: Bearer <token>" \
-  https://odoo-connect.preview.emergentagent.com/api/opportunities/{opp_id}
+  https://data-sync-fix-7.preview.emergentagent.com/api/opportunities/{opp_id}
 ```
 
 ### Example 3: Create Goal and Track Progress
 ```bash
 # Create goal
-curl -X POST https://odoo-connect.preview.emergentagent.com/api/goals \
+curl -X POST https://data-sync-fix-7.preview.emergentagent.com/api/goals \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -459,14 +459,14 @@ curl -X POST https://odoo-connect.preview.emergentagent.com/api/goals \
   }'
 
 # Update progress
-curl -X PATCH https://odoo-connect.preview.emergentagent.com/api/goals/{goal_id}/progress \
+curl -X PATCH https://data-sync-fix-7.preview.emergentagent.com/api/goals/{goal_id}/progress \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"current_value":45000}'
 
 # Get summary stats
 curl -H "Authorization: Bearer <token>" \
-  https://odoo-connect.preview.emergentagent.com/api/goals/summary/stats
+  https://data-sync-fix-7.preview.emergentagent.com/api/goals/summary/stats
 ```
 
 ---

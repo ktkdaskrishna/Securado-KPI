@@ -143,7 +143,7 @@ Receiving Connector Details (to share with Platform 1)
 - Record styles accepted:
   - Envelope: { entity_type, canonical_id, data: {...}, updated_at, org_id, source_refs }
   - Flat: top-level fields per entity collection
-- Health: GET https://odoo-connect.preview.emergentagent.com/api/data-lake/health
+- Health: GET https://data-sync-fix-7.preview.emergentagent.com/api/data-lake/health
 - Access: We will provision a dedicated MongoDB user with readWrite on canonical DB; share credentials out-of-band
 
 Next Actions

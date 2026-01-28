@@ -172,4 +172,4 @@ function MyComponent() {
 - Password: test123456
 
 ## Preview URL
-https://odoo-connect.preview.emergentagent.com
+https://data-sync-fix-7.preview.emergentagent.com

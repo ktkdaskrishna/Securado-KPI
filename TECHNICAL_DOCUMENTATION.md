@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://odoo-connect.preview.emergentagent.com
+https://data-sync-fix-7.preview.emergentagent.com
 ```
 
 ### Test Credentials
