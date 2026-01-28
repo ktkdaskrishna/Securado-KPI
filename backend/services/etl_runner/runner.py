@@ -316,15 +316,31 @@ class ETLRunner:
         We need to ensure we request all source fields defined in the mapping.
         """
         try:
+            import ssl
+            
+            # Create SSL context that bypasses certificate verification
+            # (needed for self-signed certificates)
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
             log(f"Connecting to Odoo: {conn['url']}")
-            common = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/common', allow_none=True)
+            common = xmlrpc.client.ServerProxy(
+                f'{conn["url"]}/xmlrpc/2/common', 
+                allow_none=True,
+                context=ssl_context
+            )
             uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
             
             if not uid:
                 raise Exception("Odoo authentication failed - check credentials")
             
             log(f"Authenticated as uid={uid}")
-            models = xmlrpc.client.ServerProxy(f'{conn["url"]}/xmlrpc/2/object', allow_none=True)
+            models = xmlrpc.client.ServerProxy(
+                f'{conn["url"]}/xmlrpc/2/object', 
+                allow_none=True,
+                context=ssl_context
+            )
             
             # Get fields from mapping
             source_fields = list(set([
