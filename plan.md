@@ -1,62 +1,107 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - Feature Enhancements (ALL COMPLETED)
+## ⚠️ CRITICAL: READ BEFORE MAKING CHANGES
+All agents must review these documents before making major changes:
+- `/app/docs/CRM_DATA_MODEL_REFERENCE.md` - Data field mappings and linking rules
+- `/app/docs/MODULAR_DASHBOARD_ARCHITECTURE.md` - Dashboard architecture
 
 ---
 
-## Feature Enhancement Status
+## Current Session - Bug Fixes + Architecture Planning
 
-### All Tasks COMPLETED ✅
+### 🐛 Active Bug: Activities Not Linked to Opportunities
 
-#### 1. Backend API Endpoints - COMPLETED ✅
-- ✅ **Product Manager Leaderboard**: `/api/dashboard/product-manager-leaderboard`
-- ✅ **Category Stats**: `/api/dashboard/category-stats`
-- ✅ **Excel Export**: `/api/opportunities/export`
-- ✅ **Won with Invoice Status**: `/api/opportunities/won-with-invoices`
-- ✅ **Receivables by Salesperson**: `/api/receivables/by-salesperson`
-- ✅ **Accounts with Contacts & Overdue**: Updated `/api/accounts` endpoint
+**Status:** FIX IN PROGRESS ✅
+**Issue:** Opportunity detail view shows "0 activities" even when activities exist in database
 
-#### 2. Accounts Page Redesign - COMPLETED ✅
-- ✅ Tabs for All/Companies/Contacts filtering
-- ✅ Red highlight border on accounts with overdue invoices
-- ✅ Overdue amount banner showing specific overdue amount
-- ✅ Summary showing companies, contacts, and overdue count
+**Root Cause Identified:**
+- Activities have `opportunity_id` as integer (Odoo ID: `3028`)
+- Opportunities use `source_record_id` as string (e.g., `"2158"`)
+- Most activities have `res_model: None` instead of `crm.lead`
+- ETL sync not properly linking activities to opportunities
 
-#### 3. Activities Page Year Filter - VERIFIED WORKING ✅
-- ✅ Year filter correctly filters activities and updates stats
-- ✅ All activity types (Calls, Emails, Meetings, Tasks) filter correctly
+**Current Data State:**
+- Total activities: 702
+- CRM activities (res_model='crm.lead'): Only 2
+- Activities with valid opportunity linking: 0
 
-#### 4. Dashboard UI Enhancements - COMPLETED ✅
-- ✅ Added **Product Manager Leaderboard** section with:
-  - Table view with ranking, PM names, won values, and deal counts
-  - Gradient avatar badges with initials
-  - Total won value summary at bottom
-  - Responsive to year/quarter filters
-- ✅ Added **Solution Category Performance** section with:
-  - Progress bar visualization for each category
-  - Deal counts and won values displayed
-  - Color-coded bars for visual distinction
-  - Total won value summary at bottom
-
-#### 5. Opportunities Page - COMPLETED ✅
-- ✅ **Excel Export button** already implemented and working
-  - Exports filtered opportunities as .xlsx file
-  - Respects year/quarter/salesRep filters
-
-#### 6. Invoices Page - Salesperson Analytics - COMPLETED ✅
-- ✅ Added **"By Salesperson"** tab with performance table
-  - Shows Won Value, Won Deals, Billed, Collected, Overdue, Invoice counts
-  - Ranking badges (gold, silver, bronze) for top performers
-  - Collection rate progress bars per salesperson
-  - Summary totals at bottom
+**Fix Applied:**
+- ✅ Updated `/api/opportunities/{opp_id}/activities` endpoint to handle multiple linking patterns
+- ⬜ Need to fix ETL sync to properly populate `opportunity_id` and `res_model`
 
 ---
 
-### Remaining Low Priority Items (P2-P4)
+## 📋 UPDATED TASK LIST
 
-- ⬜ **P2:** Investigate 170 vs 167 Won deal count discrepancy
-- ⬜ **P3:** Sync `opportunity_number` from Odoo
-- ⬜ **P4:** Make sidebar scrollable
+### Phase 0: Immediate Bug Fixes (THIS WEEK)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Fix activity-opportunity linking API | ✅ DONE | P0 |
+| Fix ETL sync for activities (populate opportunity_id properly) | ⬜ TODO | P0 |
+| Fix log messages linking | ⬜ TODO | P0 |
+| Verify AI confidence calculation after activity fix | ⬜ TODO | P1 |
+
+### Phase 1: Modular Dashboard - Foundations (Week 2-3)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Add `export_data` permission to RBAC | ⬜ TODO | P1 |
+| Block export endpoint for restricted roles | ⬜ TODO | P1 |
+| Create card registry (cardRegistry.js) | ⬜ TODO | P1 |
+| Refactor DashboardPage into card components | ⬜ TODO | P1 |
+| Add batch data endpoint `/api/dashboard/data/batch` | ⬜ TODO | P2 |
+
+### Phase 2: Template System (Week 4-5)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Create `dashboard_templates` collection | ⬜ TODO | P2 |
+| Add template CRUD APIs | ⬜ TODO | P2 |
+| Implement role-template assignment | ⬜ TODO | P2 |
+| Load user template on login | ⬜ TODO | P2 |
+
+### Phase 3: Row-Level Security (Week 5-6)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Add owner_id filter to opportunity endpoints | ⬜ TODO | P1 |
+| Add owner_id filter to account endpoints | ⬜ TODO | P1 |
+| Add team_id filter for department access | ⬜ TODO | P1 |
+| Audit logging for access attempts | ⬜ TODO | P2 |
+
+### Phase 4: Layout Builder (Week 7-9)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Add react-grid-layout dependency | ⬜ TODO | P2 |
+| Create admin layout builder UI | ⬜ TODO | P2 |
+| Implement drag/drop cards | ⬜ TODO | P2 |
+| Save/load template changes | ⬜ TODO | P2 |
+
+---
+
+## ✅ Previously Completed
+
+### Session: Feature Enhancements (COMPLETED)
+
+- ✅ Dashboard Sales Rep filter fixed
+- ✅ Dashboard items made clickable (navigate to opportunities)
+- ✅ Export Excel button added to Dashboard
+- ✅ Securado logo made bigger
+- ✅ Product Manager Leaderboard UI added
+- ✅ Category Performance UI added
+- ✅ Invoices "By Salesperson" tab added
+- ✅ Select.Item runtime error fixed
+
+---
+
+## 📚 Documentation Created
+
+| Document | Purpose |
+|----------|---------|
+| `/app/docs/CRM_DATA_MODEL_REFERENCE.md` | Odoo field mappings, data linking rules |
+| `/app/docs/MODULAR_DASHBOARD_ARCHITECTURE.md` | Dashboard architecture, card registry schema |
 
 ---
 
