@@ -167,7 +167,7 @@ export const crmAPI = {
   
   // Activities
   listActivities: (params) => api.get('/activities', { params }),
-  getActivityStats: () => api.get('/activities/stats'),
+  getActivityStats: (params) => api.get('/activities/stats', { params }),
   createActivity: (data) => api.post('/activities', data),
   updateActivityStatus: (id, data) => api.patch(`/activities/${id}/status`, data),
   completeActivity: (id) => api.patch(`/activities/${id}/complete`),
