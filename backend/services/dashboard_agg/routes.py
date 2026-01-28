@@ -507,13 +507,29 @@ async def get_dashboard_stats(
     opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply date filters (year and quarter) using the helper function
-    opps = apply_date_filters(opps, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    # For open opportunities, filter by create_date
+    # For closed (won/lost), we'll filter separately by date_closed
+    
+    # First filter open opportunities by create_date
+    open_opps = [o for o in opps if o.get("active", True) not in [False, 'False'] and not o.get("lost_reason_id")]
+    won_lost_opps = [o for o in opps if o.get("active", True) in [False, 'False'] or o.get("lost_reason_id") or 
+                     (o.get("stage") and "won" in o.get("stage", "").lower())]
+    
+    # Apply date filter to open opps using create_date
+    if year or quarter:
+        open_opps = apply_date_filters(open_opps, year=year, quarter=quarter, date_field='create_date')
+        # Apply date filter to won/lost using date_closed
+        won_lost_opps = apply_date_filters_for_won_lost(won_lost_opps, year=year, quarter=quarter)
+    
+    # Combine
+    opps = open_opps + won_lost_opps
     
     # Separate leads from opportunities by type field
     opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
     leads_only = [o for o in opps if o.get("type") == "lead"]
     
     logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
+    logger.info(f"  Open: {len(open_opps)}, Won/Lost: {len(won_lost_opps)}")
     
     # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
     def get_opp_value(opp):
