@@ -929,26 +929,33 @@ async def get_bluesheet(
     """Get Bluesheet assessment for an opportunity"""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
     
-    # Get opportunity
-    opp = await canonical_db.opportunities.find_one({
-        "canonical_id": opp_id,
-        "org_id": current_user.get("org_id", "default")
-    })
+    # Get opportunity using helper function
+    opp = await find_opportunity_by_id(opp_id, org_id, canonical_db)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     
+    # Use canonical_id for bluesheet lookup
+    canonical_id = opp.get("canonical_id") or str(opp.get("_id"))
+    
     # Get bluesheet data
     bluesheet = await app_db.bluesheets.find_one({
-        "opportunity_id": opp_id,
-        "org_id": current_user.get("org_id", "default")
+        "opportunity_id": canonical_id,
+        "org_id": org_id
     })
     
-    # Get activities for this opportunity
-    activities = await app_db.activities.find({
-        "opportunity_id": opp_id,
-        "org_id": current_user.get("org_id", "default")
-    }).to_list(100)
+    # Get activities for this opportunity (from canonical DB)
+    source_id = opp.get("source_record_id") or canonical_id
+    source_id_int = int(source_id) if source_id and str(source_id).isdigit() else None
+    
+    activity_query = {"org_id": org_id}
+    if source_id_int:
+        activity_query["opportunity_id"] = source_id_int
+    else:
+        activity_query["opportunity_id"] = canonical_id
+    
+    activities = await canonical_db.activities.find(activity_query).to_list(100)
     
     # Calculate probability
     bluesheet_data = bluesheet or {}
@@ -959,7 +966,7 @@ async def get_bluesheet(
     )
     
     return {
-        "opportunity_id": opp_id,
+        "opportunity_id": canonical_id,
         "bluesheet": serialize_doc(bluesheet_data) if bluesheet else None,
         "calculated_probability": probability_result,
         "form_options": get_bluesheet_form_options()
