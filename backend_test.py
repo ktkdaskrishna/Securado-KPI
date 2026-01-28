@@ -416,6 +416,80 @@ class CRMAPITester:
         except Exception as e:
             self.log_result("Stage Mapping (Won)", False, f"Error: {str(e)}")
 
+    def test_ai_analytics_overview(self):
+        """CRITICAL: Test AI Analytics overview - Win Rate 40.2%, Lost count 214"""
+        print("\n🤖 CRITICAL TEST: AI Analytics overview (Win Rate 40.2%, Lost 214)...")
+        try:
+            response = requests.get(
+                f"{BASE_URL}/api/analytics/overview",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                summary = data.get("summary", {})
+                won_count = summary.get("won_count", 0)
+                lost_count = summary.get("lost_count", 0)
+                win_rate = summary.get("win_rate", 0)
+                
+                # Expected values
+                expected_won = 144
+                expected_lost = 214
+                expected_win_rate = 40.2
+                
+                won_correct = won_count == expected_won
+                lost_correct = lost_count == expected_lost
+                win_rate_correct = abs(win_rate - expected_win_rate) < 0.5
+                
+                if won_correct and lost_correct and win_rate_correct:
+                    self.log_result("AI Analytics Overview", True, 
+                                  f"✅ Won={won_count} (expected 144), Lost={lost_count} (expected 214), Win Rate={win_rate}% (expected 40.2%)")
+                else:
+                    self.log_result("AI Analytics Overview", False, 
+                                  f"❌ Won={won_count} (expected 144), Lost={lost_count} (expected 214), Win Rate={win_rate}% (expected 40.2%)")
+                
+                return data
+            else:
+                self.log_result("AI Analytics Overview", False, f"Status: {response.status_code}")
+                return None
+        except Exception as e:
+            self.log_result("AI Analytics Overview", False, f"Error: {str(e)}")
+            return None
+
+    def test_ai_insights_generation(self):
+        """Test AI Insights generation - should return meaningful business analysis"""
+        print("\n🤖 Testing AI Insights generation...")
+        try:
+            response = requests.post(
+                f"{BASE_URL}/api/analytics/ai-insights",
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=30  # AI generation may take longer
+            )
+            if response.status_code == 200:
+                data = response.json()
+                insights = data.get("insights", "")
+                data_summary = data.get("data_summary", {})
+                ai_model = data.get("ai_model", "")
+                
+                # Verify insights are not empty and contain meaningful content
+                has_insights = len(insights) > 100  # At least 100 characters
+                has_data_summary = len(data_summary) > 0
+                
+                if has_insights and has_data_summary:
+                    self.log_result("AI Insights Generation", True, 
+                                  f"Generated {len(insights)} chars of insights using {ai_model}")
+                else:
+                    self.log_result("AI Insights Generation", False, 
+                                  f"Insights too short or missing data summary")
+                
+                return data
+            else:
+                self.log_result("AI Insights Generation", False, f"Status: {response.status_code}")
+                return None
+        except Exception as e:
+            self.log_result("AI Insights Generation", False, f"Error: {str(e)}")
+            return None
+
     def print_summary(self):
         """Print test summary"""
         print("\n" + "="*60)
