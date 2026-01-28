@@ -536,7 +536,9 @@ class ETLRunner:
                         if transform in ["to_float", "to_int"]:
                             value = 0
                         else:
-                            result[target_field] = None
+                            # Don't overwrite existing value with None if target already has value
+                            if target_field not in result:
+                                result[target_field] = None
                             continue
                     
                     # Handle Odoo relational fields which return as [id, 'name'] tuples
@@ -571,6 +573,15 @@ class ETLRunner:
                     except (ValueError, TypeError) as e:
                         log(f"Transform error for {source_field}->{target_field}: {e}", "warning")
                         value = None
+                    
+                    # For numeric fields (to_float/to_int), prefer non-zero values
+                    # This handles cases where multiple source fields map to the same target
+                    if transform in ["to_float", "to_int"]:
+                        existing_value = result.get(target_field)
+                        if existing_value and existing_value != 0:
+                            # Keep existing non-zero value if new value is 0
+                            if value == 0:
+                                continue
                     
                     result[target_field] = value
                 
