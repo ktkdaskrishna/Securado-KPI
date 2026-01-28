@@ -14,10 +14,11 @@ import { Progress } from '../ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { ScrollArea } from '../ui/scroll-area';
 import { 
   FileText, Search, Eye, DollarSign, Calendar, Clock, AlertTriangle,
   CheckCircle, TrendingUp, Building2, Download, Send, Plus, Filter, 
-  RotateCcw, ChevronDown, RefreshCw
+  RotateCcw, ChevronDown, RefreshCw, Users, Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 
