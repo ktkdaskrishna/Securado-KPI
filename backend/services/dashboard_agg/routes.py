@@ -567,8 +567,18 @@ async def get_dashboard_stats(
     qualified_leads = len([lead for lead in leads_only if "qualified" in (lead.get("stage") or "").lower()])
     
     # Build leaderboard from WON deals only (not total pipeline) - use sale_value
-    # Filter to only "Won" stage opportunities
-    won_opps_for_leaderboard = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get("stage", "")) == "closed_won"]
+    # Filter to only "Won" stage opportunities (active records with Won stage)
+    won_opps_for_leaderboard = []
+    for o in opportunities_only:
+        active = o.get("active", True)
+        if active == 'False' or active is False:
+            active = False
+        else:
+            active = True
+        lost_reason = o.get("lost_reason_id") or o.get("lost_reason")
+        normalized = normalize_stage_for_dashboard(o.get("stage", ""), active=active, lost_reason_id=lost_reason)
+        if normalized == "closed_won":
+            won_opps_for_leaderboard.append(o)
     
     owner_won_values = defaultdict(float)
     owner_won_counts = defaultdict(int)
