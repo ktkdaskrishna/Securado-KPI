@@ -40,9 +40,10 @@ export function DashboardPage() {
       if (filters.quarter) params.append('quarter', filters.quarter);
       if (filters.salesRep) params.append('sales_rep', filters.salesRep);
       
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/opportunities/export?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
