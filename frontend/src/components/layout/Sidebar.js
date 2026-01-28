@@ -68,6 +68,36 @@ const iconMap = {
   Settings,
   Boxes,
   Brain,
+  Lock,
+};
+
+// Permission requirements for each navigation item
+const permissionRequirements = {
+  dashboard: 'view_dashboard',
+  analytics: 'view_analytics',
+  opportunities: 'view_opportunities',
+  leads: 'view_opportunities',
+  accounts: 'view_accounts',
+  activities: 'view_activities',
+  'activity-timeline': 'view_activities',
+  invoices: 'view_invoices',
+  goals: 'view_goals',
+  teams: 'view_teams',
+  portfolios: 'view_dashboard',
+  initiatives: 'view_dashboard',
+  kpis: 'view_kpis',
+  profile: null, // Always visible
+  connections: 'manage_dashboard', // ETL requires admin
+  mappings: 'manage_dashboard',
+  'data-model': 'manage_dashboard',
+  pipelines: 'manage_dashboard',
+  runs: 'manage_dashboard',
+  datalake: 'manage_dashboard',
+  dlq: 'manage_dashboard',
+  users: 'manage_users',
+  roles: 'manage_users',
+  departments: 'manage_users',
+  settings: 'manage_dashboard',
 };
 
 const defaultNavigation = {
