@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 
 class ESIPAPITester:
-    def __init__(self, base_url="https://crm-win-fix.preview.emergentagent.com"):
+    def __init__(self, base_url="https://odoo-connect.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

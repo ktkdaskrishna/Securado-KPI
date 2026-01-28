@@ -7,7 +7,7 @@ import requests
 import sys
 from datetime import datetime
 
-BASE_URL = "https://crm-win-fix.preview.emergentagent.com"
+BASE_URL = "https://odoo-connect.preview.emergentagent.com"
 
 class CRMAPITester:
     def __init__(self):

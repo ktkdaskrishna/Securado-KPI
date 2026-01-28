@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://crm-win-fix.preview.emergentagent.com
+https://odoo-connect.preview.emergentagent.com
 ```
 
 ### Test Credentials

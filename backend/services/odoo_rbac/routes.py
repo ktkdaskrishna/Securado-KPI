@@ -700,7 +700,7 @@ async def setup_odoo_automations(
     when records are created, updated, or deleted.
     
     Args:
-        webhook_base_url: The base URL of this application (e.g., https://crm-win-fix.preview.emergentagent.com)
+        webhook_base_url: The base URL of this application (e.g., https://odoo-connect.preview.emergentagent.com)
     """
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
