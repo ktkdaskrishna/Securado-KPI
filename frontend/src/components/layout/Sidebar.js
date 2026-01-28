@@ -138,7 +138,15 @@ const getStoredNavigation = () => {
   try {
     const stored = localStorage.getItem('securado_nav_preferences');
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Validate stored preferences - ensure all items have default values if not set
+      const defaults = {};
+      Object.values(defaultNavigation).flat().forEach(item => {
+        // If item is not in stored preferences, use default
+        // If item is explicitly set, use that value
+        defaults[item.id] = parsed[item.id] !== undefined ? parsed[item.id] : item.default;
+      });
+      return defaults;
     }
   } catch (e) {
     console.error('Error reading navigation preferences:', e);
