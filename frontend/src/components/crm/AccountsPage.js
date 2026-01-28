@@ -15,6 +15,7 @@ import { Building2, Search, Eye, Phone, Mail, MapPin, Users, FileText, Receipt, 
 import { toast } from 'sonner';
 
 export function AccountsPage() {
+  const navigate = useNavigate();
   const [accountsData, setAccountsData] = useState({ data: [], summary: {} });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
