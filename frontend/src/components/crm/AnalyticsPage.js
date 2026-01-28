@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { analyticsAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { useGlobalFilters } from '../../lib/GlobalFilterContext';
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
 import { Progress } from '../ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { 
   TrendingUp, 
   TrendingDown,
@@ -29,7 +31,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
