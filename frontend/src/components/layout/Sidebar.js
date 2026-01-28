@@ -98,6 +98,7 @@ const permissionRequirements = {
   roles: 'manage_users',
   departments: 'manage_users',
   settings: 'manage_dashboard',
+  'system-logs': 'manage_dashboard',
 };
 
 const defaultNavigation = {
