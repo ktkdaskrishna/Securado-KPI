@@ -55,6 +55,14 @@ def is_lost(o: dict) -> bool:
 def normalize_stage(stage: str, active: bool = True, lost_reason_id = None) -> str:
     """Normalize Odoo stages to funnel stages
     
+    Odoo Stages mapping:
+    - Prospect, Enquiry → lead
+    - Qualified Opportunity → qualified
+    - Proposal → proposal  
+    - Review&Negotiation → negotiation
+    - Won → won
+    - Lost, Hold, Junk Lead → lost (or excluded)
+    
     In Odoo, lost deals are archived (active=False) with a lost_reason_id.
     They keep their original stage but are marked as lost.
     """
@@ -65,18 +73,31 @@ def normalize_stage(stage: str, active: bool = True, lost_reason_id = None) -> s
     if not stage:
         return "unknown"
     stage_lower = stage.lower().strip()
+    
+    # Won stages
     if stage_lower in ["won", "closed won", "closed_won"]:
         return "won"
-    if stage_lower in ["lost", "closed lost", "closed_lost"]:
+    
+    # Lost/Inactive stages
+    if stage_lower in ["lost", "closed lost", "closed_lost", "junk lead", "hold"]:
         return "lost"
-    if "negot" in stage_lower:
+    
+    # Negotiation stages
+    if "negot" in stage_lower or "review" in stage_lower:
         return "negotiation"
+    
+    # Proposal stages
     if "prop" in stage_lower:
         return "proposal"
+    
+    # Qualified stages
     if "quali" in stage_lower:
         return "qualified"
+    
+    # Lead/Prospect stages
     if "enquiry" in stage_lower or "new" in stage_lower or "prospect" in stage_lower:
         return "lead"
+    
     return "lead"
 
 
