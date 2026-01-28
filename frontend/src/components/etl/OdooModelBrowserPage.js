@@ -84,7 +84,7 @@ export function OdooModelBrowserPage() {
     try {
       const token = localStorage.getItem('access_token');
       const res = await axios.get(
-        `${API_BASE_URL}/api/integrations/connections/${selectedConnection.id}/odoo/models`,
+        `${API_BASE_URL}/api/integrations/${selectedConnection.id}/odoo/models`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: { search: modelSearch }
@@ -108,7 +108,7 @@ export function OdooModelBrowserPage() {
     try {
       const token = localStorage.getItem('access_token');
       const res = await axios.get(
-        `${API_BASE_URL}/api/integrations/connections/${selectedConnection.id}/odoo/models/${modelName}/fields`,
+        `${API_BASE_URL}/api/integrations/${selectedConnection.id}/odoo/models/${modelName}/fields`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: { search: fieldSearch, show_all: false }
