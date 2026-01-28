@@ -370,12 +370,18 @@ class ETLRunner:
                 log("Full sync mode")
             
             # Extract records - IMPORTANT: Apply different rules based on model
-            # - crm.lead: Include archived (lost deals are archived in Odoo)
+            # - crm.lead: Include archived (lost deals are archived in Odoo), NO LIMIT for full sync
             # - res.users: Only active users
             # - res.partner: Only active accounts
             # - Other models: Include all
-            extract_limit = config.get("extract_limit", 500)
             source_model = mapping["source_model"]
+            
+            # For crm.lead (opportunities/leads), we need ALL records for accurate reporting
+            # Other models can use a limit for performance
+            if source_model == "crm.lead":
+                extract_limit = None  # No limit - get ALL opportunities/leads
+            else:
+                extract_limit = config.get("extract_limit", 500)
             
             # Determine if we should include archived records
             include_archived = source_model == "crm.lead"  # Lost deals are archived
@@ -387,16 +393,22 @@ class ETLRunner:
                 extraction_domain.append(('active', '=', True))
                 log(f"Filtering {source_model} to active records only")
             
+            # Build search_read options
+            search_options = {
+                'fields': source_fields,
+                'order': 'write_date desc',
+                'context': {'active_test': False} if include_archived else {}
+            }
+            if extract_limit:
+                search_options['limit'] = extract_limit
+            
+            log(f"Extracting ALL records (no limit)" if not extract_limit else f"Extracting with limit={extract_limit}")
+            
             records = models.execute_kw(
                 conn["database"], uid, conn["api_key"],
                 source_model, 'search_read',
                 [extraction_domain],  # Domain must be in a list
-                {
-                    'fields': source_fields,
-                    'limit': extract_limit,
-                    'order': 'write_date desc',
-                    'context': {'active_test': False} if include_archived else {}
-                }
+                search_options
             )
             
             log(f"Extracted {len(records)} records from Odoo" + (" (including archived)" if include_archived else " (active only)"))
