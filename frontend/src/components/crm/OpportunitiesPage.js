@@ -1204,6 +1204,7 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
 }
 
 export function OpportunitiesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState([]);
   const [kanbanData, setKanbanData] = useState({ stages: [], data: {} });
   const [loading, setLoading] = useState(true);
@@ -1215,26 +1216,46 @@ export function OpportunitiesPage() {
   const { formatCurrency } = useCurrency();
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [] });
 
-  // Contextual filters for Opportunities page
-  const [filters, setFilters] = useState({
-    year: null,
-    quarter: null,
-    salesRep: null,
-    account: null,
-    stage: null
+  // Initialize filters from URL params
+  const getInitialFilters = () => ({
+    year: searchParams.get('year') || null,
+    quarter: searchParams.get('quarter') || null,
+    salesRep: searchParams.get('salesRep') || null,
+    account: searchParams.get('account') || null,
+    stage: searchParams.get('stage') || null
   });
 
+  // Contextual filters for Opportunities page
+  const [filters, setFilters] = useState(getInitialFilters);
+
+  // Update URL when filters change
   const updateFilter = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+    
+    // Update URL params
+    const newParams = new URLSearchParams(searchParams);
+    if (value) {
+      newParams.set(key, value);
+    } else {
+      newParams.delete(key);
+    }
+    setSearchParams(newParams, { replace: true });
   };
 
   const resetFilters = () => {
     setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null });
+    setSearchParams({}, { replace: true });
   };
 
   const hasActiveFilters = () => {
     return Object.values(filters).some(v => v !== null);
   };
+
+  // Re-read URL params when they change externally (e.g., from dashboard click)
+  useEffect(() => {
+    const newFilters = getInitialFilters();
+    setFilters(newFilters);
+  }, [searchParams]);
 
   const loadFilterOptions = useCallback(async () => {
     try {
