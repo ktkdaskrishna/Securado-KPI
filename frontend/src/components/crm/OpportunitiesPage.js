@@ -18,7 +18,7 @@ import { Separator } from '../ui/separator';
 import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Search, Filter, GripVertical, DollarSign, User, Mail, Phone, Calendar, MessageSquare, Activity, Target, TrendingUp, AlertTriangle, CheckCircle, Plus, Send, Clock, Building2, Users, Tag, Briefcase, FileText, Check, X, Edit2, Maximize2, Minimize2 } from 'lucide-react';
+import { Search, Filter, GripVertical, DollarSign, User, Mail, Phone, Calendar, MessageSquare, Activity, Target, TrendingUp, AlertTriangle, CheckCircle, Plus, Send, Clock, Building2, Users, Tag, Briefcase, FileText, Check, X, Edit2, Maximize2, Minimize2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, AccountFilter, StageFilter } from '../layout/PageFilters';
 
