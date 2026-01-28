@@ -658,34 +658,11 @@ async def get_dashboard_stats(
     ]
     
     # ==================== ACTIVITY STATS FOR FILTERED VIEW ====================
-    # Get activities linked to the filtered opportunities
-    opp_ids = []
-    opp_source_ids = []
-    for o in opportunities_only:
-        if o.get("canonical_id"):
-            opp_ids.append(o.get("canonical_id"))
-        if o.get("source_record_id"):
-            try:
-                opp_source_ids.append(int(o.get("source_record_id")))
-            except:
-                pass
-    
-    # Build activity query - activities linked to filtered opportunities
+    # Get CRM activities (res_model: crm.lead) and filter by date
     activity_query = {
         "org_id": org_id,
-        "$or": [
-            {"res_model": "crm.lead"},
-            {"opportunity_id": {"$exists": True, "$ne": None}}
-        ]
+        "res_model": "crm.lead"  # Only CRM activities
     }
-    
-    # If we have specific opportunities, filter activities to those
-    if opp_ids or opp_source_ids:
-        activity_query["$or"] = [
-            {"opportunity_id": {"$in": opp_source_ids}},
-            {"res_id": {"$in": opp_source_ids}},
-            {"canonical_id": {"$in": opp_ids}}
-        ]
     
     canonical_activities = await canonical_db.activities.find(activity_query).to_list(10000)
     
@@ -718,6 +695,10 @@ async def get_dashboard_stats(
                 # Activities without dates are included
                 filtered_activities.append(act)
         canonical_activities = filtered_activities
+    
+    # Filter by sales rep if applicable
+    if sales_rep:
+        canonical_activities = [a for a in canonical_activities if a.get("assigned_user") == sales_rep]
     
     # Also get app activities if applicable
     app_activity_query = {"org_id": org_id}
