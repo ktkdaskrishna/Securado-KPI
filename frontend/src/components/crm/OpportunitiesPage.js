@@ -1241,7 +1241,7 @@ export function OpportunitiesPage() {
       if (res.data) {
         setFilterOptions({
           years: res.data.years || [],
-          salesReps: res.data.salesReps || [],
+          salesReps: res.data.sales_reps || res.data.salesReps || [],  // Handle both naming conventions
           accounts: res.data.accounts || [],
           stages: res.data.stages || []
         });
@@ -1250,6 +1250,43 @@ export function OpportunitiesPage() {
       console.error('Failed to load filter options:', error);
     }
   }, []);
+
+  // Export to Excel functionality
+  const handleExportExcel = async () => {
+    try {
+      toast.info('Preparing export...');
+      const params = {};
+      if (filters.year) params.year = filters.year;
+      if (filters.quarter) params.quarter = filters.quarter;
+      if (filters.salesRep) params.sales_rep = filters.salesRep;
+      if (filters.account) params.account = filters.account;
+      if (filters.stage) params.stage = filters.stage;
+      
+      const response = await crmAPI.exportOpportunities(params);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename with filters
+      const filenameParts = ['opportunities'];
+      if (filters.year) filenameParts.push(filters.year);
+      if (filters.quarter) filenameParts.push(filters.quarter);
+      if (filters.stage) filenameParts.push(filters.stage);
+      link.setAttribute('download', `${filenameParts.join('_')}.xlsx`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Export complete!');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export opportunities');
+    }
+  };
 
   useEffect(() => {
     loadFilterOptions();
