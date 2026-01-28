@@ -41,7 +41,25 @@
 - `/app/backend/services/etl_runner/runner.py` - Field mappings (existing)
 - `/app/backend/services/dashboard_agg/routes.py` - Use `won_at` for Won filtering
 - `/app/backend/services/ai_analytics/routes.py` - Use `won_at` for Won filtering
+- `/app/backend/services/etl_control/routes.py` - Added `is_company` field to account sync
+- `/app/frontend/src/components/crm/AccountsPage.js` - Added company/contact indicator icons
 - MongoDB `event_mesh_app.mappings` collection - Added 8 new field mappings
+
+---
+
+### Issue Fixed: Company vs Contact Identification ✅
+
+**Problem:** The Accounts page showed the same icon for all records without differentiating between companies and individual contacts.
+
+**Solution:**
+1. Added `is_company` field to the ETL sync for accounts/contacts
+2. Updated frontend to show:
+   - **Blue Building icon** for companies (`is_company=true`)
+   - **Green User icon** for contacts (`is_company=false`)
+
+**Files Modified:**
+- `/app/backend/services/etl_control/routes.py` - Include `is_company` in account sync
+- `/app/frontend/src/components/crm/AccountsPage.js` - Conditional icon rendering
 
 ---
 
