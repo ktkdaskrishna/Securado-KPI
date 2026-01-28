@@ -194,6 +194,33 @@ export function DashboardPage() {
         </Button>
       </div>
 
+      {/* Contextual Filters for Dashboard */}
+      <PageFilters 
+        onReset={resetFilters}
+        activeFilters={[filters.year, filters.quarter, filters.salesRep, filters.stage]}
+        title="Dashboard Filters"
+      >
+        <YearFilter 
+          value={filters.year} 
+          onChange={(v) => updateFilter('year', v)} 
+          years={filterOptions.years}
+        />
+        <QuarterFilter 
+          value={filters.quarter} 
+          onChange={(v) => updateFilter('quarter', v)} 
+        />
+        <SalesRepFilter 
+          value={filters.salesRep} 
+          onChange={(v) => updateFilter('salesRep', v)} 
+          salesReps={filterOptions.salesReps}
+        />
+        <StageFilter 
+          value={filters.stage} 
+          onChange={(v) => updateFilter('stage', v)} 
+          stages={filterOptions.stages}
+        />
+      </PageFilters>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
