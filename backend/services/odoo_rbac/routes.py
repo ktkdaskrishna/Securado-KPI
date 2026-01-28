@@ -893,6 +893,140 @@ async def setup_odoo_automations(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@webhook_router.get("/config")
+async def get_webhook_config(current_user: dict = Depends(get_current_user)):
+    """Get current webhook configuration"""
+    app_db = get_app_db()
+    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
+    
+    if not config:
+        return {
+            "enabled": False,
+            "odoo_automations_created": False,
+            "created_at": None,
+            "models": []
+        }
+    
+    return {
+        "enabled": config.get("enabled", False),
+        "odoo_automations_created": config.get("odoo_automations_created", False),
+        "created_at": config.get("created_at"),
+        "models": config.get("models", []),
+        "automation_ids": config.get("automation_ids", [])
+    }
+
+
+@webhook_router.post("/config")
+async def update_webhook_config(
+    enabled: bool,
+    current_user: dict = Depends(get_current_user)
+):
+    """Enable or disable webhook processing"""
+    app_db = get_app_db()
+    
+    await app_db.webhook_config.update_one(
+        {"type": "odoo_webhooks"},
+        {
+            "$set": {
+                "enabled": enabled,
+                "updated_at": datetime.utcnow().isoformat(),
+                "updated_by": current_user.get("id")
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "success": True,
+        "enabled": enabled,
+        "message": f"Webhook processing {'enabled' if enabled else 'disabled'}"
+    }
+
+
+@webhook_router.delete("/odoo-automations")
+async def delete_odoo_automations(current_user: dict = Depends(get_current_user)):
+    """
+    Delete all webhook automations from Odoo.
+    
+    This will remove all automated actions we created in Odoo to stop webhooks.
+    """
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get stored automation IDs
+    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
+    if not config or not config.get("automation_ids"):
+        return {"success": True, "message": "No automations to delete", "deleted": 0}
+    
+    # Get Odoo connection
+    conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
+    if not conn:
+        raise HTTPException(status_code=404, detail="No Odoo connection found")
+    
+    try:
+        from services.etl_control.routes import create_odoo_proxy
+        
+        common = create_odoo_proxy(conn["url"], "common")
+        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+        
+        if not uid:
+            raise HTTPException(status_code=401, detail="Odoo authentication failed")
+        
+        models = create_odoo_proxy(conn["url"], "object")
+        
+        deleted_count = 0
+        errors = []
+        
+        # Delete automations
+        automation_ids = [a["automation_id"] for a in config.get("automation_ids", []) if a.get("automation_id")]
+        if automation_ids:
+            try:
+                models.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    'base.automation', 'unlink', [automation_ids]
+                )
+                deleted_count += len(automation_ids)
+                logger.info(f"Deleted {len(automation_ids)} automations from Odoo")
+            except Exception as e:
+                errors.append(f"Failed to delete automations: {str(e)}")
+        
+        # Delete server actions
+        server_action_ids = [a["server_action_id"] for a in config.get("automation_ids", []) if a.get("server_action_id")]
+        if server_action_ids:
+            try:
+                models.execute_kw(
+                    conn["database"], uid, conn["api_key"],
+                    'ir.actions.server', 'unlink', [server_action_ids]
+                )
+                logger.info(f"Deleted {len(server_action_ids)} server actions from Odoo")
+            except Exception as e:
+                errors.append(f"Failed to delete server actions: {str(e)}")
+        
+        # Update config
+        await app_db.webhook_config.update_one(
+            {"type": "odoo_webhooks"},
+            {
+                "$set": {
+                    "enabled": False,
+                    "odoo_automations_created": False,
+                    "automation_ids": [],
+                    "deleted_at": datetime.utcnow().isoformat()
+                }
+            }
+        )
+        
+        return {
+            "success": len(errors) == 0,
+            "deleted": deleted_count,
+            "errors": errors,
+            "message": f"Deleted {deleted_count} automations from Odoo" + (f" with errors: {errors}" if errors else "")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting Odoo automations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/role-mappings")
 async def get_role_mappings():
     """Get all configured role mappings"""
