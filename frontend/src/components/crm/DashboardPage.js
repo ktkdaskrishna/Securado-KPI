@@ -14,6 +14,8 @@ import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } f
 
 export function DashboardPage() {
   const [stats, setStats] = useState(null);
+  const [pmLeaderboard, setPmLeaderboard] = useState(null);
+  const [categoryStats, setCategoryStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [] });
@@ -63,8 +65,16 @@ export function DashboardPage() {
       if (filters.salesRep) params.sales_rep = filters.salesRep;
       if (filters.stage) params.stage = filters.stage;
       
-      const res = await crmAPI.getDashboardStats(params);
-      setStats(res.data);
+      // Load all dashboard data in parallel
+      const [statsRes, pmRes, catRes] = await Promise.all([
+        crmAPI.getDashboardStats(params),
+        crmAPI.getProductManagerLeaderboard(params),
+        crmAPI.getCategoryStats(params)
+      ]);
+      
+      setStats(statsRes.data);
+      setPmLeaderboard(pmRes.data);
+      setCategoryStats(catRes.data);
     } catch (error) {
       toast.error('Failed to load dashboard stats');
     } finally {
