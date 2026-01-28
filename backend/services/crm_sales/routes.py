@@ -1102,45 +1102,111 @@ async def convert_lead_to_opportunity(
 
 @accounts_router.get("")
 async def list_accounts(
+    entity_type: Optional[str] = Query(None, description="Filter by entity type: company, contact, or all"),
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """List accounts with optional filters"""
+    """List accounts (companies) and contacts with optional filters"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    logger.info(f"Accounts list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
+    logger.info(f"Accounts list request - entity_type: {entity_type}, year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Base query
-    query = {"org_id": org_id}
+    # Get accounts (companies)
+    accounts_query = {"org_id": org_id}
+    accounts = await canonical_db.accounts.find(accounts_query).to_list(2000)
     
-    # Get all accounts first
-    accounts = await canonical_db.accounts.find(query).to_list(1000)
+    # Get contacts 
+    contacts_query = {"org_id": org_id}
+    contacts = await canonical_db.contacts.find(contacts_query).to_list(5000)
+    
+    # Get all invoices to check for overdue
+    invoices = await canonical_db.invoices.find({"org_id": org_id}).to_list(5000)
+    
+    # Build overdue map by account_id and account_name
+    overdue_by_account_id = {}
+    overdue_by_account_name = {}
+    from datetime import datetime
+    today = datetime.now(timezone.utc).date()
+    
+    for inv in invoices:
+        if inv.get("payment_state") not in ["paid", "reversed"]:
+            due_date = inv.get("due_date")
+            if due_date:
+                if isinstance(due_date, str):
+                    try:
+                        due_date = datetime.strptime(due_date[:10], "%Y-%m-%d").date()
+                    except:
+                        continue
+                elif hasattr(due_date, 'date'):
+                    due_date = due_date.date()
+                
+                if due_date < today:
+                    acc_id = str(inv.get("account_id", ""))
+                    acc_name = inv.get("account_name", "")
+                    overdue_amount = inv.get("amount_total", 0) or 0
+                    
+                    if acc_id:
+                        overdue_by_account_id[acc_id] = overdue_by_account_id.get(acc_id, 0) + overdue_amount
+                    if acc_name:
+                        overdue_by_account_name[acc_name] = overdue_by_account_name.get(acc_name, 0) + overdue_amount
+    
+    # Mark accounts with overdue invoices
+    for account in accounts:
+        account["is_company"] = True
+        acc_id = str(account.get("source_record_id", ""))
+        acc_name = account.get("name", "")
+        overdue = overdue_by_account_id.get(acc_id, 0) + overdue_by_account_name.get(acc_name, 0)
+        account["has_overdue"] = overdue > 0
+        account["overdue_amount"] = overdue
+    
+    # Mark contacts
+    for contact in contacts:
+        contact["is_company"] = False
+        acc_id = str(contact.get("account_id", ""))
+        acc_name = contact.get("account_name", "")
+        overdue = overdue_by_account_id.get(acc_id, 0) + overdue_by_account_name.get(acc_name, 0)
+        contact["has_overdue"] = overdue > 0
+        contact["overdue_amount"] = overdue
     
     # If we need to filter by sales_rep or year, we need to check related opportunities
     if sales_rep or year or quarter:
-        # Get opportunities that match the filter
         opp_query = {"org_id": org_id}
         if sales_rep:
             opp_query["owner_name"] = sales_rep
         
         opps = await canonical_db.opportunities.find(opp_query).to_list(10000)
-        
-        # Apply date filters on opportunities
         opps = apply_date_filters(opps, year=year, quarter=quarter, date_field=date_field or 'create_date')
         
-        # Get unique account names from filtered opportunities
         valid_accounts = set(o.get("account_name") for o in opps if o.get("account_name"))
-        
-        # Filter accounts to only those with matching opportunities
         accounts = [a for a in accounts if a.get("name") in valid_accounts]
+        contacts = [c for c in contacts if c.get("account_name") in valid_accounts]
     
-    logger.info(f"Accounts after filtering: {len(accounts)}")
+    # Filter by entity type
+    if entity_type == "company":
+        result = accounts
+    elif entity_type == "contact":
+        result = contacts
+    else:
+        result = accounts + contacts
     
-    return serialize_doc(accounts)
+    # Sort: overdue accounts first, then by name
+    result.sort(key=lambda x: (not x.get("has_overdue", False), x.get("name", "").lower()))
+    
+    logger.info(f"Accounts/Contacts after filtering: {len(result)} (companies: {len(accounts)}, contacts: {len(contacts)})")
+    
+    return {
+        "data": serialize_doc(result),
+        "summary": {
+            "total": len(result),
+            "companies": len(accounts),
+            "contacts": len(contacts),
+            "with_overdue": len([r for r in result if r.get("has_overdue")])
+        }
+    }
 
 
 @accounts_router.post("")
