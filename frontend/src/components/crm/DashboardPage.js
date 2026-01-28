@@ -581,23 +581,42 @@ export function DashboardPage() {
         {/* Activity Stats */}
         <Card>
           <CardHeader>
-            <CardTitle>Activity Overview</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Activity Overview
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => handleNavigateToActivities()}
+                className="text-xs"
+              >
+                View All
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Calls', value: stats?.activity_stats?.calls || 0, color: 'blue' },
-                { label: 'Emails', value: stats?.activity_stats?.emails || 0, color: 'cyan' },
-                { label: 'Meetings', value: stats?.activity_stats?.meetings || 0, color: 'emerald' },
-                { label: 'Tasks', value: stats?.activity_stats?.tasks || 0, color: 'amber' },
+                { label: 'Calls', value: stats?.activity_stats?.calls || 0, color: 'blue', type: 'call' },
+                { label: 'Emails', value: stats?.activity_stats?.emails || 0, color: 'cyan', type: 'email' },
+                { label: 'Meetings', value: stats?.activity_stats?.meetings || 0, color: 'emerald', type: 'meeting' },
+                { label: 'Tasks', value: stats?.activity_stats?.tasks || 0, color: 'amber', type: 'task' },
               ].map((item) => (
-                <div key={item.label} className="p-4 rounded-lg bg-gray-50">
+                <div 
+                  key={item.label} 
+                  className="p-4 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors group"
+                  onClick={() => handleNavigateToActivities(item.type)}
+                  data-testid={`activity-stat-${item.label.toLowerCase()}`}
+                >
                   <p className="text-sm text-gray-500">{item.label}</p>
                   <p className="text-2xl font-bold mt-1">{item.value}</p>
+                  <p className="text-xs text-primary opacity-0 group-hover:opacity-100 mt-1">Click to view →</p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+            <div 
+              className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors"
+              onClick={() => handleNavigateToActivities()}
+            >
               <div className="flex items-center justify-between">
                 <span className="text-emerald-700 font-medium">Completed</span>
                 <span className="text-2xl font-bold text-emerald-700">
