@@ -99,18 +99,30 @@ export function WebhookConfigPage() {
   };
 
   const deleteWebhooks = async () => {
-    if (!window.confirm('Are you sure you want to delete all Odoo webhook automations? This will stop real-time sync.')) {
-      return;
-    }
-    
     setActionLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const res = await axios.delete(`${API_BASE_URL}/api/webhooks/odoo-automations`, {
+      
+      // Build URL with credentials if provided
+      let url = `${API_BASE_URL}/api/webhooks/odoo-automations`;
+      const params = new URLSearchParams();
+      
+      if (odooCredentials.url) params.append('odoo_url', odooCredentials.url);
+      if (odooCredentials.database) params.append('odoo_database', odooCredentials.database);
+      if (odooCredentials.username) params.append('odoo_username', odooCredentials.username);
+      if (odooCredentials.api_key) params.append('odoo_api_key', odooCredentials.api_key);
+      
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+      
+      const res = await axios.delete(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       toast.success(res.data.message);
+      setDeleteDialogOpen(false);
+      setOdooCredentials({ url: '', database: '', username: '', api_key: '' });
       fetchConfig();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete webhooks');
