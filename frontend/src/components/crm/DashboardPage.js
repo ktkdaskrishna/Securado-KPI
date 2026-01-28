@@ -345,7 +345,15 @@ export function DashboardPage() {
           <CardContent>
             <div className="h-64" data-testid="crm-pipeline-chart">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats?.pipeline_by_stage || []}>
+                <BarChart 
+                  data={stats?.pipeline_by_stage || []}
+                  onClick={(data) => {
+                    if (data?.activeLabel) {
+                      handleNavigateToOpportunities(data.activeLabel);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
                   <Tooltip 
