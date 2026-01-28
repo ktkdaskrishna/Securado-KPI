@@ -215,7 +215,8 @@ export const crmAPI = {
   deleteKPI: (id) => api.delete(`/kpis/${id}`),
   
   // Receivables
-  listReceivables: () => api.get('/receivables'),
+  listReceivables: (params) => api.get('/receivables', { params }),
+  getReceivablesStats: (params) => api.get('/receivables/stats', { params }),
 };
 
 // Events/DLQ APIs
