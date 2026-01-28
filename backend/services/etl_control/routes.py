@@ -1818,6 +1818,63 @@ async def run_mapping_sync(
                             # Lead vs Opportunity type
                             if record.get("type"):
                                 transformed["type"] = record.get("type")  # 'lead' or 'opportunity'
+                            
+                            # CRITICAL: Always extract NAMES from relational fields
+                            # partner_id -> account_name (Many2one returns [id, 'name'])
+                            partner_val = record.get("partner_id")
+                            if partner_val:
+                                if isinstance(partner_val, list) and len(partner_val) >= 2:
+                                    transformed["account_id"] = str(partner_val[0])
+                                    transformed["account_name"] = partner_val[1]
+                                elif isinstance(partner_val, (int, str)):
+                                    transformed["account_id"] = str(partner_val)
+                            
+                            # user_id -> owner_name
+                            user_val = record.get("user_id")
+                            if user_val:
+                                if isinstance(user_val, list) and len(user_val) >= 2:
+                                    transformed["owner_id"] = str(user_val[0])
+                                    transformed["owner_name"] = user_val[1]
+                                elif isinstance(user_val, (int, str)):
+                                    transformed["owner_id"] = str(user_val)
+                            
+                            # stage_id -> stage (name)
+                            stage_val = record.get("stage_id")
+                            if stage_val:
+                                if isinstance(stage_val, list) and len(stage_val) >= 2:
+                                    transformed["stage_id"] = str(stage_val[0])
+                                    transformed["stage"] = stage_val[1]
+                                elif isinstance(stage_val, (int, str)):
+                                    transformed["stage_id"] = str(stage_val)
+                            
+                            # team_id -> team_name
+                            team_val = record.get("team_id")
+                            if team_val:
+                                if isinstance(team_val, list) and len(team_val) >= 2:
+                                    transformed["team_id"] = str(team_val[0])
+                                    transformed["team_name"] = team_val[1]
+                                elif isinstance(team_val, (int, str)):
+                                    transformed["team_id"] = str(team_val)
+                            
+                            # lost_reason_id -> lost_reason
+                            lost_val = record.get("lost_reason_id")
+                            if lost_val:
+                                if isinstance(lost_val, list) and len(lost_val) >= 2:
+                                    transformed["lost_reason"] = lost_val[1]
+                            
+                            # Expected revenue / amount
+                            if record.get("expected_revenue"):
+                                transformed["amount"] = float(record.get("expected_revenue") or 0)
+                            elif record.get("planned_revenue"):
+                                transformed["amount"] = float(record.get("planned_revenue") or 0)
+                            
+                            # Probability
+                            if record.get("probability"):
+                                transformed["probability"] = float(record.get("probability") or 0)
+                            
+                            # Close date
+                            if record.get("date_deadline"):
+                                transformed["close_date"] = record.get("date_deadline")
                         
                         # Upsert to canonical database (not app_db)
                         collection_name = ENTITY_COLLECTION_MAP.get(target_entity, f"{target_entity}s")
