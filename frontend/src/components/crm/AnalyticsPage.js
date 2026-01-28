@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 
 export default function AnalyticsPage() {
+  const navigate = useNavigate();
   const { formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
@@ -49,6 +50,12 @@ export default function AnalyticsPage() {
   const [aiInsights, setAiInsights] = useState(null);
   const [localFilters, setLocalFilters] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedQuarter, setSelectedQuarter] = useState('');
+  
+  // Modal state for At Risk/Dormant accounts
+  const [riskModalOpen, setRiskModalOpen] = useState(false);
+  const [riskModalType, setRiskModalType] = useState('at_risk'); // 'healthy', 'at_risk', 'dormant'
   
   // Use global filters
   const { filters: globalFilters, hasActiveFilters } = useGlobalFilters();
