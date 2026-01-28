@@ -214,6 +214,10 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(dlq_router, prefix="/api")
 
+# Odoo RBAC & Webhooks
+app.include_router(odoo_rbac_router, prefix="/api")
+app.include_router(webhook_router, prefix="/api")
+
 
 # Root endpoint
 @app.get("/")
