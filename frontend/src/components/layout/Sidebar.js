@@ -133,6 +133,7 @@ const defaultNavigation = {
     { id: 'departments', name: 'Departments', href: '/admin/departments', icon: 'Building', default: false },
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
     { id: 'system-logs', name: 'System Logs', href: '/admin/logs', icon: 'AlertTriangle', default: true },
+    { id: 'webhooks', name: 'Webhooks', href: '/admin/webhooks', icon: 'Webhook', default: true },
   ],
 };
 
