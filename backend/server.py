@@ -131,9 +131,11 @@ app = FastAPI(
 
 # CORS configuration
 cors_origins = os.environ.get("CORS_ORIGINS", "*")
+# Parse CORS origins - support comma-separated values or wildcard
+parsed_origins = cors_origins.split(",") if cors_origins != "*" else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=parsed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
