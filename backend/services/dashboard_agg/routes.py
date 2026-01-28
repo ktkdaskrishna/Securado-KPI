@@ -424,8 +424,24 @@ async def get_dashboard_stats(
     
     logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
     
-    # Calculate stats for OPPORTUNITIES only
-    total_pipeline = sum(o.get("amount", 0) or 0 for o in opportunities_only)
+    # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
+    def get_opp_value(opp):
+        sale_val = opp.get("sale_value", 0)
+        if sale_val and sale_val != 'False':
+            try:
+                return float(sale_val)
+            except:
+                pass
+        amount = opp.get("amount", 0)
+        if amount and amount != 'False':
+            try:
+                return float(amount)
+            except:
+                pass
+        return 0
+    
+    # Calculate stats for OPPORTUNITIES only - use sale_value as primary
+    total_pipeline = sum(get_opp_value(o) for o in opportunities_only)
     
     # By stage (for opportunities)
     stage_counts = {}
@@ -433,7 +449,7 @@ async def get_dashboard_stats(
     for s in PipelineStages.all():
         normalized_opps = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get("stage", "")) == s]
         stage_counts[s] = len(normalized_opps)
-        stage_values[s] = sum(o.get("amount", 0) or 0 for o in normalized_opps)
+        stage_values[s] = sum(get_opp_value(o) for o in normalized_opps)
     
     won_count = stage_counts.get(PipelineStages.CLOSED_WON, 0)
     won_value = stage_values.get(PipelineStages.CLOSED_WON, 0)
@@ -446,7 +462,7 @@ async def get_dashboard_stats(
     new_leads = len([lead for lead in leads_only if "new" in (lead.get("stage") or "").lower() or "enquiry" in (lead.get("stage") or "").lower()])
     qualified_leads = len([lead for lead in leads_only if "qualified" in (lead.get("stage") or "").lower()])
     
-    # Build leaderboard from filtered opportunities
+    # Build leaderboard from filtered opportunities - use sale_value
     owner_values = defaultdict(float)
     owner_names = {}
     for opp in opportunities_only:
