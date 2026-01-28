@@ -2005,3 +2005,151 @@ async def get_receivables_stats(
             "years": sorted(list(set(str(inv.get("invoice_date", ""))[:4] for inv in invoices if inv.get("invoice_date"))), reverse=True)
         }
     }
+
+
+@receivables_router.get("/by-salesperson")
+async def get_receivables_by_salesperson(
+    current_user: dict = Depends(get_current_user),
+    year: str = Query(None, description="Filter by year"),
+    quarter: str = Query(None, description="Filter by quarter")
+):
+    """Get invoice analytics per sales person - won value, billed, pending, overdue"""
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Fetch all invoices
+    invoices = await canonical_db.invoices.find({"org_id": org_id}).to_list(5000)
+    
+    # Fetch all opportunities to get Won values per salesperson
+    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Apply date filters
+    quarter_months = {
+        "Q1": ["01", "02", "03"], 
+        "Q2": ["04", "05", "06"], 
+        "Q3": ["07", "08", "09"], 
+        "Q4": ["10", "11", "12"]
+    }
+    
+    if year or quarter:
+        filtered_invoices = []
+        for inv in invoices:
+            inv_date = inv.get("invoice_date")
+            if not inv_date:
+                continue
+            if year and not str(inv_date).startswith(str(year)):
+                continue
+            if quarter:
+                months = quarter_months.get(quarter, [])
+                inv_month = str(inv_date)[5:7] if len(str(inv_date)) >= 7 else ""
+                if inv_month not in months:
+                    continue
+            filtered_invoices.append(inv)
+        invoices = filtered_invoices
+    
+    # Filter Won opportunities by won_at date
+    won_opps = []
+    for opp in opportunities:
+        if (opp.get("stage") or "").lower() != "won":
+            continue
+        
+        won_date = opp.get("won_at") or opp.get("date_closed") or opp.get("create_date")
+        if not won_date:
+            won_opps.append(opp)
+            continue
+        
+        won_date_str = str(won_date)
+        if year and not won_date_str.startswith(str(year)):
+            continue
+        if quarter:
+            months = quarter_months.get(quarter, [])
+            won_month = won_date_str[5:7] if len(won_date_str) >= 7 else ""
+            if won_month not in months:
+                continue
+        won_opps.append(opp)
+    
+    # Build invoice map by account to link with salesperson
+    # Invoice typically has account_id/account_name, opportunity has owner_name
+    # We need to link invoice -> account -> opportunities -> salesperson
+    
+    # First, build salesperson Won values
+    salesperson_won = {}
+    for opp in won_opps:
+        sp = opp.get("owner_name")
+        if not sp:
+            continue
+        if sp not in salesperson_won:
+            salesperson_won[sp] = {"won_value": 0, "won_count": 0, "accounts": set()}
+        salesperson_won[sp]["won_value"] += opp.get("sale_value", 0) or 0
+        salesperson_won[sp]["won_count"] += 1
+        if opp.get("account_name"):
+            salesperson_won[sp]["accounts"].add(opp.get("account_name"))
+    
+    # Build account -> salesperson map from Won opportunities
+    account_to_sp = {}
+    for opp in won_opps:
+        acc = opp.get("account_name")
+        sp = opp.get("owner_name")
+        if acc and sp:
+            # Use the most recent salesperson for this account
+            account_to_sp[acc] = sp
+    
+    # Calculate invoice stats per salesperson
+    salesperson_invoices = {}
+    for inv in invoices:
+        acc = inv.get("account_name")
+        sp = account_to_sp.get(acc)
+        if not sp:
+            sp = "Unassigned"
+        
+        if sp not in salesperson_invoices:
+            salesperson_invoices[sp] = {
+                "billed": 0, "paid": 0, "pending": 0, "overdue": 0,
+                "count_billed": 0, "count_paid": 0, "count_pending": 0, "count_overdue": 0
+            }
+        
+        amount = inv.get("amount_total", 0) or 0
+        payment_state = inv.get("payment_state", "not_paid")
+        due_date = inv.get("due_date", "")
+        
+        salesperson_invoices[sp]["billed"] += amount
+        salesperson_invoices[sp]["count_billed"] += 1
+        
+        if payment_state == "paid":
+            salesperson_invoices[sp]["paid"] += amount
+            salesperson_invoices[sp]["count_paid"] += 1
+        elif due_date and due_date < today:
+            salesperson_invoices[sp]["overdue"] += amount
+            salesperson_invoices[sp]["count_overdue"] += 1
+        else:
+            salesperson_invoices[sp]["pending"] += amount
+            salesperson_invoices[sp]["count_pending"] += 1
+    
+    # Combine results
+    result = []
+    all_salespeople = set(salesperson_won.keys()) | set(salesperson_invoices.keys())
+    
+    for sp in all_salespeople:
+        won_data = salesperson_won.get(sp, {"won_value": 0, "won_count": 0})
+        inv_data = salesperson_invoices.get(sp, {"billed": 0, "paid": 0, "pending": 0, "overdue": 0})
+        
+        result.append({
+            "salesperson": sp,
+            "won_value": won_data.get("won_value", 0),
+            "won_count": won_data.get("won_count", 0),
+            "billed": inv_data.get("billed", 0),
+            "collected": inv_data.get("paid", 0),
+            "pending": inv_data.get("pending", 0),
+            "overdue": inv_data.get("overdue", 0),
+            "count_invoices": inv_data.get("count_billed", 0)
+        })
+    
+    # Sort by won_value descending
+    result.sort(key=lambda x: x["won_value"], reverse=True)
+    
+    return {
+        "data": result,
+        "filters": {"year": year, "quarter": quarter}
+    }
