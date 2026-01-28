@@ -329,7 +329,10 @@ class DashboardAggregator:
                 "open_change": round(random.uniform(-10, 20), 1),
                 "win_rate": round(win_rate, 1),
                 "win_rate_change": round(random.uniform(-3, 8), 1),
-                "total_opportunities": len(opps),
+                "total_opportunities": len(opportunities_only),
+                "total_leads": total_leads,
+                "new_leads": new_leads,
+                "qualified_leads": qualified_leads,
                 "stage_counts": stage_counts,
                 "stage_values": stage_values,
                 "pipeline_by_stage": pipeline_by_stage,
@@ -345,7 +348,7 @@ class DashboardAggregator:
                 upsert=True
             )
             
-            logger.info(f"Dashboard cache rebuilt for org {org_id}")
+            logger.info(f"Dashboard cache rebuilt for org {org_id} - {len(opportunities_only)} opportunities, {total_leads} leads")
             
         except Exception as e:
             logger.error(f"Failed to rebuild dashboard cache: {e}")
