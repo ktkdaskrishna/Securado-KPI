@@ -418,7 +418,7 @@ export default function LeadsPage() {
             <div className="py-4">
               <p className="font-medium">{leadToConvert.name}</p>
               <p className="text-sm text-gray-500">{leadToConvert.account_name}</p>
-              <p className="text-sm font-semibold mt-2">{formatCurrency(leadToConvert.amount || 0)}</p>
+              <p className="text-sm font-semibold mt-2">{formatCurrency(leadToConvert.sale_value || leadToConvert.amount || 0)}</p>
             </div>
           )}
           <DialogFooter>
