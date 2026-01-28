@@ -322,6 +322,161 @@ export function DashboardPage() {
         </Card>
       </div>
 
+      {/* Product Manager Leaderboard & Category Stats Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Product Manager Leaderboard */}
+        <Card data-testid="pm-leaderboard-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                Product Manager Leaderboard
+              </CardTitle>
+              {pmLeaderboard?.total_deals && (
+                <Badge variant="secondary" className="text-xs">
+                  {pmLeaderboard.total_deals} deals
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-72">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>Product Manager</TableHead>
+                    <TableHead className="text-right">Won Value</TableHead>
+                    <TableHead className="text-right">Deals</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(pmLeaderboard?.leaderboard || []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pmLeaderboard.leaderboard.map((pm, index) => (
+                      <TableRow key={pm.name} data-testid={`pm-row-${index}`}>
+                        <TableCell>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium
+                            ${index === 0 ? 'bg-amber-100 text-amber-700' : 
+                              index === 1 ? 'bg-gray-200 text-gray-700' : 
+                              index === 2 ? 'bg-orange-100 text-orange-700' : 
+                              'bg-gray-50 text-gray-500'}`}>
+                            {index + 1}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
+                              {pm.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                            <span className="truncate max-w-[150px]">{pm.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">
+                          {formatCurrency(pm.value)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className="text-xs">
+                            {pm.deals_won}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+            {pmLeaderboard?.total_won_value && (
+              <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                <span className="text-sm text-gray-500">Total Won Value</span>
+                <span className="text-lg font-bold text-emerald-600">
+                  {formatCurrency(pmLeaderboard.total_won_value)}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Solution Category Performance */}
+        <Card data-testid="category-stats-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-cyan-500" />
+                Solution Category Performance
+              </CardTitle>
+              {categoryStats?.total_deals && (
+                <Badge variant="secondary" className="text-xs">
+                  {categoryStats.total_deals} deals
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-72">
+              <div className="space-y-3">
+                {(categoryStats?.categories || []).length === 0 ? (
+                  <p className="text-center py-8 text-gray-500">No data available</p>
+                ) : (
+                  categoryStats.categories.map((cat, index) => {
+                    const maxValue = categoryStats.categories[0]?.value || 1;
+                    const percentage = (cat.value / maxValue) * 100;
+                    const colors = [
+                      'from-cyan-500 to-cyan-600',
+                      'from-emerald-500 to-emerald-600',
+                      'from-violet-500 to-violet-600',
+                      'from-amber-500 to-amber-600',
+                      'from-rose-500 to-rose-600',
+                      'from-blue-500 to-blue-600',
+                      'from-purple-500 to-purple-600',
+                      'from-teal-500 to-teal-600',
+                    ];
+                    const gradientColor = colors[index % colors.length];
+                    
+                    return (
+                      <div key={cat.name} className="space-y-1" data-testid={`category-row-${index}`}>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-medium truncate max-w-[200px]" title={cat.name}>
+                            {cat.name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {cat.count} deals
+                            </Badge>
+                            <span className="font-semibold text-gray-900 min-w-[100px] text-right">
+                              {formatCurrency(cat.value)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${gradientColor} rounded-full transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+            {categoryStats?.total_won_value && (
+              <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                <span className="text-sm text-gray-500">Total Won Value</span>
+                <span className="text-lg font-bold text-cyan-600">
+                  {formatCurrency(categoryStats.total_won_value)}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Activity Stats and Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Activity Stats */}
