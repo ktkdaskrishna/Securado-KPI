@@ -12,6 +12,7 @@ Handles:
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from datetime import datetime, timezone
+from bson import ObjectId
 import logging
 
 from libs.database import get_app_db, get_canonical_db
@@ -36,6 +37,41 @@ accounts_router = APIRouter(prefix="/accounts", tags=["accounts"])
 activities_router = APIRouter(prefix="/activities", tags=["activities"])
 kpis_router = APIRouter(prefix="/kpis", tags=["kpis"])
 receivables_router = APIRouter(prefix="/receivables", tags=["receivables"])
+
+
+# ==================== HELPER FUNCTIONS ====================
+
+async def find_opportunity_by_id(opp_id: str, org_id: str, canonical_db):
+    """
+    Find an opportunity by any ID type: _id (ObjectId), canonical_id, or source_record_id.
+    See /app/docs/CRM_DATA_MODEL_REFERENCE.md for data linking rules.
+    """
+    opp = None
+    
+    # 1. Try by _id (MongoDB ObjectId)
+    try:
+        opp = await canonical_db.opportunities.find_one({
+            "_id": ObjectId(opp_id),
+            "org_id": org_id
+        })
+    except:
+        pass
+    
+    # 2. Try by canonical_id
+    if not opp:
+        opp = await canonical_db.opportunities.find_one({
+            "canonical_id": opp_id,
+            "org_id": org_id
+        })
+    
+    # 3. Try by source_record_id
+    if not opp:
+        opp = await canonical_db.opportunities.find_one({
+            "source_record_id": opp_id,
+            "org_id": org_id
+        })
+    
+    return opp
 
 
 # ==================== OPPORTUNITIES ====================
