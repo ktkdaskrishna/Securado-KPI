@@ -292,10 +292,10 @@ class DashboardAggregator:
                 for stage in PipelineStages.all()
             ]
             
-            # Build REAL leaderboard from opportunity data (group by owner)
+            # Build REAL leaderboard from opportunity data (group by owner) - OPPORTUNITIES ONLY
             owner_values = defaultdict(float)
             owner_names = {}
-            for opp in opps:
+            for opp in opportunities_only:
                 owner_id = opp.get("owner_id")
                 owner_name = opp.get("owner_name")
                 if owner_id and owner_name:
