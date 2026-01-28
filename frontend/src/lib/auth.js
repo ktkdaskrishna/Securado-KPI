@@ -28,6 +28,10 @@ export function AuthProvider({ children }) {
     localStorage.setItem('refresh_token', res.data.refresh_token);
     const userRes = await authAPI.me();
     setUser(userRes.data);
+    
+    // Dispatch event to notify RBACProvider to refresh
+    window.dispatchEvent(new Event('userLoggedIn'));
+    
     return userRes.data;
   };
 
