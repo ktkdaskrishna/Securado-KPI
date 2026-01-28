@@ -279,8 +279,8 @@ class CRMAPITester:
             self.log_result("Activities Status Filter", False, f"Error: {str(e)}")
 
     def test_invoices_stats(self):
-        """Test Invoices stats: Total, Pending, Overdue, Paid"""
-        print("\n💰 Testing Invoices stats...")
+        """CRITICAL: Test Invoices stats - Total OMR 2.8M, Overdue OMR 881K, Paid OMR 1.9M"""
+        print("\n💰 CRITICAL TEST: Invoices stats (Total 2.8M, Overdue 881K, Paid 1.9M)...")
         try:
             response = requests.get(
                 f"{BASE_URL}/api/receivables/stats",
@@ -296,16 +296,26 @@ class CRMAPITester:
                 total_paid = stats.get("total_paid", 0)
                 count_total = stats.get("count_total", 0)
                 
+                # Expected values from agent context
+                expected_total = 2_800_000  # 2.8M
+                expected_overdue = 881_000  # 881K
+                expected_paid = 1_900_000  # 1.9M
+                
+                # Allow 10% tolerance for amounts
+                total_correct = abs(total_invoiced - expected_total) / expected_total < 0.1
+                overdue_correct = abs(total_overdue - expected_overdue) / expected_overdue < 0.1
+                paid_correct = abs(total_paid - expected_paid) / expected_paid < 0.1
+                
                 # Verify stats add up correctly
                 sum_amounts = total_pending + total_overdue + total_paid
                 amounts_match = abs(sum_amounts - total_invoiced) < 1  # Allow for rounding
                 
-                if amounts_match:
+                if amounts_match and total_correct and overdue_correct and paid_correct:
                     self.log_result("Invoices Stats", True, 
-                                  f"total={total_invoiced:,.0f}, pending={total_pending:,.0f}, overdue={total_overdue:,.0f}, paid={total_paid:,.0f}, count={count_total}")
+                                  f"✅ Total={total_invoiced:,.0f} (~2.8M), Overdue={total_overdue:,.0f} (~881K), Paid={total_paid:,.0f} (~1.9M)")
                 else:
                     self.log_result("Invoices Stats", False, 
-                                  f"Stats don't add up: pending+overdue+paid={sum_amounts:,.0f} != total={total_invoiced:,.0f}")
+                                  f"❌ Total={total_invoiced:,.0f} (expected ~2.8M), Overdue={total_overdue:,.0f} (expected ~881K), Paid={total_paid:,.0f} (expected ~1.9M)")
                 
                 return stats
             else:
