@@ -754,37 +754,12 @@ async def get_opportunity_activities(
     
     See /app/docs/CRM_DATA_MODEL_REFERENCE.md for data linking rules.
     """
-    from bson import ObjectId
-    
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get the opportunity - try multiple lookup patterns
-    opp = None
-    
-    # 1. Try by _id (MongoDB ObjectId)
-    try:
-        opp = await canonical_db.opportunities.find_one({
-            "_id": ObjectId(opp_id),
-            "org_id": org_id
-        })
-    except:
-        pass
-    
-    # 2. Try by canonical_id
-    if not opp:
-        opp = await canonical_db.opportunities.find_one({
-            "canonical_id": opp_id,
-            "org_id": org_id
-        })
-    
-    # 3. Try by source_record_id
-    if not opp:
-        opp = await canonical_db.opportunities.find_one({
-            "source_record_id": opp_id,
-            "org_id": org_id
-        })
+    # Get the opportunity using helper function
+    opp = await find_opportunity_by_id(opp_id, org_id, canonical_db)
     
     if not opp:
         return []  # No opportunity found
