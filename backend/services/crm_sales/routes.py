@@ -243,6 +243,90 @@ async def list_opportunities(
     return merged
 
 
+@opportunities_router.get("/export")
+async def export_opportunities_excel(
+    stage: Optional[str] = None,
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    account: Optional[str] = Query(None, description="Filter by account name"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Export opportunities to Excel format"""
+    from fastapi.responses import StreamingResponse
+    import pandas as pd
+    import io
+    
+    canonical_db = get_canonical_db()
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Build query
+    query = {"org_id": org_id, "type": "opportunity"}
+    if stage:
+        query["stage"] = stage
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    if account:
+        query["account_name"] = account
+    
+    # Get all matching records
+    records = await canonical_db.opportunities.find(query).to_list(10000)
+    
+    # Apply date filters
+    if year or quarter:
+        records = apply_date_filters(records, year=year, quarter=quarter)
+    
+    # Merge with overrides
+    merged = await merge_with_overrides(records, org_id, app_db)
+    
+    # Build data for Excel
+    data = []
+    for opp in merged:
+        data.append({
+            "Opportunity Name": opp.get("name", ""),
+            "Account": opp.get("account_name", ""),
+            "Stage": opp.get("stage", ""),
+            "Sale Value (OMR)": opp.get("sale_value", 0) or 0,
+            "Probability (%)": opp.get("probability", 0) or 0,
+            "Product Category": opp.get("solution_category", ""),
+            "Product Manager": opp.get("product_manager", ""),
+            "Sales Rep": opp.get("owner_name", ""),
+            "Won Date": opp.get("won_at", opp.get("date_closed", "")),
+            "Created Date": opp.get("create_date", ""),
+            "Close Date": opp.get("close_date", ""),
+            "Budget Status": opp.get("budget_status", ""),
+            "Email": opp.get("email", ""),
+            "Phone": opp.get("phone", ""),
+        })
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Opportunities')
+    
+    output.seek(0)
+    
+    # Generate filename with filters
+    filename_parts = ["opportunities"]
+    if year:
+        filename_parts.append(f"{year}")
+    if quarter:
+        filename_parts.append(f"{quarter}")
+    if stage:
+        filename_parts.append(stage)
+    filename = "_".join(filename_parts) + ".xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 @opportunities_router.get("/kanban")
 async def opportunities_kanban(
     year: Optional[str] = Query(None, description="Filter by year"),
