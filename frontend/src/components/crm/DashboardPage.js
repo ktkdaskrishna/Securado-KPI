@@ -368,7 +368,11 @@ export function DashboardPage() {
             <ScrollArea className="h-64" data-testid="crm-leaderboard-table">
               <div className="space-y-4">
                 {(stats?.leaderboard || []).map((person, index) => (
-                  <div key={person.id} className="flex items-center justify-between">
+                  <div 
+                    key={person.id} 
+                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors group"
+                    onClick={() => handleNavigateToOpportunities(null, person.name)}
+                  >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                         ${index === 0 ? 'bg-amber-100 text-amber-700' : 
@@ -380,11 +384,14 @@ export function DashboardPage() {
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-sm font-medium">
                         {person.name.charAt(0)}
                       </div>
-                      <span className="font-medium">{person.name}</span>
+                      <span className="font-medium group-hover:text-primary">{person.name}</span>
                     </div>
-                    <span className="font-semibold text-gray-900">
-                      {formatCurrency(person.value)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">
+                        {formatCurrency(person.value)}
+                      </span>
+                      <ExternalLink className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                 ))}
               </div>
