@@ -102,6 +102,7 @@ const permissionRequirements = {
   settings: 'manage_dashboard',
   'system-logs': 'manage_dashboard',
   webhooks: 'manage_dashboard',
+  'custom-fields': 'manage_dashboard',
 };
 
 const defaultNavigation = {
