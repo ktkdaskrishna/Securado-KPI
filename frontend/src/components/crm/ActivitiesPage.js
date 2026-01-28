@@ -50,12 +50,7 @@ export function ActivitiesPage() {
   });
 
   const updateFilter = (key, value) => {
-    console.log(`Updating filter: ${key} = ${value}`);
-    setFilters(prev => {
-      const newFilters = { ...prev, [key]: value };
-      console.log('New filter state:', newFilters);
-      return newFilters;
-    });
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const resetFilters = () => {
