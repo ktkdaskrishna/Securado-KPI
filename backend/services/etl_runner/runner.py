@@ -348,8 +348,14 @@ class ETLRunner:
                 if m.get("source_field")
             ]))
             
-            # Always include essential fields
-            essential_fields = ['id', 'create_date', 'write_date']
+            # Always include essential fields (model-specific)
+            # Some models like crm.activity.report don't have create_date/write_date
+            models_without_timestamps = ['crm.activity.report']
+            if mapping['source_model'] in models_without_timestamps:
+                essential_fields = ['id']
+            else:
+                essential_fields = ['id', 'create_date', 'write_date']
+            
             for ef in essential_fields:
                 if ef not in source_fields:
                     source_fields.append(ef)
