@@ -142,8 +142,16 @@ export function AccountsPage() {
               <CardContent className="p-5">
                 {/* Header with Avatar */}
                 <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(account.name)} flex items-center justify-center text-white font-semibold text-lg shadow-lg`}>
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(account.name)} flex items-center justify-center text-white font-semibold text-lg shadow-lg relative`}>
                     {getInitials(account.name)}
+                    {/* Company/Contact indicator */}
+                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md ${account.is_company ? 'bg-blue-500' : 'bg-green-500'}`}>
+                      {account.is_company ? (
+                        <Building2 className="h-3 w-3" />
+                      ) : (
+                        <User2 className="h-3 w-3" />
+                      )}
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
