@@ -718,49 +718,62 @@ async def get_opportunity_activities(
     
     See /app/docs/CRM_DATA_MODEL_REFERENCE.md for data linking rules.
     """
+    from bson import ObjectId
+    
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get the opportunity to find its source_record_id
-    opp = await canonical_db.opportunities.find_one({
-        "canonical_id": opp_id,
-        "org_id": org_id
-    })
+    # Get the opportunity - try multiple lookup patterns
+    opp = None
     
-    # Also try finding by source_record_id if canonical_id doesn't match
+    # 1. Try by _id (MongoDB ObjectId)
+    try:
+        opp = await canonical_db.opportunities.find_one({
+            "_id": ObjectId(opp_id),
+            "org_id": org_id
+        })
+    except:
+        pass
+    
+    # 2. Try by canonical_id
+    if not opp:
+        opp = await canonical_db.opportunities.find_one({
+            "canonical_id": opp_id,
+            "org_id": org_id
+        })
+    
+    # 3. Try by source_record_id
     if not opp:
         opp = await canonical_db.opportunities.find_one({
             "source_record_id": opp_id,
             "org_id": org_id
         })
     
-    # Build query conditions for activities
-    # Activities can be linked by multiple patterns (see CRM_DATA_MODEL_REFERENCE.md):
-    # 1. opportunity_id == canonical_id (our internal ID)
-    # 2. opportunity_id == source_record_id (Odoo ID as string)
-    # 3. opportunity_id == source_record_id (Odoo ID as int)
-    # 4. res_id == source_record_id (for mail.activity pattern)
-    query_conditions = [
-        {"opportunity_id": opp_id},
-    ]
+    if not opp:
+        return []  # No opportunity found
     
-    if opp and opp.get("source_record_id"):
-        source_id = opp.get("source_record_id")
-        source_id_int = int(source_id) if str(source_id).isdigit() else None
-        
-        query_conditions.extend([
-            {"opportunity_id": source_id},
-        ])
-        
-        if source_id_int:
-            query_conditions.extend([
-                {"opportunity_id": source_id_int},
-                {"res_id": source_id_int, "res_model": "crm.lead"},
-            ])
+    # Get the source_record_id for activity linking
+    source_id = opp.get("source_record_id") or opp.get("canonical_id")
+    source_id_int = int(source_id) if source_id and str(source_id).isdigit() else None
+    
+    # Build query conditions for activities
+    # Activities are linked by opportunity_id (integer) matching source_record_id
+    query_conditions = []
+    
+    if source_id_int:
+        query_conditions.append({"opportunity_id": source_id_int})
+        query_conditions.append({"res_id": source_id_int})
+    
+    if source_id:
+        query_conditions.append({"opportunity_id": source_id})
+    
+    query_conditions.append({"opportunity_id": opp_id})
+    
+    if not query_conditions:
+        return []
     
     # Fetch from canonical DB (synced from Odoo)
-    # Filter by org_id and prefer CRM activities
     canonical_query = {
         "$and": [
             {"$or": query_conditions},
