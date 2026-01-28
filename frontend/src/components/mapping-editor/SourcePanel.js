@@ -44,6 +44,7 @@ const categoryConfig = {
 
 export function SourcePanel({ sourceModels, selectedModel, onSelectModel, loading, connectionId }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [fieldSearchQuery, setFieldSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState(['crm', 'account']);
   const [expandedModels, setExpandedModels] = useState({});
   const [modelFields, setModelFields] = useState({});
