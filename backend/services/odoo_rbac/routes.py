@@ -520,37 +520,38 @@ async def odoo_webhook(
     """
     Receive webhook notifications from Odoo for real-time sync.
     
-    Odoo's built-in webhook sends data as:
-    - Query params: model={model}&action={action}
-    - Body: JSON with record data (id, field values)
-    
-    Example payload from Odoo webhook:
-    {
-        "id": 123,
-        "name": "Test Lead",
-        "stage_id": [1, "Won"],
-        ...
-    }
+    This endpoint can be disabled via the webhook configuration settings.
     """
+    # Check if webhooks are enabled
+    app_db = get_app_db()
+    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
+    
+    if not config or not config.get("enabled", False):
+        # Silently accept but don't process - prevents Odoo from retrying
+        return {"success": True, "message": "Webhooks disabled - request ignored"}
+    
     try:
         payload = await request.json()
         logger.info(f"Received Odoo webhook: model={model}, action={action}, payload={payload}")
         
         # Get model and action from query params (set by our webhook URL)
         # or fall back to payload fields for backwards compatibility
-        webhook_model = model or payload.get("model")
+        webhook_model = model or payload.get("model") or payload.get("_model")
         webhook_action = action or payload.get("action")
         
-        # Odoo's webhook sends record data directly, with 'id' as the record ID
-        record_id = payload.get("id") or payload.get("record_id")
+        # Odoo's webhook sends record data directly, with '_id' or 'id' as the record ID
+        record_id = payload.get("id") or payload.get("_id") or payload.get("record_id")
         
         # The rest of the payload is the record data
         record_data = payload.get("record_data") or payload
         
         if not webhook_model:
-            raise HTTPException(status_code=400, detail="Missing required field: model (in query params or payload)")
+            logger.warning("Webhook received without model - ignoring")
+            return {"success": True, "message": "No model specified - ignored"}
+        
         if not record_id:
-            raise HTTPException(status_code=400, detail="Missing required field: id or record_id")
+            logger.warning(f"Webhook received without record_id for {webhook_model} - ignoring")
+            return {"success": True, "message": "No record_id - ignored"}
         
         # Default action to 'write' if not specified
         if not webhook_action:
@@ -568,10 +569,11 @@ async def odoo_webhook(
         return {"success": True, "message": "Webhook received and queued for processing"}
         
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        return {"success": True, "message": "Invalid JSON - ignored"}
     except Exception as e:
         logger.error(f"Webhook error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return success to prevent Odoo from retrying
+        return {"success": True, "message": f"Error: {str(e)}"}
 
 
 async def process_webhook_event(model: str, action: str, record_id: int, record_data: dict):
