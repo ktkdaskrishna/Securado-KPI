@@ -64,15 +64,26 @@ class CRMAPITester:
                 data = response.json()
                 total_pipeline = data.get("total_pipeline", 0)
                 won_count = data.get("won_count", 0)
+                lost_count = data.get("lost_count", 0)
                 won_value = data.get("won_value", 0)
                 win_rate = data.get("win_rate", 0)
                 leaderboard = data.get("leaderboard", [])
                 
-                # Verify leaderboard exists and has data
-                has_leaderboard = len(leaderboard) > 0
+                # CRITICAL: Verify Win Rate is 40.2% (144 won / 358 closed)
+                expected_win_rate = 40.2
+                expected_won = 144
+                expected_lost = 214
                 
-                self.log_result("Dashboard Stats (unfiltered)", True, 
-                              f"total_pipeline={total_pipeline:,.0f}, won_count={won_count}, won_value={won_value:,.0f}, win_rate={win_rate}%, leaderboard_entries={len(leaderboard)}")
+                win_rate_correct = abs(win_rate - expected_win_rate) < 0.5  # Allow 0.5% tolerance
+                won_count_correct = won_count == expected_won
+                lost_count_correct = lost_count == expected_lost
+                
+                if win_rate_correct and won_count_correct and lost_count_correct:
+                    self.log_result("Dashboard Stats (unfiltered)", True, 
+                                  f"✅ Win Rate={win_rate}% (expected 40.2%), Won={won_count} (expected 144), Lost={lost_count} (expected 214)")
+                else:
+                    self.log_result("Dashboard Stats (unfiltered)", False, 
+                                  f"❌ Win Rate={win_rate}% (expected 40.2%), Won={won_count} (expected 144), Lost={lost_count} (expected 214)")
                 
                 # Return data for further analysis
                 return data
