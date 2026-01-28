@@ -96,20 +96,13 @@ export function ActivitiesPage() {
       if (filters.type) params.activity_type = filters.type;
       if (filters.status) params.status = filters.status;
       
-      console.log('Loading activities with params:', params);
-      
       const [activitiesRes, statsRes] = await Promise.all([
         crmAPI.listActivities(params),
         crmAPI.getActivityStats(params),  // Pass same filters to stats
       ]);
-      
-      console.log('Activities loaded:', activitiesRes.data?.length || 0);
-      console.log('Stats loaded:', statsRes.data);
-      
       setActivities(activitiesRes.data);
       setStats(statsRes.data);
     } catch (error) {
-      console.error('Failed to load activities:', error);
       toast.error('Failed to load activities');
     } finally {
       setLoading(false);
