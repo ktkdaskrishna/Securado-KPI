@@ -359,52 +359,108 @@ export default function AnalyticsPage() {
           </Card>
         </TabsContent>
 
-        {/* Teams Tab */}
-        <TabsContent value="teams" className="space-y-4">
+        {/* Product Managers & Categories Tab */}
+        <TabsContent value="teams" className="space-y-6">
+          {/* Product Managers Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Team Performance
+                <Users className="h-5 w-5 text-violet-500" />
+                Product Manager Performance
               </CardTitle>
-              <CardDescription>{teamPerformance?.total_teams || 0} sales teams</CardDescription>
+              <CardDescription>{teamPerformance?.total_product_managers || 0} product managers</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {teamPerformance?.teams?.map((team, index) => (
-                  <Card key={team.name} className={index === 0 ? "border-2 border-primary" : ""}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamPerformance?.product_managers?.slice(0, 6).map((pm, index) => (
+                  <Card key={pm.name} className={index === 0 ? "border-2 border-violet-400 bg-violet-50/50" : "hover:shadow-md transition-shadow"}>
+                    <CardContent className="pt-5 pb-4">
+                      <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                            index === 0 ? 'bg-primary' : 'bg-muted-foreground'
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold ${
+                            index === 0 ? 'bg-gradient-to-br from-violet-500 to-purple-600' : 
+                            index === 1 ? 'bg-gradient-to-br from-slate-400 to-slate-500' : 
+                            index === 2 ? 'bg-gradient-to-br from-amber-500 to-orange-500' : 
+                            'bg-gradient-to-br from-gray-400 to-gray-500'
                           }`}>
-                            {team.name.charAt(0)}
+                            {index < 3 ? ['🥇', '🥈', '🥉'][index] : (pm.name || 'U').charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold">{team.name}</p>
-                            <p className="text-sm text-muted-foreground">{team.rep_count} reps</p>
+                            <p className="font-semibold text-sm">{pm.name}</p>
+                            <p className="text-xs text-muted-foreground">{pm.categories_count || 0} categories</p>
                           </div>
                         </div>
-                        {index === 0 && <Badge>Top Team</Badge>}
+                        {index === 0 && <Badge className="bg-violet-500">Top PM</Badge>}
                       </div>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <p className="text-2xl font-bold">{team.total_opportunities}</p>
-                          <p className="text-xs text-muted-foreground">Opportunities</p>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-lg font-bold text-emerald-600">{pm.won_count}</p>
+                          <p className="text-[10px] text-muted-foreground">Won</p>
                         </div>
-                        <div>
-                          <p className="text-2xl font-bold text-emerald-600">{team.won_count}</p>
-                          <p className="text-xs text-muted-foreground">Won</p>
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-sm font-bold">{formatCurrency(pm.won_value)}</p>
+                          <p className="text-[10px] text-muted-foreground">Revenue</p>
                         </div>
-                        <div>
-                          <p className="text-lg font-bold">{formatCurrency(team.won_value)}</p>
-                          <p className="text-xs text-muted-foreground">Revenue</p>
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <Badge variant={pm.win_rate >= 70 ? "default" : pm.win_rate >= 50 ? "secondary" : "destructive"} className="text-xs">
+                            {pm.win_rate}%
+                          </Badge>
+                          <p className="text-[10px] text-muted-foreground mt-1">Win Rate</p>
                         </div>
                       </div>
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-sm text-muted-foreground">Avg per Rep</p>
-                        <p className="font-mono font-medium">{formatCurrency(team.avg_per_rep)}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Solution Categories Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-500" />
+                Solution Category Performance
+              </CardTitle>
+              <CardDescription>{teamPerformance?.total_categories || 0} solution categories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamPerformance?.categories?.slice(0, 6).map((cat, index) => (
+                  <Card key={cat.name} className={index === 0 ? "border-2 border-blue-400 bg-blue-50/50" : "hover:shadow-md transition-shadow"}>
+                    <CardContent className="pt-5 pb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs ${
+                            index === 0 ? 'bg-gradient-to-br from-blue-500 to-cyan-600' : 
+                            index === 1 ? 'bg-gradient-to-br from-slate-400 to-slate-500' : 
+                            index === 2 ? 'bg-gradient-to-br from-amber-500 to-orange-500' : 
+                            'bg-gradient-to-br from-gray-400 to-gray-500'
+                          }`}>
+                            {index < 3 ? ['🥇', '🥈', '🥉'][index] : (cat.name || 'U').charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm truncate max-w-[150px]">{cat.name}</p>
+                            <p className="text-xs text-muted-foreground">{cat.product_managers_count || 0} PMs</p>
+                          </div>
+                        </div>
+                        {index === 0 && <Badge className="bg-blue-500">Top Category</Badge>}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-lg font-bold text-emerald-600">{cat.won_count}</p>
+                          <p className="text-[10px] text-muted-foreground">Won</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-sm font-bold">{formatCurrency(cat.won_value)}</p>
+                          <p className="text-[10px] text-muted-foreground">Revenue</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <Badge variant={cat.win_rate >= 70 ? "default" : cat.win_rate >= 50 ? "secondary" : "destructive"} className="text-xs">
+                            {cat.win_rate}%
+                          </Badge>
+                          <p className="text-[10px] text-muted-foreground mt-1">Win Rate</p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
