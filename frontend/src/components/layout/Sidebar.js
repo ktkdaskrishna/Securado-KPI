@@ -171,9 +171,17 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [navPreferences, setNavPreferences] = useState(getStoredNavigation);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [, forceUpdate] = useState(0); // Force re-render trigger
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { hasPermission, loading: rbacLoading, roles } = useRBAC();
+  const { hasPermission, loading: rbacLoading, roles, permissions } = useRBAC();
+
+  // Force re-render when RBAC finishes loading
+  useEffect(() => {
+    if (!rbacLoading && permissions && permissions.length > 0) {
+      forceUpdate(prev => prev + 1);
+    }
+  }, [rbacLoading, permissions]);
 
   useEffect(() => {
     saveNavigationPreferences(navPreferences);
