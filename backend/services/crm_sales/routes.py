@@ -1149,7 +1149,11 @@ async def get_account_360(
     
     result = serialize_doc(account)
     result["opportunities"] = serialize_doc(opps)
-    result["total_value"] = sum(o.get("amount", 0) or 0 for o in opps)
+    # Use sale_value (custom field) if available, otherwise fall back to amount
+    result["total_value"] = sum(
+        float(o.get("sale_value", 0) or 0) or float(o.get("amount", 0) or 0) 
+        for o in opps
+    )
     result["opportunities_count"] = len(opps)
     
     # Format contacts for display
