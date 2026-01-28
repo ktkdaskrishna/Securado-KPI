@@ -1,6 +1,41 @@
 # CRM KPI Management Platform - Development Plan
 
-## Current Session - Bug Fixes & System Improvements (COMPLETED)
+## Current Session - Data Accuracy Fix (COMPLETED)
+
+### Issue Fixed: Dashboard KPIs Not Matching Odoo Data ✅ (CRITICAL FIX)
+
+**Problem:** Dashboard "Won" value showed ~3.1M OMR but Odoo dashboard showed ~13.5M OMR.
+
+**Root Causes Found:**
+1. **500-record limit in ETL:** The ETL runner had `extract_limit = config.get("extract_limit", 500)` which limited sync to only 500 records
+2. **Multiple source fields mapping to same target:** Both `sale_amount_total` AND `x_studio_sale_value` were mapped to `sale_value`, with the second (often 0) overwriting the first
+
+**Solution:**
+1. Removed the 500-record limit for `crm.lead` model - now syncs ALL opportunities/leads
+2. Updated transformation logic to preserve non-zero values when multiple source fields map to the same target
+3. Triggered a full ETL sync
+
+**Results:**
+| Metric | Before | After |
+|--------|--------|-------|
+| Total Records | 500 | 1,333 |
+| Won Opportunities | 87 | 395 |
+| Won Value | ~2.77M OMR | ~14.76M OMR |
+| Total Pipeline | ~8.6M OMR | ~58.5M OMR |
+
+**Won Deals by Year:**
+- 2025: 150 deals, 8,055,158.80 OMR
+- 2024: 90 deals, 3,531,786.94 OMR
+- 2023: 78 deals, 1,172,575.94 OMR
+- 2022: 45 deals, 1,241,663.75 OMR
+- 2021: 30 deals, 738,350.50 OMR
+
+**Files Modified:**
+- `/app/backend/services/etl_runner/runner.py` - Removed 500-record limit for crm.lead, improved transformation logic
+
+---
+
+## Previous Session - Bug Fixes & System Improvements (COMPLETED)
 
 ### Issues Fixed
 
