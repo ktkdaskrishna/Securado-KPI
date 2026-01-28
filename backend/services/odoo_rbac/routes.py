@@ -807,7 +807,7 @@ except Exception as e:
 '''
                 
                 try:
-                    # Check if action already exists
+                    # Check if automation already exists
                     existing = models.execute_kw(
                         conn["database"], uid, conn["api_key"],
                         'base.automation', 'search',
@@ -818,28 +818,42 @@ except Exception as e:
                         logger.info(f"Automation '{action_name}' already exists, skipping")
                         continue
                     
-                    # Create the automated action
-                    # Note: In Odoo 17, base.automation uses 'code' field directly
-                    # No 'state' field - the code field automatically implies code execution
-                    action_id = models.execute_kw(
+                    # Step 1: Create the ir.actions.server record first
+                    # In Odoo 17, base.automation links to server actions via action_server_ids
+                    server_action_name = f"Server Action: {action_name}"
+                    server_action_id = models.execute_kw(
+                        conn["database"], uid, conn["api_key"],
+                        'ir.actions.server', 'create',
+                        [{
+                            'name': server_action_name,
+                            'model_id': config["model_id"],
+                            'state': 'code',
+                            'code': python_code
+                        }]
+                    )
+                    logger.info(f"Created server action: {server_action_name} (ID: {server_action_id})")
+                    
+                    # Step 2: Create the base.automation record that references the server action
+                    automation_id = models.execute_kw(
                         conn["database"], uid, conn["api_key"],
                         'base.automation', 'create',
                         [{
                             'name': action_name,
                             'model_id': config["model_id"],
                             'trigger': trigger,
-                            'code': python_code,
+                            'action_server_ids': [(4, server_action_id)],  # Link to server action
                             'active': True
                         }]
                     )
                     
                     created_actions.append({
                         "name": action_name,
-                        "id": action_id,
+                        "automation_id": automation_id,
+                        "server_action_id": server_action_id,
                         "model": config["model"],
                         "trigger": trigger
                     })
-                    logger.info(f"Created automation: {action_name} (ID: {action_id})")
+                    logger.info(f"Created automation: {action_name} (ID: {automation_id})")
                     
                 except Exception as e:
                     error_msg = f"Failed to create '{action_name}': {str(e)}"
