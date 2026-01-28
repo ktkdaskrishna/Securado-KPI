@@ -189,6 +189,14 @@ export function Sidebar() {
   // Filter items based on both preferences AND permissions
   // Memoized to recalculate when rbacLoading or permissions change
   const getVisibleItems = React.useCallback((items) => {
+    // While RBAC is still loading, show all default items
+    if (rbacLoading) {
+      return items.filter(item => {
+        if (navPreferences[item.id] === false) return false;
+        return item.default !== false;
+      });
+    }
+    
     return items.filter(item => {
       // Check if user disabled it in preferences
       if (navPreferences[item.id] === false) return false;
@@ -202,16 +210,11 @@ export function Sidebar() {
       // If no specific permission defined, show by default
       if (!requiredPermission) return true;
       
-      // While RBAC is loading, show default items to prevent empty sidebar
-      if (rbacLoading) {
-        return item.default !== false;
-      }
-      
-      // Check if user has the required permission
-      const permitted = hasPermission(requiredPermission);
-      return permitted;
+      // Check if user has the required permission using permissions array directly
+      if (permissions.includes('admin:*')) return true;
+      return permissions.includes(requiredPermission);
     });
-  }, [navPreferences, rbacLoading, hasPermission]);
+  }, [navPreferences, rbacLoading, permissions]);
 
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
