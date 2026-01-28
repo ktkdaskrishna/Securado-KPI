@@ -146,6 +146,7 @@ function AppRoutes() {
         <Route path="/etl/data-lake" element={<DataLakePage />} />
         <Route path="/etl/dlq" element={<DLQPage />} />
         <Route path="/etl/data-model" element={<DataModelEditor />} />
+        <Route path="/etl/model-browser" element={<OdooModelBrowserPage />} />
 
         {/* Admin */}
         <Route path="/admin/users" element={<UsersPage />} />
