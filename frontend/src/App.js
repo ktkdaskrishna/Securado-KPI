@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { CurrencyProvider } from './lib/CurrencyContext';
 import { GlobalFilterProvider } from './lib/GlobalFilterContext';
+import { RBACProvider } from './lib/RBACContext';
 import { Toaster } from './components/ui/sonner';
 
 // Layout
