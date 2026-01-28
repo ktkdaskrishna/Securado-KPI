@@ -35,9 +35,11 @@ import {
   Clock,
   User,
   Boxes,
-  Brain
+  Brain,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
+import { useRBAC } from '../../lib/RBACContext';
 
 const SECURADO_LOGO_PRIMARY = "https://customer-assets.emergentagent.com/job_streamhub-crm/artifacts/39apig25_Securado%20Logo-01.jpg";
 const SECURADO_LOGO_REVERSE = "https://customer-assets.emergentagent.com/job_streamhub-crm/artifacts/690tpc8y_Securado%20Logo-Reverse-01.png";
