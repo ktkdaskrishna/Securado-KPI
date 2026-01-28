@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://data-sync-fix-7.preview.emergentagent.com
+https://fixmycrm.preview.emergentagent.com
 ```
 
 ### Test Credentials
