@@ -208,6 +208,37 @@ export function ActivitiesPage() {
         </Dialog>
       </div>
 
+      {/* Contextual Filters for Activities */}
+      <PageFilters 
+        onReset={resetFilters}
+        activeFilters={[filters.year, filters.quarter, filters.salesRep, filters.type, filters.status]}
+        title="Activity Filters"
+      >
+        <YearFilter 
+          value={filters.year} 
+          onChange={(v) => updateFilter('year', v)} 
+          years={filterOptions.years}
+        />
+        <QuarterFilter 
+          value={filters.quarter} 
+          onChange={(v) => updateFilter('quarter', v)} 
+        />
+        <SalesRepFilter 
+          value={filters.salesRep} 
+          onChange={(v) => updateFilter('salesRep', v)} 
+          salesReps={filterOptions.salesReps}
+        />
+        <ActivityTypeFilter 
+          value={filters.type} 
+          onChange={(v) => updateFilter('type', v)} 
+          types={filterOptions.types}
+        />
+        <ActivityStatusFilter 
+          value={filters.status} 
+          onChange={(v) => updateFilter('status', v)} 
+        />
+      </PageFilters>
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
