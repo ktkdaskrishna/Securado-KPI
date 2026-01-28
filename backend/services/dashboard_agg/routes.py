@@ -308,14 +308,14 @@ class DashboardAggregator:
                 for stage in PipelineStages.all()
             ]
             
-            # Build REAL leaderboard from opportunity data (group by owner) - OPPORTUNITIES ONLY
+            # Build REAL leaderboard from opportunity data (group by owner) - OPPORTUNITIES ONLY, use sale_value
             owner_values = defaultdict(float)
             owner_names = {}
             for opp in opportunities_only:
                 owner_id = opp.get("owner_id")
                 owner_name = opp.get("owner_name")
                 if owner_id and owner_name:
-                    owner_values[owner_id] += opp.get("amount", 0) or 0
+                    owner_values[owner_id] += get_opp_value(opp)
                     owner_names[owner_id] = owner_name
             
             # Sort by value and get top 5
