@@ -23,8 +23,18 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 # Stage mapping for dashboard - normalize Odoo stages to our pipeline stages
-def normalize_stage_for_dashboard(stage: str) -> str:
-    """Normalize Odoo stage names to dashboard expected values"""
+def normalize_stage_for_dashboard(stage: str, active: bool = True, lost_reason_id = None) -> str:
+    """Normalize Odoo stage names to dashboard expected values
+    
+    In Odoo, Lost deals are:
+    - archived (active=False) 
+    - have a lost_reason_id set
+    They keep their original stage but are marked as lost.
+    """
+    # Check if it's a lost deal (archived with lost reason)
+    if not active and lost_reason_id:
+        return "closed_lost"
+    
     if not stage:
         return "qualified"
     
@@ -67,6 +77,49 @@ def normalize_stage_for_dashboard(stage: str) -> str:
         return "proposal"
     
     return "qualified"
+
+
+def apply_date_filters_for_won_lost(records: list, year: str = None, quarter: str = None) -> list:
+    """Apply year and quarter filters based on date_closed (when deal was won/lost)
+    This is specifically for Won/Lost deals which should be filtered by their close date.
+    """
+    if not year and not quarter:
+        return records
+    
+    filtered = []
+    quarter_months = {
+        "Q1": [1, 2, 3], 
+        "Q2": [4, 5, 6], 
+        "Q3": [7, 8, 9], 
+        "Q4": [10, 11, 12]
+    }
+    
+    for record in records:
+        # For Won/Lost deals, use date_closed
+        date_value = None
+        for field in ['date_closed', 'close_date', 'write_date']:
+            if record.get(field):
+                date_value = parse_date_from_string(record.get(field))
+                if date_value:
+                    break
+        
+        if not date_value:
+            continue
+        
+        # Check year filter
+        if year:
+            if str(date_value.year) != str(year):
+                continue
+        
+        # Check quarter filter
+        if quarter:
+            months = quarter_months.get(quarter, [])
+            if date_value.month not in months:
+                continue
+        
+        filtered.append(record)
+    
+    return filtered
 
 
 def parse_date_from_string(date_str):
