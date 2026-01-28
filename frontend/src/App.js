@@ -149,6 +149,7 @@ function AppRoutes() {
         <Route path="/admin/roles" element={<RolesPage />} />
         <Route path="/admin/departments" element={<DepartmentsPage />} />
         <Route path="/admin/settings" element={<SettingsPage />} />
+        <Route path="/admin/logs" element={<SystemLogsPage />} />
       </Route>
 
       {/* 404 Catch-all */}
