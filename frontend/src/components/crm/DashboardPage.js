@@ -223,6 +223,10 @@ export function DashboardPage() {
   const formatValue = (value, format) => {
     switch (format) {
       case 'currency':
+        // For large numbers, show abbreviated format
+        if (value >= 1000000) {
+          return `${formatCurrency(value / 1000000).replace(/\.00$/, '')}M`;
+        }
         return formatCurrency(value);
       case 'percent':
         return `${value.toFixed(1)}%`;
