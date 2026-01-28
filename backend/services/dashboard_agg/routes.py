@@ -534,11 +534,22 @@ async def get_dashboard_stats(
     # Calculate stats for OPPORTUNITIES only - use sale_value as primary
     total_pipeline = sum(get_opp_value(o) for o in opportunities_only)
     
-    # By stage (for opportunities)
+    # By stage (for opportunities) - properly detect Lost deals
     stage_counts = {}
     stage_values = {}
     for s in PipelineStages.all():
-        normalized_opps = [o for o in opportunities_only if normalize_stage_for_dashboard(o.get("stage", "")) == s]
+        # Check active status and lost_reason_id for proper stage detection
+        normalized_opps = []
+        for o in opportunities_only:
+            active = o.get("active", True)
+            if active == 'False' or active is False:
+                active = False
+            else:
+                active = True
+            lost_reason = o.get("lost_reason_id") or o.get("lost_reason")
+            normalized = normalize_stage_for_dashboard(o.get("stage", ""), active=active, lost_reason_id=lost_reason)
+            if normalized == s:
+                normalized_opps.append(o)
         stage_counts[s] = len(normalized_opps)
         stage_values[s] = sum(get_opp_value(o) for o in normalized_opps)
     
@@ -547,6 +558,8 @@ async def get_dashboard_stats(
     lost_count = stage_counts.get(PipelineStages.CLOSED_LOST, 0)
     open_count = sum(c for s, c in stage_counts.items() if s not in [PipelineStages.CLOSED_WON, PipelineStages.CLOSED_LOST])
     win_rate = (won_count / (won_count + lost_count) * 100) if (won_count + lost_count) > 0 else 0
+    
+    logger.info(f"Stage analysis: Won={won_count}, Lost={lost_count}, Open={open_count}, Win Rate={win_rate:.1f}%")
     
     # Leads stats
     total_leads = len(leads_only)
