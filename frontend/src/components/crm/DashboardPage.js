@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } from '../layout/PageFilters';
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [pmLeaderboard, setPmLeaderboard] = useState(null);
   const [categoryStats, setCategoryStats] = useState(null);
@@ -29,6 +30,51 @@ export function DashboardPage() {
     salesRep: null,
     stage: null
   });
+
+  // Export dashboard data to Excel
+  const handleExportDashboard = async () => {
+    try {
+      toast.info('Generating dashboard export...');
+      const params = new URLSearchParams();
+      if (filters.year) params.append('year', filters.year);
+      if (filters.quarter) params.append('quarter', filters.quarter);
+      if (filters.salesRep) params.append('sales_rep', filters.salesRep);
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/opportunities/export?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dashboard_opportunities_${filters.year || 'all'}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('Dashboard export downloaded!');
+    } catch (error) {
+      toast.error('Failed to export dashboard data');
+    }
+  };
+
+  // Navigation handlers for clickable items
+  const handleNavigateToOpportunities = (stage = null, salesRep = null) => {
+    const params = new URLSearchParams();
+    if (stage) params.append('stage', stage);
+    if (salesRep) params.append('salesRep', salesRep);
+    if (filters.year) params.append('year', filters.year);
+    navigate(`/opportunities?${params.toString()}`);
+  };
+
+  const handleNavigateToInvoices = () => {
+    navigate('/invoices');
+  };
 
   const updateFilter = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
