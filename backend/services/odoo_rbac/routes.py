@@ -472,14 +472,27 @@ async def get_current_user_rbac(
     
     if not user:
         # Return default permissions for non-synced users
+        # Give comprehensive permissions for users not synced from Odoo
+        default_permissions = [
+            "view_dashboard", "manage_dashboard",
+            "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+            "view_accounts", "manage_accounts",
+            "view_activities", "manage_activities",
+            "view_goals", "manage_goals",
+            "view_teams", "manage_teams",
+            "view_kpis", "manage_kpis",
+            "view_invoices", "manage_invoices",
+            "view_analytics", "manage_analytics",
+            "view_users", "manage_users"
+        ]
         return {
             "user_id": current_user.get("id"),
             "name": current_user.get("name"),
-            "app_roles": current_user.get("roles", ["sales_user_own"]),
-            "effective_permissions": ["view_dashboard", "view_opportunities", "view_accounts"],
-            "record_access": "own",
-            "field_access": "standard",
-            "hidden_fields": FIELD_ACCESS_RULES.get("standard", [])
+            "app_roles": current_user.get("roles", ["sales_admin"]),
+            "effective_permissions": default_permissions,
+            "record_access": "all",
+            "field_access": "all",
+            "hidden_fields": FIELD_ACCESS_RULES.get("all", [])
         }
     
     hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
