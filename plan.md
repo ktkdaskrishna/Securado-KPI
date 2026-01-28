@@ -1,109 +1,74 @@
-# CRM KPI Management Platform - Development Plan
+# CRM KPI Management Platform - Active Sprint
 
-## ⚠️ CRITICAL: READ BEFORE MAKING CHANGES
-All agents must review these documents before making major changes:
-- `/app/docs/CRM_DATA_MODEL_REFERENCE.md` - Data field mappings and linking rules
-- `/app/docs/MODULAR_DASHBOARD_ARCHITECTURE.md` - Dashboard architecture
+## ⚠️ CRITICAL: Before Making Changes
 
----
-
-## Current Session - Bug Fixes + Architecture Planning
-
-### 🐛 Active Bug: Activities Not Linked to Opportunities
-
-**Status:** FIX IN PROGRESS ✅
-**Issue:** Opportunity detail view shows "0 activities" even when activities exist in database
-
-**Root Cause Identified:**
-- Activities have `opportunity_id` as integer (Odoo ID: `3028`)
-- Opportunities use `source_record_id` as string (e.g., `"2158"`)
-- Most activities have `res_model: None` instead of `crm.lead`
-- ETL sync not properly linking activities to opportunities
-
-**Current Data State:**
-- Total activities: 702
-- CRM activities (res_model='crm.lead'): Only 2
-- Activities with valid opportunity linking: 0
-
-**Fix Applied:**
-- ✅ Updated `/api/opportunities/{opp_id}/activities` endpoint to handle multiple linking patterns
-- ⬜ Need to fix ETL sync to properly populate `opportunity_id` and `res_model`
+**READ THESE DOCUMENTS FIRST:**
+1. `/app/docs/CRM_MASTER_PLAN.md` - Complete roadmap & UI field requirements
+2. `/app/docs/CRM_DATA_MODEL_REFERENCE.md` - Data mappings & ETL rules
+3. `/app/docs/MODULAR_DASHBOARD_ARCHITECTURE.md` - Dashboard architecture
 
 ---
 
-## 📋 UPDATED TASK LIST
+## Current Sprint: Bug Fixes + Phase 1
 
-### Phase 0: Immediate Bug Fixes (THIS WEEK)
+### 🔴 P0 - Critical Bugs (This Week)
 
-| Task | Status | Priority |
-|------|--------|----------|
-| Fix activity-opportunity linking API | ✅ DONE | P0 |
-| Fix ETL sync for activities (populate opportunity_id properly) | ⬜ TODO | P0 |
-| Fix log messages linking | ⬜ TODO | P0 |
-| Verify AI confidence calculation after activity fix | ⬜ TODO | P1 |
+| Task | Status | Notes |
+|------|--------|-------|
+| Configure ETL mapping for `mail.activity` | ⬜ TODO | See CRM_DATA_MODEL_REFERENCE.md |
+| Re-run ETL sync for activities | ⬜ TODO | After mapping configured |
+| Fix log messages linking | ⬜ TODO | Sync `mail.message` model |
+| Verify activity linking works | ⬜ TODO | Test after ETL |
 
-### Phase 1: Modular Dashboard - Foundations (Week 2-3)
+### 🟡 P1 - Modular Dashboard Foundations
 
-| Task | Status | Priority |
-|------|--------|----------|
-| Add `export_data` permission to RBAC | ⬜ TODO | P1 |
-| Block export endpoint for restricted roles | ⬜ TODO | P1 |
-| Create card registry (cardRegistry.js) | ⬜ TODO | P1 |
-| Refactor DashboardPage into card components | ⬜ TODO | P1 |
-| Add batch data endpoint `/api/dashboard/data/batch` | ⬜ TODO | P2 |
+| Task | Status | Notes |
+|------|--------|-------|
+| Add `export_data` permission | ⬜ TODO | Add to RBAC model |
+| Block export for restricted roles | ⬜ TODO | Update `/api/opportunities/export` |
+| Create card registry | ⬜ TODO | `frontend/src/components/dashboard/registry/` |
+| Extract dashboard card components | ⬜ TODO | KPI, Pipeline, Leaderboard cards |
+| Create `DashboardTemplateContext` | ⬜ TODO | Template resolution |
+| Create `DashboardDataContext` | ⬜ TODO | Batch data fetching |
 
-### Phase 2: Template System (Week 4-5)
+### 🟢 P2 - Template System
 
-| Task | Status | Priority |
-|------|--------|----------|
-| Create `dashboard_templates` collection | ⬜ TODO | P2 |
-| Add template CRUD APIs | ⬜ TODO | P2 |
-| Implement role-template assignment | ⬜ TODO | P2 |
-| Load user template on login | ⬜ TODO | P2 |
-
-### Phase 3: Row-Level Security (Week 5-6)
-
-| Task | Status | Priority |
-|------|--------|----------|
-| Add owner_id filter to opportunity endpoints | ⬜ TODO | P1 |
-| Add owner_id filter to account endpoints | ⬜ TODO | P1 |
-| Add team_id filter for department access | ⬜ TODO | P1 |
-| Audit logging for access attempts | ⬜ TODO | P2 |
-
-### Phase 4: Layout Builder (Week 7-9)
-
-| Task | Status | Priority |
-|------|--------|----------|
-| Add react-grid-layout dependency | ⬜ TODO | P2 |
-| Create admin layout builder UI | ⬜ TODO | P2 |
-| Implement drag/drop cards | ⬜ TODO | P2 |
-| Save/load template changes | ⬜ TODO | P2 |
+| Task | Status | Notes |
+|------|--------|-------|
+| Create `dashboard_templates` collection | ⬜ TODO | MongoDB schema |
+| Template CRUD APIs | ⬜ TODO | `/api/dashboard/templates` |
+| Role-template assignment | ⬜ TODO | Role → Template mapping |
+| Batch data endpoint | ⬜ TODO | `/api/dashboard/data/batch` |
 
 ---
 
-## ✅ Previously Completed
+## Quick Reference: Broken Features
 
-### Session: Feature Enhancements (COMPLETED)
-
-- ✅ Dashboard Sales Rep filter fixed
-- ✅ Dashboard items made clickable (navigate to opportunities)
-- ✅ Export Excel button added to Dashboard
-- ✅ Securado logo made bigger
-- ✅ Product Manager Leaderboard UI added
-- ✅ Category Performance UI added
-- ✅ Invoices "By Salesperson" tab added
-- ✅ Select.Item runtime error fixed
+| Feature | Issue | Fix Location |
+|---------|-------|--------------|
+| Opportunity Activities | Shows 0 | ETL mapping for `mail.activity` |
+| Opportunity Logs | Shows 0 | ETL mapping for `mail.message` |
+| AI Confidence | Shows 0% | Depends on activities |
+| Activity Overview Card | Shows 0 | Depends on activities |
 
 ---
 
-## 📚 Documentation Created
+## Recent Completions (2026-01-28/29)
 
-| Document | Purpose |
-|----------|---------|
-| `/app/docs/CRM_DATA_MODEL_REFERENCE.md` | Odoo field mappings, data linking rules |
-| `/app/docs/MODULAR_DASHBOARD_ARCHITECTURE.md` | Dashboard architecture, card registry schema |
+- ✅ Dashboard Sales Rep filter
+- ✅ Dashboard clickable items
+- ✅ Export Excel button
+- ✅ PM Leaderboard UI
+- ✅ Category Performance UI
+- ✅ Invoices Salesperson tab
+- ✅ Activity API endpoint updated
+- ✅ Documentation created
 
 ---
 
 ## Preview URL
 https://crmdatahub.preview.emergentagent.com
+
+## Test Credentials
+- Email: `test@securado.com`
+- Password: `test123456`
