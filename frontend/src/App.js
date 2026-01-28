@@ -46,6 +46,7 @@ import { RolesPage } from './components/admin/RolesPage';
 import { DepartmentsPage } from './components/admin/DepartmentsPage';
 import { SettingsPage } from './components/admin/SettingsPage';
 import { SystemLogsPage } from './components/admin/SystemLogsPage';
+import { WebhookConfigPage } from './components/admin/WebhookConfigPage';
 
 import './App.css';
 
