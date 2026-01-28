@@ -28,6 +28,13 @@ export function WebhookConfigPage() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [odooCredentials, setOdooCredentials] = useState({
+    url: '',
+    database: '',
+    username: '',
+    api_key: ''
+  });
 
   const fetchConfig = async () => {
     try {
