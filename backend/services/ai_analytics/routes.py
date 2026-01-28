@@ -731,10 +731,20 @@ def apply_filters(opps: list, filters: dict) -> list:
     """Apply filter parameters to opportunity list"""
     filtered = opps
     
-    # Filter by year (from close_date)
+    # Filter by year (from close_date or date_closed for Won deals, or create_date as fallback)
     if filters.get("year"):
         year = filters["year"]
-        filtered = [o for o in filtered if o.get("close_date") and str(o.get("close_date", ""))[:4] == year]
+        def get_date_for_filtering(o):
+            # For Won deals, use date_closed (the actual closing date)
+            if is_won(o) and o.get("date_closed"):
+                return str(o.get("date_closed", ""))
+            # Otherwise use close_date (expected close)
+            if o.get("close_date"):
+                return str(o.get("close_date", ""))
+            # Fallback to create_date
+            return str(o.get("create_date", ""))
+        
+        filtered = [o for o in filtered if get_date_for_filtering(o)[:4] == year]
     
     # Filter by quarter
     if filters.get("quarter"):
@@ -742,7 +752,15 @@ def apply_filters(opps: list, filters: dict) -> list:
         quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
                          "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
         months = quarter_months.get(q, [])
-        filtered = [o for o in filtered if o.get("close_date") and str(o.get("close_date", ""))[5:7] in months]
+        def get_month_for_filtering(o):
+            # For Won deals, use date_closed
+            if is_won(o) and o.get("date_closed"):
+                return str(o.get("date_closed", ""))[5:7]
+            if o.get("close_date"):
+                return str(o.get("close_date", ""))[5:7]
+            return str(o.get("create_date", ""))[5:7]
+        
+        filtered = [o for o in filtered if get_month_for_filtering(o) in months]
     
     # Filter by sales rep
     if filters.get("sales_rep"):
