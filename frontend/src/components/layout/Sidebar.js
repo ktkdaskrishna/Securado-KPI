@@ -70,6 +70,7 @@ const iconMap = {
   Boxes,
   Brain,
   Lock,
+  Webhook,
 };
 
 // Permission requirements for each navigation item
