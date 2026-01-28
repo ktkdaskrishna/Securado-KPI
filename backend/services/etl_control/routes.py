@@ -1065,10 +1065,47 @@ async def create_pipeline(
 
 @pipelines_router.get("")
 async def list_pipelines(current_user: dict = Depends(get_current_user)):
-    """List all pipelines"""
+    """List all pipelines with run statistics"""
     db = get_app_db()
-    pipelines = await db.pipelines.find({"org_id": current_user.get("org_id", "default")}).to_list(100)
-    return serialize_doc(pipelines)
+    org_id = current_user.get("org_id", "default")
+    pipelines = await db.pipelines.find({"org_id": org_id}).to_list(100)
+    
+    # Calculate run stats for each pipeline
+    result = []
+    for pipeline in pipelines:
+        pipeline_id = pipeline.get("id")
+        
+        # Get run counts
+        success_count = await db.pipeline_runs.count_documents({
+            "pipeline_id": pipeline_id,
+            "org_id": org_id,
+            "status": "completed"
+        })
+        
+        failed_count = await db.pipeline_runs.count_documents({
+            "pipeline_id": pipeline_id,
+            "org_id": org_id,
+            "status": "failed"
+        })
+        
+        # Get last run
+        last_run = await db.pipeline_runs.find_one(
+            {"pipeline_id": pipeline_id, "org_id": org_id},
+            sort=[("started_at", -1)]
+        )
+        
+        # Add stats to pipeline
+        pipeline_data = serialize_doc(pipeline)
+        pipeline_data["success_count"] = success_count
+        pipeline_data["failed_count"] = failed_count
+        if last_run:
+            pipeline_data["last_run"] = last_run.get("started_at")
+            pipeline_data["last_run_status"] = last_run.get("status")
+        
+        result.append(pipeline_data)
+    
+    return result
+
 
 
 @pipelines_router.get("/{pipeline_id}")
