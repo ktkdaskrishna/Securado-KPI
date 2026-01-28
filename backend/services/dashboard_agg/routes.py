@@ -657,6 +657,112 @@ async def get_dashboard_stats(
         for s in PipelineStages.all()
     ]
     
+    # ==================== ACTIVITY STATS FOR FILTERED VIEW ====================
+    # Get activities linked to the filtered opportunities
+    opp_ids = []
+    opp_source_ids = []
+    for o in opportunities_only:
+        if o.get("canonical_id"):
+            opp_ids.append(o.get("canonical_id"))
+        if o.get("source_record_id"):
+            try:
+                opp_source_ids.append(int(o.get("source_record_id")))
+            except:
+                pass
+    
+    # Build activity query - activities linked to filtered opportunities
+    activity_query = {
+        "org_id": org_id,
+        "$or": [
+            {"res_model": "crm.lead"},
+            {"opportunity_id": {"$exists": True, "$ne": None}}
+        ]
+    }
+    
+    # If we have specific opportunities, filter activities to those
+    if opp_ids or opp_source_ids:
+        activity_query["$or"] = [
+            {"opportunity_id": {"$in": opp_source_ids}},
+            {"res_id": {"$in": opp_source_ids}},
+            {"canonical_id": {"$in": opp_ids}}
+        ]
+    
+    canonical_activities = await canonical_db.activities.find(activity_query).to_list(10000)
+    
+    # Apply date filters to activities if year/quarter is set
+    if year or quarter:
+        filtered_activities = []
+        for act in canonical_activities:
+            act_date = act.get("date_deadline") or act.get("create_date") or act.get("synced_at")
+            if act_date:
+                try:
+                    if isinstance(act_date, str):
+                        # Try parsing ISO format
+                        if 'T' in act_date:
+                            act_date = datetime.fromisoformat(act_date.replace('Z', '+00:00'))
+                        else:
+                            act_date = datetime.strptime(act_date[:10], '%Y-%m-%d')
+                    
+                    act_year = str(act_date.year)
+                    act_quarter = f"Q{(act_date.month - 1) // 3 + 1}"
+                    
+                    year_match = not year or act_year == year
+                    quarter_match = not quarter or act_quarter == quarter
+                    
+                    if year_match and quarter_match:
+                        filtered_activities.append(act)
+                except Exception as e:
+                    # If date parsing fails, include the activity
+                    filtered_activities.append(act)
+            else:
+                # Activities without dates are included
+                filtered_activities.append(act)
+        canonical_activities = filtered_activities
+    
+    # Also get app activities if applicable
+    app_activity_query = {"org_id": org_id}
+    if sales_rep:
+        app_activity_query["owner_name"] = sales_rep
+    app_activities = await app_db.activities.find(app_activity_query).to_list(1000)
+    
+    all_activities = canonical_activities + app_activities
+    
+    # Activity stats - count by type (CRM activities only)
+    # Important KPIs: POC, Meeting, Demo, Site Visit, RFP Building
+    activity_type_map = defaultdict(int)
+    for act in all_activities:
+        act_type = (act.get("activity_type") or act.get("activity_type_name") or act.get("type") or act.get("summary") or "").lower()
+        if "call" in act_type or "phone" in act_type:
+            activity_type_map["calls"] += 1
+        elif "email" in act_type or "mail" in act_type:
+            activity_type_map["emails"] += 1
+        elif "meet" in act_type or "event" in act_type or "demo" in act_type or "site visit" in act_type or "poc" in act_type or "rfp" in act_type:
+            activity_type_map["meetings"] += 1
+        else:
+            activity_type_map["tasks"] += 1
+    
+    activity_stats = {
+        "calls": activity_type_map["calls"],
+        "emails": activity_type_map["emails"],
+        "meetings": activity_type_map["meetings"],
+        "tasks": activity_type_map["tasks"],
+        "total": len(all_activities),
+        "completed": len([a for a in all_activities if a.get("state") == "done" or a.get("status") == "completed" or a.get("completed_at")])
+    }
+    
+    # Recent activities
+    recent_items = []
+    for act in all_activities[:20]:  # Limit to 20 for performance
+        recent_items.append({
+            "id": act.get("canonical_id") or act.get("id"),
+            "subject": act.get("summary") or act.get("subject") or "Activity",
+            "type": act.get("activity_type") or act.get("activity_type_name") or act.get("type") or "task",
+            "owner_name": act.get("assigned_user") or act.get("owner_name") or "System",
+            "status": "completed" if act.get("state") == "done" else "pending",
+            "created_at": act.get("created_at") or act.get("synced_at") or ""
+        })
+    recent_activities = sorted(recent_items, key=lambda x: str(x.get("created_at", "")), reverse=True)[:5]
+    
     return {
         "entity_type": "dashboard_stats",
         "org_id": org_id,
@@ -677,6 +783,8 @@ async def get_dashboard_stats(
         "stage_values": stage_values,
         "pipeline_by_stage": pipeline_by_stage,
         "leaderboard": leaderboard,
+        "activity_stats": activity_stats,
+        "recent_activities": recent_activities,
         "filtered": has_filters,
         "applied_filters": {
             "year": year,
