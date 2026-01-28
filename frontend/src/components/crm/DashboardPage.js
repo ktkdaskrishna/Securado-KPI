@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { crmAPI, analyticsAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -7,7 +8,7 @@ import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } from '../layout/PageFilters';
