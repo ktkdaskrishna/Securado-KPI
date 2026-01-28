@@ -2,74 +2,61 @@
 
 ## Current Session - Feature Enhancements (IN PROGRESS)
 
-### Task List
+### Completed Tasks ✅
 
-#### 1. Opportunities Page - Excel Export ⬜
-- Add "Export to Excel" button on Opportunities page
-- Export all visible opportunities with filters applied
-- Include: Name, Account, Stage, Value, Product Category, Product Manager, Sales Rep, Won Date
+#### 1. Backend API Endpoints - COMPLETED
+- ✅ **Product Manager Leaderboard**: `/api/dashboard/product-manager-leaderboard`
+- ✅ **Category Stats**: `/api/dashboard/category-stats`
+- ✅ **Excel Export**: `/api/opportunities/export`
+- ✅ **Won with Invoice Status**: `/api/opportunities/won-with-invoices`
+- ✅ **Receivables by Salesperson**: `/api/receivables/by-salesperson`
+- ✅ **Accounts with Contacts & Overdue**: Updated `/api/accounts` endpoint
 
-#### 2. Dashboard Enhancements ⬜
-- **Product Category Stats Cards**: Show deal counts & values by category
-- **Product Manager Stats Cards**: Show deal counts & values by PM
-- **Product Manager Leaderboard**: New section for PM performance (Won value)
+#### 2. Accounts Page Redesign - COMPLETED ✅
+- ✅ Tabs for All/Companies/Contacts filtering
+- ✅ Red highlight border on accounts with overdue invoices
+- ✅ Overdue amount banner showing specific overdue amount
+- ✅ Summary showing companies, contacts, and overdue count
 
-#### 3. Invoice Analytics Improvements ⬜
-For each Sales Person, show:
-- Total Won value (for their deals)
-- Billed during period
-- Pending to be collected
-- Overdue amounts
+### Pending Tasks ⬜
 
-#### 4. Won Opportunities - Invoice Status ⬜
-- Add invoice status indicator on Won opportunities
-- Show: Paid/Pending/Overdue status
-- Only visible for "Won" stage deals
+#### 3. Dashboard UI Enhancements - TODO
+- ⬜ Add Product Manager Leaderboard section
+- ⬜ Add Category Stats cards
 
-#### 5. Account Cards Redesign ⬜
-- Segregate Companies vs Contacts (two tabs/views)
-- Group deals/invoices by year within account 360 view
-- Show overdue invoice indicator on account cards
-- **Red highlight border** on accounts with overdue invoices
+#### 4. Opportunities Page - TODO
+- ⬜ Add Excel Export button
+- ⬜ Add Invoice Status indicator for Won opportunities
 
-#### 6. Fix Won Count Display ⬜
-- Dashboard currently shows total opportunities (358) not Won count (170)
-- Need to clearly separate these metrics
+#### 5. Invoice Analytics Page - TODO
+- ⬜ Add Salesperson analytics table (Won, Billed, Pending, Overdue)
 
 ---
 
-## Files to Modify
+## API Results Summary
 
-### Backend
-- `/app/backend/services/dashboard_agg/routes.py` - Add PM leaderboard, category stats
-- `/app/backend/services/crm_sales/routes.py` - Add export endpoint, account segregation
-- `/app/backend/services/ai_analytics/routes.py` - Invoice analytics by salesperson
+### Product Manager Leaderboard (2025)
+| Product Manager | Won Value | Deals |
+|----------------|-----------|-------|
+| Manickath Vimod Chandran | 3,889,149.12 OMR | 69 |
+| Mohammed Tajuddin | 2,302,970.00 OMR | 17 |
+| Shri Hari Venkatesh Naidu | 1,849,598.53 OMR | 31 |
+| Thejus Korjan | 560,304.45 OMR | 44 |
 
-### Frontend
-- `/app/frontend/src/components/crm/OpportunitiesPage.js` - Excel export, invoice status
-- `/app/frontend/src/components/crm/DashboardPage.js` - PM leaderboard, category cards
-- `/app/frontend/src/components/crm/AccountsPage.js` - Company/Contact tabs, overdue highlight
-- `/app/frontend/src/components/crm/InvoicesPage.js` - Sales person analytics
-- `/app/frontend/src/lib/api.js` - New API endpoints
+### Category Stats (2025)
+| Category | Won Value | Deals |
+|----------|-----------|-------|
+| Managed Security Operations Center | 2,666,143.83 OMR | 20 |
+| Network Security | 1,799,690.14 OMR | 46 |
+| Application Security | 1,081,655.70 OMR | 4 |
+| Assessment Services | 505,593.40 OMR | 29 |
 
----
-
-## Previous Session - Won Date Filtering Fix (COMPLETED) ✅
-
-### Issue Fixed: Won Deal Year Filtering Using Correct Date Field
-
-**Problem:** The application was using `date_closed` for filtering Won deals by year, but in Odoo this field is often `None` for Won deals.
-
-**Solution:**
-1. Added `won_at` field mapping from Odoo's `date_last_stage_update`
-2. Updated backend filtering logic to use `won_at` for Won deals
-3. Added new custom fields: solution_category, product_manager, budget_status
-
-**Results:**
-| Period | Won Count | Won Value |
-|--------|-----------|-----------|
-| 2025 | 170 deals | OMR 8,695,988.55 |
-| All Time | 395 deals | OMR 14,759,891.93 |
+### Won Deals Invoice Status (2025)
+- Total Won: 170
+- Fully Paid: 79
+- Partially Paid: 19
+- Overdue: 37
+- Not Invoiced: 35
 
 ---
 
