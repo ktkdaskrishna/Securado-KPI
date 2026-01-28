@@ -507,18 +507,6 @@ Based on this data, provide:
 5. **Action Items**: 3 concrete next steps the sales team should take
 
 Be specific to the numbers provided. Include specific OMR values and percentages where relevant."""
-- Won Deals: {data_summary['won_deals']} (Value: OMR {data_summary['won_value']:,.2f})
-- Lost Deals: {data_summary['lost_deals']}
-- Win Rate: {data_summary['win_rate']}%
-- Average Deal Size: OMR {data_summary['avg_deal_size']:,.2f}
-
-STAGE DISTRIBUTION:
-{json.dumps(data_summary['stage_distribution'], indent=2)}
-
-TOP PERFORMERS:
-{json.dumps(data_summary['top_performers'], indent=2)}
-
-Provide 4-5 specific, actionable insights based on this data."""
 
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
