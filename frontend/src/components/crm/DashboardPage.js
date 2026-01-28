@@ -70,7 +70,17 @@ export function DashboardPage() {
     if (stage) params.append('stage', stage);
     if (salesRep) params.append('salesRep', salesRep);
     if (filters.year) params.append('year', filters.year);
+    if (filters.quarter) params.append('quarter', filters.quarter);
     navigate(`/opportunities?${params.toString()}`);
+  };
+
+  const handleNavigateToActivities = (activityType = null) => {
+    const params = new URLSearchParams();
+    if (activityType) params.append('type', activityType);
+    if (filters.year) params.append('year', filters.year);
+    if (filters.quarter) params.append('quarter', filters.quarter);
+    if (filters.salesRep) params.append('salesRep', filters.salesRep);
+    navigate(`/activities?${params.toString()}`);
   };
 
   const handleNavigateToInvoices = () => {
