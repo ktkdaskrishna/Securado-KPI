@@ -686,3 +686,189 @@ except Exception as e:
             "record_data": {"name": "...", "stage_id": [1, "Won"], "...": "..."}
         }
     }
+
+
+@webhook_router.post("/setup-odoo-automations")
+async def setup_odoo_automations(
+    webhook_base_url: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Automatically create Odoo Automated Actions for webhook sync.
+    
+    This will create automated actions in Odoo that call our webhook endpoint
+    when records are created, updated, or deleted.
+    
+    Args:
+        webhook_base_url: The base URL of this application (e.g., https://crm-win-fix.preview.emergentagent.com)
+    """
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get Odoo connection
+    conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
+    if not conn:
+        raise HTTPException(status_code=404, detail="No Odoo connection found")
+    
+    try:
+        from services.etl_control.routes import create_odoo_proxy
+        
+        common = create_odoo_proxy(conn["url"], "common")
+        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
+        
+        if not uid:
+            raise HTTPException(status_code=401, detail="Odoo authentication failed")
+        
+        models = create_odoo_proxy(conn["url"], "object")
+        
+        webhook_url = f"{webhook_base_url.rstrip('/')}/api/webhooks/odoo"
+        
+        # Model configurations for webhook setup
+        model_configs = [
+            {
+                "model": "crm.lead",
+                "model_id": 362,
+                "name": "CRM Webhook Sync",
+                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
+                "fields": ["name", "stage_id", "user_id", "partner_id", "expected_revenue", 
+                          "sale_amount_total", "type", "active", "lost_reason_id", "date_closed", "probability"]
+            },
+            {
+                "model": "res.partner",
+                "model_id": 79,
+                "name": "Partner Webhook Sync",
+                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
+                "fields": ["name", "email", "phone", "active", "company_type", "user_id"]
+            },
+            {
+                "model": "res.users",
+                "model_id": 91,
+                "name": "User Webhook Sync",
+                "triggers": [("on_write", "write")],
+                "fields": ["name", "login", "email", "groups_id", "active"]
+            },
+            {
+                "model": "account.move",
+                "model_id": 2784,
+                "name": "Invoice Webhook Sync",
+                "triggers": [("on_create", "create"), ("on_write", "write")],
+                "fields": ["name", "partner_id", "amount_total", "state", "payment_state", 
+                          "invoice_date", "invoice_date_due"]
+            },
+            {
+                "model": "mail.activity",
+                "model_id": 158,
+                "name": "Activity Webhook Sync",
+                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
+                "fields": ["activity_type_id", "summary", "date_deadline", "user_id", "res_id", "res_model"]
+            }
+        ]
+        
+        created_actions = []
+        errors = []
+        
+        for config in model_configs:
+            for trigger, action_type in config["triggers"]:
+                action_name = f"{config['name']} - {action_type.upper()}"
+                
+                # Build Python code for webhook call
+                fields_str = ", ".join([f'"{f}": record.{f}' for f in config["fields"][:5]])  # First 5 fields
+                python_code = f'''
+import requests
+import json
+
+webhook_url = "{webhook_url}"
+
+# Build payload with key fields
+record_data = {{}}
+for field in {config["fields"]}:
+    try:
+        value = getattr(record, field, None)
+        if hasattr(value, 'id'):
+            record_data[field] = [value.id, value.name if hasattr(value, 'name') else str(value)]
+        elif hasattr(value, 'ids'):
+            record_data[field] = value.ids
+        else:
+            record_data[field] = value
+    except:
+        pass
+
+payload = {{
+    "model": "{config['model']}",
+    "action": "{action_type}",
+    "record_id": record.id,
+    "record_data": record_data
+}}
+
+try:
+    requests.post(webhook_url, json=payload, timeout=10)
+except Exception as e:
+    # Log to Odoo logs
+    pass
+'''
+                
+                try:
+                    # Check if action already exists
+                    existing = models.execute_kw(
+                        conn["database"], uid, conn["api_key"],
+                        'base.automation', 'search',
+                        [[('name', '=', action_name)]]
+                    )
+                    
+                    if existing:
+                        logger.info(f"Automation '{action_name}' already exists, skipping")
+                        continue
+                    
+                    # Create the automated action
+                    action_id = models.execute_kw(
+                        conn["database"], uid, conn["api_key"],
+                        'base.automation', 'create',
+                        [{
+                            'name': action_name,
+                            'model_id': config["model_id"],
+                            'trigger': trigger,
+                            'state': 'code',
+                            'code': python_code,
+                            'active': True
+                        }]
+                    )
+                    
+                    created_actions.append({
+                        "name": action_name,
+                        "id": action_id,
+                        "model": config["model"],
+                        "trigger": trigger
+                    })
+                    logger.info(f"Created automation: {action_name} (ID: {action_id})")
+                    
+                except Exception as e:
+                    error_msg = f"Failed to create '{action_name}': {str(e)}"
+                    errors.append(error_msg)
+                    logger.error(error_msg)
+        
+        return {
+            "success": len(errors) == 0,
+            "created_actions": created_actions,
+            "errors": errors,
+            "webhook_url": webhook_url,
+            "message": f"Created {len(created_actions)} automated actions" + (f" with {len(errors)} errors" if errors else "")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error setting up Odoo automations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/role-mappings")
+async def get_role_mappings():
+    """Get all configured role mappings"""
+    return {
+        "mappings": [
+            {
+                "odoo_group_id": gid,
+                **mapping
+            }
+            for gid, mapping in ODOO_GROUP_MAPPING.items()
+        ],
+        "field_access_rules": FIELD_ACCESS_RULES
+    }
