@@ -241,23 +241,25 @@ export function DashboardPage() {
             }
           </p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          variant="outline"
-          disabled={refreshing}
-          data-testid="dashboard-refresh-button"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-        <Button
-          onClick={handleExportDashboard}
-          variant="outline"
-          data-testid="dashboard-export-button"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Excel
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            disabled={refreshing}
+            data-testid="dashboard-refresh-button"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            onClick={handleExportDashboard}
+            variant="outline"
+            data-testid="dashboard-export-button"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
+        </div>
       </div>
 
       {/* Contextual Filters for Dashboard */}
