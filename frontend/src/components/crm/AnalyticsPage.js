@@ -475,7 +475,7 @@ export default function AnalyticsPage() {
                 <Building2 className="h-5 w-5 text-blue-500" />
                 Solution Category Performance
               </CardTitle>
-              <CardDescription>{teamPerformance?.total_categories || 0} solution categories</CardDescription>
+              <CardDescription>{teamPerformance?.total_categories || 0} {(teamPerformance?.total_categories || 0) === 1 ? 'solution category' : 'solution categories'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
