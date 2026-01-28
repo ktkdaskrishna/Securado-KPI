@@ -875,26 +875,29 @@ async def get_opportunity_logs(
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get the opportunity to find its source_record_id
-    opp = await canonical_db.opportunities.find_one({
-        "canonical_id": opp_id,
-        "org_id": org_id
-    })
+    # Get the opportunity using helper function
+    opp = await find_opportunity_by_id(opp_id, org_id, canonical_db)
     
-    # Build query - look for logs by both canonical_id and source_record_id
+    # Build query - look for logs by source_record_id (as both string and int)
     query_conditions = [
-        {"opportunity_id": opp_id, "org_id": org_id},
+        {"opportunity_id": opp_id},
     ]
     
-    if opp and opp.get("source_record_id"):
-        source_id = str(opp.get("source_record_id"))
-        query_conditions.extend([
-            {"opportunity_id": source_id, "org_id": org_id},
-        ])
+    if opp:
+        source_id = opp.get("source_record_id") or opp.get("canonical_id")
+        if source_id:
+            source_id_int = int(source_id) if str(source_id).isdigit() else None
+            query_conditions.append({"opportunity_id": str(source_id)})
+            if source_id_int:
+                query_conditions.append({"opportunity_id": source_id_int})
+                query_conditions.append({"res_id": source_id_int, "res_model": "crm.lead"})
     
     # Fetch log messages
     logs = await canonical_db.log_messages.find({
-        "$or": query_conditions
+        "$and": [
+            {"$or": query_conditions},
+            {"$or": [{"org_id": org_id}, {"org_id": {"$exists": False}}]}
+        ]
     }).sort("date", -1).to_list(100)
     
     # Normalize for frontend
