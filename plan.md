@@ -11,18 +11,25 @@
 
 ## Current Sprint: Event-Driven Architecture (Phase 2)
 
-### 🟡 Phase 2A - MongoDB Event Queue (IN PROGRESS)
+### 🟢 Phase 2A - MongoDB Event Queue (COMPLETED!)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Create event_queue service module | 🔄 IN PROGRESS | `/app/backend/services/event_queue/` |
-| Add queue collection indexes | ⬜ TODO | TTL, status indexes |
-| Modify ETL runner to publish events | ⬜ TODO | Replace direct writes with queue |
-| Create background worker | ⬜ TODO | Poll and process events |
-| Add queue stats endpoint | ⬜ TODO | `/api/admin/data-quality/queue-stats` |
-| Update Data Quality UI | ⬜ TODO | Show queue metrics |
+| Create event_queue service module | ✅ DONE | `/app/backend/services/event_queue/` |
+| Add queue collection indexes | ✅ DONE | TTL, status, compound indexes |
+| Create background worker | ✅ DONE | Polls and processes events with retry logic |
+| Add queue stats endpoint | ✅ DONE | `/api/admin/data-quality/queue/stats` |
+| Update Data Quality UI | ✅ DONE | Event Queue tab with real-time monitoring |
+| Modify ETL runner to publish events | ⬜ NEXT | Replace direct writes with queue |
 
-**Goal:** Decouple ETL from direct DB writes for better reliability and scalability.
+**What's Built:**
+- MongoDB-based event queue service with publish/consume pattern
+- Background worker that processes events with retry logic (max 3 retries)
+- TTL auto-cleanup of completed events (24 hours)
+- Real-time queue monitoring UI with health status
+- Failed events viewer with manual retry capability
+
+**Next Step:** Wire up the ETL runner to publish events to the queue instead of direct DB writes.
 
 ### 🟢 Phase 1 - Data Integrity (COMPLETED!)
 
