@@ -279,6 +279,9 @@ class DashboardAggregator:
             # Get all opportunities
             opps = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
             
+            # Filter out test/demo records from analytics
+            opps = filter_out_test_records(opps)
+            
             # Get overrides
             canonical_ids = [o.get("canonical_id") for o in opps]
             overrides = await app_db.overrides.find({
