@@ -49,6 +49,7 @@ import { SettingsPage } from './components/admin/SettingsPage';
 import { SystemLogsPage } from './components/admin/SystemLogsPage';
 import { WebhookConfigPage } from './components/admin/WebhookConfigPage';
 import { CustomFieldsPage } from './components/admin/CustomFieldsPage';
+import { DataQualityPage } from './components/admin/DataQualityPage';
 
 import './App.css';
 
