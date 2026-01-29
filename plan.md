@@ -9,53 +9,61 @@
 
 ---
 
-## Current Sprint: Bug Fixes + Phase 1
+## Current Sprint: Event-Driven Architecture (Phase 2)
 
-### 🟢 P0 - Critical Bugs (COMPLETED!)
+### 🟡 Phase 2A - MongoDB Event Queue (IN PROGRESS)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Create event_queue service module | 🔄 IN PROGRESS | `/app/backend/services/event_queue/` |
+| Add queue collection indexes | ⬜ TODO | TTL, status indexes |
+| Modify ETL runner to publish events | ⬜ TODO | Replace direct writes with queue |
+| Create background worker | ⬜ TODO | Poll and process events |
+| Add queue stats endpoint | ⬜ TODO | `/api/admin/data-quality/queue-stats` |
+| Update Data Quality UI | ⬜ TODO | Show queue metrics |
+
+**Goal:** Decouple ETL from direct DB writes for better reliability and scalability.
+
+### 🟢 Phase 1 - Data Integrity (COMPLETED!)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Identify duplicate records | ✅ DONE | Found 2,231 duplicates |
+| Create Data Quality admin page | ✅ DONE | `/admin/data-quality` |
+| Implement upsert logic in ETL | ✅ DONE | Prevents future duplicates |
+| Create unique indexes | ✅ DONE | On source_record_id + org_id |
+| Clean duplicate records | ✅ DONE | All duplicates removed |
+
+### 🟢 Previous Sprint (COMPLETED)
 
 | Task | Status | Notes |
 |------|--------|-------|
 | Configure ETL mapping for `mail.activity` | ✅ DONE | Added opportunity_id mapping |
 | Normalize activity opportunity_id types | ✅ DONE | Converted 681 string→int |
-| Set res_model='crm.lead' on activities | ✅ DONE | Updated 681 activities |
 | Fix opportunity lookup by all ID types | ✅ DONE | Added `find_opportunity_by_id()` helper |
-| Fix activities API endpoint | ✅ DONE | Now uses helper function |
-| Fix bluesheet API endpoint | ✅ DONE | Now uses helper function |
-| Fix logs API endpoint | ✅ DONE | Now uses helper function |
+| Activities, Bluesheet, Logs endpoints | ✅ DONE | Now uses helper function |
+| Dashboard click-through navigation | ✅ DONE | KPI cards navigate to filtered lists |
+| User invite system | ✅ DONE | `/admin/users` page |
 
-**Result:** Activities now showing on opportunity detail! AI Confidence improved from 0% to 33.5%
+---
 
-### 🟡 P1 - Modular Dashboard Foundations (NEXT)
+## Future Tasks (Backlog)
+
+### P1 - Modular Dashboard Foundations
 
 | Task | Status | Notes |
 |------|--------|-------|
 | Add `export_data` permission | ⬜ TODO | Add to RBAC model |
-| Block export for restricted roles | ⬜ TODO | Update `/api/opportunities/export` |
 | Create card registry | ⬜ TODO | `frontend/src/components/dashboard/registry/` |
-| Extract dashboard card components | ⬜ TODO | KPI, Pipeline, Leaderboard cards |
 | Create `DashboardTemplateContext` | ⬜ TODO | Template resolution |
-| Create `DashboardDataContext` | ⬜ TODO | Batch data fetching |
+| Batch data endpoint | ⬜ TODO | `/api/dashboard/data/batch` |
 
-### 🟢 P2 - Template System
+### P2 - Minor Improvements
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Create `dashboard_templates` collection | ⬜ TODO | MongoDB schema |
-| Template CRUD APIs | ⬜ TODO | `/api/dashboard/templates` |
-| Role-template assignment | ⬜ TODO | Role → Template mapping |
-| Batch data endpoint | ⬜ TODO | `/api/dashboard/data/batch` |
-
----
-
-## Recent Completions (2026-01-29)
-
-- ✅ ETL mapping configured for mail.activity
-- ✅ Activity data normalized (opportunity_id as int)
-- ✅ All 683 activities now have res_model='crm.lead'
-- ✅ find_opportunity_by_id() helper function created
-- ✅ Activities, Bluesheet, Logs endpoints fixed
-- ✅ **Activities now visible in UI!**
-- ✅ **AI Confidence improved from 0% to 33.5%**
+| Add Win Rate tooltip | ⬜ TODO | Explain calculation method |
+| Fix sidebar scrolling | ⬜ TODO | Recurring UX issue |
 
 ---
 
