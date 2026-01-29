@@ -490,7 +490,7 @@ class CacheBuilder:
                     continue
                 
                 filtered.append(opp)
-            except:
+            except (ValueError, AttributeError):
                 continue
         
         return filtered
