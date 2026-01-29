@@ -3,7 +3,7 @@
 ## 🚀 Access Your System
 
 ### API Documentation UI (Interactive)
-**URL:** https://datahub-crm-1.preview.emergentagent.com
+**URL:** https://crm-fixer-3.preview.emergentagent.com
 
 **Features:**
 - ✨ Next-gen dark theme with glassmorphism
@@ -36,7 +36,7 @@ POST /api/auth/register
 → User created with status: **PENDING**
 
 **Step 2: Admin Approves (You)**
-1. Login to API UI: https://datahub-crm-1.preview.emergentagent.com
+1. Login to API UI: https://crm-fixer-3.preview.emergentagent.com
 2. Navigate to "Admin - Users" section
 3. Click "▶ Test Endpoint" on `POST /api/admin/users/{user_id}/approve`
 4. Replace `{user_id}` with actual user ID
@@ -113,7 +113,7 @@ CANONICAL_LAYOUT="single_collection"  # or "per_entity"
 
 ### 1. Check Platform 2 Can Read Canonical DB
 ```bash
-curl https://datahub-crm-1.preview.emergentagent.com/api/data-lake/health
+curl https://crm-fixer-3.preview.emergentagent.com/api/data-lake/health
 ```
 
 Expected:
@@ -131,13 +131,13 @@ Platform 1 inserts a document into canonical DB.
 ### 3. Verify in Platform 2
 ```bash
 # Login first to get token
-curl -X POST https://datahub-crm-1.preview.emergentagent.com/api/auth/login \
+curl -X POST https://crm-fixer-3.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@platform2.com","password":"admin123"}'
 
 # Browse canonical data
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://datahub-crm-1.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
+  "https://crm-fixer-3.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities"
 ```
 
 ---
@@ -227,9 +227,9 @@ Before going to production:
 
 ## 📞 Quick Links
 
-- **Interactive API Docs:** https://datahub-crm-1.preview.emergentagent.com
-- **Health Check:** https://datahub-crm-1.preview.emergentagent.com/api/health
-- **Data Lake Health:** https://datahub-crm-1.preview.emergentagent.com/api/data-lake/health
+- **Interactive API Docs:** https://crm-fixer-3.preview.emergentagent.com
+- **Health Check:** https://crm-fixer-3.preview.emergentagent.com/api/health
+- **Data Lake Health:** https://crm-fixer-3.preview.emergentagent.com/api/data-lake/health
 
 ---
 
