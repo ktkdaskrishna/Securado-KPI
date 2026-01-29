@@ -72,6 +72,7 @@ const iconMap = {
   Brain,
   Lock,
   Webhook,
+  ShieldCheck,
 };
 
 // Permission requirements for each navigation item
