@@ -87,6 +87,7 @@ from services.dashboard_agg.routes import router as dashboard_router, dashboard_
 from services.event_gateway.routes import router as events_router, dlq_router
 from services.ai_analytics.routes import router as analytics_router
 from services.odoo_rbac.routes import router as odoo_rbac_router, webhook_router
+from services.data_integrity.routes import router as data_integrity_router
 
 
 @asynccontextmanager
