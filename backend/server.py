@@ -223,6 +223,9 @@ app.include_router(templates_router, prefix="/api")
 app.include_router(data_model_router, prefix="/api")
 app.include_router(mapping_editor_router, prefix="/api")
 
+# Data Integrity & Quality
+app.include_router(data_integrity_router, prefix="/api/admin")
+
 # Canonical/Data Lake
 app.include_router(canonical_router, prefix="/api")
 app.include_router(search_router, prefix="/api")
