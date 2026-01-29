@@ -1,4 +1,4 @@
-"""Data Integrity Service - Deduplication, Reconciliation, and Data Quality"""
+"""Data Integrity Service - Deduplication, Reconciliation, Data Quality & Event Queue"""
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -10,6 +10,7 @@ import json
 
 from libs.database import get_app_db, get_canonical_db
 from services.identity.routes import get_current_user
+from services.event_queue.queue_service import event_queue_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/data-quality", tags=["data-quality"])
