@@ -931,7 +931,7 @@ async def get_category_stats(
         "categories": categories,
         "total_won_value": sum(cat_values.values()),
         "total_deals": sum(cat_counts.values()),
-        "filters": {"year": year, "quarter": quarter}
+        "filters": {"year": year, "quarter": quarter, "sales_rep": sales_rep}
     }
 
 
