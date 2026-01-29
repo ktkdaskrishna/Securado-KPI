@@ -649,23 +649,36 @@ class ETLRunner:
         for record in records:
             record["org_id"] = org_id
             
-            result = await collection.update_one(
-                {
+            # Use source_record_id as the primary upsert key (more reliable than canonical_id)
+            source_record_id = record.get("source_record_id")
+            
+            # Build the filter for upsert - prefer source_record_id if available
+            if source_record_id:
+                filter_query = {
+                    "source_record_id": source_record_id,
+                    "org_id": org_id
+                }
+            else:
+                # Fallback to canonical_id
+                filter_query = {
                     "canonical_id": record["canonical_id"],
                     "org_id": org_id
-                },
+                }
+            
+            result = await collection.update_one(
+                filter_query,
                 {"$set": record},
                 upsert=True
             )
             
             if result.upserted_id:
                 inserted += 1
-                action = "upserted"
+                action = "inserted"
             elif result.modified_count > 0:
                 updated += 1
-                action = "upserted"
+                action = "updated"
             else:
-                action = "upserted"  # No change but still report
+                action = "unchanged"  # No change
             
             # Emit canonical record event
             await emit_event(
