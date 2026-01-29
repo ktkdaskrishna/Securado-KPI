@@ -142,6 +142,76 @@ class CRMAPITester:
         self.test_api("Dashboard Pipeline Stages", "GET", "/api/dashboard/stats",
                      check_response=lambda d: 'pipeline_by_stage' in d)
         
+        # Test Dashboard Filter Fixes
+        print("\n📋 Dashboard Filter Tests (Bug Fix Verification)")
+        print("-" * 80)
+        
+        # Test Product Manager Leaderboard with filters
+        self.test_api(
+            "Product Manager Leaderboard - No Filters",
+            "GET",
+            "/api/dashboard/product-manager-leaderboard",
+            check_response=lambda d: 'leaderboard' in d
+        )
+        
+        self.test_api(
+            "Product Manager Leaderboard - Year Filter",
+            "GET",
+            "/api/dashboard/product-manager-leaderboard?year=2026",
+            check_response=lambda d: 'leaderboard' in d and 'filters' in d
+        )
+        
+        self.test_api(
+            "Product Manager Leaderboard - Sales Rep Filter",
+            "GET",
+            "/api/dashboard/product-manager-leaderboard?sales_rep=Nabisaheb",
+            check_response=lambda d: 'leaderboard' in d and 'filters' in d and d['filters'].get('sales_rep') == 'Nabisaheb'
+        )
+        
+        self.test_api(
+            "Product Manager Leaderboard - Combined Filters",
+            "GET",
+            "/api/dashboard/product-manager-leaderboard?year=2026&sales_rep=Nabisaheb",
+            check_response=lambda d: 'leaderboard' in d and 'filters' in d
+        )
+        
+        # Test Category Stats with filters
+        self.test_api(
+            "Category Stats - No Filters",
+            "GET",
+            "/api/dashboard/category-stats",
+            check_response=lambda d: 'categories' in d
+        )
+        
+        self.test_api(
+            "Category Stats - Year Filter",
+            "GET",
+            "/api/dashboard/category-stats?year=2026",
+            check_response=lambda d: 'categories' in d and 'filters' in d
+        )
+        
+        self.test_api(
+            "Category Stats - Sales Rep Filter",
+            "GET",
+            "/api/dashboard/category-stats?sales_rep=Nabisaheb",
+            check_response=lambda d: 'categories' in d and 'filters' in d and d['filters'].get('sales_rep') == 'Nabisaheb'
+        )
+        
+        self.test_api(
+            "Category Stats - Combined Filters",
+            "GET",
+            "/api/dashboard/category-stats?year=2026&sales_rep=Nabisaheb",
+            check_response=lambda d: 'categories' in d and 'filters' in d
+        )
+        
+        # Test Dashboard Stats with sales_rep filter
+        self.test_api(
+            "Dashboard Stats - Sales Rep Filter",
+            "GET",
+            "/api/dashboard/stats?sales_rep=Nabisaheb&year=2026",
+            check_response=lambda d: 'applied_filters' in d and d['applied_filters'].get('sales_rep') == 'Nabisaheb'
+        )
+        
         # 4. CRM APIs
         print("\n📋 CRM APIs")
         print("-" * 80)
