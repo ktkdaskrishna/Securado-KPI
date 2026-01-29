@@ -425,7 +425,7 @@ class ETLRunner:
             if extract_limit:
                 search_options['limit'] = extract_limit
             
-            log(f"Extracting ALL records (no limit)" if not extract_limit else f"Extracting with limit={extract_limit}")
+            log("Extracting ALL records (no limit)" if not extract_limit else f"Extracting with limit={extract_limit}")
             
             records = models.execute_kw(
                 conn["database"], uid, conn["api_key"],
