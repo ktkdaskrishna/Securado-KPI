@@ -172,12 +172,19 @@ class ETLRunner:
             )
             
             # LOAD
+            # Check if queue-based loading is enabled (via pipeline config)
+            use_queue = config.get("use_event_queue", False)
+            
             inserted, updated = await self._load(
                 transformed, mapping["target_entity"], org_id,
-                canonical_db, correlation_id, log
+                canonical_db, correlation_id, log, use_queue=use_queue
             )
             loaded_count = inserted + updated
-            log(f"Loaded {loaded_count} records ({inserted} inserted, {updated} updated)", "success")
+            
+            if use_queue:
+                log(f"Queued {loaded_count} records for async processing", "success")
+            else:
+                log(f"Loaded {loaded_count} records ({inserted} inserted, {updated} updated)", "success")
             
             # Save errors to DLQ
             if errors:
