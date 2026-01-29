@@ -127,6 +127,13 @@ async def lifespan(app: FastAPI):
         logger.error(f"Event worker start failed: {e}")
     
     try:
+        # Initialize serving cache
+        await cache_builder.initialize(db_manager.app_db, db_manager.canonical_db)
+        await cache_reader.initialize(db_manager.app_db)
+    except Exception as e:
+        logger.error(f"Serving cache initialization failed: {e}")
+    
+    try:
         # Start ETL runner
         await etl_runner.start()
     except Exception as e:
