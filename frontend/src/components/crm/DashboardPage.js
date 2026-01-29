@@ -23,9 +23,12 @@ export function DashboardPage() {
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [] });
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
   
-  // Contextual filters specific to Dashboard
+  // Get current year for default filter
+  const currentYear = new Date().getFullYear().toString();
+  
+  // Contextual filters specific to Dashboard - DEFAULT TO CURRENT YEAR
   const [filters, setFilters] = useState({
-    year: null,
+    year: currentYear,  // Default to current year
     quarter: null,
     salesRep: null,
     stage: null
