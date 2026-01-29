@@ -89,21 +89,17 @@ class CacheBuilder:
         self.app_db = app_db
         self.canonical_db = canonical_db
         
-        # Create indexes on serving_cache
-        await app_db.serving_cache.create_index("cache_type")
-        await app_db.serving_cache.create_index("org_id")
-        await app_db.serving_cache.create_index("filter_hash")
-        await app_db.serving_cache.create_index("expires_at")
-        await app_db.serving_cache.create_index(
-            [("cache_type", 1), ("org_id", 1), ("filter_hash", 1)],
-            unique=True
-        )
-        
-        # TTL index to auto-expire old cache entries
-        await app_db.serving_cache.create_index(
-            "expires_at",
-            expireAfterSeconds=0
-        )
+        # Create indexes on serving_cache (ignore errors if they already exist)
+        try:
+            await app_db.serving_cache.create_index("cache_type")
+            await app_db.serving_cache.create_index("org_id")
+            await app_db.serving_cache.create_index("filter_hash")
+            await app_db.serving_cache.create_index(
+                [("cache_type", 1), ("org_id", 1), ("filter_hash", 1)],
+                unique=True
+            )
+        except Exception as e:
+            logger.warning(f"Index creation warning (may already exist): {e}")
         
         self._running = True
         logger.info("CacheBuilder connected to databases")
