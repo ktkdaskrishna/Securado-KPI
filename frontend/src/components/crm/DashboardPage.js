@@ -67,8 +67,19 @@ export function DashboardPage() {
   // Navigation handlers for clickable items
   const handleNavigateToOpportunities = (stage = null, salesRep = null) => {
     const params = new URLSearchParams();
-    if (stage) params.append('stage', stage);
-    if (salesRep) params.append('salesRep', salesRep);
+    // Stage can come from click or from current filters
+    if (stage) {
+      params.append('stage', stage);
+    } else if (filters.stage) {
+      params.append('stage', filters.stage);
+    }
+    // SalesRep can come from click (leaderboard) or from current filters
+    if (salesRep) {
+      params.append('salesRep', salesRep);
+    } else if (filters.salesRep) {
+      params.append('salesRep', filters.salesRep);
+    }
+    // Always pass year and quarter from current filters
     if (filters.year) params.append('year', filters.year);
     if (filters.quarter) params.append('quarter', filters.quarter);
     navigate(`/opportunities?${params.toString()}`);
