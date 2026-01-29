@@ -549,6 +549,9 @@ async def get_dashboard_stats(
     
     opps = await canonical_db.opportunities.find(query).to_list(10000)
     
+    # Filter out test/demo records from analytics
+    opps = filter_out_test_records(opps)
+    
     # Apply date filters (year and quarter) using the helper function
     # For open opportunities, filter by create_date
     # For closed (won/lost), filter by date_closed
