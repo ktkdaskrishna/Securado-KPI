@@ -795,14 +795,25 @@ async def refresh_dashboard(current_user: dict = Depends(get_current_user)):
 async def get_product_manager_leaderboard(
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    stage: Optional[str] = Query(None, description="Filter by stage (ignored for leaderboard - always shows Won)"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get Product Manager leaderboard based on Won deals"""
+    """Get Product Manager leaderboard based on Won deals
+    
+    Note: This leaderboard always shows Won deals only (that's the nature of a "won deals leaderboard").
+    The sales_rep filter will filter to show only deals owned by that sales rep.
+    """
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get all opportunities
-    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    # Build query with sales_rep filter if provided
+    query = {"org_id": org_id}
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    
+    # Get opportunities (filtered by sales_rep if applicable)
+    opportunities = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Filter to Won opportunities only
     won_opps = []
@@ -848,7 +859,7 @@ async def get_product_manager_leaderboard(
         "leaderboard": leaderboard,
         "total_won_value": sum(pm_values.values()),
         "total_deals": sum(pm_counts.values()),
-        "filters": {"year": year, "quarter": quarter}
+        "filters": {"year": year, "quarter": quarter, "sales_rep": sales_rep}
     }
 
 
@@ -856,14 +867,25 @@ async def get_product_manager_leaderboard(
 async def get_category_stats(
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    stage: Optional[str] = Query(None, description="Filter by stage (ignored for category stats - always shows Won)"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get Solution Category statistics based on Won deals"""
+    """Get Solution Category statistics based on Won deals
+    
+    Note: This always shows Won deals only (solution category performance is based on closed-won deals).
+    The sales_rep filter will filter to show only deals owned by that sales rep.
+    """
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get all opportunities
-    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    # Build query with sales_rep filter if provided
+    query = {"org_id": org_id}
+    if sales_rep:
+        query["owner_name"] = sales_rep
+    
+    # Get opportunities (filtered by sales_rep if applicable)
+    opportunities = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Filter to Won opportunities only
     won_opps = []
