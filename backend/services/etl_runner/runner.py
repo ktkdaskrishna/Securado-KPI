@@ -19,6 +19,7 @@ from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, now_utc, RunStatus
 from libs.event_bus import event_bus, emit_event
 from libs.schemas import Topics, EventEnvelope, PipelineRunCommandPayload
+from services.event_queue.queue_service import event_queue_service
 
 logger = logging.getLogger(__name__)
 
