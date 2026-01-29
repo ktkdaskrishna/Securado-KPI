@@ -111,6 +111,19 @@ async def lifespan(app: FastAPI):
         logger.error(f"Event bus initialization failed: {e}")
     
     try:
+        # Initialize event queue service
+        await event_queue_service.initialize(db_manager.app_db)
+    except Exception as e:
+        logger.error(f"Event queue service initialization failed: {e}")
+    
+    try:
+        # Initialize and start event worker
+        await event_worker.initialize(db_manager.app_db, db_manager.canonical_db)
+        await event_worker.start()
+    except Exception as e:
+        logger.error(f"Event worker start failed: {e}")
+    
+    try:
         # Start ETL runner
         await etl_runner.start()
     except Exception as e:
@@ -138,6 +151,16 @@ async def lifespan(app: FastAPI):
         await etl_runner.stop()
     except Exception as e:
         logger.error(f"ETL runner stop failed: {e}")
+    
+    try:
+        await event_worker.stop()
+    except Exception as e:
+        logger.error(f"Event worker stop failed: {e}")
+    
+    try:
+        await event_queue_service.shutdown()
+    except Exception as e:
+        logger.error(f"Event queue service shutdown failed: {e}")
     
     try:
         await event_bus.shutdown()
