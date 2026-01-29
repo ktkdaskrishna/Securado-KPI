@@ -9,31 +9,54 @@
 
 ---
 
-## Current Sprint: Dashboard Filter & Data Quality Fixes
+## Current Sprint: Serving Cache Architecture (Single Source of Truth)
 
-### 🟢 Dashboard Accuracy Improvements (COMPLETED!)
+### 🟢 Serving Cache Layer (COMPLETED!)
 
-| Issue | Status | Fix Applied |
-|-------|--------|-------------|
-| Dashboard defaulted to "All Years" | ✅ FIXED | Now defaults to current year (2026) |
-| Test records inflating totals | ✅ FIXED | Excluded "Test 1", "test Service and product" from analytics |
-| Product Manager ignores sales_rep filter | ✅ FIXED | Added sales_rep parameter to endpoint |
-| Category Stats ignores sales_rep filter | ✅ FIXED | Added sales_rep parameter to endpoint |
-| Click-through navigation loses filters | ✅ FIXED | All filters now passed via URL params |
+| Component | Status | Description |
+|-----------|--------|-------------|
+| Cache Builder | ✅ DONE | `/app/backend/services/serving_cache/cache_builder.py` |
+| Cache Reader | ✅ DONE | `/app/backend/services/serving_cache/cache_reader.py` |
+| Cache API Routes | ✅ DONE | `/api/cache/*` endpoints |
+| Dashboard KPIs Cache | ✅ DONE | Pre-computed, excludes test records |
+| Account Overdue Cache | ✅ DONE | Single calculation logic |
+| Sales Leaderboard Cache | ✅ DONE | Pre-computed aggregates |
+| PM Leaderboard Cache | ✅ DONE | Pre-computed aggregates |
 
-**Impact:**
-- Nabisaheb 2025 Won: 42 → **40 deals** (2 test records removed)
-- Nabisaheb 2025 Value: 6,612,139 → **6,202,017 OMR** (410K test value removed)
-- Now matches Odoo's 41 Won / ~6.2M OMR (within 1 record)
+**Architecture:**
+```
+┌─────────────┐     ┌──────────────┐     ┌────────────────┐     ┌─────────┐
+│   Odoo ETL  │ ──▶ │ Event Queue  │ ──▶ │ Cache Builder  │ ──▶ │ UI APIs │
+└─────────────┘     └──────────────┘     └────────────────┘     └─────────┘
+                                                │
+                                                ▼
+                                         ┌────────────────┐
+                                         │ serving_cache  │
+                                         │ • dashboard_kpis│
+                                         │ • account_overdue│
+                                         │ • sales_leaderboard│
+                                         │ • pm_leaderboard│
+                                         └────────────────┘
+```
 
-**Test Record Exclusion Patterns:**
-- Names starting with "test", "demo", "sample"
-- Names containing "(test)" or "[test]"
-- Names like "test 1", "test 2", etc.
+**Cache API Endpoints:**
+- `GET /api/cache/dashboard-kpis` - Dashboard metrics
+- `GET /api/cache/account-overdue` - Account overdue data  
+- `GET /api/cache/sales-leaderboard` - Sales rep rankings
+- `GET /api/cache/pm-leaderboard` - Product manager rankings
+- `POST /api/cache/refresh` - Force cache rebuild
+- `POST /api/cache/invalidate` - Clear cache
+- `GET /api/cache/stats` - Cache statistics
+
+**Benefits:**
+- ✅ Single source of truth for all UI components
+- ✅ Consistent calculation logic (no more double-counting bugs)
+- ✅ Fast reads (pre-computed data)
+- ✅ 5-minute TTL with auto-refresh
 
 ---
 
-## Previous Sprint: Dashboard Filter Fixes
+## Previous Sprint: Dashboard Accuracy Improvements
 
 ### 🟢 Phase 2A - MongoDB Event Queue (COMPLETED!)
 
