@@ -168,7 +168,7 @@ export function DataQualityPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" data-testid="data-quality-page">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -176,7 +176,7 @@ export function DataQualityPage() {
             <Shield className="h-6 w-6 text-primary" />
             Data Quality
           </h1>
-          <p className="text-gray-500">Monitor data integrity and manage duplicates</p>
+          <p className="text-gray-500">Monitor data integrity, manage duplicates, and view event queue</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={loadData} disabled={processing}>
@@ -194,194 +194,413 @@ export function DataQualityPage() {
         </div>
       </div>
 
-      {/* Overall Health Alert */}
-      {summary?.overall_health !== 'healthy' && (
-        <Alert variant={summary?.overall_health === 'critical' ? 'destructive' : 'warning'}>
-          {healthIcons[summary?.overall_health]}
-          <AlertTitle>
-            {summary?.overall_health === 'critical' ? 'Critical Data Issues Detected' : 'Data Quality Warning'}
-          </AlertTitle>
-          <AlertDescription>
-            Found {summary?.total_duplicates.toLocaleString()} duplicate records across {summary?.total_records.toLocaleString()} total records.
-            This may cause inaccurate reports and dashboard metrics.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="duplicates" className="flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Data Integrity
+          </TabsTrigger>
+          <TabsTrigger value="queue" className="flex items-center gap-2" onClick={loadQueueStats}>
+            <Zap className="h-4 w-4" />
+            Event Queue
+            {queueStats?.status_counts?.pending > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {queueStats.status_counts.pending}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Records</p>
-                <p className="text-2xl font-bold">{summary?.total_records?.toLocaleString() || 0}</p>
-              </div>
-              <Database className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Data Integrity Tab */}
+        <TabsContent value="duplicates" className="space-y-6 mt-6">
+          {/* Overall Health Alert */}
+          {summary?.overall_health !== 'healthy' && (
+            <Alert variant={summary?.overall_health === 'critical' ? 'destructive' : 'warning'}>
+              {healthIcons[summary?.overall_health]}
+              <AlertTitle>
+                {summary?.overall_health === 'critical' ? 'Critical Data Issues Detected' : 'Data Quality Warning'}
+              </AlertTitle>
+              <AlertDescription>
+                Found {summary?.total_duplicates.toLocaleString()} duplicate records across {summary?.total_records.toLocaleString()} total records.
+                This may cause inaccurate reports and dashboard metrics.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Duplicates Found</p>
-                <p className="text-2xl font-bold text-red-600">{summary?.total_duplicates?.toLocaleString() || 0}</p>
-              </div>
-              <Layers className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Overall Health</p>
-                <Badge className={healthColors[summary?.overall_health || 'healthy']}>
-                  {summary?.overall_health?.toUpperCase() || 'HEALTHY'}
-                </Badge>
-              </div>
-              {healthIcons[summary?.overall_health || 'healthy']}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Collections</p>
-                <p className="text-2xl font-bold">{summary?.collections?.length || 0}</p>
-              </div>
-              <FileCheck className="h-8 w-8 text-emerald-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Collection Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Collection Health</CardTitle>
-          <CardDescription>Data quality status by collection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Collection</TableHead>
-                <TableHead>Total Records</TableHead>
-                <TableHead>Unique Records</TableHead>
-                <TableHead>Duplicates</TableHead>
-                <TableHead>Duplicate %</TableHead>
-                <TableHead>Last Synced</TableHead>
-                <TableHead>Health</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summary?.collections?.map((coll) => (
-                <TableRow key={coll.collection}>
-                  <TableCell className="font-medium">{coll.collection}</TableCell>
-                  <TableCell>{coll.total_records.toLocaleString()}</TableCell>
-                  <TableCell>{coll.unique_records.toLocaleString()}</TableCell>
-                  <TableCell className={coll.duplicate_count > 0 ? 'text-red-600 font-semibold' : ''}>
-                    {coll.duplicate_count.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress 
-                        value={coll.duplicate_percentage} 
-                        className={`w-16 h-2 ${coll.duplicate_percentage > 10 ? '[&>div]:bg-red-500' : coll.duplicate_percentage > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`}
-                      />
-                      <span className="text-sm">{coll.duplicate_percentage}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">
-                    {coll.last_synced ? new Date(coll.last_synced).toLocaleString() : 'Never'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={healthColors[coll.health]}>
-                      {coll.health}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Duplicate Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Duplicate Records</CardTitle>
-          <CardDescription>View and manage duplicate records by collection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={selectedCollection} onValueChange={handleCollectionChange}>
-            <TabsList>
-              <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
-              <TabsTrigger value="activities">Activities</TabsTrigger>
-              <TabsTrigger value="accounts">Accounts</TabsTrigger>
-              <TabsTrigger value="contacts">Contacts</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value={selectedCollection} className="mt-4">
-              {duplicates[selectedCollection] ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>Total: {duplicates[selectedCollection].total_records}</span>
-                    <span>Unique: {duplicates[selectedCollection].unique_source_ids}</span>
-                    <span className="text-red-600 font-medium">
-                      Duplicates: {duplicates[selectedCollection].duplicate_count}
-                    </span>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Records</p>
+                    <p className="text-2xl font-bold">{summary?.total_records?.toLocaleString() || 0}</p>
                   </div>
-                  
-                  {duplicates[selectedCollection].duplicates?.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Source Record ID</TableHead>
-                          <TableHead>Copies</TableHead>
-                          <TableHead>Record Details</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {duplicates[selectedCollection].duplicates.slice(0, 20).map((dup, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-mono">{dup._id}</TableCell>
-                            <TableCell>
-                              <Badge variant="destructive">{dup.count} copies</Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-500">
-                              {dup.records?.slice(0, 3).map((r, i) => (
-                                <div key={i} className="truncate max-w-xs">
-                                  {r.name || r.canonical_id}
-                                </div>
-                              ))}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <Database className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Duplicates Found</p>
+                    <p className="text-2xl font-bold text-red-600">{summary?.total_duplicates?.toLocaleString() || 0}</p>
+                  </div>
+                  <Layers className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Overall Health</p>
+                    <Badge className={healthColors[summary?.overall_health || 'healthy']}>
+                      {summary?.overall_health?.toUpperCase() || 'HEALTHY'}
+                    </Badge>
+                  </div>
+                  {healthIcons[summary?.overall_health || 'healthy']}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Collections</p>
+                    <p className="text-2xl font-bold">{summary?.collections?.length || 0}</p>
+                  </div>
+                  <FileCheck className="h-8 w-8 text-emerald-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Collection Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Collection Health</CardTitle>
+              <CardDescription>Data quality status by collection</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Collection</TableHead>
+                    <TableHead>Total Records</TableHead>
+                    <TableHead>Unique Records</TableHead>
+                    <TableHead>Duplicates</TableHead>
+                    <TableHead>Duplicate %</TableHead>
+                    <TableHead>Last Synced</TableHead>
+                    <TableHead>Health</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summary?.collections?.map((coll) => (
+                    <TableRow key={coll.collection}>
+                      <TableCell className="font-medium">{coll.collection}</TableCell>
+                      <TableCell>{coll.total_records.toLocaleString()}</TableCell>
+                      <TableCell>{coll.unique_records.toLocaleString()}</TableCell>
+                      <TableCell className={coll.duplicate_count > 0 ? 'text-red-600 font-semibold' : ''}>
+                        {coll.duplicate_count.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={coll.duplicate_percentage} 
+                            className={`w-16 h-2 ${coll.duplicate_percentage > 10 ? '[&>div]:bg-red-500' : coll.duplicate_percentage > 0 ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`}
+                          />
+                          <span className="text-sm">{coll.duplicate_percentage}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {coll.last_synced ? new Date(coll.last_synced).toLocaleString() : 'Never'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={healthColors[coll.health]}>
+                          {coll.health}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Duplicate Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Duplicate Records</CardTitle>
+              <CardDescription>View and manage duplicate records by collection</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={selectedCollection} onValueChange={handleCollectionChange}>
+                <TabsList>
+                  <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+                  <TabsTrigger value="activities">Activities</TabsTrigger>
+                  <TabsTrigger value="accounts">Accounts</TabsTrigger>
+                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value={selectedCollection} className="mt-4">
+                  {duplicates[selectedCollection] ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>Total: {duplicates[selectedCollection].total_records}</span>
+                        <span>Unique: {duplicates[selectedCollection].unique_source_ids}</span>
+                        <span className="text-red-600 font-medium">
+                          Duplicates: {duplicates[selectedCollection].duplicate_count}
+                        </span>
+                      </div>
+                      
+                      {duplicates[selectedCollection].duplicates?.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Source Record ID</TableHead>
+                              <TableHead>Copies</TableHead>
+                              <TableHead>Record Details</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {duplicates[selectedCollection].duplicates.slice(0, 20).map((dup, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="font-mono">{dup._id}</TableCell>
+                                <TableCell>
+                                  <Badge variant="destructive">{dup.count} copies</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-500">
+                                  {dup.records?.slice(0, 3).map((r, i) => (
+                                    <div key={i} className="truncate max-w-xs">
+                                      {r.name || r.canonical_id}
+                                    </div>
+                                  ))}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <CheckCircle className="h-12 w-12 mx-auto text-emerald-500 mb-2" />
+                          <p>No duplicates found in {selectedCollection}</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <CheckCircle className="h-12 w-12 mx-auto text-emerald-500 mb-2" />
-                      <p>No duplicates found in {selectedCollection}</p>
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
                     </div>
                   )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Event Queue Tab */}
+        <TabsContent value="queue" className="space-y-6 mt-6">
+          {/* Queue Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Pending</p>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {queueStats?.status_counts?.pending || 0}
+                    </p>
+                  </div>
+                  <Clock className="h-8 w-8 text-amber-500" />
                 </div>
-              ) : (
-                <div className="flex justify-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Processing</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {queueStats?.status_counts?.processing || 0}
+                    </p>
+                  </div>
+                  <Play className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Completed</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {queueStats?.status_counts?.completed || 0}
+                    </p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-emerald-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Failed</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {queueStats?.status_counts?.failed || 0}
+                    </p>
+                  </div>
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Events/Hour</p>
+                    <p className="text-2xl font-bold">
+                      {queueStats?.events_per_hour || 0}
+                    </p>
+                  </div>
+                  <Zap className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Queue Health Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Queue Health</span>
+                <Badge className={healthColors[queueStats?.health || 'healthy']}>
+                  {queueStats?.health?.toUpperCase() || 'HEALTHY'}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Real-time event queue monitoring (auto-refreshes every 10 seconds)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Total Events in Queue</p>
+                  <p className="text-3xl font-bold">{queueStats?.total_events || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Oldest Pending Event</p>
+                  <p className="text-xl font-medium">
+                    {queueStats?.oldest_pending_age_seconds > 0 
+                      ? `${Math.round(queueStats.oldest_pending_age_seconds)}s ago`
+                      : 'None'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Dead Letter Count</p>
+                  <p className={`text-xl font-medium ${queueStats?.dead_letter_count > 0 ? 'text-red-600' : ''}`}>
+                    {queueStats?.dead_letter_count || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* Pending by Type */}
+              {queueStats?.pending_by_type?.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-sm text-gray-500 mb-3">Pending Events by Type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {queueStats.pending_by_type.map((item, idx) => (
+                      <Badge key={idx} variant="outline" className="text-sm py-1 px-3">
+                        {item.event_type}: {item.count}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Failed Events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Failed Events</span>
+                <Button variant="outline" size="sm" onClick={loadFailedEvents}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Load Failed Events
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Events that failed processing and may need manual intervention
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {failedEvents.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Event ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Retries</TableHead>
+                      <TableHead>Error</TableHead>
+                      <TableHead>Last Updated</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {failedEvents.slice(0, 20).map((event) => (
+                      <TableRow key={event.event_id}>
+                        <TableCell className="font-mono text-xs">
+                          {event.event_id?.substring(0, 8)}...
+                        </TableCell>
+                        <TableCell className="text-sm">{event.event_type}</TableCell>
+                        <TableCell>
+                          <Badge variant={event.retry_count >= 3 ? 'destructive' : 'secondary'}>
+                            {event.retry_count} / {queueStats?.max_retries || 3}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-red-600 max-w-xs truncate">
+                          {event.error}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {event.updated_at ? new Date(event.updated_at).toLocaleString() : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => retryEvent(event.event_id)}
+                            disabled={event.retry_count >= (queueStats?.max_retries || 3)}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            Retry
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <CheckCircle className="h-12 w-12 mx-auto text-emerald-500 mb-2" />
+                  <p>No failed events</p>
+                  <p className="text-sm mt-1">Click "Load Failed Events" to check for failures</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Cleanup Dialog */}
       <Dialog open={cleanupDialogOpen} onOpenChange={setCleanupDialogOpen}>
