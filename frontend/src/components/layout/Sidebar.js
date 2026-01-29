@@ -37,7 +37,8 @@ import {
   Boxes,
   Brain,
   Lock,
-  Webhook
+  Webhook,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useRBAC } from '../../lib/RBACContext';
