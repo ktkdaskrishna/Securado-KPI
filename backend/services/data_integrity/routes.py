@@ -9,7 +9,7 @@ import hashlib
 import json
 
 from libs.database import get_app_db, get_canonical_db
-from libs.auth import get_current_user
+from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/data-quality", tags=["data-quality"])
