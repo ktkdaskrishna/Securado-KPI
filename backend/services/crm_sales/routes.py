@@ -1364,11 +1364,15 @@ async def list_accounts(
                         overdue_by_account_name[acc_name] = overdue_by_account_name.get(acc_name, 0) + overdue_amount
     
     # Mark accounts with overdue invoices
+    # NOTE: Use account_id as primary lookup, fall back to account_name only if no ID match
     for account in accounts:
         account["is_company"] = True
         acc_id = str(account.get("source_record_id", ""))
         acc_name = account.get("name", "")
-        overdue = overdue_by_account_id.get(acc_id, 0) + overdue_by_account_name.get(acc_name, 0)
+        # Prefer account_id lookup, fall back to account_name
+        overdue = overdue_by_account_id.get(acc_id, 0)
+        if overdue == 0 and acc_name:
+            overdue = overdue_by_account_name.get(acc_name, 0)
         account["has_overdue"] = overdue > 0
         account["overdue_amount"] = overdue
     
@@ -1377,7 +1381,10 @@ async def list_accounts(
         contact["is_company"] = False
         acc_id = str(contact.get("account_id", ""))
         acc_name = contact.get("account_name", "")
-        overdue = overdue_by_account_id.get(acc_id, 0) + overdue_by_account_name.get(acc_name, 0)
+        # Prefer account_id lookup, fall back to account_name
+        overdue = overdue_by_account_id.get(acc_id, 0)
+        if overdue == 0 and acc_name:
+            overdue = overdue_by_account_name.get(acc_name, 0)
         contact["has_overdue"] = overdue > 0
         contact["overdue_amount"] = overdue
     
