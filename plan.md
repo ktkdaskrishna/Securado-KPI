@@ -9,7 +9,25 @@
 
 ---
 
-## Current Sprint: Event-Driven Architecture (Phase 2)
+## Current Sprint: Dashboard Filter Fixes
+
+### 🟢 Filter Issues (COMPLETED!)
+
+| Issue | Status | Fix Applied |
+|-------|--------|-------------|
+| Product Manager Leaderboard ignores sales_rep filter | ✅ FIXED | Added `sales_rep` parameter to backend endpoint |
+| Category Stats ignores sales_rep filter | ✅ FIXED | Added `sales_rep` parameter to backend endpoint |
+| Click-through navigation loses salesRep filter | ✅ FIXED | Updated `handleNavigateToOpportunities()` to preserve all filters |
+| ETL Deduplication | ✅ ALREADY FIXED | Upsert with unique compound key prevents duplicates |
+
+**Verification:**
+- Backend now accepts `sales_rep` filter on leaderboard endpoints
+- Click-through from KPI cards preserves Year + Quarter + SalesRep + Stage
+- URL shows correct filters: `?salesRep=Nabisaheb&year=2026`
+
+---
+
+## Previous Sprint: Event-Driven Architecture (Phase 2)
 
 ### 🟢 Phase 2A - MongoDB Event Queue (COMPLETED!)
 
