@@ -630,9 +630,26 @@ class ETLRunner:
         org_id: str,
         canonical_db,
         correlation_id: str,
-        log
+        log,
+        use_queue: bool = False
     ) -> tuple:
-        """Load records to canonical database"""
+        """Load records to canonical database
+        
+        Args:
+            records: Transformed records to load
+            target_entity: Target entity type
+            org_id: Organization ID
+            canonical_db: Canonical database connection
+            correlation_id: Correlation ID for tracing
+            log: Logging function
+            use_queue: If True, publish to event queue instead of direct writes
+        """
+        if use_queue:
+            return await self._load_via_queue(
+                records, target_entity, org_id, correlation_id, log
+            )
+        
+        # Direct write mode (existing behavior)
         # Proper pluralization for collection names
         entity_to_collection = {
             "opportunity": "opportunities",
@@ -698,6 +715,73 @@ class ETLRunner:
             )
         
         return inserted, updated
+    
+    async def _load_via_queue(
+        self,
+        records: List[Dict],
+        target_entity: str,
+        org_id: str,
+        correlation_id: str,
+        log
+    ) -> tuple:
+        """Load records via the event queue for async processing
+        
+        This method publishes records to the MongoDB event queue instead of
+        writing directly to the database. The background worker will process
+        these events and perform the actual database writes.
+        
+        Benefits:
+        - Decoupled from database write latency
+        - Built-in retry logic for failed writes
+        - Audit trail of all write operations
+        - Better handling of database connection issues
+        """
+        if not event_queue_service._running:
+            log("Event queue not running, falling back to direct writes", "warning")
+            # This shouldn't happen in normal operation, but fall back gracefully
+            canonical_db = get_canonical_db()
+            return await self._load(
+                records, target_entity, org_id, canonical_db, correlation_id, log, use_queue=False
+            )
+        
+        # Prepare records for queue
+        prepared_records = []
+        for record in records:
+            record["org_id"] = org_id
+            # Convert datetime objects to ISO strings for JSON serialization
+            serialized = {}
+            for k, v in record.items():
+                if hasattr(v, 'isoformat'):
+                    serialized[k] = v.isoformat()
+                else:
+                    serialized[k] = v
+            prepared_records.append(serialized)
+        
+        # Batch size for queue events (to avoid very large payloads)
+        batch_size = 100
+        total_queued = 0
+        
+        for i in range(0, len(prepared_records), batch_size):
+            batch = prepared_records[i:i + batch_size]
+            
+            # Publish batch to queue
+            await event_queue_service.publish(
+                event_type="etl.record.batch_upsert",
+                payload={
+                    "target_entity": target_entity,
+                    "records": batch
+                },
+                org_id=org_id,
+                correlation_id=correlation_id,
+                producer="etl-runner-service"
+            )
+            total_queued += len(batch)
+        
+        log(f"Queued {total_queued} records for async processing via event queue")
+        
+        # Return counts as "queued" - actual insert/update counts will be tracked by worker
+        # For backwards compatibility, we return total as "inserted" since they'll be processed
+        return total_queued, 0
     
     async def _emit_run_event(
         self,
