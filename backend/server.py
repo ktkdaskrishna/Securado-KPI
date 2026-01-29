@@ -263,6 +263,9 @@ app.include_router(mapping_editor_router, prefix="/api")
 # Data Integrity & Quality
 app.include_router(data_integrity_router, prefix="/api/admin")
 
+# Serving Cache (Single Source of Truth)
+app.include_router(serving_cache_router, prefix="/api")
+
 # Canonical/Data Lake
 app.include_router(canonical_router, prefix="/api")
 app.include_router(search_router, prefix="/api")
