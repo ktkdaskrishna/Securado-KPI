@@ -207,7 +207,7 @@ class CacheBuilder:
             if isinstance(due_date, str):
                 try:
                     due_date = datetime.strptime(due_date[:10], "%Y-%m-%d").date()
-                except:
+                except (ValueError, TypeError):
                     continue
             elif hasattr(due_date, 'date'):
                 due_date = due_date.date()
