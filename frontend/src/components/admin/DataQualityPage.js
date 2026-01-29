@@ -39,9 +39,15 @@ export function DataQualityPage() {
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [cleanupResult, setCleanupResult] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [queueStats, setQueueStats] = useState(null);
+  const [failedEvents, setFailedEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState('duplicates');
 
   useEffect(() => {
     loadData();
+    // Poll queue stats every 10 seconds
+    const interval = setInterval(loadQueueStats, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
@@ -57,11 +63,53 @@ export function DataQualityPage() {
       
       // Load duplicates for selected collection
       await loadDuplicates(selectedCollection);
+      
+      // Load queue stats
+      await loadQueueStats();
     } catch (error) {
       console.error('Failed to load data quality info:', error);
       toast.error('Failed to load data quality information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadQueueStats = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await axios.get(`${API_BASE_URL}/api/admin/data-quality/queue/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setQueueStats(res.data);
+    } catch (error) {
+      console.error('Failed to load queue stats:', error);
+    }
+  };
+
+  const loadFailedEvents = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await axios.get(`${API_BASE_URL}/api/admin/data-quality/queue/failed`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setFailedEvents(res.data.events || []);
+    } catch (error) {
+      console.error('Failed to load failed events:', error);
+    }
+  };
+
+  const retryEvent = async (eventId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.post(`${API_BASE_URL}/api/admin/data-quality/queue/retry/${eventId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Event queued for retry');
+      loadFailedEvents();
+      loadQueueStats();
+    } catch (error) {
+      console.error('Failed to retry event:', error);
+      toast.error('Failed to retry event');
     }
   };
 
