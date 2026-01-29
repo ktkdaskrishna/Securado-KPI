@@ -455,3 +455,76 @@ async def full_data_cleanup(
         logger.info(f"Full data cleanup completed: {total_deleted} duplicates removed")
     
     return results
+
+
+# ==================== EVENT QUEUE MONITORING ====================
+
+@router.get("/queue/stats")
+async def get_queue_stats(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get event queue statistics for monitoring
+    """
+    try:
+        stats = await event_queue_service.get_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get queue stats: {e}")
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status_counts": {"pending": 0, "processing": 0, "completed": 0, "failed": 0},
+            "total_events": 0,
+            "health": "unknown",
+            "error": str(e)
+        }
+
+
+@router.get("/queue/failed")
+async def get_failed_events(
+    limit: int = 50,
+    include_dead_letter: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get failed events for debugging
+    """
+    events = await event_queue_service.get_failed_events(
+        limit=limit,
+        include_dead_letter=include_dead_letter
+    )
+    return {
+        "count": len(events),
+        "events": events
+    }
+
+
+@router.post("/queue/retry/{event_id}")
+async def retry_failed_event(
+    event_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Manually retry a failed event
+    """
+    success = await event_queue_service.retry_event(event_id)
+    if success:
+        return {"status": "success", "message": f"Event {event_id} queued for retry"}
+    else:
+        raise HTTPException(status_code=404, detail="Event not found or not in failed state")
+
+
+@router.post("/queue/purge")
+async def purge_completed_events(
+    older_than_hours: int = 24,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Manually purge completed events older than specified hours
+    """
+    deleted = await event_queue_service.purge_completed(older_than_hours)
+    return {
+        "status": "success",
+        "deleted_count": deleted,
+        "older_than_hours": older_than_hours
+    }
