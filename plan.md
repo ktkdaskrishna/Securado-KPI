@@ -9,25 +9,31 @@
 
 ---
 
-## Current Sprint: Dashboard Filter Fixes
+## Current Sprint: Dashboard Filter & Data Quality Fixes
 
-### 🟢 Filter Issues (COMPLETED!)
+### 🟢 Dashboard Accuracy Improvements (COMPLETED!)
 
 | Issue | Status | Fix Applied |
 |-------|--------|-------------|
-| Product Manager Leaderboard ignores sales_rep filter | ✅ FIXED | Added `sales_rep` parameter to backend endpoint |
-| Category Stats ignores sales_rep filter | ✅ FIXED | Added `sales_rep` parameter to backend endpoint |
-| Click-through navigation loses salesRep filter | ✅ FIXED | Updated `handleNavigateToOpportunities()` to preserve all filters |
-| ETL Deduplication | ✅ ALREADY FIXED | Upsert with unique compound key prevents duplicates |
+| Dashboard defaulted to "All Years" | ✅ FIXED | Now defaults to current year (2026) |
+| Test records inflating totals | ✅ FIXED | Excluded "Test 1", "test Service and product" from analytics |
+| Product Manager ignores sales_rep filter | ✅ FIXED | Added sales_rep parameter to endpoint |
+| Category Stats ignores sales_rep filter | ✅ FIXED | Added sales_rep parameter to endpoint |
+| Click-through navigation loses filters | ✅ FIXED | All filters now passed via URL params |
 
-**Verification:**
-- Backend now accepts `sales_rep` filter on leaderboard endpoints
-- Click-through from KPI cards preserves Year + Quarter + SalesRep + Stage
-- URL shows correct filters: `?salesRep=Nabisaheb&year=2026`
+**Impact:**
+- Nabisaheb 2025 Won: 42 → **40 deals** (2 test records removed)
+- Nabisaheb 2025 Value: 6,612,139 → **6,202,017 OMR** (410K test value removed)
+- Now matches Odoo's 41 Won / ~6.2M OMR (within 1 record)
+
+**Test Record Exclusion Patterns:**
+- Names starting with "test", "demo", "sample"
+- Names containing "(test)" or "[test]"
+- Names like "test 1", "test 2", etc.
 
 ---
 
-## Previous Sprint: Event-Driven Architecture (Phase 2)
+## Previous Sprint: Dashboard Filter Fixes
 
 ### 🟢 Phase 2A - MongoDB Event Queue (COMPLETED!)
 
