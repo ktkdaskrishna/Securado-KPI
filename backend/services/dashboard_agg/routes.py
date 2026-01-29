@@ -923,6 +923,9 @@ async def get_category_stats(
     # Get opportunities (filtered by sales_rep if applicable)
     opportunities = await canonical_db.opportunities.find(query).to_list(10000)
     
+    # Filter out test/demo records
+    opportunities = filter_out_test_records(opportunities)
+    
     # Filter to Won opportunities only
     won_opps = []
     for o in opportunities:
