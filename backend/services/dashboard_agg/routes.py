@@ -6,8 +6,9 @@ Handles:
 - Manual refresh triggers
 """
 from fastapi import APIRouter, Depends, Query
-from typing import Optional
+from typing import Optional, List, Dict
 import logging
+import re
 from datetime import datetime, timezone
 import random
 from collections import defaultdict
@@ -20,6 +21,32 @@ from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+# Test record patterns to exclude from analytics
+TEST_RECORD_PATTERNS = [
+    r'^test\s',           # Starts with "test "
+    r'^test$',            # Exactly "test"
+    r'\btest\s+\d+\b',    # "test 1", "test 2", etc.
+    r'^demo\s',           # Starts with "demo "
+    r'^sample\s',         # Starts with "sample "
+    r'\(test\)',          # Contains "(test)"
+    r'\[test\]',          # Contains "[test]"
+]
+
+def is_test_record(name: str) -> bool:
+    """Check if a record name indicates it's a test/demo record"""
+    if not name:
+        return False
+    name_lower = name.lower().strip()
+    for pattern in TEST_RECORD_PATTERNS:
+        if re.search(pattern, name_lower, re.IGNORECASE):
+            return True
+    return False
+
+def filter_out_test_records(records: List[Dict]) -> List[Dict]:
+    """Filter out test/demo records from a list of opportunities"""
+    return [r for r in records if not is_test_record(r.get("name", ""))]
 
 
 # Stage mapping for dashboard - normalize Odoo stages to our pipeline stages
