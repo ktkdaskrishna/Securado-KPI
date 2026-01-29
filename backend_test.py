@@ -162,7 +162,62 @@ class CRMAPITester:
         self.test_api("Analytics Overview", "GET", "/api/analytics/overview")
         self.test_api("Analytics Conversion Funnel", "GET", "/api/analytics/conversion-funnel")
         
-        # 7. Performance Summary
+        # 7. Event Queue APIs (NEW)
+        print("\n📋 Event Queue APIs")
+        print("-" * 80)
+        success, health_data = self.test_api(
+            "Health Check",
+            "GET",
+            "/api/health",
+            check_response=lambda d: 'components' in d
+        )
+        
+        if success:
+            components = health_data.get('components', {})
+            event_queue_status = components.get('event_queue', 'unknown')
+            event_worker_status = components.get('event_worker', 'unknown')
+            
+            print(f"   📊 Event Queue Status: {event_queue_status}")
+            print(f"   📊 Event Worker Status: {event_worker_status}")
+            
+            if event_queue_status != 'running':
+                print(f"   ⚠️  WARNING: Event queue is not running!")
+            if event_worker_status != 'running':
+                print(f"   ⚠️  WARNING: Event worker is not running!")
+        
+        success, queue_stats = self.test_api(
+            "Event Queue Stats",
+            "GET",
+            "/api/admin/data-quality/queue/stats",
+            check_response=lambda d: 'status_counts' in d and 'health' in d
+        )
+        
+        if success:
+            status_counts = queue_stats.get('status_counts', {})
+            health = queue_stats.get('health', 'unknown')
+            total_events = queue_stats.get('total_events', 0)
+            events_per_hour = queue_stats.get('events_per_hour', 0)
+            
+            print(f"   📊 Queue Health: {health}")
+            print(f"   📊 Total Events: {total_events}")
+            print(f"   📊 Pending: {status_counts.get('pending', 0)}")
+            print(f"   📊 Processing: {status_counts.get('processing', 0)}")
+            print(f"   📊 Completed: {status_counts.get('completed', 0)}")
+            print(f"   📊 Failed: {status_counts.get('failed', 0)}")
+            print(f"   📊 Events/Hour: {events_per_hour}")
+        
+        success, failed_events = self.test_api(
+            "Event Queue Failed Events",
+            "GET",
+            "/api/admin/data-quality/queue/failed",
+            check_response=lambda d: 'events' in d
+        )
+        
+        if success:
+            events_list = failed_events.get('events', [])
+            print(f"   📊 Failed Events Count: {len(events_list)}")
+        
+        # 8. Performance Summary
         print("\n📋 Performance Summary")
         print("-" * 80)
         if self.performance_issues:
