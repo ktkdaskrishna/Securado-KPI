@@ -62,13 +62,32 @@ class CacheReader:
         data = await cache_builder.build_account_overdue(org_id, force=False)
         
         if account_id or account_name:
-            # Look up specific account
-            key = account_id if account_id else account_name
-            account_data = data["by_account"].get(key, {})
+            # Look up specific account - try by key first, then search by name
+            if account_id:
+                account_data = data["by_account"].get(account_id, {})
+                if account_data:
+                    return {
+                        "overdue_amount": account_data.get("overdue_amount", 0),
+                        "invoice_count": account_data.get("invoice_count", 0),
+                        "has_overdue": account_data.get("overdue_amount", 0) > 0
+                    }
+            
+            # Search by account_name (case-insensitive partial match)
+            if account_name:
+                search_name = account_name.lower()
+                for key, acc_data in data["by_account"].items():
+                    if search_name in (acc_data.get("account_name", "") or "").lower():
+                        return {
+                            "overdue_amount": acc_data.get("overdue_amount", 0),
+                            "invoice_count": acc_data.get("invoice_count", 0),
+                            "has_overdue": acc_data.get("overdue_amount", 0) > 0
+                        }
+            
+            # Not found
             return {
-                "overdue_amount": account_data.get("overdue_amount", 0),
-                "invoice_count": account_data.get("invoice_count", 0),
-                "has_overdue": account_data.get("overdue_amount", 0) > 0
+                "overdue_amount": 0,
+                "invoice_count": 0,
+                "has_overdue": False
             }
         
         return data
