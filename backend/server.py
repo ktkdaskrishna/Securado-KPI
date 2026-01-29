@@ -68,6 +68,9 @@ from services.etl_control.routes import (
     mapping_editor_router
 )
 from services.etl_runner.runner import etl_runner
+from services.serving_cache.cache_builder import cache_builder
+from services.serving_cache.cache_reader import cache_reader
+from services.serving_cache.routes import router as serving_cache_router
 from services.canonical_query.routes import router as canonical_router, search_router
 from services.crm_sales.routes import (
     opportunities_router,
