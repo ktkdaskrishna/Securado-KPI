@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { 
   Database, AlertTriangle, CheckCircle, RefreshCw, Trash2, 
-  Shield, Activity, AlertCircle, FileCheck, Layers
+  Shield, Activity, AlertCircle, FileCheck, Layers,
+  Play, Pause, Clock, Zap, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
