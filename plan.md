@@ -20,7 +20,7 @@
 | Create background worker | ✅ DONE | Polls and processes events with retry logic |
 | Add queue stats endpoint | ✅ DONE | `/api/admin/data-quality/queue/stats` |
 | Update Data Quality UI | ✅ DONE | Event Queue tab with real-time monitoring |
-| Modify ETL runner to publish events | ⬜ NEXT | Replace direct writes with queue |
+| Modify ETL runner to publish events | ✅ DONE | Added `use_event_queue` config option |
 
 **What's Built:**
 - MongoDB-based event queue service with publish/consume pattern
@@ -28,8 +28,10 @@
 - TTL auto-cleanup of completed events (24 hours)
 - Real-time queue monitoring UI with health status
 - Failed events viewer with manual retry capability
+- ETL runner supports both direct writes (default) and queue-based writes
 
-**Next Step:** Wire up the ETL runner to publish events to the queue instead of direct DB writes.
+**How to Enable Queue Mode:**
+Pipeline config can include `"use_event_queue": true` to enable queue-based data loading instead of direct database writes.
 
 ### 🟢 Phase 1 - Data Integrity (COMPLETED!)
 
