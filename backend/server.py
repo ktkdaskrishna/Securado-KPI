@@ -137,6 +137,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"Serving cache initialization failed: {e}")
     
     try:
+        # Initialize RBAC sync services
+        await odoo_user_sync.initialize(db_manager.app_db)
+        await access_rule_engine.initialize(db_manager.app_db)
+        logger.info("RBAC sync services initialized")
+    except Exception as e:
+        logger.error(f"RBAC sync services initialization failed: {e}")
+    
+    try:
         # Start ETL runner
         await etl_runner.start()
     except Exception as e:
