@@ -23,13 +23,25 @@
 | Fix sidebar scrolling | ✅ DONE | Added overflow-y-auto |
 | Grace period for rollout | ✅ DONE | Full access when RBAC not synced |
 
-### 🔵 Phase 2: RBAC Testing & Activation (Next Steps)
+### 🟢 Phase 2: Microsoft SSO + Auto-Link RBAC (COMPLETED!)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Trigger RBAC sync from Odoo | ⬜ TODO | Call `/api/rbac/sync` with active connection |
-| Verify user permissions | ⬜ TODO | Test different user roles |
-| Document RBAC setup | ⬜ TODO | Add to docs/ARCHITECTURE.md |
+| Backend Microsoft OAuth endpoints | ✅ DONE | `/api/auth/microsoft/*` |
+| Frontend MSAL integration | ✅ DONE | @azure/msal-browser installed |
+| Microsoft Login Button | ✅ DONE | Added to LoginPage |
+| Auto-link by email | ✅ DONE | Matches MS user email to RBAC |
+| Environment placeholders | ✅ DONE | Ready for Azure AD config |
+
+### 🔵 Phase 3: Configure Azure AD (Next Steps - YOUR ACTION REQUIRED)
+
+To activate Microsoft SSO, add these to `/app/backend/.env`:
+```
+MICROSOFT_CLIENT_ID=your-azure-ad-client-id
+MICROSOFT_CLIENT_SECRET=your-azure-ad-client-secret  
+MICROSOFT_TENANT_ID=your-azure-ad-tenant-id
+MICROSOFT_REDIRECT_URI=https://trustedcrm.preview.emergentagent.com/api/auth/microsoft/callback
+```
 
 ### Architecture (Hybrid RBAC):
 ```
