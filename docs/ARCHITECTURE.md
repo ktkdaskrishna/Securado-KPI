@@ -213,6 +213,38 @@ serving_cache: { cache_type: 1, org_id: 1, filter_hash: 1 } // unique
 - Sales funnel analysis
 - Deal recommendations
 
+### 9. RBAC Sync Service (`/api/rbac/*`)
+- Hybrid RBAC implementation (Odoo metadata + local rules)
+- Syncs users, groups, teams from Odoo
+- Row-level security enforcement
+- Grace period for non-synced orgs
+
+#### RBAC Endpoints
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/rbac/sync` | Trigger user/group/team sync from Odoo |
+| `GET /api/rbac/users` | List synced users with access levels |
+| `GET /api/rbac/groups` | List synced Odoo groups |
+| `GET /api/rbac/teams` | List synced sales teams |
+| `GET /api/rbac/my-access` | Get current user's permissions |
+| `GET /api/rbac/test-filter/{user}` | Test what filter applies to a user |
+| `GET /api/rbac/stats` | RBAC sync statistics |
+
+#### Access Levels
+| Level | Description | Data Access |
+|-------|-------------|-------------|
+| `ADMIN` | Administration / Settings, Sales / Administrator | All records |
+| `MANAGER` | Sales / Manager | Team records + own |
+| `USER` | Sales / User | Own records only |
+| `RESTRICTED` | Default (no RBAC sync yet) | Full access (grace period) or own records |
+
+#### RBAC Collections (in `event_mesh_app`)
+| Collection | Purpose |
+|------------|---------|
+| `users_rbac` | User metadata with groups/teams |
+| `groups_rbac` | Odoo res.groups definitions |
+| `teams_rbac` | Odoo crm.team definitions |
+
 ---
 
 ## Data Flow
