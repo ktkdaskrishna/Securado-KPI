@@ -96,6 +96,7 @@ from services.event_queue.worker import event_worker
 from services.rbac_sync.routes import router as rbac_sync_router
 from services.rbac_sync.user_sync import odoo_user_sync
 from services.rbac_sync.access_rules import access_rule_engine
+from services.microsoft_auth.routes import router as microsoft_auth_router
 
 
 @asynccontextmanager
