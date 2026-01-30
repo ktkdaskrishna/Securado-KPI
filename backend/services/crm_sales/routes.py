@@ -1320,6 +1320,7 @@ async def convert_lead_to_opportunity(
 
 @accounts_router.get("")
 async def list_accounts(
+    request: Request,
     entity_type: Optional[str] = Query(None, description="Filter by entity type: company, contact, or all"),
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
@@ -1327,18 +1328,23 @@ async def list_accounts(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """List accounts (companies) and contacts with optional filters"""
+    """List accounts (companies) and contacts with optional filters and RBAC"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
     logger.info(f"Accounts list request - entity_type: {entity_type}, year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
+    # Get RBAC filter for accounts
+    rbac_filter = await get_rbac_filter(request, current_user, "account")
+    
     # Get accounts (companies)
     accounts_query = {"org_id": org_id}
+    accounts_query.update(rbac_filter)
     accounts = await canonical_db.accounts.find(accounts_query).to_list(2000)
     
-    # Get contacts 
+    # Get contacts with RBAC
     contacts_query = {"org_id": org_id}
+    contacts_query.update(rbac_filter)
     contacts = await canonical_db.contacts.find(contacts_query).to_list(5000)
     
     # Get all invoices to check for overdue
