@@ -59,7 +59,8 @@ const RBACManagementPage = () => {
       const odooConnections = (connectionsRes.data || []).filter(c => c.type === 'odoo' && c.status === 'active');
       setConnections(odooConnections);
       if (odooConnections.length > 0 && !selectedConnection) {
-        setSelectedConnection(odooConnections[0].connection_id);
+        // Use 'id' field (API returns 'id' not 'connection_id')
+        setSelectedConnection(odooConnections[0].id || odooConnections[0].connection_id);
       }
     } catch (error) {
       console.error('Error fetching RBAC data:', error);
