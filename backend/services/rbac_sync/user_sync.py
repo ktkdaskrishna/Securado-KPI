@@ -212,12 +212,23 @@ class OdooUserSync:
             [[['active', '=', True], ['share', '=', False]]]  # Internal users only
         )
         
-        users = models.execute_kw(
-            db, uid, password,
-            'res.users', 'read',
-            [user_ids],
-            {'fields': ['id', 'name', 'login', 'email', 'groups_id', 'sale_team_ids', 'active', 'partner_id']}
-        )
+        # Try to get users with sale_team_id (Odoo 17+)
+        # Fall back to just groups if sale_team_id doesn't exist
+        try:
+            users = models.execute_kw(
+                db, uid, password,
+                'res.users', 'read',
+                [user_ids],
+                {'fields': ['id', 'name', 'login', 'email', 'groups_id', 'sale_team_id', 'active', 'partner_id']}
+            )
+        except Exception as e:
+            logger.warning(f"Could not read sale_team_id, trying without: {e}")
+            users = models.execute_kw(
+                db, uid, password,
+                'res.users', 'read',
+                [user_ids],
+                {'fields': ['id', 'name', 'login', 'email', 'groups_id', 'active', 'partner_id']}
+            )
         
         # Build group name lookup
         group_lookup = {}
@@ -235,9 +246,13 @@ class OdooUserSync:
             group_ids = user.get('groups_id', [])
             group_names = [group_lookup.get(gid, f"group_{gid}") for gid in group_ids]
             
-            # Resolve team names
-            team_ids = user.get('sale_team_ids', [])
-            team_names = [team_lookup.get(tid, f"team_{tid}") for tid in team_ids]
+            # Resolve team - sale_team_id is a many2one [id, name] or False
+            team_ids = []
+            team_names = []
+            sale_team = user.get('sale_team_id')
+            if sale_team and isinstance(sale_team, (list, tuple)) and len(sale_team) >= 2:
+                team_ids = [sale_team[0]]
+                team_names = [sale_team[1] or team_lookup.get(sale_team[0], '')]
             
             doc = {
                 "odoo_user_id": user['id'],
