@@ -153,6 +153,7 @@ function AppRoutes() {
         {/* Admin */}
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/roles" element={<RolesPage />} />
+        <Route path="/admin/rbac" element={<RBACManagementPage />} />
         <Route path="/admin/departments" element={<DepartmentsPage />} />
         <Route path="/admin/settings" element={<SettingsPage />} />
         <Route path="/admin/logs" element={<SystemLogsPage />} />
