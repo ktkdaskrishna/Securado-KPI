@@ -36,12 +36,18 @@ async def trigger_rbac_sync(
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get Odoo connection
+    # Get Odoo connection - check both 'id' and 'connection_id' fields
+    connection = None
     if connection_id:
-        connection = await app_db.etl_connections.find_one({"connection_id": connection_id})
-    else:
+        # Try by 'id' field first (current schema)
+        connection = await app_db.connections.find_one({"id": connection_id, "org_id": org_id})
+        # Fallback to 'connection_id' field (legacy schema)
+        if not connection:
+            connection = await app_db.connections.find_one({"connection_id": connection_id, "org_id": org_id})
+    
+    if not connection:
         # Use first active Odoo connection
-        connection = await app_db.etl_connections.find_one({
+        connection = await app_db.connections.find_one({
             "type": "odoo",
             "status": "active",
             "org_id": org_id
@@ -50,13 +56,20 @@ async def trigger_rbac_sync(
     if not connection:
         raise HTTPException(status_code=404, detail="No Odoo connection found")
     
-    config = connection.get("config", {})
+    # Get connection config - fields are at root level, not in 'config' sub-object
+    odoo_url = connection.get("url") or connection.get("config", {}).get("url")
+    odoo_db = connection.get("database") or connection.get("config", {}).get("database")
+    odoo_username = connection.get("username") or connection.get("config", {}).get("username")
+    odoo_password = connection.get("api_key") or connection.get("config", {}).get("password")
+    
+    if not all([odoo_url, odoo_db, odoo_username, odoo_password]):
+        raise HTTPException(status_code=400, detail="Odoo connection missing required fields (url, database, username, api_key)")
     
     result = await odoo_user_sync.sync_from_odoo(
-        odoo_url=config.get("url"),
-        odoo_db=config.get("database"),
-        odoo_username=config.get("username"),
-        odoo_password=config.get("password"),
+        odoo_url=odoo_url,
+        odoo_db=odoo_db,
+        odoo_username=odoo_username,
+        odoo_password=odoo_password,
         org_id=org_id
     )
     
