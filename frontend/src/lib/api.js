@@ -256,11 +256,31 @@ export const analyticsAPI = {
   getFilters: () => api.get('/analytics/filters'),
 };
 
-// Odoo RBAC APIs
+// Odoo RBAC APIs (legacy)
 export const rbacAPI = {
   getCurrentUserRBAC: () => api.get('/odoo-rbac/current-user-rbac'),
   getUserPermissions: (userId) => api.get(`/odoo-rbac/user-permissions/${userId}`),
   syncGroups: () => api.post('/odoo-rbac/sync-groups'),
   syncUsers: () => api.post('/odoo-rbac/sync-users'),
   getWebhookInstructions: () => api.get('/webhooks/setup-instructions'),
+};
+
+// RBAC Sync APIs (Hybrid RBAC - syncs from Odoo)
+export const rbacSyncAPI = {
+  // Trigger sync from Odoo
+  triggerSync: (connectionId) => api.post('/rbac/sync', null, { params: { connection_id: connectionId } }),
+  
+  // List synced data
+  listUsers: (limit = 100) => api.get('/rbac/users', { params: { limit } }),
+  listGroups: () => api.get('/rbac/groups'),
+  listTeams: () => api.get('/rbac/teams'),
+  
+  // Access info
+  getMyAccess: () => api.get('/rbac/my-access'),
+  getUserAccess: (userName) => api.get(`/rbac/user-access/${encodeURIComponent(userName)}`),
+  testFilter: (userName, entityType = 'opportunity') => 
+    api.get(`/rbac/test-filter/${encodeURIComponent(userName)}`, { params: { entity_type: entityType } }),
+  
+  // Statistics
+  getStats: () => api.get('/rbac/stats'),
 };
