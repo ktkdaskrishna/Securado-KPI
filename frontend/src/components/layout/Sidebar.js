@@ -497,7 +497,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <ScrollArea className="flex-1 px-3 py-4">
+        <ScrollArea className="flex-1 px-3 py-4 overflow-y-auto">
           {/* CRM Platform */}
           {getVisibleItems(defaultNavigation.crm).length > 0 && (
             <div className="mb-6">
