@@ -496,6 +496,7 @@ dashboard_aggregator = DashboardAggregator()
 
 @router.get("/stats")
 async def get_dashboard_stats(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
     quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
@@ -505,7 +506,7 @@ async def get_dashboard_stats(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on: create_date or close_date"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get dashboard statistics - real-time calculation with optional filters"""
+    """Get dashboard statistics - real-time calculation with optional filters and RBAC"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
@@ -513,8 +514,11 @@ async def get_dashboard_stats(
     # Log the filter parameters received
     logger.info(f"Dashboard stats request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}, team_id: {team_id}, account: {account}, stage: {stage}, date_field: {date_field}")
     
-    # Check if any filter is applied
-    has_filters = any([year, quarter, sales_rep, team_id, account, stage])
+    # Get RBAC filter for opportunities
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if any filter is applied (including RBAC)
+    has_filters = any([year, quarter, sales_rep, team_id, account, stage]) or bool(rbac_filter)
     
     if not has_filters:
         # Use cache for unfiltered view
@@ -540,6 +544,10 @@ async def get_dashboard_stats(
     # Calculate filtered stats in real-time
     # Build MongoDB query for non-date filters
     query = {"org_id": org_id}
+    
+    # Apply RBAC filter
+    query.update(rbac_filter)
+    
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
