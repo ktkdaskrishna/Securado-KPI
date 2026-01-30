@@ -9,7 +9,46 @@
 
 ---
 
-## Current Sprint: Serving Cache Architecture (Single Source of Truth)
+## Current Sprint: Hybrid RBAC Implementation (Status: IN PROGRESS)
+
+### 🔵 Phase 1: RBAC Service Integration
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Create RBAC service files | ✅ DONE | `/app/backend/services/rbac_sync/` |
+| Integrate RBAC into server.py | 🔵 IN PROGRESS | Add router + initialize services |
+| Add `opportunity_number` ETL mapping | ⬜ TODO | Critical for data reconciliation |
+| Test RBAC endpoints | ⬜ TODO | Verify sync & filter APIs |
+| Apply RBAC filters to data APIs | ⬜ TODO | Opportunities, Accounts, Dashboard |
+
+### Architecture (Hybrid RBAC):
+```
+┌─────────────┐     ┌──────────────────┐     ┌───────────────────┐
+│   Odoo      │ ──▶ │ RBAC Sync Service│ ──▶ │ users_rbac        │
+│ (res.users, │     │ (Syncs metadata) │     │ groups_rbac       │
+│  res.groups,│     └──────────────────┘     │ teams_rbac        │
+│  crm.team)  │                              └───────────────────┘
+└─────────────┘                                       │
+                                                      ▼
+┌─────────────┐     ┌──────────────────┐     ┌───────────────────┐
+│  API Request│ ──▶ │ RBAC Middleware  │ ──▶ │ Filtered Query    │
+│             │     │ (Local Rules)    │     │ (User sees only   │
+└─────────────┘     └──────────────────┘     │  permitted data)  │
+                                             └───────────────────┘
+```
+
+**RBAC API Endpoints:**
+- `POST /api/rbac/sync` - Trigger user/group/team sync from Odoo
+- `GET /api/rbac/users` - List synced users with access levels
+- `GET /api/rbac/groups` - List synced groups
+- `GET /api/rbac/teams` - List synced teams  
+- `GET /api/rbac/my-access` - Get current user's permissions
+- `GET /api/rbac/test-filter/{user_name}` - Test RBAC filter for user
+- `GET /api/rbac/stats` - RBAC sync statistics
+
+---
+
+## Previous Sprint: Serving Cache Architecture (Single Source of Truth)
 
 ### 🟢 Serving Cache Layer (COMPLETED!)
 
