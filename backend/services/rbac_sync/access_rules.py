@@ -125,9 +125,17 @@ class AccessRuleEngine:
         })
         
         if not user_rbac:
-            logger.warning(f"No RBAC metadata found for user: {user_name}")
-            # Default to restricted - user sees only their own records
-            return self._build_owner_filter(user_name, entity_type)
+            # Check if RBAC sync has been done at all for this org
+            any_rbac_users = await self.app_db.users_rbac.count_documents({"org_id": org_id})
+            
+            if any_rbac_users == 0:
+                # No RBAC sync has been performed yet - allow full access (grace period)
+                logger.info(f"RBAC not synced yet for org {org_id} - allowing full access for {user_name}")
+                return {}
+            else:
+                # RBAC is synced but this user is not in the list - restrict to own records
+                logger.warning(f"No RBAC metadata found for user: {user_name} (RBAC is synced for org)")
+                return self._build_owner_filter(user_name, entity_type)
         
         group_names = user_rbac.get("odoo_group_names", [])
         team_ids = user_rbac.get("odoo_team_ids", [])
