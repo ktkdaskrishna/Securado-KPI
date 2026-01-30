@@ -255,6 +255,7 @@ async def health_check():
 
 # Authentication
 app.include_router(auth_router, prefix="/api")
+app.include_router(microsoft_auth_router, prefix="/api")
 
 # Admin & RBAC
 app.include_router(identity_admin_router, prefix="/api")
