@@ -100,6 +100,7 @@ const permissionRequirements = {
   dlq: 'manage_dashboard',
   users: 'manage_users',
   roles: 'manage_users',
+  'rbac-sync': 'manage_users',
   departments: 'manage_users',
   settings: 'manage_dashboard',
   'system-logs': 'manage_dashboard',
