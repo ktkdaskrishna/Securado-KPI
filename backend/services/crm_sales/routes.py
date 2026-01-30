@@ -230,6 +230,7 @@ def apply_date_filters(records: list, year: str = None, quarter: str = None, dat
 
 @opportunities_router.get("")
 async def list_opportunities(
+    request: Request,
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
@@ -241,17 +242,23 @@ async def list_opportunities(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """List opportunities (type=opportunity) with overrides applied and optional filters"""
+    """List opportunities (type=opportunity) with overrides applied, optional filters, and RBAC"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     
     logger.info(f"Opportunities list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
+    
+    # Get RBAC filter for current user
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
     
     # Build query - ONLY type=opportunity (exclude leads)
     query = {
         "org_id": current_user.get("org_id", "default"),
         "type": "opportunity"  # Filter to only opportunities
     }
+    
+    # Apply RBAC filter (merged with base query)
+    query.update(rbac_filter)
     
     # Apply non-date filters
     if stage:
@@ -273,7 +280,7 @@ async def list_opportunities(
     # Trim to requested limit
     records = records[:limit]
     
-    logger.info(f"After filtering: {len(records)} opportunities")
+    logger.info(f"After filtering: {len(records)} opportunities (RBAC applied)")
     
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
