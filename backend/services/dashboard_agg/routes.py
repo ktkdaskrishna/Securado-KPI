@@ -4,8 +4,9 @@ Handles:
 - Consume canonical and CRM events to build serving cache
 - Provide aggregated dashboard statistics
 - Manual refresh triggers
+- RBAC filtering for row-level security
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from typing import Optional, List, Dict
 import logging
 import re
@@ -18,6 +19,7 @@ from libs.utils import serialize_doc, now_utc, PipelineStages
 from libs.event_bus import event_bus, emit_event
 from libs.schemas import Topics, EventEnvelope
 from services.identity.routes import get_current_user
+from services.rbac_sync.middleware import get_rbac_filter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
