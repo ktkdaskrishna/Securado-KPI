@@ -465,7 +465,7 @@ export function Sidebar() {
       )}
       data-testid="sidebar"
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
         {/* Header with Securado Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
           {!collapsed && (
