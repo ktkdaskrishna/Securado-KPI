@@ -8,6 +8,7 @@
       "fields": [
         { "source": "id", "target": "source_record_id", "transform": "to_string" },
         { "source": "name", "target": "name", "transform": "direct" },
+        { "source": "x_studio_opportunity_number", "target": "opportunity_number", "transform": "direct" },
         { "source": "description", "target": "description", "transform": "strip_html" },
         { "source": "x_studio_descriptions", "target": "descriptions", "transform": "direct" },
         { "source": "priority", "target": "priority", "transform": "direct" },
