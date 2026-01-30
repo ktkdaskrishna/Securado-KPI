@@ -66,14 +66,27 @@ class OdooUserSync:
         logger.info(f"Starting RBAC sync from Odoo: {odoo_url}")
         
         try:
-            # Connect to Odoo
-            common = xmlrpc.client.ServerProxy(f"{odoo_url}/xmlrpc/2/common")
+            import ssl
+            
+            # Create SSL context that doesn't verify certificates (for self-signed certs)
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            # Connect to Odoo with SSL context
+            common = xmlrpc.client.ServerProxy(
+                f"{odoo_url}/xmlrpc/2/common",
+                context=ssl_context
+            )
             uid = common.authenticate(odoo_db, odoo_username, odoo_password, {})
             
             if not uid:
                 raise Exception("Odoo authentication failed")
             
-            models = xmlrpc.client.ServerProxy(f"{odoo_url}/xmlrpc/2/object")
+            models = xmlrpc.client.ServerProxy(
+                f"{odoo_url}/xmlrpc/2/object",
+                context=ssl_context
+            )
             
             # Sync Groups first
             groups_synced = await self._sync_groups(models, odoo_db, uid, odoo_password, org_id)
