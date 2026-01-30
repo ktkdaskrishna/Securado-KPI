@@ -11,15 +11,25 @@
 
 ## Current Sprint: Hybrid RBAC Implementation (Status: IN PROGRESS)
 
-### 🔵 Phase 1: RBAC Service Integration
+### 🟢 Phase 1: RBAC Service Integration (COMPLETED!)
 
 | Task | Status | Notes |
 |------|--------|-------|
 | Create RBAC service files | ✅ DONE | `/app/backend/services/rbac_sync/` |
-| Integrate RBAC into server.py | 🔵 IN PROGRESS | Add router + initialize services |
-| Add `opportunity_number` ETL mapping | ⬜ TODO | Critical for data reconciliation |
-| Test RBAC endpoints | ⬜ TODO | Verify sync & filter APIs |
-| Apply RBAC filters to data APIs | ⬜ TODO | Opportunities, Accounts, Dashboard |
+| Integrate RBAC into server.py | ✅ DONE | Router + services initialized at startup |
+| Add `opportunity_number` ETL mapping | ✅ DONE | Added to `odoo_field_mappings.json` |
+| RBAC endpoints working | ✅ DONE | `/api/rbac/*` endpoints tested |
+| Apply RBAC filters to data APIs | ✅ DONE | Opportunities, Accounts, Dashboard |
+| Fix sidebar scrolling | ✅ DONE | Added overflow-y-auto |
+| Grace period for rollout | ✅ DONE | Full access when RBAC not synced |
+
+### 🔵 Phase 2: RBAC Testing & Activation (Next Steps)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Trigger RBAC sync from Odoo | ⬜ TODO | Call `/api/rbac/sync` with active connection |
+| Verify user permissions | ⬜ TODO | Test different user roles |
+| Document RBAC setup | ⬜ TODO | Add to docs/ARCHITECTURE.md |
 
 ### Architecture (Hybrid RBAC):
 ```
