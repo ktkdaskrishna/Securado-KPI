@@ -8,9 +8,10 @@ Handles:
 - Notes under opportunities
 - Accounts with 360 view
 - KPIs tracking
+- RBAC filtering (Hybrid RBAC: synced metadata + local rules)
 """
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
 import logging
@@ -28,6 +29,7 @@ from services.crm_sales.bluesheet import (
     calculate_bluesheet_probability, get_bluesheet_form_options,
     BUYING_INFLUENCES, COMPETITION_STATUS, BUDGET_STATUS
 )
+from services.rbac_sync.middleware import get_rbac_filter
 
 logger = logging.getLogger(__name__)
 
