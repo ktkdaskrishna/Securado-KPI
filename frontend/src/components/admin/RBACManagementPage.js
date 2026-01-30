@@ -168,7 +168,7 @@ const RBACManagementPage = () => {
               data-testid="connection-select"
             >
               {connections.map(conn => (
-                <option key={conn.connection_id} value={conn.connection_id}>
+                <option key={conn.id || conn.connection_id} value={conn.id || conn.connection_id}>
                   {conn.name}
                 </option>
               ))}
