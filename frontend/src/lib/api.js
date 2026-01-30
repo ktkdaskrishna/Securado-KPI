@@ -284,3 +284,16 @@ export const rbacSyncAPI = {
   // Statistics
   getStats: () => api.get('/rbac/stats'),
 };
+
+// Microsoft SSO APIs
+export const microsoftAuthAPI = {
+  // Get configuration status
+  getStatus: () => api.get('/auth/microsoft/status'),
+  getFrontendConfig: () => api.get('/auth/microsoft/config'),
+  
+  // Token exchange (for MSAL.js popup flow)
+  tokenLogin: (accessToken) => api.post('/auth/microsoft/token-login', { access_token: accessToken }),
+  
+  // Check if email is linked to RBAC
+  checkRbacStatus: (email) => api.get(`/auth/microsoft/user-rbac-status?email=${encodeURIComponent(email)}`),
+};
