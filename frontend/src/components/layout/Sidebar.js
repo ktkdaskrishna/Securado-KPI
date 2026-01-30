@@ -137,6 +137,7 @@ const defaultNavigation = {
   admin: [
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
     { id: 'roles', name: 'Roles', href: '/admin/roles', icon: 'Shield', default: true },
+    { id: 'rbac-sync', name: 'RBAC Sync', href: '/admin/rbac', icon: 'ShieldCheck', default: true },
     { id: 'departments', name: 'Departments', href: '/admin/departments', icon: 'Building', default: false },
     { id: 'data-quality', name: 'Data Quality', href: '/admin/data-quality', icon: 'ShieldCheck', default: true },
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
