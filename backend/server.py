@@ -93,6 +93,9 @@ from services.odoo_rbac.routes import router as odoo_rbac_router, webhook_router
 from services.data_integrity.routes import router as data_integrity_router
 from services.event_queue.queue_service import event_queue_service
 from services.event_queue.worker import event_worker
+from services.rbac_sync.routes import router as rbac_sync_router
+from services.rbac_sync.user_sync import odoo_user_sync
+from services.rbac_sync.access_rules import access_rule_engine
 
 
 @asynccontextmanager
