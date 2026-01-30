@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 class Platform2APITester:
-    def __init__(self, base_url="https://crm-fixer-3.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://trustedcrm.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.access_token = None
         self.refresh_token = None

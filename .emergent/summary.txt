@@ -1,186 +1,191 @@
 <analysis>**original_problem_statement:**
-The initial request was to fix a CRM dashboard with incorrect data. This has since expanded into a comprehensive set of bug fixes and new feature requests to improve data accuracy, add new analytics capabilities, and modernize the UI/UX.
+The initial request was to fix a CRM dashboard with incorrect data. This has since expanded into a comprehensive set of bug fixes and new feature requests to improve data accuracy, add new analytics capabilities, modernize the UI/UX, and implement a robust security model.
+
+The user's core problems revolve around data integrity, consistency, and security:
+1.  **Data Integrity:** A massive data duplication issue was causing incorrect analytics. While this was fixed, subsequent analysis revealed that the  field is not being synced from Odoo, making it impossible to reliably reconcile data.
+2.  **Data Consistency:** The user repeatedly found that different parts of the UI (e.g., dashboard highlights vs. detail pages) showed conflicting numbers for the same metrics.
+3.  **Security:** The current application lacks any form of row-level security, allowing any logged-in user to see all data, contrary to the permissions set in the Odoo source system.
 
 **PRODUCT REQUIREMENTS:**
-1.  **Data Accuracy:**
-    *   Fix Won deal counts and values, which were incorrect due to using the wrong date field ( instead of ).
-    *   Sync and display several new custom fields from Odoo, including , , and .
-    *   Correctly distinguish between 'Company' and 'Contact' entities.
-2.  **New Analytics & Features:**
-    *   Export opportunity data to an Excel file.
-    *   Add a Product Manager Leaderboard and Solution Category Performance stats to the dashboard.
-    *   Implement an Invoice tab showing salesperson performance (total won, collected, pending, overdue).
-    *   Display the invoice status next to each Won opportunity.
-3.  **UI/UX Enhancements:**
-    *   Segregate Accounts and Contacts on the Accounts page using tabs.
-    *   Highlight company accounts with overdue invoices using an appealing Gen-Z design.
-    *   Make the overdue invoice alert on a company card a direct link to the relevant invoices.
-    *   Make the At Risk cards on the AI Analytics page clickable to expand and view details.
-4.  **Bug Fixes:**
-    *   Resolve a recurring React error: Objects are not valid as a React child.
-    *   Ensure filters on the AI Analytics page apply globally to all data components.
-    *   Fix the missing Sales Rep filter on the Opportunities page.
-    *   Ensure the statistics on the Activities page update correctly when filtering by year.
-    *   The latest bug: The Activities page shows no data when filtered for the year 2026.
+1.  **Data Integrity & Deduplication:** Implement a mechanism to prevent and clean duplicate records. (Partially Completed - Duplicates fixed, but key field  is still missing).
+2.  **Robust Data Syncing & Architecture:** Introduce a message queue and a centralized data layer to ensure reliable and consistent data. (Completed - MongoDB queue and Serving Cache implemented).
+3.  **Fix Dashboard Filter Bugs:** Ensure all dashboard filters work correctly and in combination. (Completed).
+4.  **Implement Row-Level Security:** Sync permissions from Odoo and enforce them in the application. (In Progress).
+5.  **Fix Data Discrepancies:** Resolve differences in values between the app and Odoo reports. (In Progress - Some root causes fixed, others pending).
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application (FastAPI backend, React frontend) that syncs and visualizes data from a custom Odoo instance.
+The application is a full-stack CRM analytics tool (FastAPI, React, MongoDB) that syncs data from Odoo. Recent work has significantly shifted its architecture to address data consistency and prepare for a robust security model.
 
-*   **Data Sync & Accuracy:** The ETL has been updated to sync numerous custom fields from Odoo (, , , and  from ). The primary data discrepancy for Won deals was resolved by using the new  field for all time-based filtering. The database was also cleaned of duplicate records.
-*   **Backend:** New API endpoints have been created to support a Product Manager leaderboard, Solution Category stats, salesperson-specific invoice analytics, and an Excel export for opportunities. Existing endpoints for accounts, dashboards, and AI analytics were heavily refactored to incorporate the new data fields and filtering logic.
-*   **Frontend:**
-    *   **Accounts Page:** Completely redesigned with Company and Contact tabs. It now features a Gen-Z styled gradient banner on company cards with overdue invoices, which includes the overdue amount and a View Invoices link.
-    *   **AI Analytics Page:** The Team Performance section was replaced with new tables for Product Manager Performance and Solution Category Performance. Global year/quarter filters were added, and the At Risk cards were made clickable to filter a list of relevant accounts.
-    *   **Opportunities & Activities Pages:** An Export to Excel button and the missing Sales Rep filter were added to the Opportunities page. The summary statistics on the Activities page now update correctly based on the selected year.
-*   **Bugs Fixed:** The Objects are not valid as a React child error was resolved by adding backend data transformation for Odoo's relational fields.
+*   **Event Queue:** A MongoDB-based event queue system () was implemented to make data processing more robust. This includes a worker and monitoring endpoints. The ETL runner can now publish events to this queue.
+*   **Centralized Serving Cache:** A new  service () was created. This service pre-aggregates key metrics (like account overdue amounts) into a single collection, which acts as a single source of truth to prevent UI data inconsistencies.
+*   **Dashboard Bug Fixes:** Multiple critical bugs were fixed where dashboard filters were not being applied correctly to all components (e.g., Product Manager Leaderboard, Category Stats) or during click-through navigation.
+*   **Data Discrepancy Fixes:**
+    *   A bug causing **double-counting** of overdue amounts on the Accounts page was found and fixed.
+    *   Analytics queries were updated to **exclude test records**, aligning app totals more closely with Odoo reports.
+*   **RBAC Implementation Started:** Following user approval for a Hybrid RBAC model, the agent created the initial files for a new  service, which will sync user roles/teams from Odoo and apply access rules locally.
 
 **Last working item**:
--   **Last item agent was working:** Investigating a user-reported bug where the Activities page shows no data when the year filter is set to 2026, despite data existing for that year.
+-   **Last item agent was working:** The agent was in the middle of implementing the Hybrid RBAC architecture (Option C). They successfully created the boilerplate files for a new  service, including models, middleware, and a sync service definition.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both. First, use  to confirm that the backend API endpoint () returns the correct data. If the API is correct, use the screenshot tool to debug the frontend (), specifically checking the  hook that re-fetches data when filters change, as a regression was likely introduced here.
+-   **Which testing method agent to use?** both
+    *   **Backend testing agent:** To verify that a new ETL pipeline correctly syncs user, group, and team metadata from Odoo. Also, to create tests confirming the RBAC middleware correctly filters API responses based on the logged-in user's synced permissions.
+    *   **Frontend testing agent:** To perform end-to-end tests by logging in as different users (e.g., a sales rep) and verifying they can only see their own data on pages like Opportunities and the Dashboard.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   Issue 1: No activities are displayed on the Activities page when filtered for the year 2026 (P0)
--   Issue 2: Minor discrepancy in Won deal count between the app and user's file (P2)
+-   **Issue 1: Critical Data Integrity Gap:  Field Not Synced (P0)**
+-   **Issue 2: Sidebar is not scrollable (P2)**
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Description:** The user selected 2026 on the Activities page filter, but the activity list is empty and all summary statistics show zero. This is a regression, as previous tests confirmed the backend API returns data for 2026.
-    -   **Attempted fixes:** None yet. The bug appeared after the agent modified the page to fix a related filter-stat update issue.
+    -   **Description:** The agent discovered that the  field from Odoo is not being synced to the application's database. This makes it impossible to reliably reconcile data between the two systems and is the root cause of the user's ongoing confusion about missing records. The records exist, but they can't be matched by their unique business identifier.
+    -   **Attempted fixes:** None yet. The agent identified the issue but was diverted to other tasks.
     -   **Next debug checklist:**
-        1.  Verify the backend API is still correct using  or  to call  and inspect the JSON response.
-        2.  Inspect the frontend code in .
-        3.  Focus on the  function and the  hook that depends on the  state. A likely cause is that the  from the filter state is not being correctly passed in the API request params upon change.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical bug blocking a core user function. Fixing it will restore the user's ability to view historical and future activity data.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on other issue:** None
-
--   **Issue 2:**
-    -   **Description:** The agent's database query shows 170 Won deals in 2025, while the user's most recent Excel file reports 167.
-    -   **Attempted fixes:** The major discrepancy was fixed, this is a minor residual difference.
-    -   **Next debug checklist:**
-        1.  Request the user's latest Excel file again to rule out timing differences.
-        2.  Write a script to compare the  of the 170 deals in the database against the list from the user's file to identify the 3 extra records.
-    -   **Why fix this issue and what will be achieved with the fix?** Achieves perfect data parity and builds user trust in the application's accuracy.
+        1.  Locate the ETL field mapping definition in .
+        2.  Add a new mapping for the  field from the Odoo  model to the  collection. The source is likely  or a similar custom field name in Odoo.
+        3.  Trigger a full ETL resync of the  pipeline to populate this field for all existing opportunity records.
+        4.  Verify in the database that the  field is now present and populated correctly.
+    -   **Why fix this issue and what will be achieved with the fix?** This is the root cause of the user's data validation struggles. Fixing it will enable accurate 1-to-1 comparison of records between Odoo and the app, which is critical for building user trust.
     -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue:** None
 
+-   **Issue 2:**
+    -   **Description:** The sidebar component is not scrollable, which hides navigation items if the list is long, impacting usability.
+    -   **Attempted fixes:** None in this session.
+    -   **Next debug checklist:** In , apply  and a  (e.g., ) to the main scrollable container.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a recurring, low-priority quality-of-life UX improvement that has been reported multiple times.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue:** None
+
 **In progress Task List**:
-- None
+-   **Task 1: Complete Hybrid RBAC Implementation (P0)**
+    -   **Where to resume:** The files in  exist but are not integrated.
+        1.  Update :
+            -   Import and add the .
+            -   Import and include the .
+            -   Initialize the RBAC sync service during application startup.
+        2.  Create a new ETL pipeline to sync user metadata (users, groups, teams) from Odoo into a new  collection.
+        3.  Implement the logic in  to read the synced metadata for the current user and generate a MongoDB filter query based on local rules (e.g., if user is in Sales / User group, generate ).
+        4.  Apply this generated filter to all relevant data-fetching APIs (e.g., get opportunities, accounts, dashboard stats) to enforce row-level security.
+    -   **What will be achieved with this?** The application will enforce data access permissions based on roles and teams synced from Odoo, closing a major security gap.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
-
 -   **Upcoming Tasks:**
-    -   **P1: Add UI for New Analytics on Main Dashboard:** The backend APIs for the Product Manager Leaderboard and Solution Category Stats are complete. The next step is to add UI components to display this data on the main , as per the user's request.
-    -   **P2: Implement Export to Excel on Opportunities Page UI:** The backend endpoint is ready. Add the Export button to the  header and wire it to call the API and trigger a file download.
-
+    *   **P0: Fix missing  sync** (See Issue 1).
+    *   **P1: Refactor UI to use Serving Cache:** Update frontend components (, , ) to fetch data from the new  endpoints instead of their older, disparate API calls. This will complete the data consistency architecture.
 -   **Future Tasks:**
-    -   **P2: Sync  from Odoo:** This is a key field for users to reconcile data with Odoo. The  ETL mapping in the database must be updated to include it.
-    -   **P3: Complete RBAC Implementation:** The security middleware exists but has not been applied to all necessary API routes to enforce role-based access.
-    -   **P3: Improve AI Analytics Funnel Logic:** The current conversion rates are confusing due to Odoo's flexible stage progression. This requires rethinking the calculation or visualization to be more intuitive for users.
-    -   **P4: Make Sidebar Scrollable:** A recurring, low-priority UX issue.
+    *   **P2: Add Win Rate Tooltip:** Implement a tooltip on the Win Rate KPI card to explain the calculation method.
+    *   **P2: Modular Dashboard Architecture:** Build the layout engine () and admin UI for creating and assigning dashboard layouts.
+    *   **P3: Admin UI for Test Records:** Add a feature in the admin panel to mark/unmark records as test records, providing a more robust way to manage analytics exclusions.
 
 **Completed work in this session**
--   **Data Sync Overhaul:** Synced several new custom fields from Odoo (, , , ) and fixed the core Won date issue by syncing  to a  field.
--   **Database Cleanup:** Identified and removed 1333 duplicate opportunity records created by a faulty manual sync script.
--   **Extensive API Development:**
-    -   Created new backend endpoints for a Product Manager Leaderboard, Category Performance stats, Salesperson Invoice Analytics, and an Excel export for opportunities.
-    -   Rewrote the  endpoint to serve both companies and contacts and to include data on overdue invoices.
--   **Major UI/UX Enhancements:**
-    -   **Accounts Page:** Rebuilt with Company and Contact tabs and a Gen-Z styled gradient banner on company cards to highlight overdue invoices.
-    -   **AI Analytics Page:** Replaced the Team Performance section with new tables for Product Manager and Solution Category stats. Added global filters and made At Risk cards clickable.
--   **Critical Bug Fixes:**
-    -   Resolved the Objects are not valid as a React child crash by properly transforming Odoo's relational array fields on the backend.
-    -   Fixed the missing Sales Rep filter on the Opportunities page.
-    -   Corrected the Activities page so that summary statistics now update dynamically when the year filter is changed.
+-   **Architectural Pivot to Event Queue & Serving Cache:**
+    -   Implemented a custom **MongoDB-based event queue** ( service) as a dependency-free alternative to Redis for background processing.
+    -   Built a centralized **Serving Cache** ( service) to pre-aggregate analytics and act as a single source of truth for the UI, fixing data consistency issues.
+-   **Critical Data & Filter Bug Fixes:**
+    -   Fixed dashboard filters so that all components (Product Manager leaderboard, Category stats) correctly update when a  is selected.
+    -   Fixed dashboard click-through navigation to correctly pass all active filters (Year, Sales Rep) to the Opportunities page.
+    -   Fixed a **double-counting bug** in the Accounts API that was causing inflated overdue amounts.
+    -   Updated all analytics endpoints to **exclude test records**, aligning app data more closely with Odoo reports.
+-   **RBAC Implementation Started:**
+    -   Held a detailed architectural discussion with the user and received approval to build a Hybrid RBAC model.
+    -   Created the initial file structure and boilerplate code for the new  service.
+-   **Documentation:**
+    -   Created a new architecture document at .
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Sidebar is not scrollable**
-    -   **Debug checklist:** In , apply  and a  (e.g., ) to the main scrollable container.
-    -   **Why to solve this issue and what will be achieved with this?** A quality-of-life UX improvement that prevents the navigation menu from being cut off on smaller screens or when more items are added.
-    -   **Should Test frontend/backend/both after fix:** Frontend
-    -   **Is recurring issue?** Y
+-   **Issue 1: Missing  sync:** This was identified as the root cause of data reconciliation problems but was not fixed. It is now the highest priority pending issue.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Sidebar Navigation Not Scrollable
--   **Recurrence count:** 4
+-   **Recurrence count:** 7
 -   **Status:** NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend Data Transformation:** Correctly parsing Odoo's relational field format (e.g., ) into simple strings on the backend before sending to the frontend to prevent React rendering errors.
--   **Dynamic API Filtering:** Modifying multiple backend endpoints to accept and apply date-based filters (, ), which required refactoring data aggregation queries.
--   **Data Aggregation (MongoDB):** Extensive use of MongoDB aggregation pipelines to calculate complex analytics like leaderboards, performance statistics, and invoice payment statuses.
--   **File Streaming (FastAPI):** Implementation of an Excel file export feature using  and FastAPI's  for efficient memory usage.
--   **Complex React State Management:** The  and  were rewritten to manage complex state, including multiple asynchronous data fetches, tabbed interfaces, and dynamic, interdependent filters.
--   **Conditional UI & Styling:** Using conditional rendering and dynamic TailwindCSS classes to implement the Gen-Z overdue banner, which only appears on company cards with outstanding invoices.
+-   **MongoDB as a Message Queue:** The agent implemented a custom event queue using a standard MongoDB collection and a background worker, avoiding an external dependency like Redis. Events are marked with statuses (, , , ).
+-   **Centralized Serving Cache:** This is a key architectural pattern introduced to solve data consistency problems. A background process pre-calculates and stores aggregated data in a dedicated  collection. The UI is intended to read from this cache, ensuring all components display the same numbers.
+-   **Hybrid RBAC Model:** The chosen security architecture. It involves syncing user identity metadata (roles, teams) from Odoo but defining the actual access control rules (e.g., Sales reps can only see their own deals) locally within the application's middleware. This provides a good balance between maintaining a single source of truth for user identity and having control over the permission logic.
+-   **Declarative Middleware for Security:** The plan for the RBAC implementation is to use FastAPI middleware to automatically inject the correct data access filters into every API request, making security enforcement clean and non-invasive.
 
 **key DB schema**
--   ****: Now contains , , , , etc.
--   ****: Now contains an  boolean field to distinguish from contacts.
--   ****: A separate collection used to populate the Contacts tab on the Accounts page.
--   ****: The ETL mapping for  has been significantly updated.
+-   ****:  (New)
+-   ****:  (New)
+-   ****:  (Planned)
+
+**changes in tech stack**
+-   **Redis was planned but NOT implemented.** The agent pivoted and built a **MongoDB-based event queue** instead. This is a critical decision to be aware of.
 
 **All files of reference**
--   : The most heavily modified file, containing new logic for accounts, opportunities, invoices, and the Excel export.
--   : Contains new endpoints for PM/Category performance and fixed conversion funnel logic.
--   : Rewritten with new features and a modern design.
--   : Rewritten with new analytics displays and fixed filters.
--   : Updated to add the export button and fix filters.
--   : Updated to fix how stats respond to filters.
--   : Updated to track the extensive new features and fixes.
+*   : New service for the MongoDB message queue.
+*   : New service for the centralized data cache. This is the new standard for providing data to the UI.
+*   : New service for the RBAC implementation (in progress).
+*   : Heavily modified to fix multiple filtering bugs and to exclude test records.
+*   : Modified to fix the overdue amount double-counting bug.
+*   : A comprehensive overview of the new architecture created by the agent.
+
+**Areas that need refactoring**
+-   **API Endpoint Consolidation:** Many API endpoints in  and  now have their logic duplicated or superseded by the  service. They should be refactored to read from the cache instead of performing their own calculations.
+-   **Frontend Data Fetching:** The frontend components still use a mix of old and new API calls. They should be updated to consistently use the new  and its associated API endpoints to fully realize the benefits of the new architecture.
+
+**key api endpoints**
+*   : **(NEW)** Monitors the health and status of the event queue.
+*   : **(NEW)** The primary endpoint for fetching pre-aggregated data for the UI.
+*   : **(NEW)** Provides consistent overdue amounts, now the single source of truth for this metric.
+*   : **(FIXED)** The double-counting bug was resolved here. Should be refactored to use the serving cache.
+*   : **(FIXED)** Now correctly applies all dashboard filters.
+*   : **(FIXED)** Now correctly applies all dashboard filters.
 
 **Critical Info for New Agent**
--   **The immediate priority is the No activities in 2026 bug.** This is a critical regression. Start by verifying the backend API response for  and then debug the  hook in , as it's the most likely source of the error.
--   **The user is very feature-driven and UI-sensitive.** They have a clear vision for new analytics (leaderboards, invoice stats) and modern UI (Gen-Z appeal). Be prepared for complex, multi-step feature requests that involve both backend and frontend work.
--   **Data integrity is paramount.** The user frequently validates the app's data against their own Odoo exports. Prioritize fixing any data discrepancies, even minor ones. A good next step would be to finally sync the  from Odoo to make this reconciliation easier for everyone.
--   **The codebase has multiple data sync patterns.** Opportunities are synced via the main ETL runner and database mappings. Accounts and contacts are synced via a different, less obvious mechanism. Be mindful of this when debugging data-related issues.
-
-**documents and test reports created in this job**
--   
+-   **Architecture Pivot:** Be aware that the project has pivoted away from Redis. A **MongoDB-based event queue** and a **centralized ** are the new core architectural components for data processing and consistency. You must build upon this new foundation.
+-   **Complete the RBAC Implementation:** Your first priority is to finish the Hybrid RBAC implementation. This involves creating the ETL pipeline for user metadata from Odoo and integrating the security middleware into all data-fetching APIs.
+-   **Address the  Sync:** The single most critical data integrity issue is the missing  field. This **must be fixed** to restore user trust in data reconciliation. It is a P0 issue.
+-   **Embrace the Serving Cache:** The  is the solution to the user's data consistency complaints. All future UI work and refactoring should aim to consume data from this cache rather than creating new one-off API endpoints.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:** Reports that no activities are showing for the year 2026 and provides screenshots. **Status: IN PROGRESS**
-2.  **user:** Reports that AI Analytics filters are not applying globally and the At Risk cards are not clickable. **Status: Completed**
-3.  **user:** Reports a missing Sales Rep filter, broken activity filters, and a non-functional Excel export. **Status: Completed**
-4.  **user:** Confirms the AI data structure is correct but states filtering is not working. **Status: Addressed and Completed**
-5.  **user:** Provides a detailed PDF with a list of issues on the AI Analytics page, including wrong data, missing filters, and incorrect performance metrics. **Status: Completed**
-6.  **user:** Reports a critical React crash: Objects are not valid as a React child. **Status: Completed**
-7.  **user:** Requests the new Gen-Z overdue alert be more appealing, apply only to companies, and link to the invoice details. **Status: Completed**
-8.  **user:** Asks for login credentials. **Status: Completed**
-9.  **user:** Approves the plan to implement a large batch of new features (Excel export, leaderboards, invoice tabs, etc.). **Status: Completed**
-10. **user:** Provides a long list of new feature requests and clarifications after the agent fixed the initial data discrepancy. **Status: Completed**
+1.  **user:**  - Approved Option C: Hybrid RBAC for implementation. **Status: In Progress**.
+2.  **user:**  - Clarified the scope of data for comparison after agent found discrepancies. **Status: Completed**.
+3.  **user:**  - Approved agent's plan to (A) default the dashboard to the current year and (B) exclude test records from analytics. **Status: Completed**.
+4.  **user:**  - Provided a new Excel export to help debug data discrepancies. **Status: Completed**.
+5.  **user:** Provided screenshots and asked about why  in the app is higher than in Odoo. **Status: Completed**.
+6.  **user:**  - Corrected the agent's mistaken assumption about the source of the  field. **Status: Completed**.
+7.  **user:** Provided Excel files comparing Odoo and app data, asking why there are missing records and mismatched values. **Status: Completed**.
+8.  **user:**  - Instructed the agent to fix all identified root causes for dashboard filter issues. **Status: Completed**.
+9.  **user:** Reported multiple dashboard filter bugs via screenshots (Project Manager/Category stats not updating, click-through navigation not working). **Status: Completed**.
+10. **user:** Asked for a plan to ensure ETL validation and prevent duplicates permanently. **Status: Completed**.
 
 **Project Health Check:**
--   **Broken:** The Activities page is currently non-functional for year-based filtering, which is a critical regression.
--   **Mocked:** None.
+*   **Broken:** No features are completely broken.
+*   **Mocked:** None.
+*   **Health:** **Improving but Fragile.** Major architectural improvements (, ) have been made, and critical bugs fixed. However, the new architecture is not fully integrated (UI still uses old endpoints), and the RBAC system is incomplete. The missing  sync remains a critical data integrity risk.
 
 **3rd Party Integrations**
--   **Odoo (v17.0):** Integration via Python's .
--   **MongoDB:** The primary application database.
--   **Emergent LLM (OpenAI):** Used for the AI Sales Analytics page features.
+*   **Odoo (v17.0):** Data source for the ETL. The integration also needs to be expanded to sync user/role/team metadata for RBAC.
+*   **MongoDB:** Primary application database, also used for the event queue and serving cache.
+*   **Emergent LLM (OpenAI):** Used for AI Sales Analytics features.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** []
--   **Known regressions:** Yes, the year filter on the Activities page is broken.
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Email**: 
 -   **Password**: 
 
 **What agent forgot to execute**
--   The agent implemented the backend APIs for the Product Manager Leaderboard and Solution Category Stats but did not add the corresponding UI components to the main  as requested, only to the separate .
--   The task to sync the Odoo  field, which was identified as critical for debugging in a previous session, was not planned or implemented.
--   The user's request to make At Risk cards on the AI Analytics page expand to a detailed view was only partially implemented; they currently filter a list on the same page.</analysis>
+-   **Sync :** The agent identified this as a critical root cause for data discrepancies but did not create a task or implement the fix.
+-   **Refactor to use :** The agent built the  as the single source of truth but did not follow through by refactoring the frontend components and older API endpoints to actually use it. The new architecture is built but not fully leveraged.</analysis>

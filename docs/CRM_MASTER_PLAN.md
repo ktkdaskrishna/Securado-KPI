@@ -511,7 +511,7 @@ async def export_opportunities(...):
 ---
 
 ## Preview URL
-https://crm-fixer-3.preview.emergentagent.com
+https://trustedcrm.preview.emergentagent.com
 
 ---
 
