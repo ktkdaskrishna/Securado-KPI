@@ -83,6 +83,24 @@ export function SettingsPage() {
     }
   };
 
+  const loadSsoConfig = async () => {
+    try {
+      const [configRes, statusRes] = await Promise.all([
+        microsoftAuthAPI.getAdminConfig(),
+        microsoftAuthAPI.getStatus()
+      ]);
+      
+      if (configRes.data?.settings) {
+        setSsoConfig(prev => ({ ...prev, ...configRes.data.settings }));
+      }
+      if (statusRes.data) {
+        setSsoStatus(statusRes.data);
+      }
+    } catch (error) {
+      console.log('SSO config not available');
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
