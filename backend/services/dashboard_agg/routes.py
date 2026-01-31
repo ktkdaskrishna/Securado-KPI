@@ -701,70 +701,90 @@ async def get_dashboard_stats(
     ]
     
     # ==================== ACTIVITY STATS FOR FILTERED VIEW ====================
-    # Get CRM activities with RBAC filter
-    activity_query = {
-        "org_id": org_id,
-        "res_model": "crm.lead"  # Only CRM activities
-    }
+    # Check if user has NO_ACCESS (not in RBAC)
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
     
-    # Apply RBAC filter to activities (filter by assigned_user similar to owner_name)
-    if rbac_filter:
-        # Convert owner_name filter to assigned_user filter for activities
-        if "owner_name" in rbac_filter:
-            activity_query["assigned_user"] = rbac_filter["owner_name"]
-        elif "$or" in rbac_filter:
-            # For team filters, apply similar logic
-            activity_query["$or"] = [
-                {"assigned_user": cond.get("owner_name")} 
-                for cond in rbac_filter.get("$or", [])
-                if "owner_name" in cond
-            ]
-            if not activity_query["$or"]:
-                del activity_query["$or"]
-    
-    canonical_activities = await canonical_db.activities.find(activity_query).to_list(10000)
-    
-    # Apply date filters to activities if year/quarter is set
-    if year or quarter:
-        filtered_activities = []
-        for act in canonical_activities:
-            act_date = act.get("date_deadline") or act.get("create_date") or act.get("synced_at")
-            if act_date:
-                try:
-                    if isinstance(act_date, str):
-                        # Try parsing ISO format
-                        if 'T' in act_date:
-                            act_date = datetime.fromisoformat(act_date.replace('Z', '+00:00'))
-                        else:
-                            act_date = datetime.strptime(act_date[:10], '%Y-%m-%d')
-                    
-                    act_year = str(act_date.year)
-                    act_quarter = f"Q{(act_date.month - 1) // 3 + 1}"
-                    
-                    year_match = not year or act_year == year
-                    quarter_match = not quarter or act_quarter == quarter
-                    
-                    if year_match and quarter_match:
+    if has_no_access:
+        # User has no RBAC access - return empty activities
+        canonical_activities = []
+        app_activities = []
+        all_activities = []
+    else:
+        # Get CRM activities with RBAC filter
+        activity_query = {
+            "org_id": org_id,
+            "res_model": "crm.lead"  # Only CRM activities
+        }
+        
+        # Apply RBAC filter to activities (filter by assigned_user similar to owner_name)
+        if rbac_filter:
+            # Convert owner_name filter to assigned_user filter for activities
+            if "owner_name" in rbac_filter:
+                activity_query["assigned_user"] = rbac_filter["owner_name"]
+            elif "$or" in rbac_filter:
+                # For team filters, apply similar logic
+                activity_query["$or"] = [
+                    {"assigned_user": cond.get("owner_name")} 
+                    for cond in rbac_filter.get("$or", [])
+                    if "owner_name" in cond
+                ]
+                if not activity_query["$or"]:
+                    del activity_query["$or"]
+        
+        canonical_activities = await canonical_db.activities.find(activity_query).to_list(10000)
+        
+        # Apply date filters to activities if year/quarter is set
+        if year or quarter:
+            filtered_activities = []
+            for act in canonical_activities:
+                act_date = act.get("date_deadline") or act.get("create_date") or act.get("synced_at")
+                if act_date:
+                    try:
+                        if isinstance(act_date, str):
+                            # Try parsing ISO format
+                            if 'T' in act_date:
+                                act_date = datetime.fromisoformat(act_date.replace('Z', '+00:00'))
+                            else:
+                                act_date = datetime.strptime(act_date[:10], '%Y-%m-%d')
+                        
+                        act_year = str(act_date.year)
+                        act_quarter = f"Q{(act_date.month - 1) // 3 + 1}"
+                        
+                        year_match = not year or act_year == year
+                        quarter_match = not quarter or act_quarter == quarter
+                        
+                        if year_match and quarter_match:
+                            filtered_activities.append(act)
+                    except Exception as e:
+                        # If date parsing fails, include the activity
                         filtered_activities.append(act)
-                except Exception as e:
-                    # If date parsing fails, include the activity
+                else:
+                    # Activities without dates are included
                     filtered_activities.append(act)
-            else:
-                # Activities without dates are included
-                filtered_activities.append(act)
-        canonical_activities = filtered_activities
-    
-    # Filter by sales rep if applicable
-    if sales_rep:
-        canonical_activities = [a for a in canonical_activities if a.get("assigned_user") == sales_rep]
-    
-    # Also get app activities if applicable
-    app_activity_query = {"org_id": org_id}
-    if sales_rep:
-        app_activity_query["owner_name"] = sales_rep
-    app_activities = await app_db.activities.find(app_activity_query).to_list(1000)
-    
-    all_activities = canonical_activities + app_activities
+            canonical_activities = filtered_activities
+        
+        # Filter by sales rep if applicable
+        if sales_rep:
+            canonical_activities = [a for a in canonical_activities if a.get("assigned_user") == sales_rep]
+        
+        # Also get app activities with RBAC
+        app_activity_query = {"org_id": org_id}
+        if rbac_filter:
+            if "owner_name" in rbac_filter:
+                app_activity_query["owner_name"] = rbac_filter["owner_name"]
+            elif "$or" in rbac_filter:
+                app_activity_query["$or"] = [
+                    {"owner_name": cond.get("owner_name")} 
+                    for cond in rbac_filter.get("$or", [])
+                    if "owner_name" in cond
+                ]
+                if not app_activity_query.get("$or"):
+                    app_activity_query.pop("$or", None)
+        if sales_rep:
+            app_activity_query["owner_name"] = sales_rep
+        app_activities = await app_db.activities.find(app_activity_query).to_list(1000)
+        
+        all_activities = canonical_activities + app_activities
     
     # Activity stats - count by type (CRM activities only)
     # Important KPIs: POC, Meeting, Demo, Site Visit, RFP Building
