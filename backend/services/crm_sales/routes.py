@@ -519,6 +519,7 @@ async def get_won_opportunities_with_invoices(
 
 @opportunities_router.get("/kanban")
 async def opportunities_kanban(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
@@ -527,18 +528,23 @@ async def opportunities_kanban(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get opportunities (type=opportunity) organized by stage for kanban view"""
+    """Get opportunities (type=opportunity) organized by stage for kanban view (RBAC enforced)"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
     logger.info(f"Kanban request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Build query for non-date filters - ONLY type=opportunity
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC - ONLY type=opportunity
     query = {
         "org_id": org_id,
         "type": "opportunity"  # Filter to only opportunities
     }
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
