@@ -1331,17 +1331,25 @@ async def get_lead(
 @leads_router.post("/{lead_id}/convert")
 async def convert_lead_to_opportunity(
     lead_id: str,
+    request: Request,
     current_user: dict = Depends(get_current_user)
 ):
-    """Convert a lead to an opportunity"""
+    """Convert a lead to an opportunity (RBAC enforced)"""
     canonical_db = get_canonical_db()
     
-    # Get the lead
-    lead = await canonical_db.opportunities.find_one({
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC
+    query = {
         "canonical_id": lead_id,
         "org_id": current_user.get("org_id", "default"),
         "type": "lead"
-    })
+    }
+    query.update(rbac_filter)  # Apply RBAC filter
+    
+    # Get the lead
+    lead = await canonical_db.opportunities.find_one(query)
     
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
