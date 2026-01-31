@@ -512,6 +512,197 @@ export function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* SSO Configuration Tab */}
+        <TabsContent value="sso" className="mt-6 space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <KeyRound className="h-4 w-4" />
+                    Microsoft SSO Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Configure Azure AD / Microsoft Entra ID for Single Sign-On
+                  </CardDescription>
+                </div>
+                <Badge 
+                  variant={ssoStatus.configured ? "default" : "secondary"}
+                  className={ssoStatus.configured ? "bg-green-500/20 text-green-400 border-green-500/30" : ""}
+                >
+                  {ssoStatus.configured ? (
+                    <><CheckCircle2 className="h-3 w-3 mr-1" /> Configured</>
+                  ) : (
+                    <><XCircle className="h-3 w-3 mr-1" /> Not Configured</>
+                  )}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Setup Instructions */}
+              <Alert className="bg-blue-500/10 border-blue-500/30">
+                <AlertDescription className="text-sm">
+                  <strong>Setup Instructions:</strong>
+                  <ol className="list-decimal ml-4 mt-2 space-y-1">
+                    <li>Go to <a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1">Azure Portal <ExternalLink className="h-3 w-3" /></a> → Azure Active Directory → App registrations</li>
+                    <li>Create a new registration for your application</li>
+                    <li>Set the redirect URI to the value shown below</li>
+                    <li>Copy the Application (Client) ID and Directory (Tenant) ID</li>
+                    <li>Create a Client Secret under "Certificates & secrets"</li>
+                    <li>Enter all values below and save</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid gap-4">
+                {/* Application (Client) ID */}
+                <div className="space-y-2">
+                  <Label htmlFor="client_id">Application (Client) ID</Label>
+                  <Input
+                    id="client_id"
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    value={ssoConfig.client_id}
+                    onChange={(e) => updateSsoConfig('client_id', e.target.value)}
+                    data-testid="sso-client-id-input"
+                  />
+                  <p className="text-xs text-muted-foreground">Found in Azure AD → App registration → Overview</p>
+                </div>
+
+                {/* Directory (Tenant) ID */}
+                <div className="space-y-2">
+                  <Label htmlFor="tenant_id">Directory (Tenant) ID</Label>
+                  <Input
+                    id="tenant_id"
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    value={ssoConfig.tenant_id}
+                    onChange={(e) => updateSsoConfig('tenant_id', e.target.value)}
+                    data-testid="sso-tenant-id-input"
+                  />
+                  <p className="text-xs text-muted-foreground">Found in Azure AD → Overview</p>
+                </div>
+
+                {/* Client Secret */}
+                <div className="space-y-2">
+                  <Label htmlFor="client_secret">Client Secret</Label>
+                  <div className="relative">
+                    <Input
+                      id="client_secret"
+                      type={showSecret ? "text" : "password"}
+                      placeholder={ssoConfig.client_secret_masked || "Enter client secret"}
+                      value={ssoConfig.client_secret}
+                      onChange={(e) => updateSsoConfig('client_secret', e.target.value)}
+                      data-testid="sso-client-secret-input"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                      onClick={() => setShowSecret(!showSecret)}
+                    >
+                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Found in Azure AD → App registration → Certificates & secrets
+                    {ssoConfig.client_secret_masked && (
+                      <span className="ml-2 text-green-500">Current: {ssoConfig.client_secret_masked}</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Redirect URI */}
+                <div className="space-y-2">
+                  <Label htmlFor="redirect_uri">Redirect URI</Label>
+                  <Input
+                    id="redirect_uri"
+                    placeholder="https://your-domain.com/api/auth/microsoft/callback"
+                    value={ssoConfig.redirect_uri}
+                    onChange={(e) => updateSsoConfig('redirect_uri', e.target.value)}
+                    data-testid="sso-redirect-uri-input"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Must match exactly in Azure AD. Suggested: <code className="bg-muted px-1 rounded">{window.location.origin}/api/auth/microsoft/callback</code>
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground">
+                  {ssoStatus.configured ? (
+                    <span className="text-green-500 flex items-center gap-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Microsoft SSO is active. Users can sign in with their Microsoft accounts.
+                    </span>
+                  ) : (
+                    <span className="text-yellow-500">
+                      Complete the configuration above to enable Microsoft SSO.
+                    </span>
+                  )}
+                </div>
+                <Button 
+                  onClick={handleSaveSso}
+                  disabled={ssoSaving}
+                  className="bg-primary hover:bg-primary/90"
+                  data-testid="save-sso-config-btn"
+                >
+                  {ssoSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save SSO Configuration
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RBAC Auto-Linking Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                RBAC Auto-Linking
+              </CardTitle>
+              <CardDescription>
+                How Microsoft users are linked to Odoo RBAC profiles
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">1</div>
+                  <div>
+                    <p className="font-medium">User signs in with Microsoft</p>
+                    <p className="text-muted-foreground">User clicks "Sign in with Microsoft" and authenticates</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">2</div>
+                  <div>
+                    <p className="font-medium">Email matching</p>
+                    <p className="text-muted-foreground">System searches for a matching email in the synced RBAC users</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">3</div>
+                  <div>
+                    <p className="font-medium">Access level assigned</p>
+                    <p className="text-muted-foreground">
+                      If matched → User gets Odoo permissions (ADMIN/MANAGER/USER)<br/>
+                      If not matched → User gets RESTRICTED access with a warning
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-sm text-yellow-500">
+                  <strong>Tip:</strong> Make sure to sync RBAC from Odoo (Admin → RBAC Sync) before enabling Microsoft SSO, 
+                  so users' emails can be matched to their Odoo permissions.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
