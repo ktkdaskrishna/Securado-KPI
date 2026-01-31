@@ -26,7 +26,7 @@ import hashlib
 import base64
 
 from libs.database import get_app_db
-from libs.utils import generate_id, now_utc
+from libs.utils import generate_id, now_utc, JWT_SECRET
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ MICROSOFT_CLIENT_ID = os.environ.get("MICROSOFT_CLIENT_ID", "")
 MICROSOFT_CLIENT_SECRET = os.environ.get("MICROSOFT_CLIENT_SECRET", "")
 MICROSOFT_TENANT_ID = os.environ.get("MICROSOFT_TENANT_ID", "")
 MICROSOFT_REDIRECT_URI = os.environ.get("MICROSOFT_REDIRECT_URI", "")
-JWT_SECRET = os.environ.get("JWT_SECRET", "your-super-secret-jwt-key-change-in-production")
+# JWT_SECRET is now imported from libs.utils to ensure consistency
 
 # Azure AD OAuth endpoints
 AUTHORITY = f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}" if MICROSOFT_TENANT_ID else ""
