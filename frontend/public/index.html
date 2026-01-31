@@ -33,6 +33,9 @@
                     // Store token
                     localStorage.setItem('access_token', token);
                     
+                    // Set a flag to tell the app we're processing SSO
+                    sessionStorage.setItem('sso_processing', 'true');
+                    
                     // Decode and store user info
                     try {
                         var parts = token.split('.');
@@ -52,12 +55,8 @@
                         console.error('[SSO-HEAD] Token decode error:', e);
                     }
                     
-                    // CRITICAL: Stop all page loading and redirect immediately
-                    // Using document.write to replace the entire page with a redirect
+                    // Redirect to dashboard
                     console.log('[SSO-HEAD] Redirecting to /dashboard...');
-                    document.open();
-                    document.write('<html><head><meta http-equiv="refresh" content="0;url=/dashboard"></head><body>Redirecting...</body></html>');
-                    document.close();
                     window.location.href = '/dashboard';
                 }
             })();
