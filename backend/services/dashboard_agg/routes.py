@@ -918,6 +918,7 @@ async def get_product_manager_leaderboard(
 
 @router.get("/category-stats")
 async def get_category_stats(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
@@ -928,16 +929,22 @@ async def get_category_stats(
     
     Note: This always shows Won deals only (solution category performance is based on closed-won deals).
     The sales_rep filter will filter to show only deals owned by that sales rep.
+    RBAC is enforced - users only see data they have permission to view.
     """
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Build query with sales_rep filter if provided
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC and sales_rep filter
     query = {"org_id": org_id}
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if sales_rep:
         query["owner_name"] = sales_rep
     
-    # Get opportunities (filtered by sales_rep if applicable)
+    # Get opportunities (filtered by RBAC and sales_rep)
     opportunities = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Filter out test/demo records
