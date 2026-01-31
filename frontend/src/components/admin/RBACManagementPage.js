@@ -377,11 +377,14 @@ const RBACManagementPage = () => {
     );
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.login?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (user.name || '').toLowerCase().includes(query) ||
+      (user.login || '').toLowerCase().includes(query) ||
+      (user.email || '').toLowerCase().includes(query)
+    );
+  });
 
   if (loading) {
     return (
