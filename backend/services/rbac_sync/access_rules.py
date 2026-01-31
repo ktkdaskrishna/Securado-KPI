@@ -307,16 +307,25 @@ class AccessRuleEngine:
                 "access_level": "RESTRICTED",
                 "groups": [],
                 "teams": [],
-                "filter_type": "own_records_only"
+                "direct_reports": [],
+                "is_manager": False,
+                "filter_type": "no_access"
             }
         
         group_names = user_rbac.get("odoo_group_names", [])
         team_names = user_rbac.get("odoo_team_names", [])
+        direct_report_names = user_rbac.get("direct_report_names", [])
+        is_manager = user_rbac.get("is_manager", False)
+        
         access_level = self.determine_access_level(group_names)
+        
+        # Upgrade to MANAGER if user has direct reports
+        if is_manager and access_level.value < AccessLevel.MANAGER.value:
+            access_level = AccessLevel.MANAGER
         
         filter_type = {
             AccessLevel.ADMIN: "all_records",
-            AccessLevel.MANAGER: "team_records",
+            AccessLevel.MANAGER: "team_and_direct_reports",
             AccessLevel.USER: "own_records_only",
             AccessLevel.RESTRICTED: "no_access"
         }.get(access_level, "own_records_only")
@@ -328,6 +337,12 @@ class AccessRuleEngine:
             "access_level": access_level.name,
             "groups": group_names,
             "teams": team_names,
+            "direct_reports": direct_report_names,
+            "direct_report_count": len(direct_report_names),
+            "is_manager": is_manager,
+            "manager_name": user_rbac.get("manager_name", ""),
+            "department": user_rbac.get("department_name", ""),
+            "job_title": user_rbac.get("job_title", ""),
             "filter_type": filter_type,
             "synced_at": user_rbac.get("synced_at").isoformat() if user_rbac.get("synced_at") else None
         }
