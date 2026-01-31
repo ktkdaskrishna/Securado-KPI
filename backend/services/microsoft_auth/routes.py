@@ -293,18 +293,25 @@ async def microsoft_callback(
     try:
         # Exchange code for tokens (with PKCE code_verifier for security)
         async with httpx.AsyncClient() as client:
+            # Build token request data
             token_data = {
                 "client_id": MICROSOFT_CLIENT_ID,
-                "client_secret": MICROSOFT_CLIENT_SECRET,
                 "code": code,
                 "redirect_uri": MICROSOFT_REDIRECT_URI,
                 "grant_type": "authorization_code",
                 "scope": " ".join(SCOPES)
             }
             
-            # Include PKCE code_verifier if available (required by Azure AD)
+            # Only include client_secret for confidential clients (not public clients/SPAs)
+            # Azure AD will reject the request if a public client sends client_secret
+            if MICROSOFT_CLIENT_SECRET:
+                token_data["client_secret"] = MICROSOFT_CLIENT_SECRET
+            
+            # Include PKCE code_verifier (required by Azure AD for public clients)
             if code_verifier:
                 token_data["code_verifier"] = code_verifier
+            
+            logger.info(f"Token exchange request - client_id: {MICROSOFT_CLIENT_ID[:8]}..., has_secret: {bool(MICROSOFT_CLIENT_SECRET)}, has_verifier: {bool(code_verifier)}")
             
             token_response = await client.post(
                 TOKEN_URL,
@@ -313,8 +320,22 @@ async def microsoft_callback(
             )
             
             if token_response.status_code != 200:
-                logger.error(f"Token exchange failed: {token_response.text}")
-                raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
+                error_detail = token_response.text
+                logger.error(f"Token exchange failed: {error_detail}")
+                # Check if it's a public client error - try without secret
+                if "700025" in error_detail and MICROSOFT_CLIENT_SECRET:
+                    logger.info("Detected public client - retrying without client_secret")
+                    del token_data["client_secret"]
+                    token_response = await client.post(
+                        TOKEN_URL,
+                        data=token_data,
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}
+                    )
+                    if token_response.status_code != 200:
+                        logger.error(f"Token exchange retry failed: {token_response.text}")
+                        raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
+                else:
+                    raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
             
             tokens = token_response.json()
             access_token = tokens.get("access_token")
