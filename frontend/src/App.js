@@ -55,9 +55,9 @@ import HelpPage from './components/admin/HelpPage';
 
 import './App.css';
 
-// Process Microsoft SSO token IMMEDIATELY before React renders
-// This runs synchronously at module load time
-(function processMicrosoftSSOToken() {
+// Check for Microsoft SSO token in URL BEFORE React renders
+// If found, process it and prevent React from rendering until redirect completes
+const ssoTokenInUrl = (function checkMicrosoftSSOToken() {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
   const provider = urlParams.get('provider');
@@ -67,12 +67,12 @@ import './App.css';
   if (errorParam) {
     console.error('Microsoft SSO error:', errorParam, urlParams.get('message'));
     window.history.replaceState({}, '', window.location.pathname);
-    return;
+    return false;
   }
   
   // Handle successful Microsoft SSO token
   if (token && provider === 'microsoft') {
-    console.log('Processing Microsoft SSO token immediately...');
+    console.log('Processing Microsoft SSO token...');
     
     // Store token using the same key as the main auth system
     localStorage.setItem('access_token', token);
@@ -93,14 +93,34 @@ import './App.css';
       console.error('Failed to decode Microsoft token:', e);
     }
     
-    // Redirect to dashboard immediately (before React mounts)
-    window.location.replace('/dashboard');
+    // Signal that we have a token to process
+    return true;
   }
+  
+  return false;
 })();
+
+// If we found SSO token, redirect now and show nothing
+if (ssoTokenInUrl) {
+  // Replace history to clean URL, then redirect
+  window.location.replace('/dashboard');
+}
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  
+  // If we just processed an SSO token, show loading while redirect happens
+  if (ssoTokenInUrl) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Completing sign-in...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
