@@ -140,7 +140,7 @@ class AccessRuleEngine:
                 if override_level == AccessLevel.ADMIN:
                     return {}
                 elif override_level == AccessLevel.MANAGER:
-                    # Get user's teams from RBAC or empty list
+                    # Get user's teams and direct reports from RBAC
                     user_rbac = await self.app_db.users_rbac.find_one({
                         "org_id": org_id,
                         "$or": [
@@ -149,7 +149,8 @@ class AccessRuleEngine:
                         ]
                     })
                     team_names = user_rbac.get("odoo_team_names", []) if user_rbac else []
-                    return self._build_team_filter(user_name, team_names, entity_type)
+                    direct_report_names = user_rbac.get("direct_report_names", []) if user_rbac else []
+                    return self._build_manager_filter(user_name, team_names, direct_report_names, entity_type)
                 elif override_level == AccessLevel.USER:
                     return self._build_owner_filter(user_name, entity_type)
                 else:
