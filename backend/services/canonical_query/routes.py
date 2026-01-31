@@ -119,22 +119,36 @@ async def get_canonical_record(
 
 @router.get("/serving")
 async def get_serving_data(
+    request: Request,
     entity: str = Query("opportunities"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get serving layer data (canonical + overrides merged)"""
+    """Get serving layer data (canonical + overrides merged) - RBAC enforced"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, entity.rstrip('s'))
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return {"records": []}
+    
+    # Build query with RBAC
+    query = {"org_id": org_id}
+    query.update(rbac_filter)
     
     # Get canonical records
     collection = canonical_db[f"{entity}s" if not entity.endswith('s') else entity]
-    records = await collection.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
+    records = await collection.find(query).to_list(1000)
     
     # Get overrides
     canonical_ids = [r.get("canonical_id") for r in records]
     overrides = await app_db.overrides.find({
         "canonical_id": {"$in": canonical_ids},
-        "org_id": current_user.get("org_id", "default")
+        "org_id": org_id
     }).to_list(1000)
     
     # Create override map
@@ -160,16 +174,27 @@ async def get_serving_data(
 
 @search_router.get("/search")
 async def search(
+    request: Request,
     q: str = Query("", min_length=0),
     entity_types: Optional[str] = None,  # comma-separated
     limit: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user)
 ):
-    """Search across canonical entities"""
+    """Search across canonical entities (RBAC enforced)"""
     if len(q) < 2:
         return []
     
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return []
+    
     results = []
     
     # Determine which entities to search
@@ -185,9 +210,13 @@ async def search(
         # Build regex search
         regex = {"$regex": re.escape(q), "$options": "i"}
         
+        # Build query with RBAC
+        base_query = {"org_id": org_id}
+        base_query.update(rbac_filter)
+        
         # Search on common fields
         query = {
-            "org_id": current_user.get("org_id", "default"),
+            **base_query,
             "$or": [
                 {"name": regex},
                 {"contact_email": regex},
