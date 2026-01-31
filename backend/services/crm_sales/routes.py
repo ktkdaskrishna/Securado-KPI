@@ -1241,21 +1241,27 @@ async def leads_kanban(
 
 @leads_router.get("/stats")
 async def leads_stats(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get leads statistics"""
+    """Get leads statistics (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Build query - ONLY type=lead
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query - ONLY type=lead with RBAC
     query = {
         "org_id": org_id,
         "type": "lead"
     }
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if sales_rep:
         query["owner_name"] = sales_rep
     
