@@ -1816,27 +1816,49 @@ async def list_activities(
 
 @activities_router.get("/stats")
 async def get_activity_stats(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get CRM activity statistics. Only counts CRM-related activities, not project tasks."""
+    """Get CRM activity statistics. Only counts CRM-related activities, not project tasks. RBAC enforced."""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get CRM activities from canonical DB 
-    # Include activities with res_model='crm.lead' OR activities with opportunity_id (from crm.activity.report)
-    canonical_activities = await canonical_db.activities.find({
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "activity")
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        # Return empty stats for non-RBAC users
+        return {
+            "calls": 0, "emails": 0, "meetings": 0, "tasks": 0,
+            "completed": 0, "pending": 0, "total": 0,
+            "type_breakdown": {}
+        }
+    
+    # Build query with RBAC
+    canonical_query = {
         "org_id": org_id,
         "$or": [
             {"res_model": "crm.lead"},
             {"opportunity_id": {"$exists": True, "$ne": None}}
         ]
-    }).to_list(10000)
+    }
+    app_query = {"org_id": org_id}
+    
+    # Apply RBAC filter to activities
+    if rbac_filter and "owner_name" in rbac_filter:
+        canonical_query["assigned_user"] = rbac_filter["owner_name"]
+        app_query["owner_name"] = rbac_filter["owner_name"]
+    
+    # Get CRM activities from canonical DB 
+    canonical_activities = await canonical_db.activities.find(canonical_query).to_list(10000)
     
     # Get activities from app DB
-    app_activities = await app_db.activities.find({"org_id": org_id}).to_list(1000)
+    app_activities = await app_db.activities.find(app_query).to_list(1000)
     
     # Apply year/quarter filters
     def filter_by_date(activities, year_filter, quarter_filter):
