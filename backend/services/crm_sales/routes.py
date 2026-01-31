@@ -380,15 +380,23 @@ async def export_opportunities_excel(
 
 @opportunities_router.get("/won-with-invoices")
 async def get_won_opportunities_with_invoices(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get Won opportunities with their invoice status"""
+    """Get Won opportunities with their invoice status (RBAC enforced)"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC
+    query = {"org_id": org_id}
+    query.update(rbac_filter)  # Apply RBAC filter
     
     # Build query for Won opportunities
     query = {
