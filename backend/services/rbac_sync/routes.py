@@ -5,16 +5,35 @@ Provides endpoints for:
 - Viewing user permissions
 - Testing access rules
 - Admin management of access mappings
+- Local permission overrides
 """
-from fastapi import APIRouter, Depends, Query, HTTPException
-from typing import Optional
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
+from typing import Optional, List
+from pydantic import BaseModel
 import logging
 from datetime import datetime, timezone
 
 from libs.database import get_app_db
+from libs.utils import generate_id
 from services.identity.routes import get_current_user
 from .user_sync import odoo_user_sync
-from .access_rules import access_rule_engine
+from .access_rules import access_rule_engine, AccessLevel
+
+
+class PermissionOverrideCreate(BaseModel):
+    """Model for creating a local permission override"""
+    user_email: str
+    access_level: str  # ADMIN, MANAGER, USER, RESTRICTED
+    reason: str = ""
+    expires_at: Optional[str] = None  # ISO date string
+
+
+class PermissionOverrideUpdate(BaseModel):
+    """Model for updating a permission override"""
+    access_level: Optional[str] = None
+    reason: Optional[str] = None
+    expires_at: Optional[str] = None
+    is_active: Optional[bool] = None
 
 logger = logging.getLogger(__name__)
 
