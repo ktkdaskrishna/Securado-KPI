@@ -550,26 +550,46 @@ async def get_team_performance(
 
 @router.get("/account-health")
 async def get_account_health(
+    request: Request,
     year: Optional[str] = None,
     quarter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get account health metrics and engagement scores - OPPORTUNITIES ONLY"""
+    """Get account health metrics and engagement scores - OPPORTUNITIES ONLY (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    accounts = await canonical_db.accounts.find({"org_id": org_id}).to_list(10000)
-    all_opps = await canonical_db.opportunities.find({
-        "org_id": org_id,
-        "type": "opportunity"
-    }).to_list(10000)
-    activities = await canonical_db.activities.find({
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    if has_no_rbac_access(rbac_filter):
+        return {
+            "accounts": [], "summary": {"healthy": 0, "at_risk": 0, "dormant": 0},
+            "applied_filters": {}
+        }
+    
+    # Build query with RBAC
+    query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)
+    
+    account_query = {"org_id": org_id}
+    account_query.update(rbac_filter)
+    
+    accounts = await canonical_db.accounts.find(account_query).to_list(10000)
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
+    
+    # Activities also need RBAC
+    activity_query = {
         "org_id": org_id,
         "$or": [
             {"res_model": "crm.lead"},
             {"opportunity_id": {"$exists": True, "$ne": None}}
         ]
-    }).to_list(10000)
+    }
+    if "owner_name" in rbac_filter:
+        activity_query["assigned_user"] = rbac_filter["owner_name"]
+    activities = await canonical_db.activities.find(activity_query).to_list(10000)
     
     # Apply filters
     filters = {"year": year, "quarter": quarter}
