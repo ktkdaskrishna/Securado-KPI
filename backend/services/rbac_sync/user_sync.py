@@ -209,6 +209,82 @@ class OdooUserSync:
             logger.warning(f"Team sync failed (may not have crm.team): {e}")
             return 0
     
+    async def _sync_employees(self, models, db, uid, password, org_id) -> int:
+        """Sync hr.employee with reporting hierarchy from Odoo
+        
+        This captures:
+        - parent_id: Direct manager
+        - child_ids: Direct reports
+        - department_id: Department
+        - job_title: Job position
+        """
+        try:
+            employee_ids = models.execute_kw(
+                db, uid, password,
+                'hr.employee', 'search',
+                [[]]  # All employees
+            )
+            
+            employees = models.execute_kw(
+                db, uid, password,
+                'hr.employee', 'read',
+                [employee_ids],
+                {'fields': ['id', 'name', 'user_id', 'parent_id', 'child_ids', 
+                           'department_id', 'job_title', 'work_email', 'active']}
+            )
+            
+            # First pass: Store all employees
+            synced = 0
+            for emp in employees:
+                user_id = emp.get('user_id', [None])[0] if emp.get('user_id') else None
+                
+                doc = {
+                    "odoo_employee_id": emp['id'],
+                    "name": emp.get('name', ''),
+                    "odoo_user_id": user_id,
+                    "work_email": emp.get('work_email', ''),
+                    "job_title": emp.get('job_title', ''),
+                    "department_id": emp.get('department_id', [None])[0] if emp.get('department_id') else None,
+                    "department_name": emp.get('department_id', [None, ''])[1] if emp.get('department_id') else '',
+                    "manager_employee_id": emp.get('parent_id', [None])[0] if emp.get('parent_id') else None,
+                    "manager_name": emp.get('parent_id', [None, ''])[1] if emp.get('parent_id') else '',
+                    "direct_report_ids": emp.get('child_ids', []),
+                    "active": emp.get('active', True),
+                    "org_id": org_id,
+                    "synced_at": datetime.now(timezone.utc)
+                }
+                
+                await self.app_db.employees_rbac.update_one(
+                    {"odoo_employee_id": emp['id'], "org_id": org_id},
+                    {"$set": doc},
+                    upsert=True
+                )
+                synced += 1
+            
+            # Second pass: Resolve direct report names for each manager
+            for emp in employees:
+                if emp.get('child_ids'):
+                    direct_report_names = []
+                    for child_id in emp['child_ids']:
+                        child_emp = await self.app_db.employees_rbac.find_one({
+                            "odoo_employee_id": child_id,
+                            "org_id": org_id
+                        })
+                        if child_emp:
+                            direct_report_names.append(child_emp.get('name', ''))
+                    
+                    await self.app_db.employees_rbac.update_one(
+                        {"odoo_employee_id": emp['id'], "org_id": org_id},
+                        {"$set": {"direct_report_names": direct_report_names}}
+                    )
+            
+            logger.info(f"Synced {synced} employees with hierarchy from Odoo")
+            return synced
+            
+        except Exception as e:
+            logger.warning(f"Employee sync failed: {e}")
+            return 0
+    
     async def _sync_users(self, models, db, uid, password, org_id) -> int:
         """Sync res.users with group and team memberships"""
         # Get active users
