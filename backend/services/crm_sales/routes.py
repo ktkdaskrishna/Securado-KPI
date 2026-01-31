@@ -2379,15 +2379,30 @@ async def get_receivables_by_salesperson(
     year: str = Query(None, description="Filter by year"),
     quarter: str = Query(None, description="Filter by quarter")
 ):
-    """Get invoice analytics per sales person - won value, billed, pending, overdue"""
+    """Get invoice analytics per sales person - won value, billed, pending, overdue (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Fetch all invoices
-    invoices = await canonical_db.invoices.find({"org_id": org_id}).to_list(5000)
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "invoice")
     
-    # Fetch all opportunities to get Won values per salesperson
-    opportunities = await canonical_db.opportunities.find({"org_id": org_id}).to_list(10000)
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return {"salesperson_stats": []}
+    
+    # Build query with RBAC
+    query = {"org_id": org_id}
+    query.update(rbac_filter)
+    
+    opp_query = {"org_id": org_id}
+    opp_query.update(rbac_filter)
+    
+    # Fetch invoices with RBAC filter
+    invoices = await canonical_db.invoices.find(query).to_list(5000)
+    
+    # Fetch opportunities with RBAC filter
+    opportunities = await canonical_db.opportunities.find(opp_query).to_list(10000)
     
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
