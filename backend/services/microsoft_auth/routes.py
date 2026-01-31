@@ -453,14 +453,48 @@ async def microsoft_callback(
         
         app_token = jwt.encode(token_payload, JWT_SECRET, algorithm="HS256")
         
-        # Redirect to frontend with token
-        # Frontend will store this token and use it for API calls
-        redirect_url = f"{redirect_to}?token={app_token}&provider=microsoft"
-        
         logger.info(f"Microsoft SSO complete for {email}, access_level={access_level}, rbac_linked={bool(rbac_user)}")
-        logger.info(f"Redirecting to: {redirect_url[:100]}... (token length: {len(app_token)})")
         
-        return RedirectResponse(url=redirect_url)
+        # Create redirect response with token as HTTP cookie
+        # This is more reliable than URL parameters as it survives redirects
+        redirect_url = "/dashboard"
+        response = RedirectResponse(url=redirect_url, status_code=302)
+        
+        # Set the token as a cookie that JavaScript can read
+        # Using SameSite=Lax to allow the cookie on redirect
+        response.set_cookie(
+            key="sso_token",
+            value=app_token,
+            max_age=60,  # Cookie expires in 60 seconds (just for transfer)
+            httponly=False,  # Allow JavaScript to read it
+            samesite="lax",
+            secure=True,
+            path="/"
+        )
+        
+        # Also set user info as a cookie for faster initial load
+        user_info = {
+            "id": user_id,
+            "email": email,
+            "name": display_name,
+            "org_id": org_id,
+            "access_level": access_level,
+            "rbac_linked": bool(rbac_user)
+        }
+        import json
+        response.set_cookie(
+            key="sso_user",
+            value=json.dumps(user_info),
+            max_age=60,
+            httponly=False,
+            samesite="lax",
+            secure=True,
+            path="/"
+        )
+        
+        logger.info(f"SSO redirect to {redirect_url} with token cookie (length: {len(app_token)})")
+        
+        return response
         
     except Exception as e:
         logger.error(f"Microsoft OAuth callback error: {e}")
