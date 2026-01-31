@@ -55,57 +55,6 @@ import HelpPage from './components/admin/HelpPage';
 
 import './App.css';
 
-// Check for Microsoft SSO token in URL BEFORE React renders
-// If found, process it and prevent React from rendering until redirect completes
-const ssoTokenInUrl = (function checkMicrosoftSSOToken() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
-  const provider = urlParams.get('provider');
-  const errorParam = urlParams.get('error');
-  
-  // Handle SSO errors
-  if (errorParam) {
-    console.error('Microsoft SSO error:', errorParam, urlParams.get('message'));
-    window.history.replaceState({}, '', window.location.pathname);
-    return false;
-  }
-  
-  // Handle successful Microsoft SSO token
-  if (token && provider === 'microsoft') {
-    console.log('Processing Microsoft SSO token...');
-    
-    // Store token using the same key as the main auth system
-    localStorage.setItem('access_token', token);
-    
-    // Decode token to get user info
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      localStorage.setItem('user', JSON.stringify({
-        id: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        org_id: payload.org_id,
-        access_level: payload.access_level,
-        rbac_linked: payload.rbac_linked,
-      }));
-      console.log('Microsoft SSO successful for:', payload.email);
-    } catch (e) {
-      console.error('Failed to decode Microsoft token:', e);
-    }
-    
-    // Signal that we have a token to process
-    return true;
-  }
-  
-  return false;
-})();
-
-// If we found SSO token, redirect now and show nothing
-if (ssoTokenInUrl) {
-  // Replace history to clean URL, then redirect
-  window.location.replace('/dashboard');
-}
-
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
