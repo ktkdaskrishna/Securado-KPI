@@ -2131,6 +2131,7 @@ async def delete_kpi(
 
 @receivables_router.get("")
 async def list_receivables(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     status: str = Query(None, description="Filter by payment status: pending, paid, overdue, all"),
     account: str = Query(None, description="Filter by account name"),
@@ -2138,14 +2139,23 @@ async def list_receivables(
     quarter: str = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
     limit: int = Query(200, description="Maximum number of records")
 ):
-    """List receivables/invoices from synced Odoo data with contextual filters"""
+    """List receivables/invoices from synced Odoo data with contextual filters (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
     logger.info(f"Receivables request - status: {status}, account: {account}, year: {year}, quarter: {quarter}")
     
-    # Build query
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "invoice")
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return {"invoices": [], "summary": {"total": 0, "paid": 0, "pending": 0, "overdue": 0}}
+    
+    # Build query with RBAC
     query = {"org_id": org_id}
+    query.update(rbac_filter)
     
     # Filter by account if provided
     if account:
