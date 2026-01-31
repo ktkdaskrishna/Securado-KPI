@@ -161,6 +161,7 @@ function AppRoutes() {
         <Route path="/admin/webhooks" element={<WebhookConfigPage />} />
         <Route path="/admin/custom-fields" element={<CustomFieldsPage />} />
         <Route path="/admin/data-quality" element={<DataQualityPage />} />
+        <Route path="/help" element={<HelpPage />} />
       </Route>
 
       {/* 404 Catch-all */}
