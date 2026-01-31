@@ -701,11 +701,26 @@ async def get_dashboard_stats(
     ]
     
     # ==================== ACTIVITY STATS FOR FILTERED VIEW ====================
-    # Get CRM activities (res_model: crm.lead) and filter by date
+    # Get CRM activities with RBAC filter
     activity_query = {
         "org_id": org_id,
         "res_model": "crm.lead"  # Only CRM activities
     }
+    
+    # Apply RBAC filter to activities (filter by assigned_user similar to owner_name)
+    if rbac_filter:
+        # Convert owner_name filter to assigned_user filter for activities
+        if "owner_name" in rbac_filter:
+            activity_query["assigned_user"] = rbac_filter["owner_name"]
+        elif "$or" in rbac_filter:
+            # For team filters, apply similar logic
+            activity_query["$or"] = [
+                {"assigned_user": cond.get("owner_name")} 
+                for cond in rbac_filter.get("$or", [])
+                if "owner_name" in cond
+            ]
+            if not activity_query["$or"]:
+                del activity_query["$or"]
     
     canonical_activities = await canonical_db.activities.find(activity_query).to_list(10000)
     
