@@ -2272,16 +2272,35 @@ async def list_receivables(
 
 @receivables_router.get("/stats")
 async def get_receivables_stats(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     year: str = Query(None, description="Filter by year"),
     quarter: str = Query(None, description="Filter by quarter")
 ):
-    """Get receivables statistics with optional date filters"""
+    """Get receivables statistics with optional date filters (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    # Fetch all invoices
-    invoices = await canonical_db.invoices.find({"org_id": org_id}).to_list(1000)
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "invoice")
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return {
+            "stats": {
+                "total_invoiced": 0, "total_pending": 0, "total_overdue": 0, "total_paid": 0,
+                "count_total": 0, "count_pending": 0, "count_overdue": 0, "count_paid": 0
+            },
+            "filter_options": {"accounts": [], "years": []}
+        }
+    
+    # Build query with RBAC
+    query = {"org_id": org_id}
+    query.update(rbac_filter)
+    
+    # Fetch invoices with RBAC filter
+    invoices = await canonical_db.invoices.find(query).to_list(1000)
     
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
@@ -2355,6 +2374,7 @@ async def get_receivables_stats(
 
 @receivables_router.get("/by-salesperson")
 async def get_receivables_by_salesperson(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     year: str = Query(None, description="Filter by year"),
     quarter: str = Query(None, description="Filter by quarter")
