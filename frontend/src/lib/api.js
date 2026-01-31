@@ -23,6 +23,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Don't redirect if we're processing an SSO token redirect
+      // This prevents a race condition where API calls fail before redirect completes
+      const ssoProcessing = sessionStorage.getItem('sso_processing');
+      if (ssoProcessing) {
+        console.log('[API] Skipping 401 redirect - SSO processing in progress');
+        return Promise.reject(error);
+      }
+      
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       window.location.href = '/login';
