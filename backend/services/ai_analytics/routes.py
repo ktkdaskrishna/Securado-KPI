@@ -262,21 +262,33 @@ async def get_analytics_overview(
 
 @router.get("/conversion-funnel")
 async def get_conversion_funnel(
+    request: Request,
     year: Optional[str] = None,
     quarter: Optional[str] = None,
     sales_rep: Optional[str] = None,
     team_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get detailed conversion funnel analysis - OPPORTUNITIES ONLY"""
+    """Get detailed conversion funnel analysis - OPPORTUNITIES ONLY (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    if has_no_rbac_access(rbac_filter):
+        return {
+            "stages": [], "funnel": [], "overall_conversion_rate": 0,
+            "overall_conversion": 0, "lost_count": 0, "lost_value": 0, "applied_filters": {}
+        }
+    
+    # Build query with RBAC
+    query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)
+    
     # Get all opportunities (type='opportunity' - exclude leads)
-    all_opps = await canonical_db.opportunities.find({
-        "org_id": org_id,
-        "type": "opportunity"
-    }).to_list(10000)
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply filters
     filters = {"year": year, "quarter": quarter, "sales_rep": sales_rep, "team_id": team_id}
@@ -327,20 +339,29 @@ async def get_conversion_funnel(
 
 @router.get("/rep-performance")
 async def get_rep_performance(
+    request: Request,
     year: Optional[str] = None,
     quarter: Optional[str] = None,
     team_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get sales rep performance metrics - OPPORTUNITIES ONLY"""
+    """Get sales rep performance metrics - OPPORTUNITIES ONLY (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    if has_no_rbac_access(rbac_filter):
+        return {"reps": [], "top_performer": None, "avg_win_rate": 0, "applied_filters": {}}
+    
+    # Build query with RBAC
+    query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)
+    
     # Get opportunities only (not leads)
-    all_opps = await canonical_db.opportunities.find({
-        "org_id": org_id,
-        "type": "opportunity"
-    }).to_list(10000)
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply filters
     filters = {"year": year, "quarter": quarter, "team_id": team_id}
