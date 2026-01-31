@@ -49,6 +49,37 @@ SCOPES = ["openid", "profile", "email", "User.Read"]
 # Store state tokens temporarily (in production, use Redis)
 _state_store: Dict[str, Dict[str, Any]] = {}
 
+# Runtime config cache (loaded from DB)
+_runtime_config: Dict[str, str] = {}
+
+
+async def load_config_from_db():
+    """Load SSO config from database if not set in environment"""
+    global _runtime_config, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID, MICROSOFT_REDIRECT_URI
+    global AUTHORITY, AUTHORIZE_URL, TOKEN_URL
+    
+    app_db = get_app_db()
+    config = await app_db.system_config.find_one({"config_type": "microsoft_sso"})
+    
+    if config:
+        _runtime_config = config.get("settings", {})
+        
+        # Only override if not set in environment
+        if not os.environ.get("MICROSOFT_CLIENT_ID") and _runtime_config.get("client_id"):
+            MICROSOFT_CLIENT_ID = _runtime_config.get("client_id", "")
+        if not os.environ.get("MICROSOFT_CLIENT_SECRET") and _runtime_config.get("client_secret"):
+            MICROSOFT_CLIENT_SECRET = _runtime_config.get("client_secret", "")
+        if not os.environ.get("MICROSOFT_TENANT_ID") and _runtime_config.get("tenant_id"):
+            MICROSOFT_TENANT_ID = _runtime_config.get("tenant_id", "")
+        if not os.environ.get("MICROSOFT_REDIRECT_URI") and _runtime_config.get("redirect_uri"):
+            MICROSOFT_REDIRECT_URI = _runtime_config.get("redirect_uri", "")
+        
+        # Update derived URLs
+        if MICROSOFT_TENANT_ID:
+            AUTHORITY = f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}"
+            AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
+            TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
+
 
 def is_microsoft_auth_configured() -> bool:
     """Check if Microsoft auth is properly configured"""
