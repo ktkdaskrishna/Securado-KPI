@@ -74,6 +74,7 @@ const iconMap = {
   Lock,
   Webhook,
   ShieldCheck,
+  HelpCircle,
 };
 
 // Permission requirements for each navigation item
