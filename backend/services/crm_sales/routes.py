@@ -1691,6 +1691,7 @@ async def get_account_360(
 
 @activities_router.get("")
 async def list_activities(
+    request: Request,
     opportunity_id: Optional[str] = None,
     account_id: Optional[str] = None,
     status: Optional[str] = None,
@@ -1702,6 +1703,7 @@ async def list_activities(
 ):
     """List CRM activities from both canonical (synced) and app (local) databases.
     Only returns activities related to CRM (crm.lead), not project tasks.
+    RBAC enforced - users only see activities they have permission to view.
     """
     app_db = get_app_db()
     canonical_db = get_canonical_db()
@@ -1709,8 +1711,15 @@ async def list_activities(
     
     logger.info(f"Activities list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Build query for canonical CRM activities ONLY
-    # Include activities with res_model='crm.lead' OR activities with opportunity_id (from crm.activity.report)
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "activity")
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return []
+    
+    # Build query for canonical CRM activities ONLY with RBAC
     canonical_query = {
         "org_id": org_id,
         "$or": [
@@ -1720,11 +1729,18 @@ async def list_activities(
     }
     app_query = {"org_id": org_id}
     
+    # Apply RBAC filter to activities (filter by assigned_user)
+    if rbac_filter and "owner_name" in rbac_filter:
+        canonical_query["assigned_user"] = rbac_filter["owner_name"]
+        app_query["owner_name"] = rbac_filter["owner_name"]
+    
     if opportunity_id:
         canonical_query = {
             "org_id": org_id,
             "opportunity_id": opportunity_id
         }
+        if rbac_filter and "owner_name" in rbac_filter:
+            canonical_query["assigned_user"] = rbac_filter["owner_name"]
         app_query["opportunity_id"] = opportunity_id
     if account_id:
         app_query["account_id"] = account_id
