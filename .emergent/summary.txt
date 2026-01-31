@@ -1,191 +1,168 @@
 <analysis>**original_problem_statement:**
 The initial request was to fix a CRM dashboard with incorrect data. This has since expanded into a comprehensive set of bug fixes and new feature requests to improve data accuracy, add new analytics capabilities, modernize the UI/UX, and implement a robust security model.
 
-The user's core problems revolve around data integrity, consistency, and security:
-1.  **Data Integrity:** A massive data duplication issue was causing incorrect analytics. While this was fixed, subsequent analysis revealed that the  field is not being synced from Odoo, making it impossible to reliably reconcile data.
-2.  **Data Consistency:** The user repeatedly found that different parts of the UI (e.g., dashboard highlights vs. detail pages) showed conflicting numbers for the same metrics.
-3.  **Security:** The current application lacks any form of row-level security, allowing any logged-in user to see all data, contrary to the permissions set in the Odoo source system.
+Most recently, the user reported a critical security breach where a test user (not linked to an Odoo account) could still see all sensitive company data across multiple pages, including AI Analytics, Activities, and Invoices. The user provided a screen recording demonstrating these data leaks.
+
+The user also requested a UI to verify and manage user permissions within the application.
 
 **PRODUCT REQUIREMENTS:**
-1.  **Data Integrity & Deduplication:** Implement a mechanism to prevent and clean duplicate records. (Partially Completed - Duplicates fixed, but key field  is still missing).
-2.  **Robust Data Syncing & Architecture:** Introduce a message queue and a centralized data layer to ensure reliable and consistent data. (Completed - MongoDB queue and Serving Cache implemented).
-3.  **Fix Dashboard Filter Bugs:** Ensure all dashboard filters work correctly and in combination. (Completed).
-4.  **Implement Row-Level Security:** Sync permissions from Odoo and enforce them in the application. (In Progress).
-5.  **Fix Data Discrepancies:** Resolve differences in values between the app and Odoo reports. (In Progress - Some root causes fixed, others pending).
+1.  **Data Integrity & Deduplication:** Implement a mechanism to prevent and clean duplicate records. (Partially Completed -  mapping added but not backfilled).
+2.  **Robust Data Syncing & Architecture:** Introduce a message queue and a centralized data layer to ensure reliable and consistent data. (Completed).
+3.  **Fix Dashboard Filter Bugs:** Ensure all dashboard filters work correctly. (Completed).
+4.  **Implement Row-Level Security:** Sync permissions from Odoo and enforce them strictly across the entire application. (In Progress - Nearing completion, pending user verification).
+5.  **Fix Data Discrepancies:** Resolve differences in values between the app and Odoo reports. (In Progress).
+6.  **Microsoft SSO:** Allow users to log in using their Microsoft accounts. (In Progress).
+7.  **Admin Permission Management:** Provide a UI for admins to view and manage permissions. (Partially Completed - Viewing is done, editing is pending).
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack CRM analytics tool (FastAPI, React, MongoDB) that syncs data from Odoo. Recent work has significantly shifted its architecture to address data consistency and prepare for a robust security model.
+The application is a full-stack CRM analytics tool (FastAPI, React, MongoDB) that syncs data from Odoo.
 
-*   **Event Queue:** A MongoDB-based event queue system () was implemented to make data processing more robust. This includes a worker and monitoring endpoints. The ETL runner can now publish events to this queue.
-*   **Centralized Serving Cache:** A new  service () was created. This service pre-aggregates key metrics (like account overdue amounts) into a single collection, which acts as a single source of truth to prevent UI data inconsistencies.
-*   **Dashboard Bug Fixes:** Multiple critical bugs were fixed where dashboard filters were not being applied correctly to all components (e.g., Product Manager Leaderboard, Category Stats) or during click-through navigation.
-*   **Data Discrepancy Fixes:**
-    *   A bug causing **double-counting** of overdue amounts on the Accounts page was found and fixed.
-    *   Analytics queries were updated to **exclude test records**, aligning app totals more closely with Odoo reports.
-*   **RBAC Implementation Started:** Following user approval for a Hybrid RBAC model, the agent created the initial files for a new  service, which will sync user roles/teams from Odoo and apply access rules locally.
+- **Hybrid RBAC System:** A Role-Based Access Control system is in place. It syncs user roles, teams, and groups from Odoo into a local  collection. A new management UI at  allows admins to trigger this sync, view the synced data, and test the resulting data filters for any user.
+- **Microsoft SSO (Foundation):** The application is now equipped for Microsoft SSO login. A Sign in with Microsoft button appears on the login page. A new SSO tab in the Admin Settings page allows an administrator to configure the required Azure AD credentials (Client ID, Tenant ID, etc.) directly from the UI. The backend services and frontend components are all in place, pending final credential entry.
+- **Comprehensive Security Hardening:** In response to a major data leak report, the permissive grace period for non-synced users was removed. A strict, deny-by-default security model has been implemented. Dozens of API endpoints across the AI Analytics, CRM Sales, Dashboard, and Data Lake services have been patched to enforce RBAC filters, ensuring users without an Odoo profile see no data.
+- **RBAC Link Warning:** A pop-up dialog now warns users upon login if their application account is not linked to a synced Odoo RBAC profile.
+- **Minor Fixes:** The long-standing sidebar scrolling issue has been resolved. The ETL mapping for the critical  field has been added.
 
 **Last working item**:
--   **Last item agent was working:** The agent was in the middle of implementing the Hybrid RBAC architecture (Option C). They successfully created the boilerplate files for a new  service, including models, middleware, and a sync service definition.
--   **Status:** IN PROGRESS
--   **Agent Testing Done:** N
--   **Which testing method agent to use?** both
-    *   **Backend testing agent:** To verify that a new ETL pipeline correctly syncs user, group, and team metadata from Odoo. Also, to create tests confirming the RBAC middleware correctly filters API responses based on the logged-in user's synced permissions.
-    *   **Frontend testing agent:** To perform end-to-end tests by logging in as different users (e.g., a sales rep) and verifying they can only see their own data on pages like Opportunities and the Dashboard.
+-   **Last item agent was working:** The agent performed a comprehensive security overhaul to plug major data leaks. The user reported that a test user could see all company data, and the agent systematically identified and applied strict RBAC filters to numerous API endpoints across the application (, , , ).
+-   **Status:** USER VERIFICATION PENDING
+-   **Agent Testing Done:** Y
+-   **Which testing method agent to use?** Frontend testing agent. The agent should log in as the test user () and navigate to every data-displaying page (Dashboard, AI Analytics, Activities, Invoices, Accounts, Opportunities, etc.) to confirm that all KPIs, charts, and tables show zero or no data.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Critical Data Integrity Gap:  Field Not Synced (P0)**
--   **Issue 2: Sidebar is not scrollable (P2)**
+-   **Issue 1: Comprehensive Security Hardening (P0)**
+-   **Issue 2: Critical Data Integrity Gap:  Field Not Synced (P0)**
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Description:** The agent discovered that the  field from Odoo is not being synced to the application's database. This makes it impossible to reliably reconcile data between the two systems and is the root cause of the user's ongoing confusion about missing records. The records exist, but they can't be matched by their unique business identifier.
-    -   **Attempted fixes:** None yet. The agent identified the issue but was diverted to other tasks.
-    -   **Next debug checklist:**
-        1.  Locate the ETL field mapping definition in .
-        2.  Add a new mapping for the  field from the Odoo  model to the  collection. The source is likely  or a similar custom field name in Odoo.
-        3.  Trigger a full ETL resync of the  pipeline to populate this field for all existing opportunity records.
-        4.  Verify in the database that the  field is now present and populated correctly.
-    -   **Why fix this issue and what will be achieved with the fix?** This is the root cause of the user's data validation struggles. Fixing it will enable accurate 1-to-1 comparison of records between Odoo and the app, which is critical for building user trust.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue:** None
-
--   **Issue 2:**
-    -   **Description:** The sidebar component is not scrollable, which hides navigation items if the list is long, impacting usability.
-    -   **Attempted fixes:** None in this session.
-    -   **Next debug checklist:** In , apply  and a  (e.g., ) to the main scrollable container.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a recurring, low-priority quality-of-life UX improvement that has been reported multiple times.
-    -   **Status:** NOT STARTED
+    -   **Description:** The user reported multiple pages showing data for a non-permissioned test user. The agent has applied fixes across almost all API endpoints, but the user's final verification is pending.
+    -   **Attempted fixes:** The grace period for non-RBAC users was removed. RBAC filters were added to dozens of endpoints in , , , and .
+    -   **Next debug checklist:** Await user feedback. If data leaks are still reported, use the browser's developer tools (Network tab) on the affected page to identify the specific API endpoint returning data and apply the RBAC filter to it.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical security requirement to prevent unauthorized data access.
+    -   **Status:** USER VERIFICATION PENDING
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on other issue:** None
 
+-   **Issue 2:**
+    -   **Description:** The  field from Odoo is not populated in the database, making data reconciliation between the app and Odoo impossible.
+    -   **Attempted fixes:** The agent added the field mapping to . However, an ETL run is required to backfill this data for existing records.
+    -   **Next debug checklist:**
+        1.  Navigate to the ETL Control page in the admin section.
+        2.  Trigger a Full Resync for the  pipeline.
+        3.  After the sync completes, verify in the database (or via an API call) that opportunity records now have a non-null .
+    -   **Why fix this issue and what will be achieved with the fix?** This will enable accurate 1-to-1 comparison of records between Odoo and the app, resolving a core data integrity problem for the user.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None
+
 **In progress Task List**:
--   **Task 1: Complete Hybrid RBAC Implementation (P0)**
-    -   **Where to resume:** The files in  exist but are not integrated.
-        1.  Update :
-            -   Import and add the .
-            -   Import and include the .
-            -   Initialize the RBAC sync service during application startup.
-        2.  Create a new ETL pipeline to sync user metadata (users, groups, teams) from Odoo into a new  collection.
-        3.  Implement the logic in  to read the synced metadata for the current user and generate a MongoDB filter query based on local rules (e.g., if user is in Sales / User group, generate ).
-        4.  Apply this generated filter to all relevant data-fetching APIs (e.g., get opportunities, accounts, dashboard stats) to enforce row-level security.
-    -   **What will be achieved with this?** The application will enforce data access permissions based on roles and teams synced from Odoo, closing a major security gap.
+-   **Task 1: Complete Microsoft SSO Integration (P1)**
+    -   **Where to resume:** The entire framework is built. The next step is to obtain the Azure AD credentials from the user, enter them into the Settings page, and perform a full end-to-end test of the login flow.
+    -   **What will be achieved with this?** Users will be able to log in securely using their Microsoft accounts, and their sessions will be automatically linked to their Odoo permissions.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** None
+    -   **Blocked on something:** Waiting for user to provide Azure AD credentials.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    *   **P0: Fix missing  sync** (See Issue 1).
-    *   **P1: Refactor UI to use Serving Cache:** Update frontend components (, , ) to fetch data from the new  endpoints instead of their older, disparate API calls. This will complete the data consistency architecture.
+    -   **P1: Create UI for Local Permission Editing:** The user requested a way to edit if required for this system context the permissions of users. An admin UI should be created to view a user's synced Odoo permissions and potentially assign local overrides (e.g., grant temporary admin access).
+    -   **P1: Refactor UI to use Serving Cache:** Update frontend components (, , ) to fetch data from the  endpoints to improve data consistency and performance.
 -   **Future Tasks:**
-    *   **P2: Add Win Rate Tooltip:** Implement a tooltip on the Win Rate KPI card to explain the calculation method.
-    *   **P2: Modular Dashboard Architecture:** Build the layout engine () and admin UI for creating and assigning dashboard layouts.
-    *   **P3: Admin UI for Test Records:** Add a feature in the admin panel to mark/unmark records as test records, providing a more robust way to manage analytics exclusions.
+    -   **P2: Add Win Rate Tooltip:** Implement a tooltip on the Win Rate KPI card to explain the calculation method.
+    -   **P2: Modular Dashboard Architecture:** Build the layout engine () and admin UI for creating and assigning dashboard layouts.
+    -   **P3: Admin UI for Test Records:** Add a feature in the admin panel to mark/unmark records as test records.
 
 **Completed work in this session**
--   **Architectural Pivot to Event Queue & Serving Cache:**
-    -   Implemented a custom **MongoDB-based event queue** ( service) as a dependency-free alternative to Redis for background processing.
-    -   Built a centralized **Serving Cache** ( service) to pre-aggregate analytics and act as a single source of truth for the UI, fixing data consistency issues.
--   **Critical Data & Filter Bug Fixes:**
-    -   Fixed dashboard filters so that all components (Product Manager leaderboard, Category stats) correctly update when a  is selected.
-    -   Fixed dashboard click-through navigation to correctly pass all active filters (Year, Sales Rep) to the Opportunities page.
-    -   Fixed a **double-counting bug** in the Accounts API that was causing inflated overdue amounts.
-    -   Updated all analytics endpoints to **exclude test records**, aligning app data more closely with Odoo reports.
--   **RBAC Implementation Started:**
-    -   Held a detailed architectural discussion with the user and received approval to build a Hybrid RBAC model.
-    -   Created the initial file structure and boilerplate code for the new  service.
--   **Documentation:**
-    -   Created a new architecture document at .
+-   **Critical Security Overhaul:**
+    -   Removed the permissive grace period for non-RBAC users, enforcing a strict deny-by-default security model.
+    -   Systematically applied RBAC filters to dozens of data-leaking API endpoints across , , , and  services, resolving a major security breach.
+-   **RBAC Sync Implementation & UI:**
+    -   Successfully implemented and debugged the backend Odoo RBAC sync, handling SSL errors and incorrect Odoo field names ( -> ).
+    -   Built a new UI () to trigger the sync, view synced users/groups/teams, and test the resulting data filters.
+-   **Microsoft SSO Integration:**
+    -   Installed required packages ( for both frontend and backend).
+    -   Created backend services and routes for Microsoft OAuth2 authentication.
+    -   Built a UI in Admin Settings () for admins to configure Azure AD credentials.
+    -   Added a Sign in with Microsoft button to the  that activates once SSO is configured.
+-   **UX/UI Improvements:**
+    -   Created an  popup to alert users if their account is not linked to an Odoo profile.
+    -   Fixed the recurring sidebar scrolling issue by ensuring proper height constraints.
+-   **Data Integrity:**
+    -   Added the mapping for  to , preparing for data backfill.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Missing  sync:** This was identified as the root cause of data reconciliation problems but was not fixed. It is now the highest priority pending issue.
+-   None. The agent addressed all issues raised in this session, although some are pending verification or further steps.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Sidebar Navigation Not Scrollable
 -   **Recurrence count:** 7
--   **Status:** NOT STARTED
+-   **Status:** RESOLVED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **MongoDB as a Message Queue:** The agent implemented a custom event queue using a standard MongoDB collection and a background worker, avoiding an external dependency like Redis. Events are marked with statuses (, , , ).
--   **Centralized Serving Cache:** This is a key architectural pattern introduced to solve data consistency problems. A background process pre-calculates and stores aggregated data in a dedicated  collection. The UI is intended to read from this cache, ensuring all components display the same numbers.
--   **Hybrid RBAC Model:** The chosen security architecture. It involves syncing user identity metadata (roles, teams) from Odoo but defining the actual access control rules (e.g., Sales reps can only see their own deals) locally within the application's middleware. This provides a good balance between maintaining a single source of truth for user identity and having control over the permission logic.
--   **Declarative Middleware for Security:** The plan for the RBAC implementation is to use FastAPI middleware to automatically inject the correct data access filters into every API request, making security enforcement clean and non-invasive.
+-   **Strict RBAC Enforcement:** The security model was changed to deny-by-default. Users not found in the synced RBAC data now receive a MongoDB filter that matches no documents (), effectively blocking all data access.
+-   **Microsoft SSO (OAuth2/OIDC):** The foundation for Microsoft Identity Platform login was implemented, including the backend API endpoints to handle the token exchange and frontend components using the  library.
+-   **Dynamic SSO Configuration:** SSO credentials are not hardcoded but are stored in the database and managed via a new SSO tab in the admin settings page. This allows for runtime configuration without code changes or redeployments.
+-   **Systematic Endpoint Auditing:** A security review process involving analyzing user reports (screen recordings), using  to find all data-related API endpoints, and methodically patching each one to enforce RBAC.
 
 **key DB schema**
--   ****:  (New)
--   ****:  (New)
--   ****:  (Planned)
-
-**changes in tech stack**
--   **Redis was planned but NOT implemented.** The agent pivoted and built a **MongoDB-based event queue** instead. This is a critical decision to be aware of.
+-   ****:  (Populated by sync)
+-   ****:  (New, managed via Settings UI)
+-   ****: The  service was fixed to correctly query this collection for Odoo connection details using the uid=0(root) gid=0(root) groups=0(root) field.
 
 **All files of reference**
-*   : New service for the MongoDB message queue.
-*   : New service for the centralized data cache. This is the new standard for providing data to the UI.
-*   : New service for the RBAC implementation (in progress).
-*   : Heavily modified to fix multiple filtering bugs and to exclude test records.
-*   : Modified to fix the overdue amount double-counting bug.
-*   : A comprehensive overview of the new architecture created by the agent.
-
-**Areas that need refactoring**
--   **API Endpoint Consolidation:** Many API endpoints in  and  now have their logic duplicated or superseded by the  service. They should be refactored to read from the cache instead of performing their own calculations.
--   **Frontend Data Fetching:** The frontend components still use a mix of old and new API calls. They should be updated to consistently use the new  and its associated API endpoints to fully realize the benefits of the new architecture.
-
-**key api endpoints**
-*   : **(NEW)** Monitors the health and status of the event queue.
-*   : **(NEW)** The primary endpoint for fetching pre-aggregated data for the UI.
-*   : **(NEW)** Provides consistent overdue amounts, now the single source of truth for this metric.
-*   : **(FIXED)** The double-counting bug was resolved here. Should be refactored to use the serving cache.
-*   : **(FIXED)** Now correctly applies all dashboard filters.
-*   : **(FIXED)** Now correctly applies all dashboard filters.
+-   : The grace period logic was removed from here. This is the core of the new strict security model.
+-   : The new UI for managing and testing the Odoo RBAC sync.
+-   : The admin page that now contains the SSO configuration tab.
+-   : The new backend service handling all Microsoft SSO logic.
+-   The  files in , , , and  were all heavily modified to add RBAC filters.
 
 **Critical Info for New Agent**
--   **Architecture Pivot:** Be aware that the project has pivoted away from Redis. A **MongoDB-based event queue** and a **centralized ** are the new core architectural components for data processing and consistency. You must build upon this new foundation.
--   **Complete the RBAC Implementation:** Your first priority is to finish the Hybrid RBAC implementation. This involves creating the ETL pipeline for user metadata from Odoo and integrating the security middleware into all data-fetching APIs.
--   **Address the  Sync:** The single most critical data integrity issue is the missing  field. This **must be fixed** to restore user trust in data reconciliation. It is a P0 issue.
--   **Embrace the Serving Cache:** The  is the solution to the user's data consistency complaints. All future UI work and refactoring should aim to consume data from this cache rather than creating new one-off API endpoints.
+-   **Security is Paramount:** The last session was a major security hardening effort. The application now operates on a strict deny-by-default principle. You must maintain this posture. Verify any new data endpoint includes an RBAC filter.
+-   **Microsoft SSO is Ready for Credentials:** The SSO integration is built but not active. Your first step on this task should be to ask the user for their Azure AD credentials and guide them on entering them into the  page to activate the feature.
+-   **RBAC is Live:** The Odoo RBAC sync is functional. You can use the UI at  to trigger syncs and test permissions.
+-   **Data Backfill Needed:** The  mapping was added, but the data is not yet in the database. You must trigger a  ETL resync to populate this crucial field for all existing opportunities.
+
+**documents and test reports created in this job**
+- : Updated to include documentation for the new RBAC service.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:**  - Approved Option C: Hybrid RBAC for implementation. **Status: In Progress**.
-2.  **user:**  - Clarified the scope of data for comparison after agent found discrepancies. **Status: Completed**.
-3.  **user:**  - Approved agent's plan to (A) default the dashboard to the current year and (B) exclude test records from analytics. **Status: Completed**.
-4.  **user:**  - Provided a new Excel export to help debug data discrepancies. **Status: Completed**.
-5.  **user:** Provided screenshots and asked about why  in the app is higher than in Odoo. **Status: Completed**.
-6.  **user:**  - Corrected the agent's mistaken assumption about the source of the  field. **Status: Completed**.
-7.  **user:** Provided Excel files comparing Odoo and app data, asking why there are missing records and mismatched values. **Status: Completed**.
-8.  **user:**  - Instructed the agent to fix all identified root causes for dashboard filter issues. **Status: Completed**.
-9.  **user:** Reported multiple dashboard filter bugs via screenshots (Project Manager/Category stats not updating, click-through navigation not working). **Status: Completed**.
-10. **user:** Asked for a plan to ensure ETL validation and prevent duplicates permanently. **Status: Completed**.
+1.  **user:** Reported a massive security leak with a screen recording showing a test user could see all data on AI Analytics, Activities, and Invoices pages. **Status: Completed (Fixes implemented, pending user verification).**
+2.  **user:** Asked for an admin UI to configure Microsoft SSO and a warning popup for users not linked to Odoo. **Status: Completed.**
+3.  **user:** Approved using Microsoft SSO for login and auto-linking users by email (Option A). **Status: In Progress.**
+4.  **user:** Asked how to integrate local system users with the Odoo RBAC permissions. **Status: Completed (SSO approach was proposed and accepted).**
+5.  **user:** Reported an error (Please select an Odoo connection first) when trying to sync RBAC from the new UI. **Status: Completed (Agent fixed the bug).**
+6.  **user:** Asked if there was a UI to verify the RBAC sync and how to manage it. **Status: Completed (Agent built the RBAC Management Page).**
+7.  **user:**  - User confirmed the agent's initial plan to start with the RBAC implementation. **Status: Completed.**
 
 **Project Health Check:**
-*   **Broken:** No features are completely broken.
-*   **Mocked:** None.
-*   **Health:** **Improving but Fragile.** Major architectural improvements (, ) have been made, and critical bugs fixed. However, the new architecture is not fully integrated (UI still uses old endpoints), and the RBAC system is incomplete. The missing  sync remains a critical data integrity risk.
+-   **Broken:** No features are completely broken.
+-   **Mocked:** Microsoft SSO is functionally mocked, as it requires real user-provided credentials to complete the authentication flow.
+-   **Health:** **Significantly Hardened.** The application's security posture has been massively improved by plugging numerous data leaks. The architecture is more robust, but the large number of recent changes necessitates careful regression testing.
 
 **3rd Party Integrations**
-*   **Odoo (v17.0):** Data source for the ETL. The integration also needs to be expanded to sync user/role/team metadata for RBAC.
-*   **MongoDB:** Primary application database, also used for the event queue and serving cache.
-*   **Emergent LLM (OpenAI):** Used for AI Sales Analytics features.
+-   **Odoo (v17.0):** Data source for ETL and the source of truth for user permissions (RBAC).
+-   **MongoDB:** Primary application database, also used for the event queue and serving cache.
+-   **Emergent LLM (OpenAI):** Used for AI Sales Analytics features.
+-   **Microsoft Identity Platform (Azure AD):** Newly added for SSO. Uses  on the backend and  on the frontend. Requires user-provided API Keys (Client ID, Tenant ID, Secret).
 
 **Testing status**
--   **Testing agent used after significant changes:** YES
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** []
--   **Known regressions:** None.
+-   **Known regressions:** None identified, but the scope of security changes was very large.
 
 **Credentials to test flow:**
 -   **Email**: 
 -   **Password**: 
 
 **What agent forgot to execute**
--   **Sync :** The agent identified this as a critical root cause for data discrepancies but did not create a task or implement the fix.
--   **Refactor to use :** The agent built the  as the single source of truth but did not follow through by refactoring the frontend components and older API endpoints to actually use it. The new architecture is built but not fully leveraged.</analysis>
+-   **Trigger ETL for :** The agent added the field mapping but did not execute the necessary ETL Full Resync to backfill the data for existing records. This is a critical pending step for data integrity.
+-   **Implement Permission Editing UI:** The user asked for a way to verify *and edit* permissions. The agent implemented verification via the RBAC management page but did not create a feature for an admin to edit or override a user's permissions locally.</analysis>

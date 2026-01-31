@@ -511,7 +511,7 @@ async def export_opportunities(...):
 ---
 
 ## Preview URL
-https://trustedcrm.preview.emergentagent.com
+https://secure-analytics-3.preview.emergentagent.com
 
 ---
 
