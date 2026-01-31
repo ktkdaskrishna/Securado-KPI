@@ -4,8 +4,9 @@ Handles:
 - List/filter canonical records by entity type
 - Search across entities
 - Pagination and sorting
+- RBAC enforced - users only see permitted data
 """
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Optional, List
 import logging
 import re
@@ -13,6 +14,7 @@ import re
 from libs.database import get_canonical_db, get_app_db
 from libs.utils import serialize_doc
 from services.identity.routes import get_current_user
+from services.rbac_sync.middleware import get_rbac_filter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/data-lake", tags=["data-lake"])
@@ -21,6 +23,7 @@ search_router = APIRouter(tags=["search"])
 
 @router.get("/canonical")
 async def list_canonical_records(
+    request: Request,
     entity: str = Query("opportunities", description="Entity type: opportunities, accounts, contacts, users, activities"),
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
@@ -28,8 +31,23 @@ async def list_canonical_records(
     source_system: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """List canonical records with optional filtering"""
+    """List canonical records with optional filtering (RBAC enforced)"""
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, entity.rstrip('s'))
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        return {
+            "entity_type": entity,
+            "total": 0,
+            "skip": skip,
+            "limit": limit,
+            "records": []
+        }
     
     # Map entity names to collection names
     collection_map = {
@@ -39,8 +57,10 @@ async def list_canonical_records(
     }
     collection_name = collection_map.get(entity, entity)
     
-    # Build query
-    query = {"org_id": current_user.get("org_id", "default")}
+    # Build query with RBAC
+    query = {"org_id": org_id}
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if stage:
         query["stage"] = stage
     if source_system:
@@ -64,18 +84,32 @@ async def list_canonical_records(
 
 @router.get("/canonical/{entity}/{canonical_id}")
 async def get_canonical_record(
+    request: Request,
     entity: str,
     canonical_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get single canonical record"""
+    """Get single canonical record (RBAC enforced)"""
     canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, entity.rstrip('s'))
+    
+    # Check if user has NO_ACCESS
+    has_no_access = rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
+    if has_no_access:
+        raise HTTPException(status_code=403, detail="Access denied - no RBAC permission")
+    
+    # Build query with RBAC
+    query = {
+        "canonical_id": canonical_id,
+        "org_id": org_id
+    }
+    query.update(rbac_filter)
     
     collection = canonical_db[entity]
-    record = await collection.find_one({
-        "canonical_id": canonical_id,
-        "org_id": current_user.get("org_id", "default")
-    })
+    record = await collection.find_one(query)
     
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
