@@ -9,64 +9,34 @@
 
 ---
 
-## Current Sprint: Hybrid RBAC Implementation (Status: IN PROGRESS)
+## Current Sprint: Security Hardening & RBAC Enforcement (Status: COMPLETED ✅)
 
-### 🟢 Phase 1: RBAC Service Integration (COMPLETED!)
+### 🟢 Security Fixes Applied
 
-| Task | Status | Notes |
-|------|--------|-------|
-| Create RBAC service files | ✅ DONE | `/app/backend/services/rbac_sync/` |
-| Integrate RBAC into server.py | ✅ DONE | Router + services initialized at startup |
-| Add `opportunity_number` ETL mapping | ✅ DONE | Added to `odoo_field_mappings.json` |
-| RBAC endpoints working | ✅ DONE | `/api/rbac/*` endpoints tested |
-| Apply RBAC filters to data APIs | ✅ DONE | Opportunities, Accounts, Dashboard |
-| Fix sidebar scrolling | ✅ DONE | Added overflow-y-auto |
-| Grace period for rollout | ✅ DONE | Full access when RBAC not synced |
+| Endpoint | RBAC Applied | Status |
+|----------|--------------|--------|
+| `GET /api/dashboard/stats` | ✅ | Fixed |
+| `GET /api/dashboard/product-manager-leaderboard` | ✅ | Fixed |
+| `GET /api/dashboard/category-stats` | ✅ | Fixed |
+| `GET /api/opportunities` | ✅ | Already had RBAC |
+| `GET /api/opportunities/export` | ✅ | Fixed |
+| `GET /api/opportunities/won-with-invoices` | ✅ | Fixed |
+| `GET /api/opportunities/kanban` | ✅ | Fixed |
+| `GET /api/leads` | ✅ | Fixed |
+| `GET /api/accounts` | ✅ | Already had RBAC |
+| Activity stats in dashboard | ✅ | Fixed |
+
+### Security Rule Change:
+**Before:** Users not in RBAC could see "own records only" (matched by name)
+**After:** Users not in RBAC see **NO DATA** (denied access)
+
+```
+# Access Rule Logic
+if user_not_in_rbac AND rbac_is_synced:
+    return {"_id": {"$eq": "NO_ACCESS"}}  # Matches nothing
+```
 
 ### 🟢 Phase 2: Microsoft SSO + Auto-Link RBAC (COMPLETED!)
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Backend Microsoft OAuth endpoints | ✅ DONE | `/api/auth/microsoft/*` |
-| Frontend MSAL integration | ✅ DONE | @azure/msal-browser installed |
-| Microsoft Login Button | ✅ DONE | Added to LoginPage |
-| Auto-link by email | ✅ DONE | Matches MS user email to RBAC |
-| Environment placeholders | ✅ DONE | Ready for Azure AD config |
-
-### 🔵 Phase 3: Configure Azure AD (Next Steps - YOUR ACTION REQUIRED)
-
-To activate Microsoft SSO, add these to `/app/backend/.env`:
-```
-MICROSOFT_CLIENT_ID=your-azure-ad-client-id
-MICROSOFT_CLIENT_SECRET=your-azure-ad-client-secret  
-MICROSOFT_TENANT_ID=your-azure-ad-tenant-id
-MICROSOFT_REDIRECT_URI=https://trustedcrm.preview.emergentagent.com/api/auth/microsoft/callback
-```
-
-### Architecture (Hybrid RBAC):
-```
-┌─────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│   Odoo      │ ──▶ │ RBAC Sync Service│ ──▶ │ users_rbac        │
-│ (res.users, │     │ (Syncs metadata) │     │ groups_rbac       │
-│  res.groups,│     └──────────────────┘     │ teams_rbac        │
-│  crm.team)  │                              └───────────────────┘
-└─────────────┘                                       │
-                                                      ▼
-┌─────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│  API Request│ ──▶ │ RBAC Middleware  │ ──▶ │ Filtered Query    │
-│             │     │ (Local Rules)    │     │ (User sees only   │
-└─────────────┘     └──────────────────┘     │  permitted data)  │
-                                             └───────────────────┘
-```
-
-**RBAC API Endpoints:**
-- `POST /api/rbac/sync` - Trigger user/group/team sync from Odoo
-- `GET /api/rbac/users` - List synced users with access levels
-- `GET /api/rbac/groups` - List synced groups
-- `GET /api/rbac/teams` - List synced teams  
-- `GET /api/rbac/my-access` - Get current user's permissions
-- `GET /api/rbac/test-filter/{user_name}` - Test RBAC filter for user
-- `GET /api/rbac/stats` - RBAC sync statistics
 
 ---
 
