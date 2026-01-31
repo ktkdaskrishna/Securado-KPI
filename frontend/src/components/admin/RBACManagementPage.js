@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Checkbox } from '../ui/checkbox';
 import { 
   Shield, 
   Users, 
@@ -30,7 +31,11 @@ import {
   Edit2,
   Trash2,
   ShieldAlert,
-  UserPlus
+  UserPlus,
+  Upload,
+  Download,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { rbacSyncAPI, etlAPI } from '../../lib/api';
@@ -51,6 +56,7 @@ const RBACManagementPage = () => {
   // Permission Overrides state
   const [overrides, setOverrides] = useState([]);
   const [showAddOverride, setShowAddOverride] = useState(false);
+  const [showBulkOverride, setShowBulkOverride] = useState(false);
   const [editingOverride, setEditingOverride] = useState(null);
   const [overrideForm, setOverrideForm] = useState({
     user_email: '',
@@ -58,7 +64,16 @@ const RBACManagementPage = () => {
     reason: '',
     expires_at: ''
   });
+  const [bulkForm, setBulkForm] = useState({
+    access_level: 'MANAGER',
+    reason: '',
+    expires_at: ''
+  });
   const [savingOverride, setSavingOverride] = useState(false);
+  
+  // Selection state for bulk operations
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [selectedOverrides, setSelectedOverrides] = useState(new Set());
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -78,7 +93,6 @@ const RBACManagementPage = () => {
       setTeams(teamsRes.data.teams || []);
       setOverrides(overridesRes.data.overrides || []);
       
-      // Filter to only Odoo connections
       const odooConnections = (connectionsRes.data || []).filter(c => c.type === 'odoo' && c.status === 'active');
       setConnections(odooConnections);
       if (odooConnections.length > 0 && !selectedConnection) {
@@ -134,7 +148,7 @@ const RBACManagementPage = () => {
     }
   };
 
-  // Permission Override handlers
+  // Single override handlers
   const handleCreateOverride = async () => {
     if (!overrideForm.user_email.trim()) {
       toast.error('Please enter a user email');
@@ -185,7 +199,7 @@ const RBACManagementPage = () => {
   };
 
   const handleDeleteOverride = async (overrideId) => {
-    if (!confirm('Are you sure you want to delete this permission override?')) return;
+    if (!window.confirm('Are you sure you want to delete this permission override?')) return;
     
     try {
       await rbacSyncAPI.deleteOverride(overrideId);
@@ -199,14 +213,142 @@ const RBACManagementPage = () => {
 
   const handleToggleOverrideActive = async (override) => {
     try {
-      await rbacSyncAPI.updateOverride(override.id, {
-        is_active: !override.is_active
-      });
+      await rbacSyncAPI.updateOverride(override.id, { is_active: !override.is_active });
       toast.success(override.is_active ? 'Override deactivated' : 'Override activated');
       await fetchData();
     } catch (error) {
       console.error('Toggle override error:', error);
       toast.error('Failed to update override');
+    }
+  };
+
+  // Bulk override handlers
+  const handleBulkCreateOverrides = async () => {
+    if (selectedUsers.size === 0) {
+      toast.error('Please select users first');
+      return;
+    }
+    
+    setSavingOverride(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const userLogin of selectedUsers) {
+      try {
+        await rbacSyncAPI.createOverride({
+          user_email: userLogin,
+          access_level: bulkForm.access_level,
+          reason: bulkForm.reason || `Bulk override - ${new Date().toLocaleDateString()}`,
+          expires_at: bulkForm.expires_at || null
+        });
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        console.error(`Failed to create override for ${userLogin}:`, error);
+      }
+    }
+    
+    if (successCount > 0) {
+      toast.success(`Created ${successCount} permission overrides`);
+    }
+    if (errorCount > 0) {
+      toast.error(`Failed to create ${errorCount} overrides (may already exist)`);
+    }
+    
+    setShowBulkOverride(false);
+    setSelectedUsers(new Set());
+    setBulkForm({ access_level: 'MANAGER', reason: '', expires_at: '' });
+    await fetchData();
+    setSavingOverride(false);
+  };
+
+  const handleBulkDeleteOverrides = async () => {
+    if (selectedOverrides.size === 0) {
+      toast.error('Please select overrides to delete');
+      return;
+    }
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedOverrides.size} overrides?`)) return;
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const overrideId of selectedOverrides) {
+      try {
+        await rbacSyncAPI.deleteOverride(overrideId);
+        successCount++;
+      } catch (error) {
+        errorCount++;
+      }
+    }
+    
+    if (successCount > 0) {
+      toast.success(`Deleted ${successCount} overrides`);
+    }
+    if (errorCount > 0) {
+      toast.error(`Failed to delete ${errorCount} overrides`);
+    }
+    
+    setSelectedOverrides(new Set());
+    await fetchData();
+  };
+
+  const handleBulkToggleOverrides = async (setActive) => {
+    if (selectedOverrides.size === 0) {
+      toast.error('Please select overrides first');
+      return;
+    }
+    
+    let successCount = 0;
+    
+    for (const overrideId of selectedOverrides) {
+      try {
+        await rbacSyncAPI.updateOverride(overrideId, { is_active: setActive });
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to update override ${overrideId}:`, error);
+      }
+    }
+    
+    toast.success(`${setActive ? 'Activated' : 'Deactivated'} ${successCount} overrides`);
+    setSelectedOverrides(new Set());
+    await fetchData();
+  };
+
+  // Selection helpers
+  const toggleUserSelection = (login) => {
+    const newSelected = new Set(selectedUsers);
+    if (newSelected.has(login)) {
+      newSelected.delete(login);
+    } else {
+      newSelected.add(login);
+    }
+    setSelectedUsers(newSelected);
+  };
+
+  const toggleOverrideSelection = (id) => {
+    const newSelected = new Set(selectedOverrides);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedOverrides(newSelected);
+  };
+
+  const selectAllUsers = () => {
+    if (selectedUsers.size === filteredUsers.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(filteredUsers.map(u => u.login)));
+    }
+  };
+
+  const selectAllOverrides = () => {
+    if (selectedOverrides.size === overrides.length) {
+      setSelectedOverrides(new Set());
+    } else {
+      setSelectedOverrides(new Set(overrides.map(o => o.id)));
     }
   };
 
@@ -222,13 +364,13 @@ const RBACManagementPage = () => {
 
   const getAccessLevelBadge = (level, isOverride = false) => {
     const colors = {
-      'ADMIN': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      'MANAGER': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'USER': 'bg-green-500/20 text-green-400 border-green-500/30',
-      'RESTRICTED': 'bg-red-500/20 text-red-400 border-red-500/30'
+      'ADMIN': 'bg-purple-100 text-purple-700 border-purple-200',
+      'MANAGER': 'bg-blue-100 text-blue-700 border-blue-200',
+      'USER': 'bg-green-100 text-green-700 border-green-200',
+      'RESTRICTED': 'bg-red-100 text-red-700 border-red-200'
     };
     return (
-      <Badge variant="outline" className={`${colors[level] || colors['RESTRICTED']} ${isOverride ? 'ring-1 ring-yellow-500/50' : ''}`}>
+      <Badge variant="outline" className={`${colors[level] || colors['RESTRICTED']} ${isOverride ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}>
         {isOverride && <ShieldAlert className="h-3 w-3 mr-1" />}
         {level}
       </Badge>
@@ -243,11 +385,11 @@ const RBACManagementPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6" data-testid="rbac-management-page">
+      <div className="space-y-6" data-testid="rbac-management-page">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-32" />
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <Skeleton key={i} className="h-28" />
           ))}
         </div>
         <Skeleton className="h-96" />
@@ -256,15 +398,15 @@ const RBACManagementPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6" data-testid="rbac-management-page">
+    <div className="space-y-6" data-testid="rbac-management-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <ShieldCheck className="h-7 w-7 text-[#800000]" />
             RBAC Management
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-gray-500 mt-1">
             Manage row-level security by syncing user permissions from Odoo
           </p>
         </div>
@@ -273,7 +415,7 @@ const RBACManagementPage = () => {
             <select
               value={selectedConnection || ''}
               onChange={(e) => setSelectedConnection(e.target.value)}
-              className="bg-[#2a2a2a] border border-[#444] rounded-md px-3 py-2 text-white text-sm"
+              className="border border-gray-300 rounded-md px-3 py-2 text-gray-700 text-sm bg-white focus:ring-2 focus:ring-[#800000] focus:border-[#800000]"
               data-testid="connection-select"
             >
               {connections.map(conn => (
@@ -286,7 +428,7 @@ const RBACManagementPage = () => {
           <Button
             onClick={handleSync}
             disabled={syncing || connections.length === 0}
-            className="bg-[#800000] hover:bg-[#990000]"
+            className="bg-[#800000] hover:bg-[#990000] text-white"
             data-testid="sync-rbac-button"
           >
             {syncing ? (
@@ -306,10 +448,10 @@ const RBACManagementPage = () => {
 
       {/* No Connection Warning */}
       {connections.length === 0 && (
-        <Alert className="bg-yellow-500/10 border-yellow-500/30">
-          <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          <AlertTitle className="text-yellow-500">No Odoo Connection</AlertTitle>
-          <AlertDescription className="text-yellow-400/80">
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">No Odoo Connection</AlertTitle>
+          <AlertDescription className="text-amber-700">
             You need an active Odoo connection to sync RBAC data. Go to ETL Platform → Connections to set one up.
           </AlertDescription>
         </Alert>
@@ -317,80 +459,80 @@ const RBACManagementPage = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="bg-[#1e1e1e] border-[#333]">
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <Users className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Users className="h-4 w-4 text-[#800000]" />
               Users Synced
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">{stats?.users_synced || 0}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats?.users_synced || 0}</p>
             {stats?.last_sync && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Last sync: {new Date(stats.last_sync).toLocaleString()}
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1e1e1e] border-[#333]">
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Shield className="h-4 w-4 text-[#800000]" />
               Groups Synced
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">{stats?.groups_synced || 0}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats?.groups_synced || 0}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1e1e1e] border-[#333]">
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-[#800000]" />
               Teams Synced
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">{stats?.teams_synced || 0}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats?.teams_synced || 0}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1e1e1e] border-[#333]">
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
               Local Overrides
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-yellow-400">{overrides.filter(o => o.is_active).length}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-3xl font-bold text-amber-600">{overrides.filter(o => o.is_active).length}</p>
+            <p className="text-xs text-gray-400 mt-1">
               {overrides.length} total ({overrides.filter(o => !o.is_active).length} inactive)
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1e1e1e] border-[#333]">
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-              <UserCog className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-[#800000]" />
               Access Distribution
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {stats?.access_level_distribution && Object.entries(stats.access_level_distribution).map(([level, count]) => (
                 count > 0 && (
-                  <span key={level} className="text-xs">
-                    {getAccessLevelBadge(level)} <span className="text-gray-400">{count}</span>
+                  <span key={level} className="text-xs flex items-center gap-1">
+                    {getAccessLevelBadge(level)} <span className="text-gray-500">{count}</span>
                   </span>
                 )
               ))}
               {(!stats?.access_level_distribution || Object.values(stats.access_level_distribution).every(v => v === 0)) && (
-                <span className="text-gray-500 text-sm">No users synced yet</span>
+                <span className="text-gray-400 text-sm">No users synced yet</span>
               )}
             </div>
           </CardContent>
@@ -399,24 +541,24 @@ const RBACManagementPage = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="bg-[#2a2a2a] border-[#444]">
-          <TabsTrigger value="users" className="data-[state=active]:bg-[#800000]">
+        <TabsList className="bg-gray-100 border border-gray-200">
+          <TabsTrigger value="users" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <Users className="h-4 w-4 mr-2" />
             Users ({users.length})
           </TabsTrigger>
-          <TabsTrigger value="overrides" className="data-[state=active]:bg-[#800000]">
+          <TabsTrigger value="overrides" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <ShieldAlert className="h-4 w-4 mr-2" />
             Overrides ({overrides.filter(o => o.is_active).length})
           </TabsTrigger>
-          <TabsTrigger value="groups" className="data-[state=active]:bg-[#800000]">
+          <TabsTrigger value="groups" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <Shield className="h-4 w-4 mr-2" />
             Groups ({groups.length})
           </TabsTrigger>
-          <TabsTrigger value="teams" className="data-[state=active]:bg-[#800000]">
+          <TabsTrigger value="teams" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <Building2 className="h-4 w-4 mr-2" />
             Teams ({teams.length})
           </TabsTrigger>
-          <TabsTrigger value="test" className="data-[state=active]:bg-[#800000]">
+          <TabsTrigger value="test" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <Filter className="h-4 w-4 mr-2" />
             Test Filter
           </TabsTrigger>
@@ -424,42 +566,63 @@ const RBACManagementPage = () => {
 
         {/* Users Tab */}
         <TabsContent value="users">
-          <Card className="bg-[#1e1e1e] border-[#333]">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-white">Synced Users</CardTitle>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-[#2a2a2a] border-[#444] text-white"
-                    data-testid="search-users-input"
-                  />
+                <div>
+                  <CardTitle className="text-gray-900">Synced Users</CardTitle>
+                  <CardDescription className="text-gray-500">
+                    Users synced from Odoo with their access levels. Select users for bulk operations.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search users..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                      data-testid="search-users-input"
+                    />
+                  </div>
+                  {selectedUsers.size > 0 && (
+                    <Button
+                      onClick={() => setShowBulkOverride(true)}
+                      className="bg-amber-500 hover:bg-amber-600 text-white"
+                      data-testid="bulk-override-button"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Override ({selectedUsers.size})
+                    </Button>
+                  )}
                 </div>
               </div>
-              <CardDescription>
-                Users synced from Odoo with their access levels. Add local overrides to grant temporary access.
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[450px]">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-[#333] hover:bg-transparent">
-                      <TableHead className="text-gray-400">Name</TableHead>
-                      <TableHead className="text-gray-400">Login</TableHead>
-                      <TableHead className="text-gray-400">Access Level</TableHead>
-                      <TableHead className="text-gray-400">Teams</TableHead>
-                      <TableHead className="text-gray-400">Synced At</TableHead>
-                      <TableHead className="text-gray-400">Actions</TableHead>
+                    <TableRow className="border-gray-200 hover:bg-gray-50">
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                          onCheckedChange={selectAllUsers}
+                          className="border-gray-300"
+                        />
+                      </TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Name</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Login</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Access Level</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Teams</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Synced At</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={7} className="text-center text-gray-500 py-12">
                           {users.length === 0 
                             ? "No users synced yet. Click 'Sync from Odoo' to start."
                             : "No users match your search."
@@ -471,21 +634,31 @@ const RBACManagementPage = () => {
                         const hasOverride = overrides.find(o => 
                           o.user_email?.toLowerCase() === user.login?.toLowerCase() && o.is_active
                         );
+                        const isSelected = selectedUsers.has(user.login);
                         return (
-                          <TableRow key={user.odoo_user_id || idx} className="border-[#333] hover:bg-[#2a2a2a]">
-                            <TableCell className="text-white font-medium">{user.name}</TableCell>
-                            <TableCell className="text-gray-400">{user.login}</TableCell>
+                          <TableRow 
+                            key={user.odoo_user_id || idx} 
+                            className={`border-gray-100 hover:bg-gray-50 ${isSelected ? 'bg-amber-50' : ''}`}
+                          >
+                            <TableCell>
+                              <Checkbox 
+                                checked={isSelected}
+                                onCheckedChange={() => toggleUserSelection(user.login)}
+                                className="border-gray-300"
+                              />
+                            </TableCell>
+                            <TableCell className="text-gray-900 font-medium">{user.name}</TableCell>
+                            <TableCell className="text-gray-600">{user.login}</TableCell>
                             <TableCell>
                               {hasOverride ? (
                                 <div className="flex items-center gap-2">
                                   {getAccessLevelBadge(hasOverride.access_level, true)}
-                                  <span className="text-xs text-yellow-400">(override)</span>
                                 </div>
                               ) : (
                                 getAccessLevelBadge(user.access_level)
                               )}
                             </TableCell>
-                            <TableCell className="text-gray-400">
+                            <TableCell className="text-gray-600">
                               {user.teams?.length > 0 ? user.teams.join(', ') : '-'}
                             </TableCell>
                             <TableCell className="text-gray-500 text-sm">
@@ -504,7 +677,7 @@ const RBACManagementPage = () => {
                                   });
                                   setShowAddOverride(true);
                                 }}
-                                className="text-gray-400 hover:text-white"
+                                className="text-gray-500 hover:text-[#800000] hover:bg-red-50"
                                 title="Add permission override"
                               >
                                 <UserPlus className="h-4 w-4" />
@@ -523,249 +696,369 @@ const RBACManagementPage = () => {
 
         {/* Permission Overrides Tab */}
         <TabsContent value="overrides">
-          <Card className="bg-[#1e1e1e] border-[#333]">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5 text-yellow-500" />
+                  <CardTitle className="text-gray-900 flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-amber-500" />
                     Local Permission Overrides
                   </CardTitle>
-                  <CardDescription className="mt-1">
+                  <CardDescription className="text-gray-500 mt-1">
                     Override Odoo-synced permissions locally. Useful for temporary access or testing.
                   </CardDescription>
                 </div>
-                <Dialog open={showAddOverride} onOpenChange={setShowAddOverride}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-[#800000] hover:bg-[#990000]" data-testid="add-override-button">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Override
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#1e1e1e] border-[#333] text-white">
-                    <DialogHeader>
-                      <DialogTitle>Create Permission Override</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Grant or restrict access for a specific user, bypassing their Odoo permissions.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>User Email</Label>
-                        <Input
-                          placeholder="user@example.com"
-                          value={overrideForm.user_email}
-                          onChange={(e) => setOverrideForm({...overrideForm, user_email: e.target.value})}
-                          className="bg-[#2a2a2a] border-[#444]"
-                          data-testid="override-user-email-input"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Access Level</Label>
-                        <Select
-                          value={overrideForm.access_level}
-                          onValueChange={(val) => setOverrideForm({...overrideForm, access_level: val})}
-                        >
-                          <SelectTrigger className="bg-[#2a2a2a] border-[#444]" data-testid="override-access-level-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#2a2a2a] border-[#444]">
-                            <SelectItem value="ADMIN">ADMIN - Full access to all data</SelectItem>
-                            <SelectItem value="MANAGER">MANAGER - Access to team data</SelectItem>
-                            <SelectItem value="USER">USER - Own records only</SelectItem>
-                            <SelectItem value="RESTRICTED">RESTRICTED - No data access</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Reason (optional)</Label>
-                        <Textarea
-                          placeholder="Why is this override needed?"
-                          value={overrideForm.reason}
-                          onChange={(e) => setOverrideForm({...overrideForm, reason: e.target.value})}
-                          className="bg-[#2a2a2a] border-[#444]"
-                          data-testid="override-reason-input"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Expires At (optional)</Label>
-                        <Input
-                          type="date"
-                          value={overrideForm.expires_at}
-                          onChange={(e) => setOverrideForm({...overrideForm, expires_at: e.target.value})}
-                          className="bg-[#2a2a2a] border-[#444]"
-                          data-testid="override-expires-input"
-                        />
-                        <p className="text-xs text-gray-500">Leave empty for no expiration</p>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowAddOverride(false)} className="border-[#444]">
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleCreateOverride} 
-                        disabled={savingOverride}
-                        className="bg-[#800000] hover:bg-[#990000]"
-                        data-testid="save-override-button"
+                <div className="flex items-center gap-2">
+                  {selectedOverrides.size > 0 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleBulkToggleOverrides(true)}
+                        className="border-green-300 text-green-700 hover:bg-green-50"
                       >
-                        {savingOverride ? 'Creating...' : 'Create Override'}
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Activate ({selectedOverrides.size})
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleBulkToggleOverrides(false)}
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Deactivate
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkDeleteOverrides}
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                  <Dialog open={showAddOverride} onOpenChange={setShowAddOverride}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-[#800000] hover:bg-[#990000] text-white" data-testid="add-override-button">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Override
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-white border-gray-200">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-900">Create Permission Override</DialogTitle>
+                        <DialogDescription className="text-gray-500">
+                          Grant or restrict access for a specific user, bypassing their Odoo permissions.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">User Email</Label>
+                          <Input
+                            placeholder="user@example.com"
+                            value={overrideForm.user_email}
+                            onChange={(e) => setOverrideForm({...overrideForm, user_email: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                            data-testid="override-user-email-input"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Access Level</Label>
+                          <Select
+                            value={overrideForm.access_level}
+                            onValueChange={(val) => setOverrideForm({...overrideForm, access_level: val})}
+                          >
+                            <SelectTrigger className="border-gray-300 focus:ring-[#800000]" data-testid="override-access-level-select">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-gray-200">
+                              <SelectItem value="ADMIN">ADMIN - Full access to all data</SelectItem>
+                              <SelectItem value="MANAGER">MANAGER - Access to team data</SelectItem>
+                              <SelectItem value="USER">USER - Own records only</SelectItem>
+                              <SelectItem value="RESTRICTED">RESTRICTED - No data access</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Reason (optional)</Label>
+                          <Textarea
+                            placeholder="Why is this override needed?"
+                            value={overrideForm.reason}
+                            onChange={(e) => setOverrideForm({...overrideForm, reason: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                            data-testid="override-reason-input"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Expires At (optional)</Label>
+                          <Input
+                            type="date"
+                            value={overrideForm.expires_at}
+                            onChange={(e) => setOverrideForm({...overrideForm, expires_at: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                            data-testid="override-expires-input"
+                          />
+                          <p className="text-xs text-gray-400">Leave empty for no expiration</p>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddOverride(false)} className="border-gray-300">
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleCreateOverride} 
+                          disabled={savingOverride}
+                          className="bg-[#800000] hover:bg-[#990000] text-white"
+                          data-testid="save-override-button"
+                        >
+                          {savingOverride ? 'Creating...' : 'Create Override'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
-                {/* Edit Dialog */}
-                <Dialog open={!!editingOverride} onOpenChange={() => setEditingOverride(null)}>
-                  <DialogContent className="bg-[#1e1e1e] border-[#333] text-white">
-                    <DialogHeader>
-                      <DialogTitle>Edit Permission Override</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Modify the override for {editingOverride?.user_email}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Access Level</Label>
-                        <Select
-                          value={overrideForm.access_level}
-                          onValueChange={(val) => setOverrideForm({...overrideForm, access_level: val})}
+                  {/* Edit Dialog */}
+                  <Dialog open={!!editingOverride} onOpenChange={() => setEditingOverride(null)}>
+                    <DialogContent className="bg-white border-gray-200">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-900">Edit Permission Override</DialogTitle>
+                        <DialogDescription className="text-gray-500">
+                          Modify the override for {editingOverride?.user_email}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Access Level</Label>
+                          <Select
+                            value={overrideForm.access_level}
+                            onValueChange={(val) => setOverrideForm({...overrideForm, access_level: val})}
+                          >
+                            <SelectTrigger className="border-gray-300 focus:ring-[#800000]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-gray-200">
+                              <SelectItem value="ADMIN">ADMIN - Full access to all data</SelectItem>
+                              <SelectItem value="MANAGER">MANAGER - Access to team data</SelectItem>
+                              <SelectItem value="USER">USER - Own records only</SelectItem>
+                              <SelectItem value="RESTRICTED">RESTRICTED - No data access</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Reason</Label>
+                          <Textarea
+                            value={overrideForm.reason}
+                            onChange={(e) => setOverrideForm({...overrideForm, reason: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Expires At</Label>
+                          <Input
+                            type="date"
+                            value={overrideForm.expires_at}
+                            onChange={(e) => setOverrideForm({...overrideForm, expires_at: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingOverride(null)} className="border-gray-300">
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleUpdateOverride} 
+                          disabled={savingOverride}
+                          className="bg-[#800000] hover:bg-[#990000] text-white"
                         >
-                          <SelectTrigger className="bg-[#2a2a2a] border-[#444]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#2a2a2a] border-[#444]">
-                            <SelectItem value="ADMIN">ADMIN - Full access to all data</SelectItem>
-                            <SelectItem value="MANAGER">MANAGER - Access to team data</SelectItem>
-                            <SelectItem value="USER">USER - Own records only</SelectItem>
-                            <SelectItem value="RESTRICTED">RESTRICTED - No data access</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          {savingOverride ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Bulk Override Dialog */}
+                  <Dialog open={showBulkOverride} onOpenChange={setShowBulkOverride}>
+                    <DialogContent className="bg-white border-gray-200">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-900">Bulk Create Overrides</DialogTitle>
+                        <DialogDescription className="text-gray-500">
+                          Create permission overrides for {selectedUsers.size} selected users
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                          <p className="text-sm text-amber-800">
+                            <strong>{selectedUsers.size}</strong> users selected: {Array.from(selectedUsers).slice(0, 3).join(', ')}
+                            {selectedUsers.size > 3 && ` and ${selectedUsers.size - 3} more...`}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Access Level for All</Label>
+                          <Select
+                            value={bulkForm.access_level}
+                            onValueChange={(val) => setBulkForm({...bulkForm, access_level: val})}
+                          >
+                            <SelectTrigger className="border-gray-300 focus:ring-[#800000]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-gray-200">
+                              <SelectItem value="ADMIN">ADMIN - Full access to all data</SelectItem>
+                              <SelectItem value="MANAGER">MANAGER - Access to team data</SelectItem>
+                              <SelectItem value="USER">USER - Own records only</SelectItem>
+                              <SelectItem value="RESTRICTED">RESTRICTED - No data access</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Reason (optional)</Label>
+                          <Textarea
+                            placeholder="Why are these overrides needed?"
+                            value={bulkForm.reason}
+                            onChange={(e) => setBulkForm({...bulkForm, reason: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-700">Expires At (optional)</Label>
+                          <Input
+                            type="date"
+                            value={bulkForm.expires_at}
+                            onChange={(e) => setBulkForm({...bulkForm, expires_at: e.target.value})}
+                            className="border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Reason</Label>
-                        <Textarea
-                          value={overrideForm.reason}
-                          onChange={(e) => setOverrideForm({...overrideForm, reason: e.target.value})}
-                          className="bg-[#2a2a2a] border-[#444]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Expires At</Label>
-                        <Input
-                          type="date"
-                          value={overrideForm.expires_at}
-                          onChange={(e) => setOverrideForm({...overrideForm, expires_at: e.target.value})}
-                          className="bg-[#2a2a2a] border-[#444]"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setEditingOverride(null)} className="border-[#444]">
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleUpdateOverride} 
-                        disabled={savingOverride}
-                        className="bg-[#800000] hover:bg-[#990000]"
-                      >
-                        {savingOverride ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowBulkOverride(false)} className="border-gray-300">
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleBulkCreateOverrides} 
+                          disabled={savingOverride}
+                          className="bg-[#800000] hover:bg-[#990000] text-white"
+                        >
+                          {savingOverride ? 'Creating...' : `Create ${selectedUsers.size} Overrides`}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[450px]">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-[#333] hover:bg-transparent">
-                      <TableHead className="text-gray-400">User</TableHead>
-                      <TableHead className="text-gray-400">Access Level</TableHead>
-                      <TableHead className="text-gray-400">Reason</TableHead>
-                      <TableHead className="text-gray-400">Expires</TableHead>
-                      <TableHead className="text-gray-400">Status</TableHead>
-                      <TableHead className="text-gray-400">Created By</TableHead>
-                      <TableHead className="text-gray-400">Actions</TableHead>
+                    <TableRow className="border-gray-200 hover:bg-gray-50">
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={selectedOverrides.size === overrides.length && overrides.length > 0}
+                          onCheckedChange={selectAllOverrides}
+                          className="border-gray-300"
+                        />
+                      </TableHead>
+                      <TableHead className="text-gray-600 font-semibold">User</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Access Level</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Reason</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Expires</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Status</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Created By</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {overrides.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={8} className="text-center text-gray-500 py-12">
                           No permission overrides configured. Click "Add Override" to create one.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      overrides.map((override, idx) => (
-                        <TableRow key={override.id || idx} className="border-[#333] hover:bg-[#2a2a2a]">
-                          <TableCell>
-                            <div>
-                              <p className="text-white font-medium">{override.user_name}</p>
-                              <p className="text-gray-500 text-xs">{override.user_email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{getAccessLevelBadge(override.access_level, true)}</TableCell>
-                          <TableCell className="text-gray-400 max-w-[200px] truncate">
-                            {override.reason || '-'}
-                          </TableCell>
-                          <TableCell className="text-gray-400">
-                            {override.expires_at ? (
-                              <span className={new Date(override.expires_at) < new Date() ? 'text-red-400' : ''}>
-                                {new Date(override.expires_at).toLocaleDateString()}
-                              </span>
-                            ) : (
-                              <span className="text-gray-500">Never</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {override.is_active ? (
-                              <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                                Active
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
-                                Inactive
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-gray-500 text-sm">
-                            {override.created_by?.split('@')[0] || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditOverride(override)}
-                                className="text-gray-400 hover:text-white"
-                                title="Edit override"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleOverrideActive(override)}
-                                className="text-gray-400 hover:text-white"
-                                title={override.is_active ? 'Deactivate' : 'Activate'}
-                              >
-                                {override.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteOverride(override.id)}
-                                className="text-red-400 hover:text-red-300"
-                                title="Delete override"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      overrides.map((override, idx) => {
+                        const isSelected = selectedOverrides.has(override.id);
+                        return (
+                          <TableRow 
+                            key={override.id || idx} 
+                            className={`border-gray-100 hover:bg-gray-50 ${isSelected ? 'bg-amber-50' : ''}`}
+                          >
+                            <TableCell>
+                              <Checkbox 
+                                checked={isSelected}
+                                onCheckedChange={() => toggleOverrideSelection(override.id)}
+                                className="border-gray-300"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="text-gray-900 font-medium">{override.user_name}</p>
+                                <p className="text-gray-500 text-xs">{override.user_email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getAccessLevelBadge(override.access_level, true)}</TableCell>
+                            <TableCell className="text-gray-600 max-w-[200px] truncate" title={override.reason}>
+                              {override.reason || '-'}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {override.expires_at ? (
+                                <span className={new Date(override.expires_at) < new Date() ? 'text-red-600 font-medium' : ''}>
+                                  {new Date(override.expires_at).toLocaleDateString()}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Never</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {override.is_active ? (
+                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
+                                  Active
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200">
+                                  Inactive
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-gray-500 text-sm">
+                              {override.created_by?.split('@')[0] || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditOverride(override)}
+                                  className="text-gray-500 hover:text-[#800000] hover:bg-red-50"
+                                  title="Edit override"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleOverrideActive(override)}
+                                  className={override.is_active ? "text-gray-500 hover:text-gray-700" : "text-green-600 hover:text-green-700"}
+                                  title={override.is_active ? 'Deactivate' : 'Activate'}
+                                >
+                                  {override.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteOverride(override.id)}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete override"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -776,38 +1069,38 @@ const RBACManagementPage = () => {
 
         {/* Groups Tab */}
         <TabsContent value="groups">
-          <Card className="bg-[#1e1e1e] border-[#333]">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-white">Synced Groups</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-gray-900">Synced Groups</CardTitle>
+              <CardDescription className="text-gray-500">
                 Odoo security groups that determine access levels
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[450px]">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-[#333] hover:bg-transparent">
-                      <TableHead className="text-gray-400">Group Name</TableHead>
-                      <TableHead className="text-gray-400">Category</TableHead>
-                      <TableHead className="text-gray-400">User Count</TableHead>
+                    <TableRow className="border-gray-200 hover:bg-gray-50">
+                      <TableHead className="text-gray-600 font-semibold">Group Name</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Category</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">User Count</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {groups.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={3} className="text-center text-gray-500 py-12">
                           No groups synced yet. Click 'Sync from Odoo' to start.
                         </TableCell>
                       </TableRow>
                     ) : (
                       groups.map((group, idx) => (
-                        <TableRow key={group.odoo_group_id || idx} className="border-[#333] hover:bg-[#2a2a2a]">
-                          <TableCell className="text-white font-medium">
+                        <TableRow key={group.odoo_group_id || idx} className="border-gray-100 hover:bg-gray-50">
+                          <TableCell className="text-gray-900 font-medium">
                             {group.full_name || group.name}
                           </TableCell>
-                          <TableCell className="text-gray-400">{group.category || '-'}</TableCell>
-                          <TableCell className="text-gray-400">{group.user_count || 0}</TableCell>
+                          <TableCell className="text-gray-600">{group.category || '-'}</TableCell>
+                          <TableCell className="text-gray-600">{group.user_count || 0}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -820,44 +1113,44 @@ const RBACManagementPage = () => {
 
         {/* Teams Tab */}
         <TabsContent value="teams">
-          <Card className="bg-[#1e1e1e] border-[#333]">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-white">Synced Teams</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-gray-900">Synced Teams</CardTitle>
+              <CardDescription className="text-gray-500">
                 Sales teams from Odoo - managers can see their team's data
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
+              <ScrollArea className="h-[450px]">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-[#333] hover:bg-transparent">
-                      <TableHead className="text-gray-400">Team Name</TableHead>
-                      <TableHead className="text-gray-400">Leader</TableHead>
-                      <TableHead className="text-gray-400">Members</TableHead>
-                      <TableHead className="text-gray-400">Status</TableHead>
+                    <TableRow className="border-gray-200 hover:bg-gray-50">
+                      <TableHead className="text-gray-600 font-semibold">Team Name</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Leader</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Members</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {teams.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={4} className="text-center text-gray-500 py-12">
                           No teams synced yet. Click 'Sync from Odoo' to start.
                         </TableCell>
                       </TableRow>
                     ) : (
                       teams.map((team, idx) => (
-                        <TableRow key={team.odoo_team_id || idx} className="border-[#333] hover:bg-[#2a2a2a]">
-                          <TableCell className="text-white font-medium">{team.name}</TableCell>
-                          <TableCell className="text-gray-400">{team.leader_name || '-'}</TableCell>
-                          <TableCell className="text-gray-400">{team.member_count || 0}</TableCell>
+                        <TableRow key={team.odoo_team_id || idx} className="border-gray-100 hover:bg-gray-50">
+                          <TableCell className="text-gray-900 font-medium">{team.name}</TableCell>
+                          <TableCell className="text-gray-600">{team.leader_name || '-'}</TableCell>
+                          <TableCell className="text-gray-600">{team.member_count || 0}</TableCell>
                           <TableCell>
                             {team.active ? (
-                              <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
                                 Active
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
+                              <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200">
                                 Inactive
                               </Badge>
                             )}
@@ -874,13 +1167,13 @@ const RBACManagementPage = () => {
 
         {/* Test Filter Tab */}
         <TabsContent value="test">
-          <Card className="bg-[#1e1e1e] border-[#333]">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Eye className="h-5 w-5" />
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <Eye className="h-5 w-5 text-[#800000]" />
                 Test RBAC Filter
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 Test what data filter will be applied for a specific user (includes local overrides)
               </CardDescription>
             </CardHeader>
@@ -890,12 +1183,12 @@ const RBACManagementPage = () => {
                   placeholder="Enter user name (e.g., Nabisaheb)"
                   value={testUser}
                   onChange={(e) => setTestUser(e.target.value)}
-                  className="flex-1 bg-[#2a2a2a] border-[#444] text-white"
+                  className="flex-1 border-gray-300 focus:ring-[#800000] focus:border-[#800000]"
                   data-testid="test-user-input"
                 />
                 <Button 
                   onClick={handleTestFilter}
-                  className="bg-[#800000] hover:bg-[#990000]"
+                  className="bg-[#800000] hover:bg-[#990000] text-white"
                   data-testid="test-filter-button"
                 >
                   <Eye className="h-4 w-4 mr-2" />
@@ -904,32 +1197,32 @@ const RBACManagementPage = () => {
               </div>
 
               {testResult && (
-                <div className="bg-[#2a2a2a] rounded-lg p-4 space-y-3">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">User:</span>
-                    <span className="text-white font-medium">{testResult.user_name}</span>
+                    <span className="text-gray-600">User:</span>
+                    <span className="text-gray-900 font-medium">{testResult.user_name}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Access Level:</span>
+                    <span className="text-gray-600">Access Level:</span>
                     {getAccessLevelBadge(testResult.access_level)}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Filter Type:</span>
-                    <Badge variant="outline" className="bg-[#333] text-white border-[#444]">
+                    <span className="text-gray-600">Filter Type:</span>
+                    <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200">
                       {testResult.filter_type?.replace(/_/g, ' ')}
                     </Badge>
                   </div>
                   {testResult.groups?.length > 0 && (
                     <div>
-                      <span className="text-gray-400 text-sm">Groups:</span>
+                      <span className="text-gray-600 text-sm">Groups:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {testResult.groups.slice(0, 5).map((g, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-[#333] text-gray-300 border-[#444]">
+                          <Badge key={i} variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200">
                             {g}
                           </Badge>
                         ))}
                         {testResult.groups.length > 5 && (
-                          <Badge variant="outline" className="text-xs bg-[#333] text-gray-300 border-[#444]">
+                          <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200">
                             +{testResult.groups.length - 5} more
                           </Badge>
                         )}
@@ -938,19 +1231,19 @@ const RBACManagementPage = () => {
                   )}
                   {testResult.teams?.length > 0 && (
                     <div>
-                      <span className="text-gray-400 text-sm">Teams:</span>
+                      <span className="text-gray-600 text-sm">Teams:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {testResult.teams.map((t, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+                          <Badge key={i} variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
                             {t}
                           </Badge>
                         ))}
                       </div>
                     </div>
                   )}
-                  <div className="pt-2 border-t border-[#444]">
-                    <span className="text-gray-400 text-sm">MongoDB Filter Applied:</span>
-                    <pre className="mt-1 bg-[#1a1a1a] p-2 rounded text-xs text-green-400 overflow-x-auto">
+                  <div className="pt-3 border-t border-gray-200">
+                    <span className="text-gray-600 text-sm">MongoDB Filter Applied:</span>
+                    <pre className="mt-2 bg-gray-900 text-green-400 p-3 rounded-lg text-xs overflow-x-auto">
                       {JSON.stringify(testResult.mongodb_filter, null, 2) || '{}'}
                     </pre>
                   </div>
