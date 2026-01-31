@@ -51,8 +51,21 @@ export function SettingsPage() {
     password_expiry_days: '90',
   });
 
+  // Microsoft SSO state
+  const [ssoConfig, setSsoConfig] = useState({
+    client_id: '',
+    tenant_id: '',
+    redirect_uri: '',
+    client_secret: '',
+    client_secret_masked: '',
+  });
+  const [ssoStatus, setSsoStatus] = useState({ configured: false });
+  const [ssoSaving, setSsoSaving] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+
   useEffect(() => {
     loadSettings();
+    loadSsoConfig();
   }, []);
 
   const loadSettings = async () => {
