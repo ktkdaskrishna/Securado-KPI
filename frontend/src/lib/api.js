@@ -283,6 +283,13 @@ export const rbacSyncAPI = {
   
   // Statistics
   getStats: () => api.get('/rbac/stats'),
+  
+  // Permission Overrides
+  listOverrides: () => api.get('/rbac/overrides'),
+  createOverride: (data) => api.post('/rbac/overrides', data),
+  updateOverride: (overrideId, data) => api.put(`/rbac/overrides/${overrideId}`, data),
+  deleteOverride: (overrideId) => api.delete(`/rbac/overrides/${overrideId}`),
+  getEffectiveAccess: (userEmail) => api.get(`/rbac/user-effective-access/${encodeURIComponent(userEmail)}`),
 };
 
 // Microsoft SSO APIs
