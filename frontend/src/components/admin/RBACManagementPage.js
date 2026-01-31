@@ -635,7 +635,7 @@ const RBACManagementPage = () => {
                     ) : (
                       filteredUsers.map((user, idx) => {
                         const hasOverride = overrides.find(o => 
-                          o.user_email?.toLowerCase() === user.login?.toLowerCase() && o.is_active
+                          (o.user_email || '').toLowerCase() === (user.login || '').toLowerCase() && o.is_active
                         );
                         const isSelected = selectedUsers.has(user.login);
                         return (
