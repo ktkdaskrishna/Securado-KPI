@@ -1164,6 +1164,7 @@ async def list_leads(
 
 @leads_router.get("/kanban")
 async def leads_kanban(
+    request: Request,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
@@ -1172,18 +1173,23 @@ async def leads_kanban(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get leads (type=lead) organized by stage for kanban view"""
+    """Get leads (type=lead) organized by stage for kanban view (RBAC enforced)"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
     logger.info(f"Leads Kanban request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Build query - ONLY type=lead
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query - ONLY type=lead with RBAC
     query = {
         "org_id": org_id,
         "type": "lead"
     }
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
