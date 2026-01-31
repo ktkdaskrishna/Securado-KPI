@@ -89,6 +89,9 @@ def is_microsoft_auth_configured() -> bool:
 @router.get("/status")
 async def microsoft_auth_status():
     """Check Microsoft SSO configuration status"""
+    # Try to load from DB first
+    await load_config_from_db()
+    
     configured = is_microsoft_auth_configured()
     return {
         "configured": configured,
@@ -96,13 +99,15 @@ async def microsoft_auth_status():
         "tenant_id_set": bool(MICROSOFT_TENANT_ID),
         "redirect_uri_set": bool(MICROSOFT_REDIRECT_URI),
         "client_secret_set": bool(MICROSOFT_CLIENT_SECRET),
-        "message": "Microsoft SSO is ready" if configured else "Missing Azure AD configuration. Set MICROSOFT_CLIENT_ID, MICROSOFT_TENANT_ID, and MICROSOFT_REDIRECT_URI in environment variables."
+        "message": "Microsoft SSO is ready" if configured else "Microsoft SSO not configured. Configure in Settings → SSO."
     }
 
 
 @router.get("/config")
 async def get_frontend_config():
     """Get Microsoft auth configuration for frontend (safe to expose)"""
+    await load_config_from_db()
+    
     return {
         "clientId": MICROSOFT_CLIENT_ID,
         "tenantId": MICROSOFT_TENANT_ID,
@@ -110,6 +115,96 @@ async def get_frontend_config():
         "authority": AUTHORITY,
         "scopes": SCOPES,
         "configured": is_microsoft_auth_configured()
+    }
+
+
+@router.get("/admin/config")
+async def get_admin_config():
+    """Get full SSO config for admin (requires auth)"""
+    app_db = get_app_db()
+    config = await app_db.system_config.find_one({"config_type": "microsoft_sso"})
+    
+    if config:
+        settings = config.get("settings", {})
+        # Mask the client secret
+        if settings.get("client_secret"):
+            settings["client_secret_masked"] = "••••••••" + settings["client_secret"][-4:] if len(settings.get("client_secret", "")) > 4 else "••••••••"
+            settings["client_secret"] = ""  # Don't expose full secret
+        return {
+            "configured": is_microsoft_auth_configured(),
+            "settings": settings,
+            "updated_at": config.get("updated_at")
+        }
+    
+    return {
+        "configured": False,
+        "settings": {
+            "client_id": "",
+            "tenant_id": "",
+            "redirect_uri": "",
+            "client_secret_masked": ""
+        },
+        "updated_at": None
+    }
+
+
+@router.post("/admin/config")
+async def save_admin_config(request: Request):
+    """Save SSO configuration (admin only)"""
+    global MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID, MICROSOFT_REDIRECT_URI
+    global AUTHORITY, AUTHORIZE_URL, TOKEN_URL
+    
+    app_db = get_app_db()
+    body = await request.json()
+    
+    # Get existing config to preserve client_secret if not provided
+    existing = await app_db.system_config.find_one({"config_type": "microsoft_sso"})
+    existing_settings = existing.get("settings", {}) if existing else {}
+    
+    # Build new settings
+    new_settings = {
+        "client_id": body.get("client_id", "").strip(),
+        "tenant_id": body.get("tenant_id", "").strip(),
+        "redirect_uri": body.get("redirect_uri", "").strip(),
+    }
+    
+    # Only update client_secret if provided (non-empty)
+    if body.get("client_secret", "").strip():
+        new_settings["client_secret"] = body.get("client_secret", "").strip()
+    elif existing_settings.get("client_secret"):
+        new_settings["client_secret"] = existing_settings["client_secret"]
+    
+    # Save to database
+    await app_db.system_config.update_one(
+        {"config_type": "microsoft_sso"},
+        {
+            "$set": {
+                "config_type": "microsoft_sso",
+                "settings": new_settings,
+                "updated_at": now_utc()
+            }
+        },
+        upsert=True
+    )
+    
+    # Update runtime config
+    MICROSOFT_CLIENT_ID = new_settings.get("client_id", "")
+    MICROSOFT_CLIENT_SECRET = new_settings.get("client_secret", "")
+    MICROSOFT_TENANT_ID = new_settings.get("tenant_id", "")
+    MICROSOFT_REDIRECT_URI = new_settings.get("redirect_uri", "")
+    
+    # Update derived URLs
+    if MICROSOFT_TENANT_ID:
+        AUTHORITY = f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}"
+        AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
+        TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
+    
+    logger.info(f"Microsoft SSO config updated: client_id={bool(MICROSOFT_CLIENT_ID)}, tenant_id={bool(MICROSOFT_TENANT_ID)}")
+    
+    return {
+        "success": True,
+        "configured": is_microsoft_auth_configured(),
+        "message": "Microsoft SSO configuration saved successfully"
     }
 
 
