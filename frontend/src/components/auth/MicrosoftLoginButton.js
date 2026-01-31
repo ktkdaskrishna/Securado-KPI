@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Microsoft Login Button
+ * Uses MSAL.js browser library with POPUP login (not redirect)
+ * This approach is more reliable and matches the working Sales-Command implementation
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { PublicClientApplication, LogLevel } from '@azure/msal-browser';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -13,97 +19,210 @@ const MicrosoftLogo = () => (
   </svg>
 );
 
+const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+
+// MSAL configuration generator
+const getMsalConfig = (clientId, tenantId) => ({
+  auth: {
+    clientId: clientId,
+    authority: `https://login.microsoftonline.com/${tenantId}`,
+    redirectUri: `${window.location.origin}/login`,
+    postLogoutRedirectUri: `${window.location.origin}/login`,
+    navigateToLoginRequestUrl: true,
+  },
+  cache: {
+    cacheLocation: 'sessionStorage',
+    storeAuthStateInCookie: false,
+  },
+  system: {
+    loggerOptions: {
+      loggerCallback: (level, message, containsPii) => {
+        if (containsPii) return;
+        if (level === LogLevel.Error) console.error('[MSAL]', message);
+        else if (level === LogLevel.Warning) console.warn('[MSAL]', message);
+      },
+      logLevel: LogLevel.Warning,
+    },
+  },
+});
+
+// Login request scopes
+const loginRequest = {
+  scopes: ['openid', 'profile', 'email', 'User.Read'],
+};
+
 const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   const [loading, setLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [configStatus, setConfigStatus] = useState(null);
+  const [msalInstance, setMsalInstance] = useState(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
-  // Check if Microsoft auth is configured
+  // Initialize MSAL when component mounts
   useEffect(() => {
-    const checkConfig = async () => {
+    const initMsal = async () => {
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_BACKEND_URL}/api/auth/microsoft/status`
-        );
-        const data = await response.json();
-        setConfigStatus(data);
+        // Fetch Microsoft config from backend
+        const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`);
+        const config = await configResponse.json();
+        
+        if (config.clientId && config.tenantId) {
+          console.log('[MSAL] Initializing with clientId:', config.clientId.substring(0, 8) + '...');
+          const msalConfig = getMsalConfig(config.clientId, config.tenantId);
+          const pca = new PublicClientApplication(msalConfig);
+          await pca.initialize();
+          setMsalInstance(pca);
+          setConfigLoaded(true);
+          console.log('[MSAL] Initialized successfully');
+          
+          // Handle any pending redirect response
+          handleRedirectResponse(pca);
+        } else {
+          console.warn('[MSAL] Microsoft SSO not configured');
+          setConfigLoaded(false);
+        }
       } catch (err) {
-        console.error('Failed to check Microsoft auth config:', err);
-        setConfigStatus({ configured: false, message: 'Failed to check configuration' });
+        console.error('[MSAL] Failed to initialize:', err);
+        setConfigLoaded(false);
       }
     };
     
-    checkConfig();
+    initMsal();
   }, []);
 
-  const handleMicrosoftLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
+  // Handle redirect response if user was redirected back from Microsoft
+  const handleRedirectResponse = useCallback(async (pca) => {
     try {
-      // Check if configured
-      if (!configStatus?.configured) {
-        setError('Microsoft SSO is not configured. Please contact your administrator.');
+      const response = await pca.handleRedirectPromise();
+      if (response) {
+        console.log('[MSAL] Got redirect response, completing login...');
+        setMsLoading(true);
+        await completeMicrosoftLogin(response);
+      }
+    } catch (err) {
+      console.error('[MSAL] Redirect response error:', err);
+      setError(err.message || 'Microsoft login failed');
+      setMsLoading(false);
+    }
+  }, []);
+
+  // Complete Microsoft login by sending tokens to our backend
+  const completeMicrosoftLogin = async (msalResponse) => {
+    try {
+      console.log('[MSAL] Sending tokens to backend...');
+      
+      // Send Microsoft auth data to our backend
+      const response = await fetch(`${API_URL}/api/auth/microsoft/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: msalResponse.accessToken,
+          id_token: msalResponse.idToken,
+          account: {
+            username: msalResponse.account.username,
+            name: msalResponse.account.name,
+            localAccountId: msalResponse.account.localAccountId,
+            tenantId: msalResponse.account.tenantId,
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[MSAL] Backend error:', errorText);
+        setError('Failed to complete Microsoft login');
+        onError?.(new Error(errorText));
         return;
       }
       
-      // Redirect to backend Microsoft auth endpoint
-      // The backend will handle the OAuth flow and redirect back
-      const redirectTo = encodeURIComponent(window.location.origin);
-      window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/microsoft/login?redirect_to=${redirectTo}`;
+      const data = await response.json();
       
+      if (data.access_token) {
+        console.log('[MSAL] Login successful, storing token...');
+        
+        // Store token in localStorage
+        localStorage.setItem('access_token', data.access_token);
+        
+        // Store user info
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
+        // Navigate to dashboard
+        window.location.href = '/dashboard';
+        onSuccess?.();
+      } else {
+        setError(data.detail || 'Failed to complete login');
+        onError?.(new Error(data.detail));
+      }
     } catch (err) {
-      console.error('Microsoft login error:', err);
-      setError(err.message || 'Failed to initiate Microsoft login');
+      console.error('[MSAL] Login completion error:', err);
+      setError(err.message || 'Failed to complete Microsoft login');
       onError?.(err);
     } finally {
-      setLoading(false);
+      setMsLoading(false);
     }
   };
 
-  // Handle OAuth callback token from URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const provider = urlParams.get('provider');
-    const errorParam = urlParams.get('error');
-    const errorMessage = urlParams.get('message');
-    
-    if (errorParam) {
-      setError(decodeURIComponent(errorMessage || errorParam));
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
+  // Handle Microsoft login button click
+  const handleMicrosoftLogin = async () => {
+    if (!msalInstance) {
+      setError('Microsoft SSO not configured. Please contact your administrator.');
       return;
     }
-    
-    if (token && provider === 'microsoft') {
-      // Store token using the same key as the main auth system
-      localStorage.setItem('access_token', token);
-      
-      // Decode token to get user info
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        localStorage.setItem('user', JSON.stringify({
-          id: payload.sub,
-          email: payload.email,
-          name: payload.name,
-          org_id: payload.org_id,
-          access_level: payload.access_level,
-          rbac_linked: payload.rbac_linked,
-        }));
-      } catch (e) {
-        console.error('Failed to decode token:', e);
-      }
-      
-      // Clean URL and redirect to dashboard
-      window.history.replaceState({}, '', '/dashboard');
-      window.location.href = '/dashboard';
-      onSuccess?.();
-    }
-  }, [onSuccess]);
 
-  // Show configuration status if not configured
-  if (configStatus && !configStatus.configured) {
+    setMsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('[MSAL] Starting popup login...');
+      
+      // Use popup login (more reliable than redirect)
+      const response = await msalInstance.loginPopup(loginRequest);
+      console.log('[MSAL] Popup login successful');
+      await completeMicrosoftLogin(response);
+      
+    } catch (err) {
+      console.error('[MSAL] Login error:', err);
+      
+      // Handle specific MSAL errors
+      if (err.errorCode === 'user_cancelled') {
+        setError('Login was cancelled');
+      } else if (err.errorCode === 'popup_window_error') {
+        // Fallback to redirect if popup is blocked
+        console.log('[MSAL] Popup blocked, trying redirect...');
+        try {
+          await msalInstance.loginRedirect(loginRequest);
+        } catch (redirectErr) {
+          setError('Failed to initiate Microsoft login');
+        }
+      } else {
+        setError(err.message || 'Microsoft login failed');
+      }
+      onError?.(err);
+      setMsLoading(false);
+    }
+  };
+
+  // Show disabled state if not configured
+  if (!configLoaded && !msalInstance) {
+    return (
+      <div className={className}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled
+          className="w-full bg-white/5 border-white/20 text-gray-400 cursor-not-allowed"
+          data-testid="microsoft-login-btn-loading"
+        >
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          Loading Microsoft SSO...
+        </Button>
+      </div>
+    );
+  }
+
+  if (configLoaded === false) {
     return (
       <div className={className}>
         <Button
@@ -136,11 +255,11 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
         type="button"
         variant="outline"
         onClick={handleMicrosoftLogin}
-        disabled={loading}
+        disabled={msLoading}
         className="w-full bg-white hover:bg-gray-100 text-gray-900 border-gray-300"
         data-testid="microsoft-login-btn"
       >
-        {loading ? (
+        {msLoading ? (
           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
         ) : (
           <MicrosoftLogo />
