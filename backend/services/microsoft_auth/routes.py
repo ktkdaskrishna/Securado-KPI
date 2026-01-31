@@ -210,9 +210,21 @@ async def save_admin_config(request: Request):
     }
 
 
+def generate_pkce_pair():
+    """Generate PKCE code_verifier and code_challenge pair for OAuth 2.0 security"""
+    # Generate a random code_verifier (43-128 characters)
+    code_verifier = secrets.token_urlsafe(64)
+    
+    # Generate code_challenge using S256 method (SHA256 hash, base64url encoded)
+    code_challenge_bytes = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).rstrip(b'=').decode('utf-8')
+    
+    return code_verifier, code_challenge
+
+
 @router.get("/login")
 async def microsoft_login(redirect_to: Optional[str] = "/"):
-    """Initiate Microsoft OAuth login flow"""
+    """Initiate Microsoft OAuth login flow with PKCE support"""
     if not is_microsoft_auth_configured():
         raise HTTPException(
             status_code=503, 
@@ -221,12 +233,18 @@ async def microsoft_login(redirect_to: Optional[str] = "/"):
     
     # Generate state token for CSRF protection
     state = secrets.token_urlsafe(32)
+    
+    # Generate PKCE pair for enhanced security (required by Azure AD)
+    code_verifier, code_challenge = generate_pkce_pair()
+    
+    # Store state with PKCE verifier for callback validation
     _state_store[state] = {
         "redirect_to": redirect_to,
+        "code_verifier": code_verifier,  # Store verifier to use in token exchange
         "created_at": datetime.now(timezone.utc)
     }
     
-    # Build authorization URL
+    # Build authorization URL with PKCE parameters
     params = {
         "client_id": MICROSOFT_CLIENT_ID,
         "response_type": "code",
@@ -234,11 +252,13 @@ async def microsoft_login(redirect_to: Optional[str] = "/"):
         "response_mode": "query",
         "scope": " ".join(SCOPES),
         "state": state,
-        "prompt": "select_account"  # Always show account picker
+        "prompt": "select_account",  # Always show account picker
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256"
     }
     
     auth_url = f"{AUTHORIZE_URL}?{urlencode(params)}"
-    logger.info(f"Redirecting to Microsoft login: {auth_url[:100]}...")
+    logger.info(f"Redirecting to Microsoft login with PKCE: {auth_url[:100]}...")
     
     return RedirectResponse(url=auth_url)
 
