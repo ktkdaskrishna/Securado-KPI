@@ -296,4 +296,8 @@ export const microsoftAuthAPI = {
   
   // Check if email is linked to RBAC
   checkRbacStatus: (email) => api.get(`/auth/microsoft/user-rbac-status?email=${encodeURIComponent(email)}`),
+  
+  // Admin config management
+  getAdminConfig: () => api.get('/auth/microsoft/admin/config'),
+  saveAdminConfig: (config) => api.post('/auth/microsoft/admin/config', config),
 };
