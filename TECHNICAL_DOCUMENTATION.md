@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://secure-analytics-3.preview.emergentagent.com
+https://goal-tracker-369.preview.emergentagent.com
 ```
 
 ### Test Credentials
