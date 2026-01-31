@@ -216,18 +216,16 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <MicrosoftSSOHandler>
-        <AuthProvider>
-          <CurrencyProvider>
-            <GlobalFilterProvider>
-              <RBACProvider>
-                <AppRoutes />
-                <Toaster position="top-right" richColors closeButton />
-              </RBACProvider>
-            </GlobalFilterProvider>
-          </CurrencyProvider>
-        </AuthProvider>
-      </MicrosoftSSOHandler>
+      <AuthProvider>
+        <CurrencyProvider>
+          <GlobalFilterProvider>
+            <RBACProvider>
+              <AppRoutes />
+              <Toaster position="top-right" richColors closeButton />
+            </RBACProvider>
+          </GlobalFilterProvider>
+        </CurrencyProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
