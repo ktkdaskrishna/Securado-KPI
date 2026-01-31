@@ -19,6 +19,46 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>Emergent | Fullstack App</title>
+        
+        <!-- CRITICAL: Handle Microsoft SSO token BEFORE any React code loads -->
+        <script>
+            (function() {
+                var params = new URLSearchParams(window.location.search);
+                var token = params.get('token');
+                var provider = params.get('provider');
+                
+                if (token && provider === 'microsoft') {
+                    console.log('[SSO-HEAD] Processing Microsoft token before React loads...');
+                    
+                    // Store token
+                    localStorage.setItem('access_token', token);
+                    
+                    // Decode and store user info
+                    try {
+                        var parts = token.split('.');
+                        if (parts.length === 3) {
+                            var payload = JSON.parse(atob(parts[1]));
+                            localStorage.setItem('user', JSON.stringify({
+                                id: payload.sub,
+                                email: payload.email,
+                                name: payload.name,
+                                org_id: payload.org_id,
+                                access_level: payload.access_level,
+                                rbac_linked: payload.rbac_linked
+                            }));
+                            console.log('[SSO-HEAD] Token stored for:', payload.email);
+                        }
+                    } catch (e) {
+                        console.error('[SSO-HEAD] Token decode error:', e);
+                    }
+                    
+                    // Redirect immediately - this stops page loading
+                    console.log('[SSO-HEAD] Redirecting to /dashboard...');
+                    window.location.replace('/dashboard');
+                }
+            })();
+        </script>
+        
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <!--
         These two scripts have been added for the Visual Edits, please do not edit or remove them
