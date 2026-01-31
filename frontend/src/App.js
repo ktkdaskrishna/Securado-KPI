@@ -58,18 +58,6 @@ import './App.css';
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
-  // If we just processed an SSO token, show loading while redirect happens
-  if (ssoTokenInUrl) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Completing sign-in...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
