@@ -288,20 +288,27 @@ async def microsoft_callback(
         raise HTTPException(status_code=400, detail="Invalid or expired state token")
     
     redirect_to = state_data.get("redirect_to", "/")
+    code_verifier = state_data.get("code_verifier")  # Retrieve PKCE verifier
     
     try:
-        # Exchange code for tokens
+        # Exchange code for tokens (with PKCE code_verifier for security)
         async with httpx.AsyncClient() as client:
+            token_data = {
+                "client_id": MICROSOFT_CLIENT_ID,
+                "client_secret": MICROSOFT_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": MICROSOFT_REDIRECT_URI,
+                "grant_type": "authorization_code",
+                "scope": " ".join(SCOPES)
+            }
+            
+            # Include PKCE code_verifier if available (required by Azure AD)
+            if code_verifier:
+                token_data["code_verifier"] = code_verifier
+            
             token_response = await client.post(
                 TOKEN_URL,
-                data={
-                    "client_id": MICROSOFT_CLIENT_ID,
-                    "client_secret": MICROSOFT_CLIENT_SECRET,
-                    "code": code,
-                    "redirect_uri": MICROSOFT_REDIRECT_URI,
-                    "grant_type": "authorization_code",
-                    "scope": " ".join(SCOPES)
-                },
+                data=token_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
             
