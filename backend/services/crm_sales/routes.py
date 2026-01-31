@@ -290,6 +290,7 @@ async def list_opportunities(
 
 @opportunities_router.get("/export")
 async def export_opportunities_excel(
+    request: Request,
     stage: Optional[str] = None,
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
@@ -297,7 +298,7 @@ async def export_opportunities_excel(
     account: Optional[str] = Query(None, description="Filter by account name"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Export opportunities to Excel format"""
+    """Export opportunities to Excel format (RBAC enforced)"""
     from fastapi.responses import StreamingResponse
     import pandas as pd
     import io
@@ -306,8 +307,13 @@ async def export_opportunities_excel(
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
-    # Build query
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC
     query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)  # Apply RBAC filter
+    
     if stage:
         query["stage"] = stage
     if sales_rep:
