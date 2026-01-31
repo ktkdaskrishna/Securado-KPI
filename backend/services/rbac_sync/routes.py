@@ -280,3 +280,281 @@ async def get_rbac_stats(
         "last_sync": latest_user.get("synced_at").isoformat() if latest_user and latest_user.get("synced_at") else None,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+
+# ==================== PERMISSION OVERRIDES ====================
+
+@router.get("/overrides")
+async def list_permission_overrides(
+    current_user: dict = Depends(get_current_user)
+):
+    """List all local permission overrides"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    overrides = await app_db.permission_overrides.find(
+        {"org_id": org_id}
+    ).sort("created_at", -1).to_list(500)
+    
+    result = []
+    for override in overrides:
+        result.append({
+            "id": override.get("id"),
+            "user_email": override.get("user_email"),
+            "user_name": override.get("user_name"),
+            "access_level": override.get("access_level"),
+            "reason": override.get("reason", ""),
+            "expires_at": override.get("expires_at").isoformat() if override.get("expires_at") else None,
+            "is_active": override.get("is_active", True),
+            "created_by": override.get("created_by"),
+            "created_at": override.get("created_at").isoformat() if override.get("created_at") else None,
+            "updated_at": override.get("updated_at").isoformat() if override.get("updated_at") else None
+        })
+    
+    return {
+        "count": len(result),
+        "overrides": result
+    }
+
+
+@router.post("/overrides")
+async def create_permission_override(
+    override_data: PermissionOverrideCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a local permission override for a user
+    
+    This allows admins to grant temporary elevated access or
+    restrict access for specific users regardless of Odoo sync.
+    """
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Validate access level
+    valid_levels = ["ADMIN", "MANAGER", "USER", "RESTRICTED"]
+    if override_data.access_level.upper() not in valid_levels:
+        raise HTTPException(status_code=400, detail=f"Invalid access level. Must be one of: {valid_levels}")
+    
+    # Check if override already exists for this user
+    existing = await app_db.permission_overrides.find_one({
+        "user_email": override_data.user_email.lower(),
+        "org_id": org_id,
+        "is_active": True
+    })
+    
+    if existing:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Active override already exists for {override_data.user_email}. Deactivate it first or update it."
+        )
+    
+    # Look up user name from users table or RBAC table
+    user_name = None
+    app_user = await app_db.users.find_one({"email": override_data.user_email.lower()})
+    if app_user:
+        user_name = app_user.get("name")
+    else:
+        rbac_user = await app_db.users_rbac.find_one({
+            "email": {"$regex": f"^{override_data.user_email}$", "$options": "i"},
+            "org_id": org_id
+        })
+        if rbac_user:
+            user_name = rbac_user.get("name")
+    
+    # Parse expires_at
+    expires_at = None
+    if override_data.expires_at:
+        try:
+            expires_at = datetime.fromisoformat(override_data.expires_at.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid expires_at date format. Use ISO format.")
+    
+    override_doc = {
+        "id": generate_id(),
+        "org_id": org_id,
+        "user_email": override_data.user_email.lower(),
+        "user_name": user_name or override_data.user_email.split("@")[0],
+        "access_level": override_data.access_level.upper(),
+        "reason": override_data.reason,
+        "expires_at": expires_at,
+        "is_active": True,
+        "created_by": current_user.get("email"),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    await app_db.permission_overrides.insert_one(override_doc)
+    
+    logger.info(f"Permission override created: {override_data.user_email} -> {override_data.access_level} by {current_user.get('email')}")
+    
+    return {
+        "status": "success",
+        "message": f"Permission override created for {override_data.user_email}",
+        "override": {
+            "id": override_doc["id"],
+            "user_email": override_doc["user_email"],
+            "access_level": override_doc["access_level"],
+            "expires_at": expires_at.isoformat() if expires_at else None
+        }
+    }
+
+
+@router.put("/overrides/{override_id}")
+async def update_permission_override(
+    override_id: str,
+    update_data: PermissionOverrideUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an existing permission override"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Find the override
+    existing = await app_db.permission_overrides.find_one({
+        "id": override_id,
+        "org_id": org_id
+    })
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Permission override not found")
+    
+    # Build update
+    update_fields = {"updated_at": datetime.now(timezone.utc)}
+    
+    if update_data.access_level is not None:
+        valid_levels = ["ADMIN", "MANAGER", "USER", "RESTRICTED"]
+        if update_data.access_level.upper() not in valid_levels:
+            raise HTTPException(status_code=400, detail=f"Invalid access level. Must be one of: {valid_levels}")
+        update_fields["access_level"] = update_data.access_level.upper()
+    
+    if update_data.reason is not None:
+        update_fields["reason"] = update_data.reason
+    
+    if update_data.is_active is not None:
+        update_fields["is_active"] = update_data.is_active
+    
+    if update_data.expires_at is not None:
+        if update_data.expires_at == "":
+            update_fields["expires_at"] = None
+        else:
+            try:
+                update_fields["expires_at"] = datetime.fromisoformat(update_data.expires_at.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid expires_at date format")
+    
+    await app_db.permission_overrides.update_one(
+        {"id": override_id},
+        {"$set": update_fields}
+    )
+    
+    logger.info(f"Permission override updated: {override_id} by {current_user.get('email')}")
+    
+    return {
+        "status": "success",
+        "message": "Permission override updated"
+    }
+
+
+@router.delete("/overrides/{override_id}")
+async def delete_permission_override(
+    override_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a permission override"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    result = await app_db.permission_overrides.delete_one({
+        "id": override_id,
+        "org_id": org_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Permission override not found")
+    
+    logger.info(f"Permission override deleted: {override_id} by {current_user.get('email')}")
+    
+    return {
+        "status": "success",
+        "message": "Permission override deleted"
+    }
+
+
+@router.get("/user-effective-access/{user_email}")
+async def get_effective_access(
+    user_email: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the effective access level for a user (considering overrides)
+    
+    This shows:
+    1. Base access from Odoo sync
+    2. Any active local overrides
+    3. The final effective access level
+    """
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get RBAC data
+    user_rbac = await app_db.users_rbac.find_one({
+        "org_id": org_id,
+        "$or": [
+            {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
+            {"login": {"$regex": f"^{user_email}$", "$options": "i"}}
+        ]
+    })
+    
+    base_access = None
+    if user_rbac:
+        group_names = user_rbac.get("odoo_group_names", [])
+        base_level = access_rule_engine.determine_access_level(group_names)
+        base_access = {
+            "level": base_level.name,
+            "source": "odoo_sync",
+            "groups": group_names[:10],  # Limit groups shown
+            "teams": user_rbac.get("odoo_team_names", [])
+        }
+    
+    # Get active override
+    override = await app_db.permission_overrides.find_one({
+        "user_email": user_email.lower(),
+        "org_id": org_id,
+        "is_active": True
+    })
+    
+    override_info = None
+    if override:
+        # Check if expired
+        is_expired = False
+        if override.get("expires_at") and override["expires_at"] < datetime.now(timezone.utc):
+            is_expired = True
+        
+        override_info = {
+            "id": override.get("id"),
+            "level": override.get("access_level"),
+            "reason": override.get("reason"),
+            "expires_at": override.get("expires_at").isoformat() if override.get("expires_at") else None,
+            "is_expired": is_expired,
+            "created_by": override.get("created_by")
+        }
+    
+    # Determine effective access
+    effective_level = "RESTRICTED"
+    effective_source = "default"
+    
+    if override_info and not override_info.get("is_expired"):
+        effective_level = override_info["level"]
+        effective_source = "local_override"
+    elif base_access:
+        effective_level = base_access["level"]
+        effective_source = "odoo_sync"
+    
+    return {
+        "user_email": user_email,
+        "base_access": base_access,
+        "override": override_info,
+        "effective": {
+            "level": effective_level,
+            "source": effective_source
+        }
+    }
