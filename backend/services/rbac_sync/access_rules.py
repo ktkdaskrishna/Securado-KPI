@@ -115,6 +115,41 @@ class AccessRuleEngine:
         Returns:
             MongoDB query filter dict
         """
+        # First check for local permission override
+        override = await self.app_db.permission_overrides.find_one({
+            "org_id": org_id,
+            "is_active": True,
+            "$or": [
+                {"user_email": {"$regex": f"^{user_name}@", "$options": "i"}},
+                {"user_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            ]
+        })
+        
+        if override:
+            # Check if not expired
+            from datetime import datetime, timezone
+            if not override.get("expires_at") or override["expires_at"] > datetime.now(timezone.utc):
+                override_level = AccessLevel[override["access_level"]]
+                logger.info(f"Using local override for {user_name}: {override_level.name}")
+                
+                if override_level == AccessLevel.ADMIN:
+                    return {}
+                elif override_level == AccessLevel.MANAGER:
+                    # Get user's teams from RBAC or empty list
+                    user_rbac = await self.app_db.users_rbac.find_one({
+                        "org_id": org_id,
+                        "$or": [
+                            {"name": {"$regex": f"^{user_name}$", "$options": "i"}},
+                            {"login": {"$regex": f"^{user_name}$", "$options": "i"}}
+                        ]
+                    })
+                    team_names = user_rbac.get("odoo_team_names", []) if user_rbac else []
+                    return self._build_team_filter(user_name, team_names, entity_type)
+                elif override_level == AccessLevel.USER:
+                    return self._build_owner_filter(user_name, entity_type)
+                else:
+                    return {"_id": {"$eq": "NO_ACCESS_RESTRICTED_BY_OVERRIDE"}}
+        
         # Get user's RBAC metadata
         user_rbac = await self.app_db.users_rbac.find_one({
             "org_id": org_id,
