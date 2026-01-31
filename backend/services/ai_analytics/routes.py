@@ -6,8 +6,10 @@ Provides AI-powered sales analytics including:
 - Rep performance metrics
 - Deal velocity insights
 - AI-generated insights and recommendations
+
+RBAC enforced - users only see data they have permission to view
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
@@ -18,9 +20,16 @@ import json
 from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, now_utc
 from services.identity.routes import get_current_user
+from services.rbac_sync.middleware import get_rbac_filter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["ai-analytics"])
+
+
+# Helper function to check if user has no access
+def has_no_rbac_access(rbac_filter: dict) -> bool:
+    """Check if RBAC filter indicates no access"""
+    return rbac_filter and "_id" in rbac_filter and rbac_filter.get("_id", {}).get("$eq") == "NO_ACCESS_USER_NOT_IN_RBAC"
 
 
 # Helper function to get opportunity value (sale_value first, then amount)
