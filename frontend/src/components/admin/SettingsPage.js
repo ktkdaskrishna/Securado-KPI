@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../lib/api';
+import { adminAPI, microsoftAuthAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { getCurrencyOptions, DEFAULT_CURRENCY } from '../../lib/currency';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
@@ -12,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
+import { Alert, AlertDescription } from '../ui/alert';
 import { 
   Settings, DollarSign, Globe, Bell, Shield, Database, 
-  Save, RefreshCw, Building2, Users, Palette
+  Save, RefreshCw, Building2, Users, Palette, KeyRound,
+  CheckCircle2, XCircle, Eye, EyeOff, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 
