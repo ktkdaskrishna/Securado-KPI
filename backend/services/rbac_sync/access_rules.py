@@ -181,8 +181,16 @@ class AccessRuleEngine:
         group_names = user_rbac.get("odoo_group_names", [])
         team_ids = user_rbac.get("odoo_team_ids", [])
         team_names = user_rbac.get("odoo_team_names", [])
+        direct_report_names = user_rbac.get("direct_report_names", [])
+        is_manager = user_rbac.get("is_manager", False)
         
         access_level = self.determine_access_level(group_names)
+        
+        # IMPORTANT: If user has direct reports, they are effectively a manager
+        # even if their Odoo groups don't include "Manager"
+        if is_manager and access_level.value < AccessLevel.MANAGER.value:
+            logger.info(f"User {user_name} has {len(direct_report_names)} direct reports - upgrading to MANAGER access")
+            access_level = AccessLevel.MANAGER
         
         logger.debug(f"User {user_name} has access level: {access_level.name}")
         
@@ -191,8 +199,8 @@ class AccessRuleEngine:
             return {}
         
         elif access_level == AccessLevel.MANAGER:
-            # Manager sees their team's records + their own
-            return self._build_team_filter(user_name, team_names, entity_type)
+            # Manager sees their team's records + direct reports' records + their own
+            return self._build_manager_filter(user_name, team_names, direct_report_names, entity_type)
         
         elif access_level == AccessLevel.USER:
             # User sees only their own records
@@ -216,21 +224,67 @@ class AccessRuleEngine:
         else:
             return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
     
-    def _build_team_filter(self, user_name: str, team_names: List[str], entity_type: str) -> Dict:
-        """Build filter for team records"""
+    def _build_manager_filter(
+        self, 
+        user_name: str, 
+        team_names: List[str], 
+        direct_report_names: List[str],
+        entity_type: str
+    ) -> Dict:
+        """Build filter for manager - includes own + team + direct reports records
+        
+        A manager can see:
+        1. Their own records (owner_name = user)
+        2. Their team's records (team_name in their teams)
+        3. Their direct reports' records (owner_name in direct_report_names)
+        """
+        or_conditions = []
+        
+        # Always include own records
+        or_conditions.append({"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}})
+        
+        # Include team records
+        if team_names:
+            or_conditions.append({"team_name": {"$in": team_names}})
+        
+        # Include direct reports' records
+        if direct_report_names:
+            # Build regex patterns for each direct report
+            report_patterns = [f"^{name}$" for name in direct_report_names]
+            or_conditions.append({
+                "owner_name": {"$regex": "|".join(report_patterns), "$options": "i"}
+            })
+        
         if entity_type in ["opportunity", "lead"]:
-            if team_names:
-                return {
-                    "$or": [
-                        {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}},
-                        {"team_name": {"$in": team_names}}
-                    ]
-                }
-            else:
-                return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"$or": or_conditions}
+        elif entity_type == "activity":
+            # For activities, also check assigned_to
+            activity_conditions = [
+                {"assigned_to": {"$regex": f"^{user_name}$", "$options": "i"}}
+            ]
+            if direct_report_names:
+                report_patterns = [f"^{name}$" for name in direct_report_names]
+                activity_conditions.append({
+                    "assigned_to": {"$regex": "|".join(report_patterns), "$options": "i"}
+                })
+            return {"$or": activity_conditions}
+        elif entity_type in ["account", "invoice"]:
+            # For accounts/invoices, use salesperson field
+            account_conditions = [
+                {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
+            ]
+            if direct_report_names:
+                report_patterns = [f"^{name}$" for name in direct_report_names]
+                account_conditions.append({
+                    "salesperson": {"$regex": "|".join(report_patterns), "$options": "i"}
+                })
+            return {"$or": account_conditions}
         else:
-            # For other entities, fall back to owner filter
-            return self._build_owner_filter(user_name, entity_type)
+            return {"$or": or_conditions}
+    
+    def _build_team_filter(self, user_name: str, team_names: List[str], entity_type: str) -> Dict:
+        """Build filter for team records (legacy - now use _build_manager_filter)"""
+        return self._build_manager_filter(user_name, team_names, [], entity_type)
     
     async def get_user_access_summary(self, user_name: str, org_id: str = "default") -> Dict:
         """Get a summary of user's access permissions
