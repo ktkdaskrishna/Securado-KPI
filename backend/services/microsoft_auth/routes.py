@@ -458,6 +458,7 @@ async def microsoft_callback(
         redirect_url = f"{redirect_to}?token={app_token}&provider=microsoft"
         
         logger.info(f"Microsoft SSO complete for {email}, access_level={access_level}, rbac_linked={bool(rbac_user)}")
+        logger.info(f"Redirecting to: {redirect_url[:100]}... (token length: {len(app_token)})")
         
         return RedirectResponse(url=redirect_url)
         
