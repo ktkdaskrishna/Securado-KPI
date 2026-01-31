@@ -4,6 +4,7 @@ Syncs user metadata from Odoo including:
 - User identity (id, name, login)
 - Group memberships (Sales/User, Sales/Manager, etc.)
 - Team memberships (sale_team_ids)
+- Employee hierarchy (manager, direct reports)
 - Active status
 
 This metadata is used by the local access rule engine to determine
@@ -45,6 +46,7 @@ class OdooUserSync:
         await app_db.users_rbac.create_index("odoo_user_id", unique=True)
         await app_db.users_rbac.create_index("login")
         await app_db.users_rbac.create_index("name")
+        await app_db.users_rbac.create_index("odoo_employee_id")
         await app_db.groups_rbac.create_index("odoo_group_id", unique=True)
         await app_db.teams_rbac.create_index("odoo_team_id", unique=True)
         
@@ -58,7 +60,7 @@ class OdooUserSync:
         odoo_password: str,
         org_id: str = "default"
     ) -> Dict[str, Any]:
-        """Sync user, group, and team metadata from Odoo
+        """Sync user, group, team, and employee hierarchy metadata from Odoo
         
         Returns:
             Summary of synced records
@@ -94,13 +96,17 @@ class OdooUserSync:
             # Sync Teams
             teams_synced = await self._sync_teams(models, odoo_db, uid, odoo_password, org_id)
             
-            # Sync Users (with group and team memberships)
+            # Sync Employee Hierarchy
+            employees_synced = await self._sync_employees(models, odoo_db, uid, odoo_password, org_id)
+            
+            # Sync Users (with group, team, and employee hierarchy)
             users_synced = await self._sync_users(models, odoo_db, uid, odoo_password, org_id)
             
             return {
                 "status": "success",
                 "groups_synced": groups_synced,
                 "teams_synced": teams_synced,
+                "employees_synced": employees_synced,
                 "users_synced": users_synced,
                 "synced_at": datetime.now(timezone.utc).isoformat()
             }
