@@ -1106,6 +1106,7 @@ async def calculate_bluesheet_only(
 
 @leads_router.get("")
 async def list_leads(
+    request: Request,
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
@@ -1117,17 +1118,21 @@ async def list_leads(
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
-    """List leads (type=lead) with overrides applied and optional filters"""
+    """List leads (type=lead) with overrides applied and optional filters (RBAC enforced)"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     
     logger.info(f"Leads list request - year: {year}, quarter: {quarter}, sales_rep: {sales_rep}")
     
-    # Build query - ONLY type=lead (exclude opportunities)
+    # Get RBAC filter - CRITICAL for security
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Build query with RBAC - ONLY type=lead (exclude opportunities)
     query = {
         "org_id": current_user.get("org_id", "default"),
         "type": "lead"  # Filter to only leads
     }
+    query.update(rbac_filter)  # Apply RBAC filter
     
     # Apply non-date filters
     if stage:
