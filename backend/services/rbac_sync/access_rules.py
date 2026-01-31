@@ -133,9 +133,10 @@ class AccessRuleEngine:
                 logger.info(f"RBAC not synced yet for org {org_id} - allowing full access for {user_name}")
                 return {}
             else:
-                # RBAC is synced but this user is not in the list - restrict to own records
-                logger.warning(f"No RBAC metadata found for user: {user_name} (RBAC is synced for org)")
-                return self._build_owner_filter(user_name, entity_type)
+                # RBAC is synced but this user is not in the list - NO ACCESS
+                # This is a security control: users without Odoo RBAC profiles cannot see any data
+                logger.warning(f"SECURITY: User '{user_name}' has no RBAC profile - denying data access")
+                return {"_id": {"$eq": "NO_ACCESS_USER_NOT_IN_RBAC"}}  # Will match nothing
         
         group_names = user_rbac.get("odoo_group_names", [])
         team_ids = user_rbac.get("odoo_team_ids", [])
