@@ -286,7 +286,7 @@ class OdooUserSync:
             return 0
     
     async def _sync_users(self, models, db, uid, password, org_id) -> int:
-        """Sync res.users with group and team memberships"""
+        """Sync res.users with group, team, and employee hierarchy memberships"""
         # Get active users
         user_ids = models.execute_kw(
             db, uid, password,
@@ -322,6 +322,12 @@ class OdooUserSync:
         async for t in self.app_db.teams_rbac.find({"org_id": org_id}):
             team_lookup[t['odoo_team_id']] = t.get('name', '')
         
+        # Build employee lookup by user_id
+        employee_by_user = {}
+        async for emp in self.app_db.employees_rbac.find({"org_id": org_id}):
+            if emp.get('odoo_user_id'):
+                employee_by_user[emp['odoo_user_id']] = emp
+        
         synced = 0
         for user in users:
             # Resolve group names
@@ -336,6 +342,12 @@ class OdooUserSync:
                 team_ids = [sale_team[0]]
                 team_names = [sale_team[1] or team_lookup.get(sale_team[0], '')]
             
+            # Get employee hierarchy data
+            employee_data = employee_by_user.get(user['id'], {})
+            direct_report_names = employee_data.get('direct_report_names', [])
+            manager_name = employee_data.get('manager_name', '')
+            is_manager = len(direct_report_names) > 0
+            
             doc = {
                 "odoo_user_id": user['id'],
                 "name": user.get('name', ''),
@@ -347,6 +359,15 @@ class OdooUserSync:
                 "odoo_team_ids": team_ids,
                 "odoo_team_names": team_names,
                 "partner_id": user.get('partner_id', [None])[0] if user.get('partner_id') else None,
+                # Employee hierarchy fields
+                "odoo_employee_id": employee_data.get('odoo_employee_id'),
+                "manager_name": manager_name,
+                "manager_employee_id": employee_data.get('manager_employee_id'),
+                "is_manager": is_manager,
+                "direct_report_names": direct_report_names,
+                "direct_report_count": len(direct_report_names),
+                "department_name": employee_data.get('department_name', ''),
+                "job_title": employee_data.get('job_title', ''),
                 "org_id": org_id,
                 "synced_at": datetime.now(timezone.utc)
             }
@@ -358,7 +379,7 @@ class OdooUserSync:
             )
             synced += 1
         
-        logger.info(f"Synced {synced} users from Odoo")
+        logger.info(f"Synced {synced} users with hierarchy from Odoo")
         return synced
     
     async def get_user_rbac(self, user_identifier: str, org_id: str = "default") -> Optional[Dict]:
