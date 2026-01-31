@@ -5,16 +5,21 @@ This is the "local rules" part of the Hybrid RBAC approach.
 
 Rule Hierarchy:
 1. Admin groups → No filter (sees all)
-2. Manager groups → Team-based filter
-3. User groups → Own records only
+2. Manager (with direct reports) → Direct reports' records + own records
+3. Manager groups → Team-based filter
+4. User groups → Own records only
 
 Supported Odoo Groups (customize as needed):
 - "Administration / Settings" → Admin (all access)
 - "Sales / Administrator" → Admin (all access)
 - "Sales / All Documents" → Admin (all access)
-- "Sales / Manager" → Manager (team access)
+- "Sales / Manager" → Manager (team + direct reports access)
 - "Sales / User: Own Documents Only" → User (own records)
 - "Sales / User: All Documents" → User with expanded access
+
+Reporting Hierarchy:
+- Managers (users with direct reports in hr.employee) see their team's records
+- The hierarchy is synced from Odoo's parent_id field on hr.employee
 """
 import logging
 from typing import Dict, List, Optional, Any
@@ -28,7 +33,7 @@ logger = logging.getLogger(__name__)
 class AccessLevel(Enum):
     """Access level hierarchy"""
     ADMIN = 100      # Full access to all records
-    MANAGER = 50     # Access to team records
+    MANAGER = 50     # Access to team + direct reports records
     USER = 10        # Access to own records only
     RESTRICTED = 0   # No access
 
@@ -43,7 +48,7 @@ GROUP_ACCESS_RULES = [
     {"pattern": "Sales / All Documents", "level": AccessLevel.ADMIN},
     {"pattern": "CRM / Administrator", "level": AccessLevel.ADMIN},
     
-    # Manager level - team access
+    # Manager level - team + direct reports access
     {"pattern": "Sales / Manager", "level": AccessLevel.MANAGER},
     {"pattern": "CRM / Manager", "level": AccessLevel.MANAGER},
     
