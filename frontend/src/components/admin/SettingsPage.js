@@ -125,6 +125,27 @@ export function SettingsPage() {
     }
   };
 
+  const updateSsoConfig = (key, value) => {
+    setSsoConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveSso = async () => {
+    setSsoSaving(true);
+    try {
+      const res = await microsoftAuthAPI.saveAdminConfig(ssoConfig);
+      if (res.data?.success) {
+        toast.success('Microsoft SSO configuration saved');
+        setSsoStatus({ configured: res.data.configured });
+        // Reload config to get masked secret
+        await loadSsoConfig();
+      }
+    } catch (error) {
+      toast.error('Failed to save SSO configuration');
+    } finally {
+      setSsoSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
