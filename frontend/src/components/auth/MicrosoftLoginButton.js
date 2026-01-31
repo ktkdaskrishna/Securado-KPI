@@ -77,8 +77,8 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     }
     
     if (token && provider === 'microsoft') {
-      // Store token and redirect to dashboard
-      localStorage.setItem('token', token);
+      // Store token using the same key as the main auth system
+      localStorage.setItem('access_token', token);
       
       // Decode token to get user info
       try {
@@ -95,9 +95,9 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
         console.error('Failed to decode token:', e);
       }
       
-      // Clean URL and redirect
-      window.history.replaceState({}, '', '/');
-      window.location.reload();
+      // Clean URL and redirect to dashboard
+      window.history.replaceState({}, '', '/dashboard');
+      window.location.href = '/dashboard';
       onSuccess?.();
     }
   }, [onSuccess]);
