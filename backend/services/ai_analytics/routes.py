@@ -129,6 +129,7 @@ def get_opp_value(opp):
 
 @router.get("/overview")
 async def get_analytics_overview(
+    request: Request,
     time_period: Optional[str] = "all",  # year, quarter, month, week
     year: Optional[str] = None,
     quarter: Optional[str] = None,
@@ -138,15 +139,28 @@ async def get_analytics_overview(
     stage: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get overview of all analytics metrics with optional filters - OPPORTUNITIES ONLY"""
+    """Get overview of all analytics metrics with optional filters - OPPORTUNITIES ONLY (RBAC enforced)"""
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    if has_no_rbac_access(rbac_filter):
+        # Return empty analytics for non-RBAC users
+        return {
+            "total_pipeline": 0, "won_value": 0, "lost_value": 0,
+            "win_rate": 0, "avg_deal_size": 0, "total_opportunities": 0,
+            "stage_distribution": [], "filters_applied": {}
+        }
+    
+    # Build query with RBAC
+    query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)
+    
     # Get OPPORTUNITIES only (exclude leads by filtering type='opportunity')
-    all_opps = await canonical_db.opportunities.find({
-        "org_id": org_id,
-        "type": "opportunity"
-    }).to_list(10000)
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Convert time_period to specific year/quarter if not already set
     if time_period != "all" and not year and not quarter:
