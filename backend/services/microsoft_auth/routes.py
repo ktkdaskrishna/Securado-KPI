@@ -22,6 +22,8 @@ import jwt
 import httpx
 import logging
 import secrets
+import hashlib
+import base64
 
 from libs.database import get_app_db
 from libs.utils import generate_id, now_utc
