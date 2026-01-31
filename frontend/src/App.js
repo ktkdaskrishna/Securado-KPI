@@ -55,52 +55,48 @@ import HelpPage from './components/admin/HelpPage';
 
 import './App.css';
 
-// Microsoft SSO Token Handler - processes OAuth callback tokens from URL
-function MicrosoftSSOHandler({ children }) {
-  React.useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const provider = urlParams.get('provider');
-    const errorParam = urlParams.get('error');
-    
-    // Handle SSO errors
-    if (errorParam) {
-      console.error('Microsoft SSO error:', errorParam, urlParams.get('message'));
-      window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
-    
-    // Handle successful Microsoft SSO token
-    if (token && provider === 'microsoft') {
-      console.log('Processing Microsoft SSO token...');
-      
-      // Store token using the same key as the main auth system
-      localStorage.setItem('access_token', token);
-      
-      // Decode token to get user info
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        localStorage.setItem('user', JSON.stringify({
-          id: payload.sub,
-          email: payload.email,
-          name: payload.name,
-          org_id: payload.org_id,
-          access_level: payload.access_level,
-          rbac_linked: payload.rbac_linked,
-        }));
-        console.log('Microsoft SSO successful for:', payload.email);
-      } catch (e) {
-        console.error('Failed to decode Microsoft token:', e);
-      }
-      
-      // Clean URL and redirect to dashboard
-      window.history.replaceState({}, '', '/dashboard');
-      window.location.href = '/dashboard';
-    }
-  }, []);
+// Process Microsoft SSO token IMMEDIATELY before React renders
+// This runs synchronously at module load time
+(function processMicrosoftSSOToken() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const provider = urlParams.get('provider');
+  const errorParam = urlParams.get('error');
   
-  return children;
-}
+  // Handle SSO errors
+  if (errorParam) {
+    console.error('Microsoft SSO error:', errorParam, urlParams.get('message'));
+    window.history.replaceState({}, '', window.location.pathname);
+    return;
+  }
+  
+  // Handle successful Microsoft SSO token
+  if (token && provider === 'microsoft') {
+    console.log('Processing Microsoft SSO token immediately...');
+    
+    // Store token using the same key as the main auth system
+    localStorage.setItem('access_token', token);
+    
+    // Decode token to get user info
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      localStorage.setItem('user', JSON.stringify({
+        id: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        org_id: payload.org_id,
+        access_level: payload.access_level,
+        rbac_linked: payload.rbac_linked,
+      }));
+      console.log('Microsoft SSO successful for:', payload.email);
+    } catch (e) {
+      console.error('Failed to decode Microsoft token:', e);
+    }
+    
+    // Redirect to dashboard immediately (before React mounts)
+    window.location.replace('/dashboard');
+  }
+})();
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
