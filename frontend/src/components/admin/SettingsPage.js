@@ -174,7 +174,7 @@ export function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general" data-testid="tab-general">
             <Settings className="h-4 w-4 mr-2" />
             General
@@ -190,6 +190,10 @@ export function SettingsPage() {
           <TabsTrigger value="integration" data-testid="tab-integration">
             <Database className="h-4 w-4 mr-2" />
             Integration
+          </TabsTrigger>
+          <TabsTrigger value="sso" data-testid="tab-sso">
+            <KeyRound className="h-4 w-4 mr-2" />
+            SSO
           </TabsTrigger>
         </TabsList>
 
