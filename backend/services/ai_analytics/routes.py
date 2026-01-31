@@ -426,11 +426,12 @@ async def get_rep_performance(
 
 @router.get("/team-performance")
 async def get_team_performance(
+    request: Request,
     year: Optional[str] = None,
     quarter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get Product Manager and Category performance metrics - OPPORTUNITIES ONLY
+    """Get Product Manager and Category performance metrics - OPPORTUNITIES ONLY (RBAC enforced)
     
     This shows performance by Product Manager and Solution Category rather than
     sales teams, as it provides more value for the business.
@@ -438,10 +439,21 @@ async def get_team_performance(
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     
-    all_opps = await canonical_db.opportunities.find({
-        "org_id": org_id,
-        "type": "opportunity"
-    }).to_list(10000)
+    # Get RBAC filter
+    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    
+    # Check if user has NO_ACCESS
+    if has_no_rbac_access(rbac_filter):
+        return {
+            "product_managers": [], "categories": [],
+            "top_pm": None, "top_category": None, "applied_filters": {}
+        }
+    
+    # Build query with RBAC
+    query = {"org_id": org_id, "type": "opportunity"}
+    query.update(rbac_filter)
+    
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply filters
     filters = {"year": year, "quarter": quarter}
