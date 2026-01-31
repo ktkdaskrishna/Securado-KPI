@@ -52,9 +52,13 @@
                         console.error('[SSO-HEAD] Token decode error:', e);
                     }
                     
-                    // Redirect immediately - this stops page loading
+                    // CRITICAL: Stop all page loading and redirect immediately
+                    // Using document.write to replace the entire page with a redirect
                     console.log('[SSO-HEAD] Redirecting to /dashboard...');
-                    window.location.replace('/dashboard');
+                    document.open();
+                    document.write('<html><head><meta http-equiv="refresh" content="0;url=/dashboard"></head><body>Redirecting...</body></html>');
+                    document.close();
+                    window.location.href = '/dashboard';
                 }
             })();
         </script>
