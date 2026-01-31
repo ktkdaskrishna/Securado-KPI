@@ -437,9 +437,10 @@ async def microsoft_callback(
             elif any(g in rbac_groups for g in sales_user_groups):
                 access_level = "USER"
         
-        # Generate JWT token for the app
+        # Generate JWT token for the app (compatible with identity service)
         token_payload = {
             "sub": user_id,
+            "type": "access",  # Required by get_current_user dependency
             "email": email,
             "name": display_name,
             "org_id": org_id,
