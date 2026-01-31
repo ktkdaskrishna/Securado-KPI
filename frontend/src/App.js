@@ -51,6 +51,7 @@ import { WebhookConfigPage } from './components/admin/WebhookConfigPage';
 import { CustomFieldsPage } from './components/admin/CustomFieldsPage';
 import { DataQualityPage } from './components/admin/DataQualityPage';
 import RBACManagementPage from './components/admin/RBACManagementPage';
+import HelpPage from './components/admin/HelpPage';
 
 import './App.css';
 
