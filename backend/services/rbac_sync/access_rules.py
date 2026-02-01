@@ -300,22 +300,28 @@ class AccessRuleEngine:
         """Build filter for team records (legacy - now use _build_manager_filter)"""
         return self._build_manager_filter(user_name, team_names, [], entity_type)
     
-    async def get_user_access_summary(self, user_name: str, org_id: str = "default") -> Dict:
+    async def get_user_access_summary(self, user_name: str, org_id: str = "default", user_email: str = None) -> Dict:
         """Get a summary of user's access permissions
         
         Useful for debugging and UI display
         """
-        user_rbac = await self.app_db.users_rbac.find_one({
+        # Build RBAC query - email is most reliable
+        rbac_query = {
             "org_id": org_id,
             "$or": [
                 {"name": {"$regex": f"^{user_name}$", "$options": "i"}},
                 {"login": {"$regex": f"^{user_name}$", "$options": "i"}}
             ]
-        })
+        }
+        if user_email:
+            rbac_query["$or"].insert(0, {"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+        
+        user_rbac = await self.app_db.users_rbac.find_one(rbac_query)
         
         if not user_rbac:
             return {
                 "user_name": user_name,
+                "user_email": user_email,
                 "rbac_synced": False,
                 "access_level": "RESTRICTED",
                 "groups": [],
