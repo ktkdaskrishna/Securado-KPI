@@ -108,7 +108,8 @@ class AccessRuleEngine:
         self,
         user_name: str,
         org_id: str = "default",
-        entity_type: str = "opportunity"
+        entity_type: str = "opportunity",
+        user_email: str = None
     ) -> Dict[str, Any]:
         """Generate MongoDB filter based on user's permissions
         
@@ -116,18 +117,24 @@ class AccessRuleEngine:
             user_name: User's name (as shown in owner_name field)
             org_id: Organization ID
             entity_type: Type of entity (opportunity, account, activity, etc.)
+            user_email: User's email for RBAC lookup (more reliable than name)
             
         Returns:
             MongoDB query filter dict
         """
         # First check for local permission override
-        override = await self.app_db.permission_overrides.find_one({
+        override_query = {
             "org_id": org_id,
             "is_active": True,
             "$or": [
-                {"user_email": {"$regex": f"^{user_name}@", "$options": "i"}},
                 {"user_name": {"$regex": f"^{user_name}$", "$options": "i"}}
             ]
+        }
+        # Add email-based override check if email provided
+        if user_email:
+            override_query["$or"].append({"user_email": {"$regex": f"^{user_email}$", "$options": "i"}})
+        else:
+            override_query["$or"].append({"user_email": {"$regex": f"^{user_name}@", "$options": "i"}})
         })
         
         if override:
