@@ -507,6 +507,25 @@ async def microsoft_token_login(request: Request):
     Alternative: Login with Microsoft ID token from frontend MSAL
     Frontend can use MSAL.js to get tokens directly, then send to backend for validation
     """
+    return await _handle_msal_complete(request)
+
+
+@router.post("/complete")
+async def microsoft_complete(request: Request):
+    """
+    Complete Microsoft SSO login - called by frontend after MSAL popup/redirect.
+    This endpoint validates the Microsoft tokens and returns an app JWT.
+    
+    Matches the Sales-Command-V2 implementation.
+    """
+    return await _handle_msal_complete(request)
+
+
+async def _handle_msal_complete(request: Request):
+    """
+    Shared handler for MSAL token completion.
+    Validates Microsoft tokens and creates/updates local user.
+    """
     app_db = get_app_db()
     
     try:
