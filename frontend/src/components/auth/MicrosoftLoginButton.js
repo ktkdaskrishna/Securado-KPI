@@ -3,7 +3,7 @@
  * Uses MSAL.js browser library with POPUP login (not redirect)
  * This approach is more reliable and matches the working Sales-Command implementation
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PublicClientApplication, LogLevel } from '@azure/msal-browser';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
