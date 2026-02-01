@@ -591,6 +591,7 @@ async def _handle_msal_complete(request: Request):
             org_id = local_user.get("org_id", "default")
             permissions = local_user.get("permissions", [])
         else:
+            # Create new user with all required fields for identity service compatibility
             user_id = generate_id()
             org_id = "default"
             permissions = ["view_dashboard", "manage_leads", "manage_opportunities"]
@@ -599,11 +600,14 @@ async def _handle_msal_complete(request: Request):
                 "_id": user_id,
                 "id": user_id,
                 "email": email,
+                "name": display_name,  # Required by identity service
                 "display_name": display_name,
                 "microsoft_id": ms_id,
                 "auth_provider": "microsoft",
                 "org_id": org_id,
                 "role": "user",
+                "roles": ["user"],  # Array format for compatibility
+                "status": "approved",  # Required by identity service
                 "permissions": permissions,
                 "rbac_linked": bool(rbac_user),
                 "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None,
