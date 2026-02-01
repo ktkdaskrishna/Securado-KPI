@@ -164,14 +164,19 @@ class AccessRuleEngine:
                 else:
                     return {"_id": {"$eq": "NO_ACCESS_RESTRICTED_BY_OVERRIDE"}}
         
-        # Get user's RBAC metadata
-        user_rbac = await self.app_db.users_rbac.find_one({
+        # Get user's RBAC metadata - search by email (most reliable), name, or login
+        rbac_query = {
             "org_id": org_id,
             "$or": [
                 {"name": {"$regex": f"^{user_name}$", "$options": "i"}},
                 {"login": {"$regex": f"^{user_name}$", "$options": "i"}}
             ]
-        })
+        }
+        # Add email-based RBAC lookup if email provided (most reliable match)
+        if user_email:
+            rbac_query["$or"].insert(0, {"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+        
+        user_rbac = await self.app_db.users_rbac.find_one(rbac_query)
         
         if not user_rbac:
             # Check if RBAC sync has been done at all for this org
