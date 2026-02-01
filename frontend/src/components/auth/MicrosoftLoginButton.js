@@ -77,8 +77,25 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
           setConfigLoaded(true);
           console.log('[MSAL] Initialized successfully');
           
-          // Handle any pending redirect response
-          handleRedirectResponse(pca);
+          // IMPORTANT: Handle redirect response IMMEDIATELY after init
+          // This catches the return from Microsoft redirect
+          try {
+            const response = await pca.handleRedirectPromise();
+            if (response && response.accessToken) {
+              console.log('[MSAL] Got redirect response with token, completing login...');
+              setMsLoading(true);
+              await completeMicrosoftLoginStatic(response);
+            } else if (response) {
+              console.log('[MSAL] Got redirect response but no token:', response);
+            }
+          } catch (redirectErr) {
+            if (redirectErr.errorCode === 'no_token_request_cache_error') {
+              // This is normal on fresh page load
+              console.log('[MSAL] No pending redirect (normal)');
+            } else {
+              console.error('[MSAL] Redirect handling error:', redirectErr);
+            }
+          }
         } else {
           console.warn('[MSAL] Microsoft SSO not configured');
           setConfigLoaded(false);
