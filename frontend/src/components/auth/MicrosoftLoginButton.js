@@ -182,30 +182,38 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     setError(null);
     
     try {
-      console.log('[MSAL] Starting popup login...');
+      console.log('[MSAL] Starting login...');
       
-      // Use popup login (more reliable than redirect)
-      const response = await msalInstance.loginPopup(loginRequest);
-      console.log('[MSAL] Popup login successful');
-      await completeMicrosoftLogin(response);
+      // First try popup (works best when popups are allowed)
+      try {
+        const response = await msalInstance.loginPopup({
+          ...loginRequest,
+          prompt: 'select_account', // Always show account picker
+        });
+        console.log('[MSAL] Popup login successful');
+        await completeMicrosoftLogin(response);
+        return;
+      } catch (popupError) {
+        console.warn('[MSAL] Popup failed:', popupError.errorCode || popupError.message);
+        
+        // If popup was blocked or cancelled, try redirect
+        if (popupError.errorCode === 'popup_window_error' || 
+            popupError.errorCode === 'user_cancelled' ||
+            popupError.errorCode === 'empty_window_error') {
+          console.log('[MSAL] Falling back to redirect...');
+          await msalInstance.loginRedirect({
+            ...loginRequest,
+            prompt: 'select_account',
+          });
+          return;
+        }
+        
+        throw popupError;
+      }
       
     } catch (err) {
       console.error('[MSAL] Login error:', err);
-      
-      // Handle specific MSAL errors
-      if (err.errorCode === 'user_cancelled') {
-        setError('Login was cancelled');
-      } else if (err.errorCode === 'popup_window_error') {
-        // Fallback to redirect if popup is blocked
-        console.log('[MSAL] Popup blocked, trying redirect...');
-        try {
-          await msalInstance.loginRedirect(loginRequest);
-        } catch (redirectErr) {
-          setError('Failed to initiate Microsoft login');
-        }
-      } else {
-        setError(err.message || 'Microsoft login failed');
-      }
+      setError(err.message || 'Microsoft login failed');
       onError?.(err);
       setMsLoading(false);
     }
