@@ -628,6 +628,7 @@ async def _handle_msal_complete(request: Request):
         # Generate app JWT
         token_payload = {
             "sub": user_id,
+            "type": "access",  # Required by get_current_user dependency
             "email": email,
             "name": display_name,
             "org_id": org_id,
