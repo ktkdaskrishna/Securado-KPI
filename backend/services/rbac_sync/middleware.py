@@ -46,6 +46,7 @@ async def get_rbac_filter(
         return {}
     
     user_name = current_user.get("name") or current_user.get("email", "").split("@")[0]
+    user_email = current_user.get("email")  # Get email for reliable RBAC lookup
     org_id = current_user.get("org_id", "default")
     
     # Get entity type from query params or path
@@ -63,10 +64,11 @@ async def get_rbac_filter(
     rbac_filter = await access_rule_engine.get_filter_for_user(
         user_name=user_name,
         org_id=org_id,
-        entity_type=entity_type
+        entity_type=entity_type,
+        user_email=user_email  # Pass email for reliable RBAC lookup
     )
     
-    logger.debug(f"RBAC filter for {user_name} on {entity_type}: {rbac_filter}")
+    logger.debug(f"RBAC filter for {user_name} ({user_email}) on {entity_type}: {rbac_filter}")
     
     return rbac_filter
 
