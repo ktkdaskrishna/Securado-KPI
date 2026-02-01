@@ -642,13 +642,15 @@ async def _handle_msal_complete(request: Request):
         
         app_token = jwt.encode(token_payload, JWT_SECRET, algorithm="HS256")
         
+        logger.info(f"Microsoft MSAL login successful for: {email}, access_level={access_level}")
+        
         return {
             "access_token": app_token,
             "token_type": "bearer",
             "user": {
                 "id": user_id,
                 "email": email,
-                "display_name": display_name,
+                "name": display_name,
                 "org_id": org_id,
                 "rbac_linked": bool(rbac_user),
                 "access_level": access_level,
