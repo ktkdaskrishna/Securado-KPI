@@ -501,14 +501,36 @@ async def get_current_user_rbac(
     
     hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
     
+    # Check if user has permissions synced - if not, use defaults
+    app_roles = user.get("app_roles", [])
+    effective_permissions = user.get("effective_permissions", [])
+    
+    # If permissions are empty, use defaults (user exists but permissions not synced)
+    if not effective_permissions:
+        logger.info(f"User {email} found in sales_users but has no permissions - using defaults")
+        default_permissions = [
+            "view_dashboard", "manage_dashboard",
+            "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+            "view_accounts", "manage_accounts",
+            "view_activities", "manage_activities",
+            "view_goals", "manage_goals",
+            "view_teams", "manage_teams",
+            "view_kpis", "manage_kpis",
+            "view_invoices", "manage_invoices",
+            "view_analytics", "manage_analytics",
+            "view_users", "manage_users"
+        ]
+        effective_permissions = default_permissions
+        app_roles = current_user.get("roles", ["sales_admin"])
+    
     return {
-        "user_id": user.get("odoo_id"),
+        "user_id": user.get("odoo_id") or user.get("source_record_id"),
         "name": user.get("name"),
-        "app_roles": user.get("app_roles", []),
-        "effective_permissions": user.get("effective_permissions", []),
-        "record_access": user.get("record_access", "own"),
-        "field_access": user.get("field_access", "limited"),
-        "hidden_fields": hidden_fields
+        "app_roles": app_roles,
+        "effective_permissions": effective_permissions,
+        "record_access": user.get("record_access", "all"),  # Default to "all" instead of "own"
+        "field_access": user.get("field_access", "all"),  # Default to "all"
+        "hidden_fields": hidden_fields if user.get("field_access") else []  # No hidden fields if not set
     }
 
 
