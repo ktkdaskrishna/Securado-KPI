@@ -571,16 +571,19 @@ async def _handle_msal_complete(request: Request):
         })
         
         if local_user:
+            # Update existing user with Microsoft info
             await app_db.users.update_one(
                 {"_id": local_user["_id"]},
                 {
                     "$set": {
                         "microsoft_id": ms_id,
+                        "name": display_name,  # Store as 'name' for compatibility with identity service
                         "display_name": display_name,
                         "last_login": now_utc(),
                         "auth_provider": "microsoft",
                         "rbac_linked": bool(rbac_user),
-                        "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None
+                        "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None,
+                        "status": local_user.get("status", "approved")  # Ensure status exists
                     }
                 }
             )
