@@ -498,7 +498,6 @@ async def get_current_user_rbac(
             "field_access": "all",
             "hidden_fields": FIELD_ACCESS_RULES.get("all", [])
         }
-        }
     
     hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
     
