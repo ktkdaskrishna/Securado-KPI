@@ -28,11 +28,11 @@ const getMsalConfig = (clientId, tenantId) => ({
     authority: `https://login.microsoftonline.com/${tenantId}`,
     redirectUri: `${window.location.origin}/login`,
     postLogoutRedirectUri: `${window.location.origin}/login`,
-    navigateToLoginRequestUrl: true,
+    navigateToLoginRequestUrl: false, // Changed to false to prevent redirect issues
   },
   cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
+    cacheLocation: 'localStorage', // Changed from sessionStorage to localStorage for better persistence
+    storeAuthStateInCookie: true, // Enable for IE11/Edge compatibility and cross-domain scenarios
   },
   system: {
     loggerOptions: {
@@ -40,9 +40,11 @@ const getMsalConfig = (clientId, tenantId) => ({
         if (containsPii) return;
         if (level === LogLevel.Error) console.error('[MSAL]', message);
         else if (level === LogLevel.Warning) console.warn('[MSAL]', message);
+        else if (level === LogLevel.Info) console.info('[MSAL]', message);
       },
-      logLevel: LogLevel.Warning,
+      logLevel: LogLevel.Info, // Increased logging for debugging
     },
+    allowNativeBroker: false,
   },
 });
 
