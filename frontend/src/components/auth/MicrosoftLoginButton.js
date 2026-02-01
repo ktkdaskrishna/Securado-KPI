@@ -96,12 +96,17 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   const handleRedirectResponse = useCallback(async (pca) => {
     try {
       const response = await pca.handleRedirectPromise();
-      if (response) {
+      if (response && response.accessToken) {
         console.log('[MSAL] Got redirect response, completing login...');
         setMsLoading(true);
         await completeMicrosoftLogin(response);
       }
     } catch (err) {
+      // Ignore no_token_request_cache_error as it's expected when no redirect is in progress
+      if (err.errorCode === 'no_token_request_cache_error') {
+        console.log('[MSAL] No redirect in progress (this is normal on fresh page load)');
+        return;
+      }
       console.error('[MSAL] Redirect response error:', err);
       setError(err.message || 'Microsoft login failed');
       setMsLoading(false);
