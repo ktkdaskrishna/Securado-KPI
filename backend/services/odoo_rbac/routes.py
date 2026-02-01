@@ -468,7 +468,10 @@ async def get_current_user_rbac(
     
     # Try to find user by email
     email = current_user.get("email")
+    logger.info(f"Looking up RBAC for user: {email}, org_id: {org_id}")
+    
     user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
+    logger.info(f"sales_users lookup result: {user is not None}")
     
     if not user:
         # Return default permissions for non-synced users
@@ -485,6 +488,7 @@ async def get_current_user_rbac(
             "view_analytics", "manage_analytics",
             "view_users", "manage_users"
         ]
+        logger.info(f"No sales_users record - returning default permissions for {email} with roles: {current_user.get('roles')}")
         return {
             "user_id": current_user.get("id"),
             "name": current_user.get("name"),
@@ -493,6 +497,7 @@ async def get_current_user_rbac(
             "record_access": "all",
             "field_access": "all",
             "hidden_fields": FIELD_ACCESS_RULES.get("all", [])
+        }
         }
     
     hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
