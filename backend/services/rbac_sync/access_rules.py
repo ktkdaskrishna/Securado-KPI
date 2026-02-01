@@ -135,7 +135,8 @@ class AccessRuleEngine:
             override_query["$or"].append({"user_email": {"$regex": f"^{user_email}$", "$options": "i"}})
         else:
             override_query["$or"].append({"user_email": {"$regex": f"^{user_name}@", "$options": "i"}})
-        })
+        
+        override = await self.app_db.permission_overrides.find_one(override_query)
         
         if override:
             # Check if not expired
