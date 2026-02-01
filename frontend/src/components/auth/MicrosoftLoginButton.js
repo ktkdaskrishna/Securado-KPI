@@ -171,7 +171,7 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     }
   };
 
-  // Handle Microsoft login button click
+  // Handle Microsoft login button click - use redirect flow (more reliable than popup)
   const handleMicrosoftLogin = async () => {
     if (!msalInstance) {
       setError('Microsoft SSO not configured. Please contact your administrator.');
@@ -182,34 +182,15 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     setError(null);
     
     try {
-      console.log('[MSAL] Starting login...');
+      console.log('[MSAL] Starting redirect login...');
       
-      // First try popup (works best when popups are allowed)
-      try {
-        const response = await msalInstance.loginPopup({
-          ...loginRequest,
-          prompt: 'select_account', // Always show account picker
-        });
-        console.log('[MSAL] Popup login successful');
-        await completeMicrosoftLogin(response);
-        return;
-      } catch (popupError) {
-        console.warn('[MSAL] Popup failed:', popupError.errorCode || popupError.message);
-        
-        // If popup was blocked or cancelled, try redirect
-        if (popupError.errorCode === 'popup_window_error' || 
-            popupError.errorCode === 'user_cancelled' ||
-            popupError.errorCode === 'empty_window_error') {
-          console.log('[MSAL] Falling back to redirect...');
-          await msalInstance.loginRedirect({
-            ...loginRequest,
-            prompt: 'select_account',
-          });
-          return;
-        }
-        
-        throw popupError;
-      }
+      // Use redirect flow - more reliable than popup
+      await msalInstance.loginRedirect({
+        ...loginRequest,
+        prompt: 'select_account',
+      });
+      
+      // Note: Code after loginRedirect won't execute as page will redirect
       
     } catch (err) {
       console.error('[MSAL] Login error:', err);
