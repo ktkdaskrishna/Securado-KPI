@@ -53,6 +53,56 @@ const loginRequest = {
   scopes: ['openid', 'profile', 'email', 'User.Read'],
 };
 
+// Static function to complete login (doesn't depend on React state)
+// Used during redirect handling before component fully mounts
+const completeMicrosoftLoginStatic = async (msalResponse) => {
+  try {
+    console.log('[MSAL] Sending tokens to backend...');
+    
+    const response = await fetch(`${API_URL}/api/auth/microsoft/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_token: msalResponse.accessToken,
+        id_token: msalResponse.idToken,
+        account: {
+          username: msalResponse.account.username,
+          name: msalResponse.account.name,
+          localAccountId: msalResponse.account.localAccountId,
+          tenantId: msalResponse.account.tenantId,
+        }
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[MSAL] Backend error:', errorText);
+      return;
+    }
+    
+    const data = await response.json();
+    
+    if (data.access_token) {
+      console.log('[MSAL] Login successful, storing token and redirecting...');
+      
+      // Store token in localStorage
+      localStorage.setItem('access_token', data.access_token);
+      
+      // Store user info
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+      
+      // Navigate to dashboard
+      window.location.href = '/dashboard';
+    } else {
+      console.error('[MSAL] No access_token in response:', data);
+    }
+  } catch (err) {
+    console.error('[MSAL] Login completion error:', err);
+  }
+};
+
 const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   const [loading, setLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
