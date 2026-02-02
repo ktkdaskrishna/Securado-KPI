@@ -5,11 +5,23 @@
 
 | Level | Description | Record Access | Example Roles |
 |-------|-------------|---------------|---------------|
-| ADMIN (100) | Full system access | All records | Sales Administrator, System Admin |
+| SYSTEM_ADMIN | Full system + ETL access | All records + ETL Platform | System Administrator |
+| ADMIN (100) | Full CRM access | All records | Sales Administrator |
 | DIRECTOR (75) | Department-wide access | All in department | Sales Director, Finance Director |
 | MANAGER (50) | Team + direct reports | Team members' records | Sales Manager, Team Lead |
 | USER (10) | Own records only | Only own records | Salesperson, Account Executive |
 | RESTRICTED (0) | No data access | None | New users, Pending approval |
+
+## System Admin vs Regular Admin
+
+| Feature | System Admin | Regular Admin |
+|---------|-------------|---------------|
+| CRM Platform | ✅ Full access | ✅ Full access |
+| ETL Platform (Connections, Mappings, Pipelines, Data Model) | ✅ Full access | ❌ No access |
+| Admin Settings (Users, Roles, RBAC Sync) | ✅ Full access | ✅ Full access |
+| System Settings (Settings, Logs, Webhooks) | ✅ Full access | ❌ No access |
+
+**Important**: Only users with `system_admin` permission can access the ETL Platform section.
 
 ## Role-Based Permissions
 
