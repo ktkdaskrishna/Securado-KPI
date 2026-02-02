@@ -511,28 +511,34 @@ async def get_current_user_rbac(
         odoo_groups = users_rbac_record.get("odoo_group_names", [])
         logger.info(f"User {email} found in users_rbac with groups: {odoo_groups}")
         
-        # Determine access level from groups
+        # Determine access level from groups (highest wins)
         access_level = "user"  # Default
         record_access = "own"  # Default to own records only
         
-        # Check for admin groups
-        admin_groups = ["Administration / Settings", "Administration / Access Rights", 
-                       "Sales / Administrator", "Sales / All Documents", "CRM / Administrator"]
-        if any(g in odoo_groups for g in admin_groups):
-            access_level = "admin"
-            record_access = "all"
+        # Check for user-level groups (lowest priority)
+        user_groups = ["Sales / User", "Sales / User: Own Documents Only"]
+        if any(g in odoo_groups for g in user_groups):
+            access_level = "user"
+            record_access = "own"
         
-        # Check for director groups
+        # Check for manager groups (higher priority)
+        manager_groups = ["Sales / Manager", "CRM / Manager"]
+        if any(g in odoo_groups for g in manager_groups):
+            access_level = "manager"
+            record_access = "team"  # Team + direct reports
+        
+        # Check for director groups (even higher priority)
         director_groups = ["CRM / Sales Director", "Sales Director"]
         if any(g in odoo_groups for g in director_groups):
             access_level = "director"
             record_access = "all"
         
-        # Check for manager groups
-        manager_groups = ["Sales / Manager", "CRM / Manager"]
-        if any(g in odoo_groups for g in manager_groups):
-            access_level = "manager"
-            record_access = "team"  # Team + direct reports
+        # Check for admin groups (HIGHEST priority - checked last so it wins)
+        admin_groups = ["Administration / Settings", "Administration / Access Rights", 
+                       "Sales / Administrator", "Sales / All Documents", "CRM / Administrator"]
+        if any(g in odoo_groups for g in admin_groups):
+            access_level = "admin"
+            record_access = "all"
         
         # Build permissions based on access level
         permissions = ["view_dashboard", "view_profile"]
