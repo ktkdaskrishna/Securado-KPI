@@ -90,6 +90,7 @@ async def simulate_test_data():
             act_doc = {
                 "canonical_id": f"test_act_{generate_id()[:8]}",
                 "source_system": "test",
+                "source_record_id": f"test_act_{random.randint(100000, 999999)}",  # Unique source_record_id
                 "activity_type": random.choice(activity_types),
                 "summary": f"Test Activity - {user['name']} #{i+1}",
                 "assigned_user": user["name"],
