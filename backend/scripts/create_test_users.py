@@ -210,12 +210,17 @@ async def create_test_users():
     print("=" * 60)
     
     krishna_email = "krishna@securado.net"
+    krishna_odoo_id = -999999  # Special negative ID for test admin
+    
+    # Check if krishna exists in users_rbac
+    existing_krishna = await app_db.users_rbac.find_one({"email": krishna_email})
     
     # Add to users_rbac with admin groups
     krishna_rbac = {
         "email": krishna_email,
         "name": "Krishnadas KT",
         "login": "krishna",
+        "odoo_user_id": krishna_odoo_id,
         "odoo_group_names": [
             "Administration / Settings",
             "Administration / Access Rights",
@@ -229,11 +234,14 @@ async def create_test_users():
         "org_id": org_id,
         "synced_at": now_utc()
     }
-    await app_db.users_rbac.update_one(
-        {"email": krishna_email, "org_id": org_id},
-        {"$set": krishna_rbac},
-        upsert=True
-    )
+    
+    if existing_krishna:
+        await app_db.users_rbac.update_one(
+            {"email": krishna_email},
+            {"$set": krishna_rbac}
+        )
+    else:
+        await app_db.users_rbac.insert_one(krishna_rbac)
     print(f"✅ Added krishna to users_rbac with admin groups")
     
     # Add to canonical.sales_users with full permissions
