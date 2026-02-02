@@ -156,10 +156,17 @@ async def create_test_users():
             print(f"   ✅ Created in app.users")
         
         # Create/update in users_rbac
+        # Generate unique odoo_user_id for test users (negative to distinguish from real Odoo IDs)
+        test_odoo_id = -abs(hash(email)) % 1000000  # Generate unique negative ID
+        
+        # First check if record exists
+        existing_rbac = await app_db.users_rbac.find_one({"email": email})
+        
         rbac_doc = {
             "email": email,
             "name": user_data["name"],
             "login": email.split("@")[0],
+            "odoo_user_id": test_odoo_id,  # Required due to unique index
             "odoo_group_names": user_data["odoo_group_names"],
             "odoo_team_names": [],
             "direct_report_names": [],
@@ -167,11 +174,14 @@ async def create_test_users():
             "org_id": org_id,
             "synced_at": now_utc()
         }
-        await app_db.users_rbac.update_one(
-            {"email": email, "org_id": org_id},
-            {"$set": rbac_doc},
-            upsert=True
-        )
+        
+        if existing_rbac:
+            await app_db.users_rbac.update_one(
+                {"email": email},
+                {"$set": rbac_doc}
+            )
+        else:
+            await app_db.users_rbac.insert_one(rbac_doc)
         print(f"   ✅ Created/updated in users_rbac")
         
         # Create/update in canonical.sales_users
