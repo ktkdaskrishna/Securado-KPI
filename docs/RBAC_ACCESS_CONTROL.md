@@ -84,13 +84,25 @@
 - Sales strategies
 - Individual performance (unless authorized)
 
-### 6. Administrator
+### 6. System Administrator
 **Odoo Groups**: `Administration / Settings`, `Administration / Access Rights`
+**Permission**: `system_admin`
 **Can See**:
-- Everything
+- Everything in CRM Platform
+- ETL Platform (Connections, Model Browser, Mappings, Data Model, Pipelines, Run History, DLQ)
+- Admin Section (Users, Roles, RBAC Sync, Settings, System Logs, Webhooks, Custom Fields)
 - System settings
 - User management
 - RBAC configuration
+
+### 7. Regular Administrator (CRM Admin)
+**Odoo Groups**: `Sales / Administrator`, `CRM / Administrator`
+**Can See**:
+- Everything in CRM Platform
+- Admin Section (Users, Roles, limited to CRM functions)
+**Cannot See**:
+- ETL Platform (System Admin only)
+- System Settings, Logs, Webhooks
 
 ## Default Access (No RBAC Record)
 
