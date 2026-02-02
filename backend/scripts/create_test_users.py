@@ -204,9 +204,9 @@ async def create_test_users():
         )
         print(f"   ✅ Created/updated in canonical.sales_users")
     
-    # Fix Krishna's admin access
+    # Fix Krishna's admin access (System Admin)
     print("\n" + "=" * 60)
-    print("Fixing Admin Access for krishna@securado.net")
+    print("Fixing Admin Access for krishna@securado.net (SYSTEM ADMIN)")
     print("=" * 60)
     
     krishna_email = "krishna@securado.net"
@@ -215,7 +215,7 @@ async def create_test_users():
     # Check if krishna exists in users_rbac
     existing_krishna = await app_db.users_rbac.find_one({"email": krishna_email})
     
-    # Add to users_rbac with admin groups
+    # Add to users_rbac with admin groups (System Admin)
     krishna_rbac = {
         "email": krishna_email,
         "name": "Krishnadas KT",
@@ -244,12 +244,12 @@ async def create_test_users():
         await app_db.users_rbac.insert_one(krishna_rbac)
     print(f"✅ Added krishna to users_rbac with admin groups")
     
-    # Add to canonical.sales_users with full permissions
+    # Add to canonical.sales_users with full permissions INCLUDING system_admin
     krishna_sales = {
         "email": krishna_email,
         "name": "Krishnadas KT",
         "login": "krishna",
-        "app_roles": ["admin", "sales_admin"],
+        "app_roles": ["admin", "sales_admin", "system_admin"],  # System Admin role added
         "effective_permissions": [
             "view_dashboard", "manage_dashboard",
             "view_opportunities", "manage_opportunities", "update_stage", "update_probability", "delete_opportunities",
@@ -261,6 +261,7 @@ async def create_test_users():
             "view_users", "manage_users",
             "view_invoices", "manage_invoices",
             "view_analytics", "manage_analytics",
+            "system_admin",  # System Admin permission for ETL Platform access
             "admin:*"
         ],
         "record_access": "all",
