@@ -609,7 +609,7 @@ async def get_current_user_rbac(
             if access_level in ["admin", "director"]:
                 permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
             if access_level == "admin":
-                permissions.extend(["manage_users", "view_users", "manage_teams"])
+                permissions.extend(["manage_users", "view_users", "manage_teams", "system_admin"])
             
             effective_permissions = permissions
             app_roles = [access_level]
