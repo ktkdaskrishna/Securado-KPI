@@ -93,21 +93,26 @@ const permissionRequirements = {
   initiatives: 'view_dashboard',
   kpis: 'view_kpis',
   profile: null, // Always visible
-  connections: 'manage_dashboard', // ETL requires admin
-  mappings: 'manage_dashboard',
-  'data-model': 'manage_dashboard',
-  pipelines: 'manage_dashboard',
-  runs: 'manage_dashboard',
-  datalake: 'manage_dashboard',
-  dlq: 'manage_dashboard',
+  // ETL Platform - System Admin only
+  connections: 'system_admin',
+  'model-browser': 'system_admin',
+  mappings: 'system_admin',
+  'data-model': 'system_admin',
+  pipelines: 'system_admin',
+  runs: 'system_admin',
+  datalake: 'system_admin',
+  dlq: 'system_admin',
+  // Admin section - manage_users or system_admin
   users: 'manage_users',
   roles: 'manage_users',
-  'rbac-sync': 'manage_users',
+  'rbac-sync': 'system_admin',
   departments: 'manage_users',
-  settings: 'manage_dashboard',
-  'system-logs': 'manage_dashboard',
-  webhooks: 'manage_dashboard',
-  'custom-fields': 'manage_dashboard',
+  settings: 'system_admin',
+  'system-logs': 'system_admin',
+  webhooks: 'system_admin',
+  'custom-fields': 'system_admin',
+  'data-quality': 'system_admin',
+  help: null, // Always visible
 };
 
 const defaultNavigation = {
