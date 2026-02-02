@@ -47,6 +47,9 @@ GROUP_ACCESS_RULES = [
     {"pattern": "Sales / Administrator", "level": AccessLevel.ADMIN},
     {"pattern": "Sales / All Documents", "level": AccessLevel.ADMIN},
     {"pattern": "CRM / Administrator", "level": AccessLevel.ADMIN},
+    {"pattern": "CRM / Sales Director", "level": AccessLevel.ADMIN},  # Directors have full access
+    {"pattern": "Sales / User: All Documents", "level": AccessLevel.ADMIN},  # All Documents = full access
+    {"pattern": "Accounting / Accountant", "level": AccessLevel.ADMIN},  # Accountants have full access to invoices
     
     # Manager level - team + direct reports access
     {"pattern": "Sales / Manager", "level": AccessLevel.MANAGER},
