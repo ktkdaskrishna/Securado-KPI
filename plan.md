@@ -155,7 +155,7 @@ Pipeline config can include `"use_event_queue": true` to enable queue-based data
 ---
 
 ## Preview URL
-https://goal-tracker-369.preview.emergentagent.com
+https://sso-fix-checker.preview.emergentagent.com
 
 ## Test Credentials
 - Email: `test@securado.com`
