@@ -462,75 +462,185 @@ async def get_user_permissions(
 async def get_current_user_rbac(
     current_user: dict = Depends(get_current_user)
 ):
-    """Get RBAC info for the currently logged-in user"""
+    """Get RBAC info for the currently logged-in user
+    
+    SECURITY: Users without RBAC records get RESTRICTED access (not full access)
+    """
     canonical_db = get_canonical_db()
+    app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
     # Try to find user by email
     email = current_user.get("email")
     logger.info(f"Looking up RBAC for user: {email}, org_id: {org_id}")
     
+    # First check canonical sales_users
     user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
-    logger.info(f"sales_users lookup result: {user is not None}")
     
+    # If not in canonical, check users_rbac for Odoo group info
+    users_rbac_record = None
     if not user:
-        # Return default permissions for non-synced users
-        # Give comprehensive permissions for users not synced from Odoo
-        default_permissions = [
-            "view_dashboard", "manage_dashboard",
-            "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
-            "view_accounts", "manage_accounts",
-            "view_activities", "manage_activities",
-            "view_goals", "manage_goals",
-            "view_teams", "manage_teams",
-            "view_kpis", "manage_kpis",
-            "view_invoices", "manage_invoices",
-            "view_analytics", "manage_analytics",
-            "view_users", "manage_users"
-        ]
-        logger.info(f"No sales_users record - returning default permissions for {email} with roles: {current_user.get('roles')}")
+        users_rbac_record = await app_db.users_rbac.find_one({
+            "$or": [
+                {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+            ],
+            "org_id": org_id
+        })
+    
+    # Determine access based on what we found
+    if not user and not users_rbac_record:
+        # SECURITY: User not in RBAC system - give RESTRICTED access only
+        # They can see their profile but no business data
+        logger.warning(f"SECURITY: User {email} has no RBAC record - applying RESTRICTED access")
+        restricted_permissions = ["view_profile"]  # Only basic profile access
         return {
             "user_id": current_user.get("id"),
             "name": current_user.get("name"),
-            "app_roles": current_user.get("roles", ["sales_admin"]),
-            "effective_permissions": default_permissions,
-            "record_access": "all",
-            "field_access": "all",
-            "hidden_fields": FIELD_ACCESS_RULES.get("all", [])
+            "app_roles": ["restricted"],
+            "effective_permissions": restricted_permissions,
+            "record_access": "none",  # No business data access
+            "field_access": "limited",
+            "hidden_fields": FIELD_ACCESS_RULES.get("limited", []),
+            "rbac_synced": False,
+            "warning": "User not synced with Odoo RBAC - contact administrator"
         }
     
-    hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
+    # If we have users_rbac but no sales_users, determine access from Odoo groups
+    if users_rbac_record and not user:
+        odoo_groups = users_rbac_record.get("odoo_group_names", [])
+        logger.info(f"User {email} found in users_rbac with groups: {odoo_groups}")
+        
+        # Determine access level from groups
+        access_level = "user"  # Default
+        record_access = "own"  # Default to own records only
+        
+        # Check for admin groups
+        admin_groups = ["Administration / Settings", "Administration / Access Rights", 
+                       "Sales / Administrator", "Sales / All Documents", "CRM / Administrator"]
+        if any(g in odoo_groups for g in admin_groups):
+            access_level = "admin"
+            record_access = "all"
+        
+        # Check for director groups
+        director_groups = ["CRM / Sales Director", "Sales Director"]
+        if any(g in odoo_groups for g in director_groups):
+            access_level = "director"
+            record_access = "all"
+        
+        # Check for manager groups
+        manager_groups = ["Sales / Manager", "CRM / Manager"]
+        if any(g in odoo_groups for g in manager_groups):
+            access_level = "manager"
+            record_access = "team"  # Team + direct reports
+        
+        # Build permissions based on access level
+        permissions = ["view_dashboard", "view_profile"]
+        if access_level in ["admin", "director", "manager", "user"]:
+            permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+        if access_level in ["admin", "director", "manager"]:
+            permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+        if access_level in ["admin", "director"]:
+            permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+        if access_level == "admin":
+            permissions.extend(["manage_users", "view_users", "manage_teams"])
+        
+        return {
+            "user_id": users_rbac_record.get("odoo_user_id"),
+            "name": users_rbac_record.get("name"),
+            "app_roles": [access_level],
+            "effective_permissions": permissions,
+            "record_access": record_access,
+            "field_access": "all" if access_level in ["admin", "director"] else "standard",
+            "hidden_fields": [],
+            "rbac_synced": True,
+            "odoo_groups": odoo_groups
+        }
     
-    # Check if user has permissions synced - if not, use defaults
+    # User found in sales_users - check if permissions are set
+    hidden_fields = FIELD_ACCESS_RULES.get(user.get("field_access", "limited"), [])
     app_roles = user.get("app_roles", [])
     effective_permissions = user.get("effective_permissions", [])
     
-    # If permissions are empty, use defaults (user exists but permissions not synced)
+    # If permissions are empty in sales_users, compute from users_rbac
     if not effective_permissions:
-        logger.info(f"User {email} found in sales_users but has no permissions - using defaults")
-        default_permissions = [
-            "view_dashboard", "manage_dashboard",
-            "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
-            "view_accounts", "manage_accounts",
-            "view_activities", "manage_activities",
-            "view_goals", "manage_goals",
-            "view_teams", "manage_teams",
-            "view_kpis", "manage_kpis",
-            "view_invoices", "manage_invoices",
-            "view_analytics", "manage_analytics",
-            "view_users", "manage_users"
-        ]
-        effective_permissions = default_permissions
-        app_roles = current_user.get("roles", ["sales_admin"])
+        # Try to get from users_rbac
+        users_rbac_record = await app_db.users_rbac.find_one({
+            "$or": [
+                {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+            ],
+            "org_id": org_id
+        })
+        
+        if users_rbac_record:
+            odoo_groups = users_rbac_record.get("odoo_group_names", [])
+            # Determine access from groups (same logic as above)
+            access_level = "user"
+            record_access = "own"
+            
+            admin_groups = ["Administration / Settings", "Administration / Access Rights", 
+                           "Sales / Administrator", "Sales / All Documents", "CRM / Administrator"]
+            if any(g in odoo_groups for g in admin_groups):
+                access_level = "admin"
+                record_access = "all"
+            
+            director_groups = ["CRM / Sales Director", "Sales Director"]
+            if any(g in odoo_groups for g in director_groups):
+                access_level = "director"
+                record_access = "all"
+            
+            manager_groups = ["Sales / Manager", "CRM / Manager"]
+            if any(g in odoo_groups for g in manager_groups):
+                access_level = "manager"
+                record_access = "team"
+            
+            permissions = ["view_dashboard", "view_profile"]
+            if access_level in ["admin", "director", "manager", "user"]:
+                permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+            if access_level in ["admin", "director", "manager"]:
+                permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+            if access_level in ["admin", "director"]:
+                permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+            if access_level == "admin":
+                permissions.extend(["manage_users", "view_users", "manage_teams"])
+            
+            effective_permissions = permissions
+            app_roles = [access_level]
+            
+            return {
+                "user_id": user.get("odoo_id") or user.get("source_record_id"),
+                "name": user.get("name"),
+                "app_roles": app_roles,
+                "effective_permissions": effective_permissions,
+                "record_access": record_access,
+                "field_access": "all" if access_level in ["admin", "director"] else "standard",
+                "hidden_fields": [],
+                "rbac_synced": True
+            }
+        else:
+            # No RBAC info at all - restricted
+            logger.warning(f"User {email} in sales_users but no RBAC groups - restricted access")
+            return {
+                "user_id": user.get("odoo_id") or user.get("source_record_id"),
+                "name": user.get("name"),
+                "app_roles": ["restricted"],
+                "effective_permissions": ["view_profile"],
+                "record_access": "none",
+                "field_access": "limited",
+                "hidden_fields": hidden_fields,
+                "rbac_synced": False
+            }
     
     return {
         "user_id": user.get("odoo_id") or user.get("source_record_id"),
         "name": user.get("name"),
         "app_roles": app_roles,
         "effective_permissions": effective_permissions,
-        "record_access": user.get("record_access", "all"),  # Default to "all" instead of "own"
-        "field_access": user.get("field_access", "all"),  # Default to "all"
-        "hidden_fields": hidden_fields if user.get("field_access") else []  # No hidden fields if not set
+        "record_access": user.get("record_access", "own"),
+        "field_access": user.get("field_access", "limited"),
+        "hidden_fields": hidden_fields,
+        "rbac_synced": True
     }
 
 
