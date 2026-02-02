@@ -15,12 +15,24 @@ Run: cd /app/backend && python scripts/create_test_users.py
 import asyncio
 import os
 import sys
+import uuid
+import bcrypt
 from datetime import datetime, timezone
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+# MongoDB async client
 from motor.motor_asyncio import AsyncIOMotorClient
-from libs.utils import generate_id, hash_password, now_utc
+
+
+def generate_id():
+    return str(uuid.uuid4())
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def now_utc():
+    return datetime.now(timezone.utc)
 
 
 async def create_test_users():
