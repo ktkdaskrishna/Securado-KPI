@@ -225,6 +225,50 @@ export const crmAPI = {
   getReceivablesBySalesperson: (params) => api.get('/receivables/by-salesperson', { params }),
 };
 
+// Target Management APIs
+export const targetAPI = {
+  // Sales Targets
+  listSalesTargets: (params) => api.get('/sales-targets', { params }),
+  getSalesTarget: (id) => api.get(`/sales-targets/${id}`),
+  createSalesTarget: (data) => api.post('/sales-targets', data),
+  updateSalesTarget: (id, data) => api.put(`/sales-targets/${id}`, data),
+  deleteSalesTarget: (id) => api.delete(`/sales-targets/${id}`),
+  updateTargetProgress: (id, currentValue) => api.patch(`/sales-targets/${id}/progress`, { current_value: currentValue }),
+  getTargetHierarchy: (params) => api.get('/sales-targets/hierarchy', { params }),
+  getTargetsSummary: (params) => api.get('/sales-targets/summary', { params }),
+  getTargetLeaderboard: (params) => api.get('/sales-targets/leaderboard', { params }),
+  cascadeTarget: (id, teamMembers) => api.post(`/sales-targets/${id}/cascade`, teamMembers),
+
+  // Activity Targets
+  listActivityTargets: (params) => api.get('/activity-targets', { params }),
+  getActivityTarget: (id) => api.get(`/activity-targets/${id}`),
+  createActivityTarget: (data) => api.post('/activity-targets', data),
+  deleteActivityTarget: (id) => api.delete(`/activity-targets/${id}`),
+  logActivityCount: (id, increment) => api.patch(`/activity-targets/${id}/log`, null, { params: { increment } }),
+  getActivityTargetsSummary: (params) => api.get('/activity-targets/summary', { params }),
+  getActivityScoreboard: (params) => api.get('/activity-targets/scoreboard', { params }),
+
+  // Incentive Plans
+  listIncentivePlans: () => api.get('/incentive-plans'),
+  getIncentivePlan: (id) => api.get(`/incentive-plans/${id}`),
+  createIncentivePlan: (data) => api.post('/incentive-plans', data),
+  updateIncentivePlan: (id, data) => api.put(`/incentive-plans/${id}`, data),
+  deleteIncentivePlan: (id) => api.delete(`/incentive-plans/${id}`),
+
+  // Incentive Calculation
+  calculateIncentive: (data) => api.post('/incentive-calc/calculate', data),
+  simulateIncentive: (planId, targetValue, scenarios) =>
+    api.post('/incentive-calc/simulate', null, { params: { plan_id: planId, target_value: targetValue, scenarios } }),
+
+  // Target Sheets
+  listTargetSheets: (params) => api.get('/target-sheets', { params }),
+  getTargetSheet: (id) => api.get(`/target-sheets/${id}`),
+  createTargetSheet: (data) => api.post('/target-sheets', data),
+  updateTargetSheet: (id, data) => api.put(`/target-sheets/${id}`, data),
+  deleteTargetSheet: (id) => api.delete(`/target-sheets/${id}`),
+  activateTargetSheet: (id) => api.patch(`/target-sheets/${id}/activate`),
+};
+
 // Events/DLQ APIs
 export const eventsAPI = {
   getEventHistory: (params) => api.get('/events/history', { params }),
