@@ -143,6 +143,9 @@ function AppRoutes() {
         <Route path="/kpis" element={<KPIsPage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/target-management" element={<TargetManagementPage />} />
+        <Route path="/activity-tracker" element={<ActivityTrackerPage />} />
+        <Route path="/incentive-calc" element={<IncentiveCalcPage />} />
 
         {/* ETL Platform */}
         <Route path="/etl/connections" element={<ConnectionsPage />} />
