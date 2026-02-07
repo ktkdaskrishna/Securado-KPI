@@ -156,6 +156,100 @@ STEP 8: Test Admin Section
 - ✅ Can access Admin pages
 - ✅ Invoice count: ~300+ invoices visible
 
+
+
+---
+
+### Scenario 1B: CEO (Executive - Full CRM, No ETL)
+
+**User**: `ceo@test.securado.com` / `test123456`
+**Expected Access**: Full CRM access (all data), NO ETL Platform access
+
+#### Test Steps:
+
+```
+STEP 1: Login
+- Navigate to: https://sso-fix-checker.preview.emergentagent.com
+- Enter email: ceo@test.securado.com
+- Enter password: test123456
+- Click "Sign in" button
+- EXPECTED: Redirect to Dashboard
+
+STEP 2: Verify Sidebar - FULL CRM Access
+- VERIFY: "CRM Platform" header visible
+- VERIFY: Dashboard link visible
+- VERIFY: AI Analytics link visible
+- VERIFY: Opportunities link visible
+- VERIFY: Leads link visible
+- VERIFY: Accounts link visible
+- VERIFY: Activities link visible
+- VERIFY: Timeline link visible
+- VERIFY: Invoices link visible
+- VERIFY: Goals link visible
+- VERIFY: My Profile link visible
+- TAKE SCREENSHOT: CEO sidebar
+
+STEP 3: Verify NO ETL Platform Section (CRITICAL FOR CEO)
+- VERIFY: "ETL Platform" header NOT visible
+- VERIFY: Connections link NOT visible
+- VERIFY: Model Browser link NOT visible
+- VERIFY: Mappings link NOT visible
+- VERIFY: Data Model link NOT visible
+- VERIFY: Pipelines link NOT visible
+- TAKE SCREENSHOT: CEO sidebar showing NO ETL section
+
+STEP 4: Verify NO Admin Section
+- VERIFY: Users link NOT visible
+- VERIFY: Roles link NOT visible
+- VERIFY: Settings link NOT visible
+- VERIFY: Only "Help & Support" visible in Admin area
+
+STEP 5: Test Dashboard - ALL Company Data
+- Click Dashboard
+- VERIFY: Dashboard loads with full company metrics
+- VERIFY: Total opportunity count (all records ~1350+)
+- VERIFY: Pipeline by Stage chart shows all data
+- VERIFY: Sales Leaderboard shows ALL salespeople
+- TAKE SCREENSHOT: CEO Dashboard with full data
+
+STEP 6: Test Opportunities - ALL Records
+- Click Opportunities in sidebar
+- VERIFY: Shows ALL opportunities (~1350+ records)
+- VERIFY: Can see opportunities from ALL salespeople
+- VERIFY: Can view opportunity details
+- TAKE SCREENSHOT: CEO Opportunities view
+
+STEP 7: Test Invoices - ALL Records
+- Click Invoices in sidebar
+- VERIFY: Invoices page loads
+- VERIFY: Total Invoiced amount (~3M+ OMR)
+- VERIFY: All invoices visible
+- VERIFY: Can filter by different salespeople
+- TAKE SCREENSHOT: CEO Invoices view
+
+STEP 8: Test AI Analytics
+- Click AI Analytics
+- VERIFY: Analytics page loads
+- VERIFY: Company-wide analytics visible
+- TAKE SCREENSHOT: CEO Analytics view
+
+STEP 9: Negative Test - ETL Access Attempt
+- Manually navigate to: /etl/connections
+- VERIFY: Access denied OR empty page OR redirect
+- Manually navigate to: /admin/settings
+- VERIFY: Access denied OR empty page OR redirect
+- TAKE SCREENSHOT: Access denied for CEO
+```
+
+#### Expected Results:
+- ✅ Full CRM Platform access (all menu items)
+- ✅ Dashboard shows ALL company data (not filtered)
+- ✅ Can see ALL opportunities (~1350+)
+- ✅ Can see ALL invoices (~300+)
+- ✅ Can access AI Analytics
+- ❌ Cannot see ETL Platform section
+- ❌ Cannot access ETL pages via direct URL
+- ❌ Cannot see Admin section (except Help)
 ---
 
 ### Scenario 2: Sales User (Own Records)
