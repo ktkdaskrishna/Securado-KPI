@@ -109,7 +109,8 @@ async def get_salespersons(current_user: dict = Depends(get_current_user)):
     pipeline = [
         {"$match": {"owner_name": {"$ne": None}}},
         {"$group": {
-            "_id": {"name": "$owner_name", "id": "$owner_id"},
+            "_id": "$owner_name",
+            "owner_id": {"$first": "$owner_id"},
             "opp_count": {"$sum": 1},
             "total_pipeline": {"$sum": "$amount"},
             "teams": {"$addToSet": "$team_name"}
@@ -117,8 +118,8 @@ async def get_salespersons(current_user: dict = Depends(get_current_user)):
         {"$sort": {"total_pipeline": -1}}
     ]
     results = await canonical_db.opportunities.aggregate(pipeline).to_list(100)
-    return [{"id": r["_id"]["id"], "name": r["_id"]["name"], "opp_count": r["opp_count"],
-             "total_pipeline": r["total_pipeline"], "teams": r["teams"]} for r in results]
+    return [{"id": str(r.get("owner_id", "")), "name": r["_id"], "opp_count": r["opp_count"],
+             "total_pipeline": r["total_pipeline"], "teams": [t for t in r["teams"] if t]} for r in results]
 
 
 @lookups_router.get("/accounts")
