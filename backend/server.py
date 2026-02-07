@@ -333,6 +333,11 @@ app.include_router(incentive_plans_router, prefix="/api")
 app.include_router(target_sheets_router, prefix="/api")
 app.include_router(incentive_calc_router, prefix="/api")
 
+# Target Planning (Analytics-driven)
+app.include_router(target_lookups_router, prefix="/api")
+app.include_router(target_plans_router, prefix="/api")
+app.include_router(target_actuals_router, prefix="/api")
+
 
 # Root endpoint
 @app.get("/")
