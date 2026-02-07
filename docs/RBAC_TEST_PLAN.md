@@ -28,6 +28,7 @@
 | Role | Email | Password | Record Access | ETL Access |
 |------|-------|----------|---------------|------------|
 | **System Admin** | `krishna@securado.net` | `test123456` | All | ✅ Yes |
+| **CEO** | `ceo@test.securado.com` | `test123456` | All | ❌ No |
 | **Sales User** | `sales@test.securado.com` | `test123456` | Own Only | ❌ No |
 | **Sales Director** | `sales.director@test.securado.com` | `test123456` | All | ❌ No |
 | **Product Director** | `product.director@test.securado.com` | `test123456` | All | ❌ No |
