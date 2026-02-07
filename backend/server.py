@@ -321,6 +321,13 @@ app.include_router(webhook_router, prefix="/api")
 # RBAC Sync (Hybrid RBAC Implementation)
 app.include_router(rbac_sync_router, prefix="/api")
 
+# Target Management
+app.include_router(sales_targets_router, prefix="/api")
+app.include_router(activity_targets_router, prefix="/api")
+app.include_router(incentive_plans_router, prefix="/api")
+app.include_router(target_sheets_router, prefix="/api")
+app.include_router(incentive_calc_router, prefix="/api")
+
 
 # Root endpoint
 @app.get("/")
