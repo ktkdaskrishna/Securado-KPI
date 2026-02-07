@@ -159,6 +159,26 @@ class DatabaseManager:
         await self.canonical_db.users.create_index("canonical_id", unique=True)
         await self.canonical_db.users.create_index("org_id")
         
+        # Target Management indexes
+        await self.app_db.sales_targets.create_index("id", unique=True)
+        await self.app_db.sales_targets.create_index("org_id")
+        await self.app_db.sales_targets.create_index("assigned_to")
+        await self.app_db.sales_targets.create_index("parent_target_id")
+        await self.app_db.sales_targets.create_index("department")
+        await self.app_db.sales_targets.create_index("period_type")
+        
+        await self.app_db.activity_targets.create_index("id", unique=True)
+        await self.app_db.activity_targets.create_index("org_id")
+        await self.app_db.activity_targets.create_index("assigned_to")
+        await self.app_db.activity_targets.create_index("activity_type")
+        await self.app_db.activity_targets.create_index("parent_target_id")
+        
+        await self.app_db.incentive_plans.create_index("id", unique=True)
+        await self.app_db.incentive_plans.create_index("org_id")
+        
+        await self.app_db.target_sheets.create_index("id", unique=True)
+        await self.app_db.target_sheets.create_index("org_id")
+        
         logger.info("Database indexes created")
 
 
