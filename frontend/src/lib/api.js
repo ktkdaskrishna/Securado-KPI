@@ -267,6 +267,35 @@ export const targetAPI = {
   updateTargetSheet: (id, data) => api.put(`/target-sheets/${id}`, data),
   deleteTargetSheet: (id) => api.delete(`/target-sheets/${id}`),
   activateTargetSheet: (id) => api.patch(`/target-sheets/${id}/activate`),
+
+  // Lookups (from Odoo)
+  getProductManagers: () => api.get('/target-lookups/product-managers'),
+  getSolutionCategories: () => api.get('/target-lookups/solution-categories'),
+  getSalespersons: () => api.get('/target-lookups/salespersons'),
+  getOdooAccounts: (params) => api.get('/target-lookups/accounts', { params }),
+  getActivityTypes: () => api.get('/target-lookups/activity-types'),
+  getSalesTeams: () => api.get('/target-lookups/sales-teams'),
+
+  // Revenue Plans (CEO → PM)
+  listRevenuePlans: (params) => api.get('/target-plans/revenue', { params }),
+  createRevenuePlan: (data) => api.post('/target-plans/revenue', data),
+  deleteRevenuePlan: (id) => api.delete(`/target-plans/revenue/${id}`),
+
+  // Activity Plan Items (PM creates)
+  listPlanItems: (planId) => api.get(`/target-plans/revenue/${planId}/items`),
+  createPlanItem: (planId, data) => api.post(`/target-plans/revenue/${planId}/items`, data),
+  deletePlanItem: (itemId) => api.delete(`/target-plans/items/${itemId}`),
+
+  // Redistributions (Sales Director → Account Managers)
+  listRedistributions: (planId) => api.get(`/target-plans/revenue/${planId}/redistributions`),
+  redistributePlanItem: (itemId, data) => api.post(`/target-plans/items/${itemId}/redistribute`, data),
+  deleteRedistribution: (id) => api.delete(`/target-plans/redistributions/${id}`),
+
+  // Actuals (from Odoo)
+  getActualsByPM: (params) => api.get('/target-actuals/by-product-manager', { params }),
+  getActualsBySalesperson: (params) => api.get('/target-actuals/by-salesperson', { params }),
+  getActualActivities: (params) => api.get('/target-actuals/activities', { params }),
+  getCollectionActuals: () => api.get('/target-actuals/collection'),
 };
 
 // Events/DLQ APIs
