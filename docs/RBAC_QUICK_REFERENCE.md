@@ -47,6 +47,13 @@ PRODUCT DIRECTOR (All CRM, No ETL):
 - [ ] Can see Admin section (Users, Roles, Settings)
 - [ ] Dashboard shows ALL data
 
+### CEO (ceo@test.securado.com)
+- [ ] NO ETL Platform in sidebar
+- [ ] NO Admin section (except Help)
+- [ ] Full CRM access - ALL menu items visible
+- [ ] Opportunities shows ALL ~1350+ records
+- [ ] Invoices shows ALL ~300+ records
+
 ### Sales User (sales@test.securado.com)
 - [ ] NO ETL Platform in sidebar
 - [ ] NO Admin section (except Help)
