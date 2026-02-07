@@ -179,6 +179,19 @@ class DatabaseManager:
         await self.app_db.target_sheets.create_index("id", unique=True)
         await self.app_db.target_sheets.create_index("org_id")
         
+        await self.app_db.target_plans.create_index("id", unique=True)
+        await self.app_db.target_plans.create_index("org_id")
+        await self.app_db.target_plans.create_index("plan_type")
+        
+        await self.app_db.target_plan_items.create_index("id", unique=True)
+        await self.app_db.target_plan_items.create_index("org_id")
+        await self.app_db.target_plan_items.create_index("revenue_plan_id")
+        
+        await self.app_db.target_redistributions.create_index("id", unique=True)
+        await self.app_db.target_redistributions.create_index("org_id")
+        await self.app_db.target_redistributions.create_index("plan_item_id")
+        await self.app_db.target_redistributions.create_index("revenue_plan_id")
+        
         logger.info("Database indexes created")
 
 
