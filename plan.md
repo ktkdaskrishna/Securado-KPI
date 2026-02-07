@@ -155,7 +155,7 @@ Pipeline config can include `"use_event_queue": true` to enable queue-based data
 ---
 
 ## Preview URL
-https://sso-fix-checker.preview.emergentagent.com
+https://permission-audit-2.preview.emergentagent.com
 
 ## Test Credentials
 - Email: `test@securado.com`

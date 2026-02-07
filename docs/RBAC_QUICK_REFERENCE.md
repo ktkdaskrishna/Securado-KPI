@@ -1,7 +1,7 @@
 # RBAC Quick Test Reference Card
 ## For Claude Bot Chrome Extension Testing
 
-**App URL**: https://sso-fix-checker.preview.emergentagent.com
+**App URL**: https://permission-audit-2.preview.emergentagent.com
 
 ---
 
