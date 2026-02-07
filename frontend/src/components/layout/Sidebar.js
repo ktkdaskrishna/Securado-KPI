@@ -93,14 +93,8 @@ const permissionRequirements = {
   activities: 'view_activities',
   'activity-timeline': 'view_activities',
   invoices: 'view_invoices',
-  goals: 'view_goals',
-  teams: 'view_teams',
-  portfolios: 'view_dashboard',
-  initiatives: 'view_dashboard',
-  kpis: 'view_kpis',
-  'target-management': 'view_goals',
-  'activity-tracker': 'view_activities',
-  'incentive-calc': 'view_goals',
+  performance: 'view_goals',
+  incentives: 'view_goals',
   profile: null, // Always visible
   // ETL Platform - System Admin only
   connections: 'system_admin',
