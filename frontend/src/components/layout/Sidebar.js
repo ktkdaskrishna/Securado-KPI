@@ -139,6 +139,9 @@ const defaultNavigation = {
     { id: 'portfolios', name: 'Portfolios', href: '/portfolios', icon: 'Briefcase', default: false },
     { id: 'initiatives', name: 'Initiatives', href: '/initiatives', icon: 'Rocket', default: false },
     { id: 'kpis', name: 'KPIs', href: '/kpis', icon: 'BarChart2', default: false },
+    { id: 'target-management', name: 'Targets', href: '/target-management', icon: 'Crosshair', default: true },
+    { id: 'activity-tracker', name: 'Activity Tracker', href: '/activity-tracker', icon: 'Activity', default: true },
+    { id: 'incentive-calc', name: 'Incentives', href: '/incentive-calc', icon: 'DollarSign', default: true },
     { id: 'profile', name: 'My Profile', href: '/profile', icon: 'User', default: true },
   ],
   etl: [
