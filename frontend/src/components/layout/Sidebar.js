@@ -78,6 +78,9 @@ const iconMap = {
   Webhook,
   ShieldCheck,
   HelpCircle,
+  Activity,
+  DollarSign,
+  Crosshair,
 };
 
 // Permission requirements for each navigation item
