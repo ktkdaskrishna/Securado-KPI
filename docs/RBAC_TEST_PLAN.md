@@ -41,31 +41,31 @@
 
 ### Sidebar Menu Visibility
 
-| Menu Item | System Admin | Sales Director | Sales User | Finance | Presales |
-|-----------|--------------|----------------|------------|---------|----------|
+| Menu Item | System Admin | CEO | Sales Director | Sales User | Finance | Presales |
+|-----------|--------------|-----|----------------|------------|---------|----------|
 | **CRM PLATFORM** |
-| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
-| AI Analytics | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Opportunities | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Leads | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Accounts | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Activities | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Timeline | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Invoices | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Goals | ✅ | ✅ | ✅ | ❌ | ✅ |
-| My Profile | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AI Analytics | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Opportunities | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Leads | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Accounts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Activities | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Timeline | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Invoices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Goals | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| My Profile | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **ETL PLATFORM** |
-| Connections | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Model Browser | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Mappings | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Data Model | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Pipelines | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Connections | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Model Browser | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Mappings | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Data Model | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Pipelines | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **ADMIN** |
-| Users | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Roles | ✅ | ❌ | ❌ | ❌ | ❌ |
-| RBAC Sync | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Help & Support | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Roles | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| RBAC Sync | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Settings | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Help & Support | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
