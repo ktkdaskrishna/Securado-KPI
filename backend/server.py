@@ -104,6 +104,11 @@ from services.target_management.routes import (
     target_sheets_router,
     incentive_calc_router
 )
+from services.target_management.planning import (
+    lookups_router as target_lookups_router,
+    plans_router as target_plans_router,
+    actuals_router as target_actuals_router
+)
 
 
 @asynccontextmanager
