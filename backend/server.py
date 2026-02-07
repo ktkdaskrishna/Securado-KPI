@@ -97,6 +97,13 @@ from services.rbac_sync.routes import router as rbac_sync_router
 from services.rbac_sync.user_sync import odoo_user_sync
 from services.rbac_sync.access_rules import access_rule_engine
 from services.microsoft_auth.routes import router as microsoft_auth_router
+from services.target_management.routes import (
+    sales_targets_router,
+    activity_targets_router,
+    incentive_plans_router,
+    target_sheets_router,
+    incentive_calc_router
+)
 
 
 @asynccontextmanager
