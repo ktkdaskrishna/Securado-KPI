@@ -256,10 +256,8 @@ export function Sidebar() {
     '/analytics',
     '/invoices',
     '/activity-timeline',
-    '/kpis',
-    '/target-management',
-    '/activity-tracker',
-    '/incentive-calc'
+    '/performance',
+    '/incentives'
   ];
 
   const NavItem = ({ item }) => {
