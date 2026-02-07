@@ -12,6 +12,10 @@ SYSTEM ADMIN (Full Access + ETL):
   Email: krishna@securado.net
   Password: test123456
 
+CEO (Full CRM, No ETL):
+  Email: ceo@test.securado.com
+  Password: test123456
+
 SALES USER (Own Records Only):
   Email: sales@test.securado.com
   Password: test123456
