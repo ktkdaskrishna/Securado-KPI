@@ -15,18 +15,21 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await login(email, password);
       toast.success('Login successful');
       navigate('/dashboard');
     } catch (error) {
-      const message = error.response?.data?.detail || 'Login failed';
+      const message = error.response?.data?.detail || 'Invalid email or password';
+      setError(message);
       toast.error(message);
     } finally {
       setLoading(false);
