@@ -28,6 +28,9 @@ import { ProfilePage } from './components/crm/ProfilePage';
 import { InvoicesPage } from './components/crm/InvoicesPage';
 import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
 import AnalyticsPage from './components/crm/AnalyticsPage';
+import TargetManagementPage from './components/crm/TargetManagementPage';
+import ActivityTrackerPage from './components/crm/ActivityTrackerPage';
+import IncentiveCalcPage from './components/crm/IncentiveCalcPage';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
