@@ -268,7 +268,10 @@ export function Sidebar() {
     '/analytics',
     '/invoices',
     '/activity-timeline',
-    '/kpis'
+    '/kpis',
+    '/target-management',
+    '/activity-tracker',
+    '/incentive-calc'
   ];
 
   const NavItem = ({ item }) => {
