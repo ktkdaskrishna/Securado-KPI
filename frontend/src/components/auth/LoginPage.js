@@ -94,6 +94,12 @@ export function LoginPage() {
                 data-testid="login-password-input"
               />
             </div>
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2" data-testid="login-error-message">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {error}
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-[#800000] to-[#9a1919] hover:from-[#9a1919] hover:to-[#b02020] text-white shadow-lg shadow-[#800000]/25 transition-all duration-200"
