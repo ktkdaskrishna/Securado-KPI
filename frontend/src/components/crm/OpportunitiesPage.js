@@ -1319,12 +1319,12 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     loadData();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage, currentPage]);
 
   const loadData = async () => {
     try {
       // Build filter params
-      const params = {};
+      const params = { limit: pageSize, skip: currentPage * pageSize };
       if (filters.year) params.year = filters.year;
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
