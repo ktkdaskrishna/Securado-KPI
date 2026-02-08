@@ -24,6 +24,7 @@ from libs.utils import serialize_doc, generate_id, generate_correlation_id, now_
 from libs.event_bus import emit_event
 from libs.schemas import Topics
 from services.identity.routes import get_current_user
+from libs.rbac_guards import require_system_admin
 from services.etl_control.models import (
     ConnectionCreate, ConnectionUpdate, MappingCreate, MappingUpdate,
     PipelineCreate, PipelineUpdate, CANONICAL_ENTITIES
@@ -34,12 +35,12 @@ from services.etl_control.templates import (
 
 logger = logging.getLogger(__name__)
 
-# Separate routers for different resource types
-connections_router = APIRouter(prefix="/integrations", tags=["connections"])
-mappings_router = APIRouter(prefix="/mappings", tags=["mappings"])
-pipelines_router = APIRouter(prefix="/pipelines", tags=["pipelines"])
-runs_router = APIRouter(prefix="/runs", tags=["runs"])
-templates_router = APIRouter(prefix="/templates", tags=["templates"])
+# Separate routers for different resource types - all require system_admin
+connections_router = APIRouter(prefix="/integrations", tags=["connections"], dependencies=[Depends(require_system_admin)])
+mappings_router = APIRouter(prefix="/mappings", tags=["mappings"], dependencies=[Depends(require_system_admin)])
+pipelines_router = APIRouter(prefix="/pipelines", tags=["pipelines"], dependencies=[Depends(require_system_admin)])
+runs_router = APIRouter(prefix="/runs", tags=["runs"], dependencies=[Depends(require_system_admin)])
+templates_router = APIRouter(prefix="/templates", tags=["templates"], dependencies=[Depends(require_system_admin)])
 
 
 # ==================== SSL-SAFE XML-RPC TRANSPORT ====================
