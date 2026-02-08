@@ -274,18 +274,27 @@ async def list_opportunities(
     fetch_limit = limit * 10 if (year or quarter) else limit
     records = await canonical_db.opportunities.find(query).skip(skip).limit(fetch_limit).to_list(fetch_limit)
     
+    # Get total count for pagination (without skip/limit)
+    total_count = await canonical_db.opportunities.count_documents(query)
+    
     # Apply date-based filters using the improved helper function
     records = apply_date_filters(records, year=year, quarter=quarter, date_field=date_field or 'create_date')
     
     # Trim to requested limit
     records = records[:limit]
     
-    logger.info(f"After filtering: {len(records)} opportunities (RBAC applied)")
+    logger.info(f"After filtering: {len(records)} opportunities (RBAC applied), total: {total_count}")
     
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
     
-    return merged
+    return {
+        "items": merged,
+        "total": total_count,
+        "limit": limit,
+        "skip": skip,
+        "has_more": (skip + limit) < total_count
+    }
 
 
 @opportunities_router.get("/export")
