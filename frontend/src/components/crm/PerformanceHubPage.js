@@ -461,3 +461,130 @@ function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
     </Dialog>
   );
 }
+
+function MultiVectorIncentiveCalc({ plans }) {
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [weights, setWeights] = useState({ revenue_weight: 50, activity_weight: 30, collection_weight: 20 });
+  const [result, setResult] = useState(null);
+  const [calculating, setCalculating] = useState(false);
+
+  const handleCalc = async () => {
+    if (!selectedPlan) { toast.error('Select a plan'); return; }
+    setCalculating(true);
+    try {
+      const res = await targetAPI.calculateMultiVectorIncentive({ plan_id: selectedPlan, ...weights });
+      setResult(res.data);
+    } catch { toast.error('Calculation failed'); }
+    finally { setCalculating(false); }
+  };
+
+  const tierColors = { 'Super Achiever': 'text-purple-600 bg-purple-50', 'Achiever': 'text-emerald-600 bg-emerald-50', 'On Track': 'text-blue-600 bg-blue-50', 'Developing': 'text-yellow-600 bg-yellow-50', 'Below Threshold': 'text-red-600 bg-red-50' };
+
+  return (
+    <div className="space-y-4" data-testid="multi-vector-incentive">
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Calculator className="h-4 w-4 text-[#800000]" /> Multi-Vector Incentive Calculator</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">Calculate incentive score based on three weighted vectors: Revenue Achievement, Activity Completion, and Invoice Collection Rate.</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Revenue Plan</Label>
+              <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                <SelectTrigger data-testid="mv-plan-select"><SelectValue placeholder="Select plan" /></SelectTrigger>
+                <SelectContent>{plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.product_manager_name})</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Revenue Weight (%)</Label>
+              <Input type="number" value={weights.revenue_weight} onChange={e => setWeights(w => ({ ...w, revenue_weight: parseInt(e.target.value) || 0 }))} />
+            </div>
+            <div>
+              <Label className="text-xs">Activity Weight (%)</Label>
+              <Input type="number" value={weights.activity_weight} onChange={e => setWeights(w => ({ ...w, activity_weight: parseInt(e.target.value) || 0 }))} />
+            </div>
+            <div>
+              <Label className="text-xs">Collection Weight (%)</Label>
+              <Input type="number" value={weights.collection_weight} onChange={e => setWeights(w => ({ ...w, collection_weight: parseInt(e.target.value) || 0 }))} />
+            </div>
+          </div>
+          <Button onClick={handleCalc} disabled={calculating} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="mv-calc-btn">
+            <Calculator className="h-4 w-4 mr-1" /> {calculating ? 'Calculating...' : 'Calculate Score'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {result && (
+        <div className="space-y-4" data-testid="mv-result">
+          {/* Score & Tier */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="md:col-span-1 border-2 border-[#800000]/20">
+              <CardContent className="p-6 text-center">
+                <p className="text-xs text-gray-500 uppercase mb-1">Composite Score</p>
+                <p className="text-5xl font-bold text-gray-900">{result.composite_score}</p>
+                <Badge className={`mt-2 text-sm px-3 py-1 ${tierColors[result.tier] || ''}`}>{result.tier}</Badge>
+                <p className="text-xs text-gray-400 mt-2">Multiplier: {result.multiplier}x</p>
+                <p className="text-lg font-bold text-emerald-600 mt-1">Payout: OMR {result.calculated_payout.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            {/* Vector Cards */}
+            <Card className="md:col-span-2">
+              <CardContent className="p-4 space-y-3">
+                {result.breakdown.map((b, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600 w-40">{b.label}</span>
+                    <div className="flex-1">
+                      <Progress value={Math.min(b.score, 100)} className="h-3" />
+                    </div>
+                    <span className="text-sm font-mono text-gray-500 w-14 text-right">{b.score}%</span>
+                    <span className="text-sm font-semibold text-[#800000] w-14 text-right">{b.weighted}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Vectors */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Revenue */}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><DollarSign className="h-4 w-4 text-blue-500" /> Revenue Vector</CardTitle></CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Target</span><span className="font-mono">OMR {(result.vectors.revenue.target || 0).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Actual Won</span><span className="font-mono text-emerald-600">OMR {(result.vectors.revenue.actual || 0).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Won Deals</span><span>{result.vectors.revenue.won_deals}</span></div>
+                <div className="flex justify-between font-semibold"><span>Achievement</span><span>{result.vectors.revenue.achievement_pct}%</span></div>
+              </CardContent>
+            </Card>
+
+            {/* Activity */}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-purple-500" /> Activity Vector</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5 text-sm">
+                {(result.vectors.activity.details || []).map((d, i) => (
+                  <div key={i} className="flex justify-between text-xs">
+                    <span className="text-gray-500">{d.type} ({d.category || 'General'})</span>
+                    <span className={d.achievement_pct >= 100 ? 'text-emerald-600 font-semibold' : ''}>{d.actual}/{d.target} ({d.achievement_pct}%)</span>
+                  </div>
+                ))}
+                <div className="pt-1 border-t flex justify-between font-semibold"><span>Total Achievement</span><span>{result.vectors.activity.achievement_pct}%</span></div>
+              </CardContent>
+            </Card>
+
+            {/* Collection */}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-orange-500" /> Collection Vector</CardTitle></CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Total Invoices</span><span>{result.vectors.collection.total_invoices}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="text-emerald-600">{result.vectors.collection.paid_invoices}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Overdue</span><span className="text-red-600">{result.vectors.collection.overdue_count}</span></div>
+                <div className="flex justify-between font-semibold"><span>On-Time Rate</span><span>{result.vectors.collection.on_time_pct}%</span></div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
