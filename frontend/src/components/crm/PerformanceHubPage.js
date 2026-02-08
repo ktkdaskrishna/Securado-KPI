@@ -333,6 +333,11 @@ export default function PerformanceHubPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* =========== INCENTIVE SCORE =========== */}
+        <TabsContent value="incentive" className="mt-4 space-y-4">
+          <MultiVectorIncentiveCalc plans={plans} />
+        </TabsContent>
       </Tabs>
 
       {/* DIALOGS */}
