@@ -534,3 +534,160 @@ async def get_collection_actuals(
         "overdue_amount": overdue_amount_result[0]["total"] if overdue_amount_result else 0,
         "total_invoices": sum(r["count"] for r in results)
     }
+
+
+# ==================== MULTI-VECTOR INCENTIVE ====================
+
+class MultiVectorIncentiveRequest(BaseModel):
+    """Calculate incentive based on multiple vectors"""
+    plan_id: str
+    revenue_weight: float = 50  # % weight for revenue achievement
+    activity_weight: float = 30  # % weight for activity completion
+    collection_weight: float = 20  # % weight for collection rate
+
+
+@actuals_router.post("/multi-vector-incentive")
+async def calculate_multi_vector_incentive(
+    data: MultiVectorIncentiveRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate incentive based on revenue + activity + collection vectors"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+
+    plan = await app_db.target_plans.find_one({"id": data.plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    pm_name = plan.get("product_manager_name")
+    target_amount = plan.get("target_amount", 0)
+
+    # --- Vector 1: Revenue Achievement ---
+    won_pipeline = [
+        {"$match": {"product_manager": pm_name, "stage": {"$in": ["Won", "Closed Won", "closed_won"]}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}}
+    ]
+    won_result = await canonical_db.opportunities.aggregate(won_pipeline).to_list(1)
+    actual_revenue = won_result[0]["total"] if won_result else 0
+    won_deals = won_result[0]["count"] if won_result else 0
+    revenue_pct = min(round((actual_revenue / target_amount * 100) if target_amount > 0 else 0, 1), 200)
+
+    # --- Vector 2: Activity Achievement ---
+    plan_items = await app_db.target_plan_items.find({"revenue_plan_id": data.plan_id, "org_id": org_id}).to_list(100)
+    total_target_activities = sum(i.get("target_count", 0) for i in plan_items)
+    total_actual_activities = 0
+    activity_details = []
+
+    for item in plan_items:
+        atype = item.get("activity_type")
+        actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id}) if atype else 0
+        target_c = item.get("target_count", 0)
+        total_actual_activities += min(actual, target_c)  # Cap at target per item
+        activity_details.append({
+            "type": atype,
+            "category": item.get("solution_category"),
+            "target": target_c,
+            "actual": actual,
+            "achievement_pct": min(round((actual / target_c * 100) if target_c > 0 else 0, 1), 100)
+        })
+
+    activity_pct = min(round((total_actual_activities / total_target_activities * 100) if total_target_activities > 0 else 0, 1), 100)
+
+    # --- Vector 3: Collection Rate ---
+    from datetime import datetime
+    total_invoices = await canonical_db.invoices.count_documents({})
+    paid_invoices = await canonical_db.invoices.count_documents({"payment_state": {"$in": ["paid", "in_payment"]}})
+    overdue_count = await canonical_db.invoices.count_documents({
+        "payment_state": {"$in": ["not_paid", "partial"]},
+        "due_date": {"$lt": datetime.now().strftime("%Y-%m-%d")}
+    })
+
+    collection_pct = round((paid_invoices / total_invoices * 100) if total_invoices > 0 else 0, 1)
+    on_time_pct = round(((total_invoices - overdue_count) / total_invoices * 100) if total_invoices > 0 else 0, 1)
+
+    # --- Weighted Composite Score ---
+    weights_total = data.revenue_weight + data.activity_weight + data.collection_weight
+    revenue_w = data.revenue_weight / weights_total
+    activity_w = data.activity_weight / weights_total
+    collection_w = data.collection_weight / weights_total
+
+    composite_score = round(
+        (revenue_pct * revenue_w) + (activity_pct * activity_w) + (on_time_pct * collection_w), 1
+    )
+
+    # --- Incentive Tiers ---
+    if composite_score >= 120:
+        tier = "Super Achiever"
+        multiplier = 1.5
+    elif composite_score >= 100:
+        tier = "Achiever"
+        multiplier = 1.2
+    elif composite_score >= 80:
+        tier = "On Track"
+        multiplier = 1.0
+    elif composite_score >= 50:
+        tier = "Developing"
+        multiplier = 0.5
+    else:
+        tier = "Below Threshold"
+        multiplier = 0
+
+    # Get incentive plan if linked
+    incentive_plan = None
+    plan_id = plan.get("incentive_plan_id")
+    if plan_id:
+        incentive_plan = await app_db.incentive_plans.find_one({"id": plan_id, "org_id": org_id})
+
+    base_variable = 0
+    if incentive_plan:
+        base_variable = incentive_plan.get("ote", 0) * (incentive_plan.get("pay_mix_variable", 40) / 100)
+    else:
+        base_variable = target_amount * 0.04  # Default 4% of target as variable
+
+    payout = round(base_variable * multiplier, 2)
+
+    return {
+        "plan_id": data.plan_id,
+        "plan_name": plan.get("name"),
+        "product_manager": pm_name,
+        "target_amount": target_amount,
+        "vectors": {
+            "revenue": {
+                "weight": data.revenue_weight,
+                "target": target_amount,
+                "actual": actual_revenue,
+                "won_deals": won_deals,
+                "achievement_pct": revenue_pct,
+                "weighted_score": round(revenue_pct * revenue_w, 1)
+            },
+            "activity": {
+                "weight": data.activity_weight,
+                "total_target": total_target_activities,
+                "total_actual": total_actual_activities,
+                "achievement_pct": activity_pct,
+                "weighted_score": round(activity_pct * activity_w, 1),
+                "details": activity_details
+            },
+            "collection": {
+                "weight": data.collection_weight,
+                "total_invoices": total_invoices,
+                "paid_invoices": paid_invoices,
+                "overdue_count": overdue_count,
+                "collection_rate": collection_pct,
+                "on_time_pct": on_time_pct,
+                "weighted_score": round(on_time_pct * collection_w, 1)
+            }
+        },
+        "composite_score": composite_score,
+        "tier": tier,
+        "multiplier": multiplier,
+        "base_variable_pay": base_variable,
+        "calculated_payout": payout,
+        "breakdown": [
+            {"label": f"Revenue ({data.revenue_weight}%)", "score": revenue_pct, "weighted": round(revenue_pct * revenue_w, 1)},
+            {"label": f"Activities ({data.activity_weight}%)", "score": activity_pct, "weighted": round(activity_pct * activity_w, 1)},
+            {"label": f"Collection ({data.collection_weight}%)", "score": on_time_pct, "weighted": round(on_time_pct * collection_w, 1)},
+        ]
+    }
+
