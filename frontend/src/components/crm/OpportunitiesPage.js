@@ -1544,6 +1544,25 @@ export function OpportunitiesPage() {
                 )}
               </TableBody>
             </Table>
+            {/* Pagination */}
+            {totalCount > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t" data-testid="opportunities-pagination">
+                <p className="text-sm text-gray-500">
+                  Showing {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalCount)} of <span className="font-semibold">{totalCount.toLocaleString()}</span> opportunities
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={currentPage === 0}
+                    onClick={() => { setCurrentPage(p => p - 1); setLoading(true); }}>
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-600">Page {currentPage + 1} of {Math.ceil(totalCount / pageSize)}</span>
+                  <Button variant="outline" size="sm" disabled={(currentPage + 1) * pageSize >= totalCount}
+                    onClick={() => { setCurrentPage(p => p + 1); setLoading(true); }}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
