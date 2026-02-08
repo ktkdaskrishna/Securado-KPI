@@ -1206,6 +1206,9 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
 export function OpportunitiesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(100);
   const [kanbanData, setKanbanData] = useState({ stages: [], data: {} });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
