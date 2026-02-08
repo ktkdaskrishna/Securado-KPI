@@ -1335,7 +1335,16 @@ export function OpportunitiesPage() {
         crmAPI.listOpportunities(params),
         crmAPI.getKanban(params),
       ]);
-      setOpportunities(listRes.data);
+      // Handle paginated response format { items, total, limit, skip, has_more }
+      const listData = listRes.data;
+      if (listData && listData.items) {
+        setOpportunities(listData.items);
+        setTotalCount(listData.total || 0);
+      } else {
+        // Fallback for old array format
+        setOpportunities(Array.isArray(listData) ? listData : []);
+        setTotalCount(Array.isArray(listData) ? listData.length : 0);
+      }
       setKanbanData(kanbanRes.data);
     } catch (error) {
       toast.error('Failed to load opportunities');
