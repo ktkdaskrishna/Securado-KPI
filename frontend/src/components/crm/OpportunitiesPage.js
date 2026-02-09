@@ -1322,7 +1322,7 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     loadData();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage, currentPage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage, filters.productDirector, filters.solutionCategory, currentPage]);
 
   const loadData = async () => {
     try {
