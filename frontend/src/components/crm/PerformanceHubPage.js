@@ -133,6 +133,11 @@ export default function PerformanceHubPage() {
         ))}
       </div>
 
+      {/* Alert Center Banner */}
+      {alertsData.summary?.total > 0 && (
+        <AlertBanner alertsData={alertsData} expanded={showAlerts} onToggle={() => setShowAlerts(!showAlerts)} />
+      )}
+
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList><TabsTrigger value="ceo">CEO View</TabsTrigger><TabsTrigger value="pm">PM Plan Builder</TabsTrigger><TabsTrigger value="sd">Sales Director</TabsTrigger><TabsTrigger value="compare">Team Compare</TabsTrigger><TabsTrigger value="marketing">Marketing</TabsTrigger><TabsTrigger value="collection">Collection</TabsTrigger><TabsTrigger value="incentive">Incentive</TabsTrigger></TabsList>
