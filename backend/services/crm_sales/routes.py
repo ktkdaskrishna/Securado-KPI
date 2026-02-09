@@ -1926,6 +1926,10 @@ async def get_activity_stats(
             app_query["owner_name"] = rbac_filter["owner_name"]
         elif "assigned_user" in rbac_filter:
             canonical_query["assigned_user"] = rbac_filter["assigned_user"]
+        elif "opportunity_id" in rbac_filter:
+            canonical_query["opportunity_id"] = rbac_filter["opportunity_id"]
+        else:
+            canonical_query.update(rbac_filter)
     
     # Get CRM activities from canonical DB 
     canonical_activities = await canonical_db.activities.find(canonical_query).to_list(10000)
