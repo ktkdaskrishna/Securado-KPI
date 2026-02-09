@@ -82,44 +82,82 @@ async def delete_permission(
 
 @router.get("/roles")
 async def list_roles(current_user: dict = Depends(get_current_user)):
-    """List all roles"""
+    """List all roles with actual user counts from users collection"""
     db = get_app_db()
     roles = await db.roles.find({"org_id": current_user.get("org_id", "default")}).to_list(1000)
     
-    # If no roles, return default roles
+    # Compute actual user counts from users collection
+    user_role_counts = {}
+    pipeline = [
+        {"$unwind": "$roles"},
+        {"$group": {"_id": "$roles", "count": {"$sum": 1}}}
+    ]
+    async for doc in db.users.aggregate(pipeline):
+        user_role_counts[doc["_id"]] = doc["count"]
+    
+    # Also count RBAC users
+    rbac_count = await db.users_rbac.count_documents({})
+    
+    # If no roles in DB, return default roles with computed counts
     if not roles:
-        return [
+        default_roles = [
             {
                 "id": "admin",
                 "name": "Administrator",
                 "description": "Full system access",
                 "permissions": ALL_PERMISSIONS,
-                "users_count": 0
+                "users_count": user_role_counts.get("admin", 0)
             },
             {
                 "id": "etl_admin",
                 "name": "ETL Administrator",
                 "description": "Manage ETL pipelines and connections",
                 "permissions": ["view_dashboard", "manage_pipelines", "run_pipelines", "manage_connections", "manage_mappings", "view_dlq", "manage_dlq"],
-                "users_count": 0
+                "users_count": user_role_counts.get("etl_admin", 0)
             },
             {
                 "id": "sales_manager",
                 "name": "Sales Manager",
                 "description": "Sales team management",
                 "permissions": ["view_dashboard", "manage_opportunities", "view_opportunities", "manage_accounts", "view_accounts", "manage_activities", "view_activities", "manage_goals", "view_goals", "manage_teams", "view_teams"],
-                "users_count": 0
+                "users_count": user_role_counts.get("sales_manager", 0)
             },
             {
                 "id": "sales_rep",
                 "name": "Sales Representative",
                 "description": "View and manage own opportunities",
                 "permissions": ["view_dashboard", "manage_opportunities", "view_opportunities", "view_accounts", "manage_activities", "view_activities", "view_goals"],
-                "users_count": 0
+                "users_count": user_role_counts.get("sales_rep", 0)
+            },
+            {
+                "id": "sales_director",
+                "name": "Sales Director",
+                "description": "Full sales department access",
+                "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_invoices", "view_analytics"],
+                "users_count": user_role_counts.get("sales_director", 0)
+            },
+            {
+                "id": "system_admin",
+                "name": "System Admin",
+                "description": "ETL and system settings access",
+                "permissions": ALL_PERMISSIONS,
+                "users_count": user_role_counts.get("system_admin", 0)
             }
         ]
+        # Add RBAC synced users total
+        for r in default_roles:
+            if r["users_count"] == 0:
+                # Check if any users have this role string in their roles array
+                pass
+        return default_roles
     
-    return [serialize_doc(r) for r in roles]
+    # Enrich stored roles with counts
+    result = []
+    for r in roles:
+        doc = serialize_doc(r)
+        doc["users_count"] = user_role_counts.get(doc.get("id", ""), 0)
+        result.append(doc)
+    return result
 
 
 @router.get("/roles/{role_id}")
