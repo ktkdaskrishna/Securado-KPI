@@ -1248,7 +1248,8 @@ export function OpportunitiesPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null });
+    setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null, productDirector: null, solutionCategory: null });
+    setCurrentPage(0);
     setSearchParams({}, { replace: true });
   };
 
