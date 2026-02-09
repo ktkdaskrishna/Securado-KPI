@@ -216,16 +216,19 @@ class AccessRuleEngine:
             app_roles = app_user.get("roles", []) if app_user else []
             
             if "product_director" in app_roles or "product_manager" in app_roles:
-                # Product Director: filter by product_manager field for opportunities
-                # They see opportunities where they are the product_manager
-                logger.info(f"User {user_name} is Product Director - applying product_manager filter")
+                # Use the canonical name from DB (not JWT which might have stale data)
+                db_name = app_user.get("name", user_name) if app_user else user_name
+                # Normalize whitespace for matching
+                import re
+                normalized_name = re.sub(r'\s+', ' ', db_name).strip()
+                
+                logger.info(f"User {normalized_name} is Product Director - applying product_manager filter")
                 if entity_type in ["opportunity", "lead"]:
-                    return {"product_manager": {"$regex": f"^{user_name}$", "$options": "i"}}
+                    return {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
                 elif entity_type == "activity":
-                    # PDs see activities on their opportunities (via product scope)
-                    return {}  # Activities don't have product_manager field, show all for PD
+                    return {}  # Activities don't have product_manager field
                 else:
-                    return {}  # PDs see all accounts, invoices etc.
+                    return {}  # PDs see all accounts, invoices
         
         logger.debug(f"User {user_name} has access level: {access_level.name}")
         
