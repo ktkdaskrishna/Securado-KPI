@@ -520,7 +520,7 @@ async def get_dashboard_stats(
     rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
     
     # Check if any filter is applied (including RBAC)
-    has_filters = any([year, quarter, sales_rep, team_id, account, stage]) or bool(rbac_filter)
+    has_filters = any([year, quarter, sales_rep, team_id, account, stage, product_manager, solution_category]) or bool(rbac_filter)
     
     if not has_filters:
         # Use cache for unfiltered view
