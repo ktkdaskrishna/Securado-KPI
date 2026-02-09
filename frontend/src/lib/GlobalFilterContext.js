@@ -22,7 +22,6 @@ const GlobalFilterContext = createContext(null);
 // Parse URL params to filter state
 function parseUrlParams(searchParams) {
   const params = {};
-  
   if (searchParams.get('year')) params.year = searchParams.get('year');
   if (searchParams.get('quarter')) params.quarter = searchParams.get('quarter');
   if (searchParams.get('month')) params.month = searchParams.get('month');
@@ -32,7 +31,8 @@ function parseUrlParams(searchParams) {
   if (searchParams.get('stage')) params.stage = searchParams.get('stage');
   if (searchParams.get('dateField')) params.dateField = searchParams.get('dateField');
   if (searchParams.get('timePeriod')) params.timePeriod = searchParams.get('timePeriod');
-  
+  if (searchParams.get('productDirector')) params.productDirector = searchParams.get('productDirector');
+  if (searchParams.get('solutionCategory')) params.solutionCategory = searchParams.get('solutionCategory');
   return params;
 }
 
