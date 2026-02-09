@@ -283,11 +283,11 @@ async def get_conversion_funnel(
             "overall_conversion": 0, "lost_count": 0, "lost_value": 0, "applied_filters": {}
         }
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC - include ALL records for full funnel (opportunities + leads)
+    query = {"org_id": org_id}
     query.update(rbac_filter)
     
-    # Get all opportunities (type='opportunity' - exclude leads)
+    # Get all opportunities (include leads for proper funnel analysis)
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply filters
