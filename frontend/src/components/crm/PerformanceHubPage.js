@@ -36,12 +36,14 @@ export default function PerformanceHubPage() {
   const [solutionCats, setSolutionCats] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
+  const [alertsData, setAlertsData] = useState({ alerts: [], summary: {} });
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [planItems, setPlanItems] = useState([]);
   const [redistributions, setRedistributions] = useState([]);
   const [showCreatePlan, setShowCreatePlan] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
   const [showRedistribute, setShowRedistribute] = useState(null);
+  const [showAlerts, setShowAlerts] = useState(false);
 
   const loadCore = useCallback(async () => {
     setLoading(true);
