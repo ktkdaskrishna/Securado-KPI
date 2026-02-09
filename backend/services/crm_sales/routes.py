@@ -1791,6 +1791,12 @@ async def list_activities(
         elif "assigned_user" in rbac_filter:
             canonical_query["assigned_user"] = rbac_filter["assigned_user"]
             app_query.update(rbac_filter)
+        elif "opportunity_id" in rbac_filter:
+            # Product Director: filter by their opportunity IDs
+            canonical_query["opportunity_id"] = rbac_filter["opportunity_id"]
+        else:
+            # Generic filter (e.g., account_name for invoices)
+            canonical_query.update(rbac_filter)
     
     if opportunity_id:
         canonical_query = {
