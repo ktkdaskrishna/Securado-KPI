@@ -186,6 +186,12 @@ export function GlobalFilterProvider({ children }) {
     if (filters.timePeriod && filters.timePeriod !== 'all') {
       params.time_period = filters.timePeriod;
     }
+    if (filters.productDirector) {
+      params.product_manager = filters.productDirector;
+    }
+    if (filters.solutionCategory) {
+      params.solution_category = filters.solutionCategory;
+    }
     
     return params;
   }, [filters]);
