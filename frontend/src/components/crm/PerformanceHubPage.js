@@ -105,7 +105,7 @@ export default function PerformanceHubPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Crosshair className="h-6 w-6 text-[#800000]" /> Performance Hub</h1>
           <p className="text-gray-500 text-sm">
-            {isAdmin || isSD ? 'CEO targets, PM plans, Sales Director redistribution' : isPD ? `Product Director: ${myData.user_name}` : `My Targets: ${myData.user_name}`}
+            {showExecutiveTabs ? 'CEO targets, PM plans, Sales Director redistribution' : isPD ? `Product Director: ${myData.user_name}` : `My Targets: ${myData.user_name}`}
           </p>
         </div>
         {canManage && <Button onClick={() => setShowCreatePlan(true)} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="create-plan-btn"><Plus className="h-4 w-4 mr-1" /> Assign Revenue Target</Button>}
