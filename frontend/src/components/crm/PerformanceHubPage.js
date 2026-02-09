@@ -309,6 +309,16 @@ export default function PerformanceHubPage() {
           </Card>
         </TabsContent>
 
+        {/* =========== TEAM COMPARISON =========== */}
+        <TabsContent value="compare" className="mt-4">
+          <TeamComparisonView plans={plans} />
+        </TabsContent>
+
+        {/* =========== MARKETING =========== */}
+        <TabsContent value="marketing" className="mt-4">
+          <MarketingMetricsView />
+        </TabsContent>
+
         {/* =========== COLLECTION =========== */}
         <TabsContent value="collection" className="mt-4 space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
