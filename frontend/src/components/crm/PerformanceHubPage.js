@@ -62,16 +62,30 @@ export default function PerformanceHubPage() {
       }
       const results = await Promise.allSettled(calls);
       if (results[0].status === 'fulfilled') setMyData(results[0].value.data);
-      if (results[1].status === 'fulfilled') setCollection(results[1].value.data);
-      if (results[2].status === 'fulfilled') setAlertsData(results[2].value.data);
-      if (results[3]?.status === 'fulfilled') setSolutionCats(results[3].value.data);
-      if (results[4]?.status === 'fulfilled') setSalespersons(results[4].value.data);
-      if (results[5]?.status === 'fulfilled') setActivityTypes(results[5].value.data);
+      if (results[1].status === 'fulfilled') setAlertsData(results[1].value.data);
+      if (results[2]?.status === 'fulfilled') setSolutionCats(results[2].value.data);
+      if (results[3]?.status === 'fulfilled') setSalespersons(results[3].value.data);
+      if (results[4]?.status === 'fulfilled') setActivityTypes(results[4].value.data);
       if (canManage) {
-        if (results[6]?.status === 'fulfilled') setPlans(results[6].value.data);
-        if (results[7]?.status === 'fulfilled') setPmActuals(results[7].value.data);
-        if (results[8]?.status === 'fulfilled') setProductManagers(results[8].value.data);
+        if (results[5]?.status === 'fulfilled') setPlans(results[5].value.data);
+        if (results[6]?.status === 'fulfilled') setPmActuals(results[6].value.data);
+        if (results[7]?.status === 'fulfilled') setProductManagers(results[7].value.data);
       }
+      // Load collection from RBAC-filtered receivables stats (scoped per user role)
+      try {
+        const collRes = await crmAPI.getReceivablesStats();
+        const stats = collRes.data?.stats || {};
+        setCollection({
+          by_state: {
+            paid: { count: stats.count_paid || 0, amount: stats.total_paid || 0 },
+            not_paid: { count: (stats.count_total || 0) - (stats.count_paid || 0) - (stats.count_pending || 0), amount: (stats.total_invoiced || 0) - (stats.total_paid || 0) - (stats.total_pending || 0) },
+            pending: { count: stats.count_pending || 0, amount: stats.total_pending || 0 },
+          },
+          overdue_count: stats.count_overdue || 0,
+          overdue_amount: stats.total_overdue || 0,
+          total_invoices: stats.count_total || 0
+        });
+      } catch {}
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
   }, [canManage]);
