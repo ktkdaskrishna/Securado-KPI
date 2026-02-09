@@ -690,16 +690,27 @@ async def get_current_user_rbac(
             
             permissions = ["view_dashboard", "view_profile"]
             if access_level in ["admin", "director", "manager", "user"]:
-                permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+                permissions.extend(["view_opportunities", "view_accounts", "view_activities", "view_goals"])
             if access_level in ["admin", "director", "manager"]:
-                permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+                permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams", "manage_goals", "view_invoices"])
             if access_level in ["admin", "director"]:
-                permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+                permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis", "manage_invoices"])
             if access_level == "admin":
                 permissions.extend(["manage_users", "view_users", "manage_teams", "system_admin"])
             
-            effective_permissions = permissions
+            # Also merge permissions from app-level roles
+            app_user_record = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+            if app_user_record:
+                for role in app_user_record.get("roles", []):
+                    if role in APP_ROLE_PERMS:
+                        permissions.extend(APP_ROLE_PERMS[role]["perms"])
+                        if APP_ROLE_PERMS[role]["access"] == "all":
+                            record_access = "all"
+            
+            effective_permissions = list(set(permissions))
             app_roles = [access_level]
+            if app_user_record:
+                app_roles = list(set(app_roles + app_user_record.get("roles", [])))
             
             return {
                 "user_id": user.get("odoo_id") or user.get("source_record_id"),
