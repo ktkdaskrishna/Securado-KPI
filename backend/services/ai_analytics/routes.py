@@ -304,30 +304,26 @@ async def get_conversion_funnel(
         stage_data[stage]["count"] += 1
         stage_data[stage]["value"] += get_opp_value(opp)
     
-    # Calculate conversion rates - each stage as % of total leads (first stage)
+    # Calculate conversion rates - each stage as % of total opportunities
     funnel = []
-    first_stage_count = None
+    total_opps = sum(stage_data[s]["count"] for s in funnel_stages)
     prev_count = None
     for i, stage in enumerate(funnel_stages):
         data = stage_data[stage]
-        if i == 0:
-            first_stage_count = data["count"]
         
-        # Conversion rate = this stage count / first stage count (not previous stage)
-        conversion_rate = 100 if i == 0 else (
-            min(round(data["count"] / first_stage_count * 100, 1), 100) if first_stage_count > 0 else 0
-        )
+        # Funnel rate = this stage / total (what % of all opps reach this stage)
+        funnel_rate = round(data["count"] / total_opps * 100, 1) if total_opps > 0 else 0
         
-        # Stage-to-stage rate (for display)
+        # Stage-to-stage rate
         stage_rate = 0
         if prev_count and prev_count > 0 and i > 0:
-            stage_rate = min(round(data["count"] / prev_count * 100, 1), 100)
+            stage_rate = round(data["count"] / prev_count * 100, 1)
         
         funnel.append({
             "stage": stage.title(),
             "count": data["count"],
             "value": data["value"],
-            "conversion_rate": conversion_rate,
+            "conversion_rate": funnel_rate,
             "stage_conversion_rate": stage_rate
         })
         if data["count"] > 0:
