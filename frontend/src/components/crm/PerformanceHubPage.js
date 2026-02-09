@@ -355,8 +355,8 @@ export default function PerformanceHubPage() {
 
       {/* Dialogs */}
       {canManage && <CreatePlanDialog open={showCreatePlan} onClose={() => setShowCreatePlan(false)} onCreated={() => { loadData(); setShowCreatePlan(false); }} productManagers={productManagers} />}
-      {selectedPlan && canManage && <AddItemDialog open={showAddItem} onClose={() => setShowAddItem(false)} onCreated={() => { loadPlanDetails(selectedPlan.id); loadData(); setShowAddItem(false); }} planId={selectedPlan.id} solutionCats={solutionCats} activityTypes={activityTypes} />}
-      {showRedistribute && canManage && <RedistributeDialog open={!!showRedistribute} onClose={() => setShowRedistribute(null)} onCreated={() => { loadPlanDetails(selectedPlan.id); setShowRedistribute(null); }} item={showRedistribute} salespersons={salespersons} />}
+      {selectedPlan && <AddItemDialog open={showAddItem} onClose={() => setShowAddItem(false)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowAddItem(false); }} planId={selectedPlan.id} solutionCats={isPD ? solutionCats.filter(c => (myData?.my_categories || []).includes(c.name)) : solutionCats} activityTypes={activityTypes} />}
+      {showRedistribute && <RedistributeDialog open={!!showRedistribute} onClose={() => setShowRedistribute(null)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowRedistribute(null); }} item={showRedistribute} salespersons={isPD ? (myData?.my_salespersons || []).map(s => ({...s, total_pipeline: s.pipeline || 0, opp_count: s.opp_count})) : salespersons} />}
     </div>
   );
 }
