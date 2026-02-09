@@ -1,29 +1,23 @@
-# Securado CRM - Product Requirements Document
+# Securado CRM - PRD
 
-## What's Implemented
+## Global Filter System (Option C - Smart + Advanced)
+- PD (Product Director) and Solution Category filters added to GlobalFilterContext
+- Filters work across: Opportunities, Dashboard, Performance Hub
+- URL param persistence for shareable links
+- Backend: `product_manager` and `solution_category` query params on opportunities + dashboard endpoints
 
-### Performance Hub + Role Fixes (Latest)
-- **Product Director role** added to system (Tajuddin: taj@securado.net)
-- **view_goals permission** added to ALL Odoo group levels (user/manager/director/admin)
-- Both Tajuddin (PD) and Nabisaheb (Sales) now see Performance Hub
-- RBAC merges Odoo groups + app roles for comprehensive permission resolution
-- Roles page shows Product Director with correct user count
+## AI Analytics Conversion Fix
+- Was showing 313% (impossible). Now shows 35% (realistic)
+- Funnel: Lead 14.7% → Qualified 26.1% → Proposal 13.8% → Negotiation 10.4% → Won 35%
+- Fixed: uses total opps as denominator, includes all types (not just type=opportunity)
 
-### All Previous Features
-- Performance Hub (7 tabs + Alert Center)
-- Analytics-driven target planning (CEO → PM → SD → Salesperson)
-- Multi-vector incentive calculation
-- RBAC route protection (frontend + backend)
-- Opportunities pagination, Login error, OMR currency fix, Theme consistency
+## Bluesheet Won = 100%
+- Won stage auto-returns 100% probability, skips calculation
 
-## User Credentials
-| Name | Email | Password | Role |
-|------|-------|----------|------|
-| Krishnadas KT | krishna@securado.net | test123456 | Admin |
-| Mohammed Tajuddin | taj@securado.net | test123456 | Product Director |
-| Nabisaheb | nabisaheb@securado.net | test123456 | Sales Rep |
+## Organization Structure Page
+- 3 tabs: Org Tree, Departments, All Employees
+- 75 employees from Odoo with hierarchy
+- Archive/Activate toggle for inactive users
+- Cross-referenced with app accounts
 
-## Key RBAC Note
-- "Product Manager" in Odoo = "Product Director" in our system
-- Odoo groups + app-level roles are merged for permission resolution
-- APP_ROLE_PERMS constant in odoo_rbac/routes.py defines all role→permission mappings
+## All Tests: 9/9 passing
