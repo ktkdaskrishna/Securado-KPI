@@ -3,58 +3,37 @@
 ## Original Problem Statement
 Enterprise CRM analytics platform for Securado (cybersecurity company). Sales analytics tool pulling all data from Odoo via ETL. Only Target Plans created in-app.
 
-## Target Planning Flow
-```
-CEO → Revenue target to Product Manager (e.g., "Vimod, I need 3M")
-  → PM creates activity plan by product/solution (10 Demos NDR, 5 POCs Splunk, 20 Calls PAM)
-    → Plan goes to Sales Director as "bucket"
-      → SD redistributes to Account Managers (match tracking: 5/20 assigned)
-        → Actuals from Odoo (activities done, invoices collected, revenue won)
-          → Multi-vector incentive: Revenue + Activity + Collection composite score
-```
+## What's Implemented (Complete)
 
-## What's Implemented
+### Performance Hub (7 tabs)
+1. **CEO View** - Revenue plans assigned to PMs with pipeline/won data from Odoo
+2. **PM Plan Builder** - Activity plan items with Odoo actuals + match indicator
+3. **Sales Director** - PM plans bucket + salesperson leaderboard
+4. **Team Compare** - Side-by-side PM comparison (Revenue/Activity/Leads chart + table)
+5. **Marketing** - 345 leads, 75.1% conversion, funnel by stage, leads by PM/category
+6. **Collection** - Invoice states + 64 overdue (OMR 998K) from Odoo
+7. **Incentive Score** - Multi-vector calculator (Revenue 50% + Activity 30% + Collection 20%)
 
-### Target Planning System (COMPLETE)
-- **Lookups**: 6 PMs, 20+ Solution Categories, 44 Salespersons, 14 Activity Types from Odoo
-- **Revenue Plans**: CEO → PM assignment with real pipeline/won data enrichment
-- **Activity Plan Items**: PM creates per product with Odoo actuals auto-populated
-- **Redistribution**: SD → AM with match indicator (e.g., 5/20 assigned)
-- **Multi-Vector Incentive**: Revenue(50%) + Activity(30%) + Collection(20%) weighted composite score with tier classification
+### Bug Fixes
+- RBAC route protection (frontend RBACGuard + backend ETL 403)
+- Opportunities pagination (1039 total, 11 pages)
+- Roles page user counts (was 0 for all, now shows actual: Admin 4, SD 3, etc.)
+- Login error message (inline + toast)
 
-### Performance Hub UI (5 tabs)
-- CEO View | PM Plan Builder | Sales Director Bucket | Collection | Incentive Score
-
-### RBAC (Frontend + Backend)
-- Route-level `RBACGuard` blocking unauthorized page access
-- Backend ETL API protection via `require_system_admin` dependency (HTTP 403)
-- Sales Director tested: blocked from ETL/Admin, can access CRM
-
-### Opportunities Pagination (FIXED)
-- Response: `{ items: [...], total: 1039, limit: 100, skip: 0, has_more: true }`
-- UI: "Showing 1-100 of 1,039 opportunities" with Previous/Next/Page controls
-
-### Login Error Message (FIXED)
-- Inline red banner + toast notification on invalid credentials
-- Fixed axios interceptor to not redirect on login page 401
-
-## Test Results
-- 22/22 planning API tests (curl)
-- 12/12 feature tests (pagination + multi-vector + backend RBAC)
-- Testing Agent iteration_16: 96% backend, 100% frontend
+### Architecture
+- All data from Odoo canonical DB (no manual entry except Target Plans)
+- Backend: FastAPI + MongoDB (Motor async)
+- Frontend: React + Tailwind + Shadcn/UI
 
 ## Backlog
-### P1
-- [ ] Marketing team targets integration
-- [ ] Roles page "0 users" bug
-
 ### P2
-- [ ] Modular dashboard (custom card builder)
+- [ ] Modular dashboard custom card builder
 - [ ] User-specific dashboard overrides
 
 ## Key Files
-- `/app/backend/services/target_management/planning.py` - Planning + Multi-vector APIs
-- `/app/backend/libs/rbac_guards.py` - Backend RBAC dependencies
-- `/app/frontend/src/components/crm/PerformanceHubPage.js` - Main UI
+- `/app/backend/services/target_management/planning.py` - All planning APIs
+- `/app/frontend/src/components/crm/PerformanceHubPage.js` - Main UI (7 tabs)
 - `/app/frontend/src/App.js` - Route guards
-- `/app/frontend/src/lib/api.js` - API methods + fixed interceptor
+- `/app/backend/libs/rbac_guards.py` - Backend RBAC
+
+## Test Results: 17/17 comprehensive tests passed
