@@ -630,19 +630,30 @@ async def get_current_user_rbac(
         # Build permissions based on access level
         permissions = ["view_dashboard", "view_profile"]
         if access_level in ["admin", "director", "manager", "user"]:
-            permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+            permissions.extend(["view_opportunities", "view_accounts", "view_activities", "view_goals"])
         if access_level in ["admin", "director", "manager"]:
-            permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+            permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams", "manage_goals", "view_invoices"])
         if access_level in ["admin", "director"]:
-            permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+            permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis", "manage_invoices"])
         if access_level == "admin":
             permissions.extend(["manage_users", "view_users", "manage_teams", "system_admin"])
         
+        # Also merge app-level roles
+        app_user_record = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+        if app_user_record:
+            for role in app_user_record.get("roles", []):
+                if role in APP_ROLE_PERMS:
+                    permissions.extend(APP_ROLE_PERMS[role]["perms"])
+        
+        merged_roles = [access_level]
+        if app_user_record:
+            merged_roles = list(set(merged_roles + app_user_record.get("roles", [])))
+        
         return {
             "user_id": users_rbac_record.get("odoo_user_id"),
-            "name": users_rbac_record.get("name"),
-            "app_roles": [access_level],
-            "effective_permissions": permissions,
+            "name": users_rbac_record.get("name") or current_user.get("name"),
+            "app_roles": merged_roles,
+            "effective_permissions": list(set(permissions)),
             "record_access": record_access,
             "field_access": "all" if access_level in ["admin", "director"] else "standard",
             "hidden_fields": [],
