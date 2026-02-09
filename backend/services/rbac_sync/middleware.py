@@ -45,7 +45,9 @@ async def get_rbac_filter(
         logger.warning("RBAC disabled via header - allowing full access")
         return {}
     
-    user_name = current_user.get("name") or current_user.get("email", "").split("@")[0]
+    import re
+    raw_name = current_user.get("name") or current_user.get("email", "").split("@")[0]
+    user_name = re.sub(r'\s+', ' ', raw_name).strip()
     user_email = current_user.get("email")  # Get email for reliable RBAC lookup
     org_id = current_user.get("org_id", "default")
     
