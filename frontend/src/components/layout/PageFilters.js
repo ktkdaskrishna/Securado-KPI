@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { 
   Filter, RotateCcw, Calendar, Building2, User, ChevronDown, 
-  Layers, Target, Clock, Tag
+  Layers, Target, Clock, Tag, Users
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
