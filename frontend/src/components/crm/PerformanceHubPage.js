@@ -55,23 +55,22 @@ export default function PerformanceHubPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const calls = [targetAPI.getMyData(), targetAPI.getCollectionActuals(), targetAPI.getAlerts()];
+      const calls = [targetAPI.getMyData(), targetAPI.getCollectionActuals(), targetAPI.getAlerts(),
+        targetAPI.getSolutionCategories(), targetAPI.getSalespersons(), targetAPI.getActivityTypes()];
       if (canManage) {
-        calls.push(targetAPI.listRevenuePlans(), targetAPI.getActualsByPM(),
-          targetAPI.getProductManagers(), targetAPI.getSolutionCategories(),
-          targetAPI.getSalespersons(), targetAPI.getActivityTypes());
+        calls.push(targetAPI.listRevenuePlans(), targetAPI.getActualsByPM(), targetAPI.getProductManagers());
       }
       const results = await Promise.allSettled(calls);
       if (results[0].status === 'fulfilled') setMyData(results[0].value.data);
       if (results[1].status === 'fulfilled') setCollection(results[1].value.data);
       if (results[2].status === 'fulfilled') setAlertsData(results[2].value.data);
+      if (results[3]?.status === 'fulfilled') setSolutionCats(results[3].value.data);
+      if (results[4]?.status === 'fulfilled') setSalespersons(results[4].value.data);
+      if (results[5]?.status === 'fulfilled') setActivityTypes(results[5].value.data);
       if (canManage) {
-        if (results[3]?.status === 'fulfilled') setPlans(results[3].value.data);
-        if (results[4]?.status === 'fulfilled') setPmActuals(results[4].value.data);
-        if (results[5]?.status === 'fulfilled') setProductManagers(results[5].value.data);
-        if (results[6]?.status === 'fulfilled') setSolutionCats(results[6].value.data);
-        if (results[7]?.status === 'fulfilled') setSalespersons(results[7].value.data);
-        if (results[8]?.status === 'fulfilled') setActivityTypes(results[8].value.data);
+        if (results[6]?.status === 'fulfilled') setPlans(results[6].value.data);
+        if (results[7]?.status === 'fulfilled') setPmActuals(results[7].value.data);
+        if (results[8]?.status === 'fulfilled') setProductManagers(results[8].value.data);
       }
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
