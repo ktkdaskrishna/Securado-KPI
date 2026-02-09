@@ -57,12 +57,14 @@ class ActivityPlanItemCreate(BaseModel):
 
 
 class PlanRedistributionCreate(BaseModel):
-    """Sales Director assigns plan items to account managers"""
+    """Assign plan items to a team, team manager, or individual salesperson"""
     plan_item_id: str
-    assigned_to_name: str
+    assign_type: str = "person"  # "person", "team"
+    assigned_to_name: str  # Person name or Team name
     assigned_to_id: Optional[str] = None
     assigned_count: int = 0
-    account_ids: Optional[List[str]] = []
+    team_name: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # ==================== LOOKUPS (from Odoo data) ====================
