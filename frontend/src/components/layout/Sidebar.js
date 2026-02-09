@@ -95,6 +95,7 @@ const permissionRequirements = {
   invoices: 'view_invoices',
   performance: 'view_goals',
   incentives: 'view_goals',
+  'org-structure': null, // visible to all
   profile: null, // Always visible
   // ETL Platform - System Admin only
   connections: 'system_admin',
