@@ -208,9 +208,7 @@ function SimulationChart({ plans }) {
   );
 }
 
-// Need to import BarChart2 that's used in SimulationChart
-import { BarChart2 } from 'lucide-react';
-
+// Need BarChart2 for SimulationChart - already imported above
 function CreatePlanDialog({ open, onClose, onCreated }) {
   const [form, setForm] = useState({
     name: '', description: '', base_salary: 24000, ote: 40000,
