@@ -306,6 +306,12 @@ export const targetAPI = {
   getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
   getAlerts: () => api.get('/alerts'),
   getMyData: () => api.get('/target-actuals/my-data'),
+
+  // Org Structure
+  getOrgTree: () => api.get('/org-structure/tree'),
+  getDepartments: () => api.get('/org-structure/departments'),
+  getEmployees: (params) => api.get('/org-structure/employees', { params }),
+  toggleArchiveEmployee: (id) => api.patch(`/org-structure/employees/${id}/archive`),
 };
 
 // Events/DLQ APIs
