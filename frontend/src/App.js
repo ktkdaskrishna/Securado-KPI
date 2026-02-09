@@ -129,6 +129,7 @@ function AppRoutes() {
         <Route path="/invoices" element={<RBACGuard permission="view_invoices"><InvoicesPage /></RBACGuard>} />
         <Route path="/performance" element={<RBACGuard permission="view_goals"><PerformanceHubPage /></RBACGuard>} />
         <Route path="/incentives" element={<RBACGuard permission="view_goals"><IncentiveCalcPage /></RBACGuard>} />
+        <Route path="/org-structure" element={<OrgStructurePage />} />
         <Route path="/profile" element={<ProfilePage />} />
 
         {/* ETL Platform - System Admin only */}
