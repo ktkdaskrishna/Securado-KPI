@@ -301,6 +301,8 @@ export const targetAPI = {
   getActualActivities: (params) => api.get('/target-actuals/activities', { params }),
   getCollectionActuals: () => api.get('/target-actuals/collection'),
   calculateMultiVectorIncentive: (data) => api.post('/target-actuals/multi-vector-incentive', data),
+  getTeamComparison: () => api.get('/target-actuals/team-comparison'),
+  getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
 };
 
 // Events/DLQ APIs
