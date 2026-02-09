@@ -329,10 +329,11 @@ async def get_conversion_funnel(
         if data["count"] > 0:
             prev_count = data["count"]
     
-    # Overall conversion (total non-lost to Won)
-    total_active = sum(stage_data[s]["count"] for s in funnel_stages if s != "lost")
+    # Overall conversion: Win Rate = Won / (Won + Lost) - standard B2B metric
     won_count = stage_data["won"]["count"]
-    overall_conversion = min(round(won_count / total_active * 100, 1), 100) if total_active > 0 else 0
+    lost_count = stage_data["lost"]["count"]
+    closed_total = won_count + lost_count
+    overall_conversion = round(won_count / closed_total * 100, 1) if closed_total > 0 else 0
     
     return {
         "stages": funnel,  # Renamed from 'funnel' to 'stages' for frontend compatibility
