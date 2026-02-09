@@ -279,6 +279,7 @@ export const targetAPI = {
   getOdooAccounts: (params) => api.get('/target-lookups/accounts', { params }),
   getActivityTypes: () => api.get('/target-lookups/activity-types'),
   getSalesTeams: () => api.get('/target-lookups/sales-teams'),
+  getTeamsWithMembers: () => api.get('/target-lookups/teams-with-members'),
 
   // Revenue Plans (CEO → PM)
   listRevenuePlans: (params) => api.get('/target-plans/revenue', { params }),
