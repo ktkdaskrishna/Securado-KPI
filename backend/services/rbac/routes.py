@@ -226,19 +226,31 @@ async def update_role(
     role_data: RoleUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update a role"""
+    """Update a role - creates it in DB if it only existed as a default"""
     db = get_app_db()
+    org_id = current_user.get("org_id", "default")
     
     update_data = {k: v for k, v in role_data.model_dump().items() if v is not None}
     update_data["updated_at"] = now_utc()
     
+    # Try update first
     result = await db.roles.update_one(
-        {"id": role_id, "org_id": current_user.get("org_id", "default")},
+        {"id": role_id, "org_id": org_id},
         {"$set": update_data}
     )
     
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Role not found")
+        # Role doesn't exist in DB (it was a default) - insert it
+        role_doc = {
+            "id": role_id,
+            "org_id": org_id,
+            "name": role_data.name or role_id,
+            "description": role_data.description or "",
+            "permissions": role_data.permissions or [],
+            "created_at": now_utc(),
+            "updated_at": now_utc()
+        }
+        await db.roles.insert_one(role_doc)
     
     # Emit role updated event
     await emit_event(
@@ -250,7 +262,7 @@ async def update_role(
             "permissions": role_data.permissions or []
         },
         producer="rbac-service",
-        org_id=current_user.get("org_id", "default")
+        org_id=org_id
     )
     
     return {"success": True, "message": "Role updated"}
