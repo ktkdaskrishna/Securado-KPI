@@ -44,10 +44,13 @@ export default function PerformanceHubPage() {
   const [showRedistribute, setShowRedistribute] = useState(null);
   const [showAlerts, setShowAlerts] = useState(false);
 
-  // Role detection
+  // Role detection from /my-data response (server-side role check)
   const isAdmin = permissions.includes('admin:*') || permissions.includes('system_admin');
-  const isSD = permissions.includes('manage_goals') && !isAdmin;
+  const isPD = myData?.is_product_director;
+  const isSD = myData?.is_sales_director && !isPD;
+  const isRep = myData?.is_sales_rep;
   const canManage = permissions.includes('manage_goals');
+  const showExecutiveTabs = isAdmin || isSD; // Only admin/SD see CEO/SD tabs, NOT product directors
 
   const loadData = useCallback(async () => {
     setLoading(true);
