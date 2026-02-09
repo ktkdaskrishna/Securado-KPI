@@ -216,6 +216,41 @@ export function ActivityStatusFilter({ value, onChange }) {
   );
 }
 
+export function ProductDirectorFilter({ value, onChange, productDirectors = [] }) {
+  return (
+    <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
+      <SelectTrigger className="w-[160px] h-9" data-testid="filter-product-director">
+        <Users className="h-3 w-3 mr-1" />
+        <SelectValue placeholder="All PDs" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Product Directors</SelectItem>
+        {productDirectors.map(pd => (
+          <SelectItem key={pd} value={pd}>{pd.split(' ').slice(-2).join(' ')}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function SolutionCategoryFilter({ value, onChange, categories = [] }) {
+  return (
+    <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
+      <SelectTrigger className="w-[160px] h-9" data-testid="filter-solution-category">
+        <Tag className="h-3 w-3 mr-1" />
+        <SelectValue placeholder="All Categories" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Categories</SelectItem>
+        {categories.map(c => (
+          <SelectItem key={c} value={c}>{c}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+
 // Main filter bar wrapper
 export function PageFilters({ 
   children, 
