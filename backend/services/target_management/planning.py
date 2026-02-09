@@ -536,6 +536,117 @@ async def get_collection_actuals(
     }
 
 
+# ==================== TEAM COMPARISON & MARKETING ====================
+
+@actuals_router.get("/team-comparison")
+async def get_team_comparison(current_user: dict = Depends(get_current_user)):
+    """Compare all PMs side-by-side on revenue, activity, and collection vectors"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+
+    plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": "revenue"}).to_list(100)
+    from datetime import datetime
+
+    comparisons = []
+    for plan in plans:
+        pm_name = plan.get("product_manager_name")
+        if not pm_name:
+            continue
+
+        target_amount = plan.get("target_amount", 0)
+
+        # Revenue
+        won_r = await canonical_db.opportunities.aggregate([
+            {"$match": {"product_manager": pm_name, "stage": {"$in": ["Won", "Closed Won", "closed_won"]}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}}
+        ]).to_list(1)
+        pipeline_r = await canonical_db.opportunities.aggregate([
+            {"$match": {"product_manager": pm_name}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}}
+        ]).to_list(1)
+
+        won_amt = won_r[0]["total"] if won_r else 0
+        pipeline_amt = pipeline_r[0]["total"] if pipeline_r else 0
+        opp_count = pipeline_r[0]["count"] if pipeline_r else 0
+        rev_pct = min(round((won_amt / target_amount * 100) if target_amount > 0 else 0, 1), 200)
+
+        # Activities
+        items = await app_db.target_plan_items.find({"revenue_plan_id": plan["id"], "org_id": org_id}).to_list(100)
+        total_target_act = sum(i.get("target_count", 0) for i in items)
+        total_actual_act = 0
+        for item in items:
+            atype = item.get("activity_type")
+            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id}) if atype else 0
+            total_actual_act += min(actual, item.get("target_count", 0))
+        act_pct = min(round((total_actual_act / total_target_act * 100) if total_target_act > 0 else 0, 1), 100)
+
+        # Leads generated (marketing proxy)
+        leads_count = await canonical_db.opportunities.count_documents({"product_manager": pm_name, "type": "lead"})
+
+        comparisons.append({
+            "plan_id": plan["id"],
+            "plan_name": plan.get("name", ""),
+            "product_manager": pm_name,
+            "target_amount": target_amount,
+            "revenue": {"won": won_amt, "pipeline": pipeline_amt, "pct": rev_pct, "opp_count": opp_count},
+            "activity": {"target": total_target_act, "actual": total_actual_act, "pct": act_pct, "items": len(items)},
+            "leads_generated": leads_count,
+            "composite": round(rev_pct * 0.5 + act_pct * 0.3 + min(leads_count / 10 * 100, 100) * 0.2, 1)
+        })
+
+    comparisons.sort(key=lambda x: x["composite"], reverse=True)
+    return comparisons
+
+
+@actuals_router.get("/marketing-metrics")
+async def get_marketing_metrics(current_user: dict = Depends(get_current_user)):
+    """Get marketing performance metrics from Odoo leads and opportunities"""
+    canonical_db = get_canonical_db()
+
+    # Leads vs Opportunities conversion
+    total_leads = await canonical_db.opportunities.count_documents({"type": "lead"})
+    total_opps = await canonical_db.opportunities.count_documents({"type": "opportunity"})
+
+    # Leads by solution category
+    lead_by_cat = await canonical_db.opportunities.aggregate([
+        {"$match": {"type": "lead", "solution_category": {"$ne": None}}},
+        {"$group": {"_id": "$solution_category", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+
+    # Leads by product manager
+    lead_by_pm = await canonical_db.opportunities.aggregate([
+        {"$match": {"type": "lead", "product_manager": {"$ne": None}}},
+        {"$group": {"_id": "$product_manager", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(20)
+
+    # Leads by stage (funnel)
+    lead_funnel = await canonical_db.opportunities.aggregate([
+        {"$match": {"type": "lead"}},
+        {"$group": {"_id": "$lead_stage", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(20)
+
+    # Lead to opportunity conversion rate
+    converted = await canonical_db.opportunities.count_documents({
+        "type": "opportunity",
+        "lead_stage": {"$ne": None}
+    })
+
+    return {
+        "total_leads": total_leads,
+        "total_opportunities": total_opps,
+        "conversion_rate": round((total_opps / (total_leads + total_opps) * 100) if (total_leads + total_opps) > 0 else 0, 1),
+        "leads_by_category": [{"category": r["_id"], "count": r["count"]} for r in lead_by_cat],
+        "leads_by_pm": [{"pm": r["_id"], "count": r["count"]} for r in lead_by_pm],
+        "lead_funnel": [{"stage": r["_id"], "count": r["count"]} for r in lead_funnel],
+        "converted_count": converted
+    }
+
+
 # ==================== MULTI-VECTOR INCENTIVE ====================
 
 class MultiVectorIncentiveRequest(BaseModel):
