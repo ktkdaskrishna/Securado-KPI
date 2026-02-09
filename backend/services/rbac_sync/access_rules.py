@@ -114,10 +114,10 @@ class AccessRuleEngine:
         entity_type: str = "opportunity",
         user_email: str = None
     ) -> Dict[str, Any]:
-        """Generate MongoDB filter based on user's permissions
-        
-        Args:
-            user_name: User's name (as shown in owner_name field)
+        """Generate MongoDB filter based on user's permissions"""
+        import re as _re
+        # Normalize whitespace in user_name (JWT may have stale data)
+        user_name = _re.sub(r'\s+', ' ', user_name).strip()
             org_id: Organization ID
             entity_type: Type of entity (opportunity, account, activity, etc.)
             user_email: User's email for RBAC lookup (more reliable than name)
