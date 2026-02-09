@@ -1333,6 +1333,8 @@ export function OpportunitiesPage() {
       if (filters.salesRep) params.sales_rep = filters.salesRep;
       if (filters.account) params.account = filters.account;
       if (filters.stage) params.stage = filters.stage;
+      if (filters.productDirector) params.product_manager = filters.productDirector;
+      if (filters.solutionCategory) params.solution_category = filters.solutionCategory;
 
       const [listRes, kanbanRes] = await Promise.all([
         crmAPI.listOpportunities(params),
