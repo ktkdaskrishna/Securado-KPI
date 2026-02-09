@@ -224,7 +224,9 @@ export function GlobalFilterProvider({ children }) {
       filters.salesRep !== null ||
       filters.team !== null ||
       filters.account !== null ||
-      filters.stage !== null
+      filters.stage !== null ||
+      filters.productDirector !== null ||
+      filters.solutionCategory !== null
     );
   }, [filters]);
 
