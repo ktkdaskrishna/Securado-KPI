@@ -458,6 +458,37 @@ async def get_user_permissions(
     }
 
 
+# Shared role → permissions mapping for app-level role resolution
+APP_ROLE_PERMS = {
+    "admin": {"perms": ["admin:*", "view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "manage_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics",
+        "view_profile", "system_admin"], "access": "all"},
+    "sales_admin": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "manage_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "system_admin": {"perms": ["admin:*", "view_dashboard", "manage_dashboard", "system_admin", "manage_users", "view_users", "view_goals", "view_kpis", "view_profile"], "access": "all"},
+    "sales_director": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "product_director": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals",
+        "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_teams", "view_profile"], "access": "all"},
+    "product_manager": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals",
+        "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_teams", "view_profile"], "access": "all"},
+    "sales_manager": {"perms": ["view_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts",
+        "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "view_kpis", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "sales_rep": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+    "sales_user_own": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+    "sales_user_all": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "executive": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals",
+        "view_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "accountant": {"perms": ["view_dashboard", "view_accounts", "view_invoices", "manage_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "billing": {"perms": ["view_dashboard", "view_invoices", "manage_invoices", "view_profile"], "access": "all"},
+    "user": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+}
+
 @router.get("/current-user-rbac")
 async def get_current_user_rbac(
     current_user: dict = Depends(get_current_user)
