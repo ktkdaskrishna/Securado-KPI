@@ -304,6 +304,7 @@ export const targetAPI = {
   getTeamComparison: () => api.get('/target-actuals/team-comparison'),
   getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
   getAlerts: () => api.get('/alerts'),
+  getMyData: () => api.get('/target-actuals/my-data'),
 };
 
 // Events/DLQ APIs
