@@ -232,10 +232,13 @@ class AccessRuleEngine:
         if entity_type in ["opportunity", "lead"]:
             return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
         elif entity_type == "activity":
-            return {"assigned_to": {"$regex": f"^{user_name}$", "$options": "i"}}
+            # Activities use assigned_user field from Odoo
+            return {"$or": [
+                {"assigned_user": {"$regex": f"^{user_name}$", "$options": "i"}},
+                {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            ]}
         elif entity_type in ["account", "contact"]:
-            # Accounts/contacts are typically shared, but can filter by salesperson
-            return {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
         elif entity_type == "invoice":
             return {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
         else:
