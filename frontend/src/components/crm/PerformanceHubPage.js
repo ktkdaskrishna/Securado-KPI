@@ -55,7 +55,7 @@ export default function PerformanceHubPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const calls = [targetAPI.getMyData(), targetAPI.getCollectionActuals(), targetAPI.getAlerts(),
+      const calls = [targetAPI.getMyData(), targetAPI.getAlerts(),
         targetAPI.getSolutionCategories(), targetAPI.getSalespersons(), targetAPI.getActivityTypes()];
       if (canManage) {
         calls.push(targetAPI.listRevenuePlans(), targetAPI.getActualsByPM(), targetAPI.getProductManagers());
