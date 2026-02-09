@@ -115,7 +115,7 @@ export default function PerformanceHubPage() {
         });
       } catch {}
     } catch { toast.error('Failed'); } finally { setLoading(false); }
-  }, [canManage]);
+  }, [canManage, yearFilter, pmFilter, catFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
