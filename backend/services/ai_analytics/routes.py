@@ -336,7 +336,7 @@ async def get_conversion_funnel(
     # Overall conversion (Lead to Won)
     lead_count = stage_data["lead"]["count"] + stage_data["qualified"]["count"]
     won_count = stage_data["won"]["count"]
-    overall_conversion = round(won_count / lead_count * 100, 1) if lead_count > 0 else 0
+    overall_conversion = min(round(won_count / lead_count * 100, 1), 100) if lead_count > 0 else 0
     
     return {
         "stages": funnel,  # Renamed from 'funnel' to 'stages' for frontend compatibility
