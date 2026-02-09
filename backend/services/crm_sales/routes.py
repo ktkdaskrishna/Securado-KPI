@@ -1784,8 +1784,11 @@ async def list_activities(
             "org_id": org_id,
             "opportunity_id": opportunity_id
         }
-        if rbac_filter and "owner_name" in rbac_filter:
-            canonical_query["assigned_user"] = rbac_filter["owner_name"]
+        if rbac_filter:
+            if "$or" in rbac_filter:
+                canonical_query.update(rbac_filter)
+            elif "owner_name" in rbac_filter:
+                canonical_query["assigned_user"] = rbac_filter["owner_name"]
         app_query["opportunity_id"] = opportunity_id
     if account_id:
         app_query["account_id"] = account_id
