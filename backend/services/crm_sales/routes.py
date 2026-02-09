@@ -1898,9 +1898,15 @@ async def get_activity_stats(
     app_query = {"org_id": org_id}
     
     # Apply RBAC filter to activities
-    if rbac_filter and "owner_name" in rbac_filter:
-        canonical_query["assigned_user"] = rbac_filter["owner_name"]
-        app_query["owner_name"] = rbac_filter["owner_name"]
+    if rbac_filter:
+        if "$or" in rbac_filter:
+            canonical_query.update(rbac_filter)
+            app_query.update(rbac_filter)
+        elif "owner_name" in rbac_filter:
+            canonical_query["assigned_user"] = rbac_filter["owner_name"]
+            app_query["owner_name"] = rbac_filter["owner_name"]
+        elif "assigned_user" in rbac_filter:
+            canonical_query["assigned_user"] = rbac_filter["assigned_user"]
     
     # Get CRM activities from canonical DB 
     canonical_activities = await canonical_db.activities.find(canonical_query).to_list(10000)
