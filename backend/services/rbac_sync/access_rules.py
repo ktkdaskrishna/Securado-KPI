@@ -209,6 +209,24 @@ class AccessRuleEngine:
             logger.info(f"User {user_name} has {len(direct_report_names)} direct reports - upgrading to MANAGER access")
             access_level = AccessLevel.MANAGER
         
+        # Check if user is a Product Director - they should see only their product data
+        # even if Odoo grants them admin-level group access
+        if user_email:
+            app_user = await self.app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+            app_roles = app_user.get("roles", []) if app_user else []
+            
+            if "product_director" in app_roles or "product_manager" in app_roles:
+                # Product Director: filter by product_manager field for opportunities
+                # They see opportunities where they are the product_manager
+                logger.info(f"User {user_name} is Product Director - applying product_manager filter")
+                if entity_type in ["opportunity", "lead"]:
+                    return {"product_manager": {"$regex": f"^{user_name}$", "$options": "i"}}
+                elif entity_type == "activity":
+                    # PDs see activities on their opportunities (via product scope)
+                    return {}  # Activities don't have product_manager field, show all for PD
+                else:
+                    return {}  # PDs see all accounts, invoices etc.
+        
         logger.debug(f"User {user_name} has access level: {access_level.name}")
         
         if access_level == AccessLevel.ADMIN:
