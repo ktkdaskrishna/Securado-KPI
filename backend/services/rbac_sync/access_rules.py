@@ -220,9 +220,24 @@ class AccessRuleEngine:
                 if entity_type in ["opportunity", "lead"]:
                     return {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
                 elif entity_type == "activity":
-                    return {}  # Activities don't have product_manager field
+                    # PD sees activities linked to their opportunities
+                    from libs.database import get_canonical_db
+                    c_db = get_canonical_db()
+                    opp_ids = await c_db.opportunities.distinct(
+                        "canonical_id", {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
+                    )
+                    return {"opportunity_id": {"$in": opp_ids}} if opp_ids else {}
+                elif entity_type == "invoice":
+                    # PD sees invoices for accounts in their product scope
+                    from libs.database import get_canonical_db
+                    c_db = get_canonical_db()
+                    acct_names = await c_db.opportunities.distinct(
+                        "account_name", {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
+                    )
+                    acct_names = [a for a in acct_names if a]
+                    return {"account_name": {"$in": acct_names}} if acct_names else {}
                 else:
-                    return {}  # PDs see all accounts, invoices
+                    return {}  # PDs see all accounts
         
         logger.debug(f"User {user_name} has access level: {access_level.name}")
         
