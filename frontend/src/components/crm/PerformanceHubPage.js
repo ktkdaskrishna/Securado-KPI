@@ -15,7 +15,7 @@ import {
   Target, Plus, TrendingUp, TrendingDown, Trophy, Users, Trash2,
   BarChart2, Activity, Phone, Mail, Calendar, Monitor, FlaskConical,
   Presentation, DollarSign, Calculator, ChevronDown, ChevronRight,
-  Crosshair, Award, FileText, AlertTriangle, CheckCircle2, ArrowRight
+  Crosshair, Award, FileText, AlertTriangle, CheckCircle2, ArrowRight, Bell
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
