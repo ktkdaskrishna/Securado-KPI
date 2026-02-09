@@ -284,6 +284,10 @@ async def list_opportunities(
         query["team_id"] = team_id
     if account:
         query["account_name"] = account
+    if product_manager:
+        query["product_manager"] = {"$regex": f"^{product_manager}$", "$options": "i"}
+    if solution_category:
+        query["solution_category"] = solution_category
     
     # Get from canonical - get more records if filtering to ensure we have enough after date filter
     fetch_limit = limit * 10 if (year or quarter) else limit
