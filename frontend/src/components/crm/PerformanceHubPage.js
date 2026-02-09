@@ -764,3 +764,72 @@ function MarketingMetricsView() {
   );
 }
 
+
+function AlertBanner({ alertsData, expanded, onToggle }) {
+  const { alerts, summary } = alertsData;
+  const criticalCount = summary.critical || 0;
+  const highCount = summary.high || 0;
+  const positiveCount = summary.positive || 0;
+  const actionableCount = criticalCount + highCount + (summary.medium || 0);
+
+  const sevConfig = {
+    critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: AlertTriangle, iconColor: 'text-red-500', dot: 'bg-red-500' },
+    high: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: AlertTriangle, iconColor: 'text-orange-500', dot: 'bg-orange-500' },
+    medium: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', icon: Bell, iconColor: 'text-yellow-600', dot: 'bg-yellow-500' },
+    positive: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2, iconColor: 'text-emerald-500', dot: 'bg-emerald-500' },
+  };
+
+  return (
+    <div data-testid="alert-center">
+      {/* Compact Banner */}
+      <button onClick={onToggle} className={`w-full p-3 rounded-lg border flex items-center justify-between transition-all hover:shadow-md ${criticalCount > 0 ? 'bg-red-50 border-red-200' : highCount > 0 ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Bell className={`h-5 w-5 ${criticalCount > 0 ? 'text-red-500' : 'text-blue-500'}`} />
+            {actionableCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">{actionableCount}</span>
+            )}
+          </div>
+          <span className={`text-sm font-medium ${criticalCount > 0 ? 'text-red-700' : 'text-gray-700'}`}>
+            Alert Center
+          </span>
+          <div className="flex items-center gap-2 ml-2">
+            {criticalCount > 0 && <Badge variant="outline" className="text-[10px] bg-red-100 text-red-700 border-red-200">{criticalCount} Critical</Badge>}
+            {highCount > 0 && <Badge variant="outline" className="text-[10px] bg-orange-100 text-orange-700 border-orange-200">{highCount} High</Badge>}
+            {(summary.medium || 0) > 0 && <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-700 border-yellow-200">{summary.medium} Medium</Badge>}
+            {positiveCount > 0 && <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">{positiveCount} Positive</Badge>}
+          </div>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Expanded Alert List */}
+      {expanded && (
+        <div className="mt-2 space-y-2" data-testid="alert-list">
+          {alerts.map((alert, idx) => {
+            const config = sevConfig[alert.severity] || sevConfig.medium;
+            const Icon = config.icon;
+            return (
+              <div key={idx} className={`p-3 rounded-lg border ${config.bg} ${config.border} flex items-start gap-3`} data-testid={`alert-${idx}`}>
+                <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${config.iconColor}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${config.text}`}>{alert.title}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">{alert.message}</p>
+                </div>
+                {alert.metric !== undefined && (
+                  <div className="text-right flex-shrink-0">
+                    <span className={`text-lg font-bold ${config.text}`}>{alert.metric}%</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
