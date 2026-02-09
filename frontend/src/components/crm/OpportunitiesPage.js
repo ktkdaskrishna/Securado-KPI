@@ -1225,7 +1225,9 @@ export function OpportunitiesPage() {
     quarter: searchParams.get('quarter') || null,
     salesRep: searchParams.get('salesRep') || null,
     account: searchParams.get('account') || null,
-    stage: searchParams.get('stage') || null
+    stage: searchParams.get('stage') || null,
+    productDirector: searchParams.get('productDirector') || null,
+    solutionCategory: searchParams.get('solutionCategory') || null
   });
 
   // Contextual filters for Opportunities page
