@@ -223,12 +223,17 @@ export default function PerformanceHubPage() {
               <CardContent><div className="flex flex-wrap gap-2">{(myData.my_categories || []).map(c => <Badge key={c} variant="secondary">{c}</Badge>)}</div></CardContent>
             </Card>
             {(myData.my_plans || []).map(plan => (
-              <Card key={plan.id}>
-                <CardHeader className="pb-2"><CardTitle className="text-base">{plan.name} <Badge variant="outline" className="ml-2">OMR {(plan.target_amount || 0).toLocaleString()}</Badge></CardTitle></CardHeader>
+              <Card key={plan.id} className="border-[#800000]/20">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{plan.name} <Badge variant="outline" className="ml-2">OMR {(plan.target_amount || 0).toLocaleString()}</Badge></CardTitle>
+                    <Button onClick={() => { setSelectedPlan(plan); setShowAddItem(true); }} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="pd-add-item"><Plus className="h-4 w-4 mr-1" /> Add Activity Plan</Button>
+                  </div>
+                </CardHeader>
                 <CardContent>
                   {(plan.items || []).length > 0 ? (
                     <Table>
-                      <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead>Notes</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {(plan.items || []).map(item => (
                           <TableRow key={item.id}>
@@ -236,11 +241,17 @@ export default function PerformanceHubPage() {
                             <TableCell className="text-sm text-gray-500">{item.solution_category || '-'}</TableCell>
                             <TableCell className="text-right font-semibold">{item.target_count}</TableCell>
                             <TableCell className="text-sm text-gray-400">{item.notes || '-'}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedPlan(plan); setShowRedistribute(item); }}>Assign</Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500" onClick={() => targetAPI.deletePlanItem(item.id).then(() => { toast.success('Deleted'); loadData(); })}><Trash2 className="h-3 w-3" /></Button>
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  ) : <p className="text-gray-400 text-sm py-4 text-center">No activity items in this plan yet.</p>}
+                  ) : <p className="text-gray-400 text-sm py-4 text-center">No activity items yet. Click "Add Activity Plan" to define targets for your sales team.</p>}
                 </CardContent>
               </Card>
             ))}
