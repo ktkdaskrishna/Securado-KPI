@@ -49,7 +49,8 @@ function filtersToUrlParams(filters) {
   if (filters.stage) params.set('stage', filters.stage);
   if (filters.dateField && filters.dateField !== 'create_date') params.set('dateField', filters.dateField);
   if (filters.timePeriod && filters.timePeriod !== 'all') params.set('timePeriod', filters.timePeriod);
-  
+  if (filters.productDirector) params.set('productDirector', filters.productDirector);
+  if (filters.solutionCategory) params.set('solutionCategory', filters.solutionCategory);
   return params;
 }
 
