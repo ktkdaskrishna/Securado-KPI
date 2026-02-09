@@ -497,13 +497,15 @@ dashboard_aggregator = DashboardAggregator()
 @router.get("/stats")
 async def get_dashboard_stats(
     request: Request,
-    year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
-    quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
-    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
     team_id: Optional[str] = Query(None, description="Filter by team ID"),
-    account: Optional[str] = Query(None, description="Filter by account name"),
+    account: Optional[str] = Query(None, description="Filter by account"),
     stage: Optional[str] = Query(None, description="Filter by stage"),
-    date_field: Optional[str] = Query('create_date', description="Date field to filter on: create_date or close_date"),
+    product_manager: Optional[str] = Query(None, description="Filter by product director"),
+    solution_category: Optional[str] = Query(None, description="Filter by solution category"),
+    date_field: Optional[str] = Query('create_date', description="Date field"),
     current_user: dict = Depends(get_current_user)
 ):
     """Get dashboard statistics - real-time calculation with optional filters and RBAC"""
