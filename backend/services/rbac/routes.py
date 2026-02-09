@@ -133,8 +133,15 @@ async def list_roles(current_user: dict = Depends(get_current_user)):
                 "id": "sales_director",
                 "name": "Sales Director",
                 "description": "Full sales department access",
-                "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_invoices", "view_analytics"],
+                "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_invoices", "view_analytics", "view_goals", "manage_goals"],
                 "users_count": user_role_counts.get("sales_director", 0)
+            },
+            {
+                "id": "product_director",
+                "name": "Product Director",
+                "description": "Product management, target planning, activity assignment",
+                "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "view_teams"],
+                "users_count": user_role_counts.get("product_director", 0)
             },
             {
                 "id": "system_admin",
