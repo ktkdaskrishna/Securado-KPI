@@ -209,6 +209,8 @@ export function GlobalFilterProvider({ children }) {
     }
     if (filters.account) parts.push(`Account: ${filters.account}`);
     if (filters.stage) parts.push(`Stage: ${filters.stage}`);
+    if (filters.productDirector) parts.push(`PD: ${filters.productDirector}`);
+    if (filters.solutionCategory) parts.push(`Category: ${filters.solutionCategory}`);
     
     return parts.length > 0 ? parts.join(' • ') : 'All Data';
   }, [filters, filterOptions]);
