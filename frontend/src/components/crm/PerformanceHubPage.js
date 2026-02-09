@@ -119,10 +119,10 @@ export default function PerformanceHubPage() {
       <Tabs value={tab || defaultTab} onValueChange={setTab}>
         <TabsList>
           {/* Admin/SD tabs */}
-          {(isAdmin || isSD) && <TabsTrigger value="ceo">CEO View</TabsTrigger>}
-          {(isAdmin || isSD) && <TabsTrigger value="pm">PM Plan Builder</TabsTrigger>}
-          {(isAdmin || isSD) && <TabsTrigger value="sd">Sales Director</TabsTrigger>}
-          {(isAdmin || isSD) && <TabsTrigger value="marketing">Marketing</TabsTrigger>}
+          {showExecutiveTabs && <TabsTrigger value="ceo">CEO View</TabsTrigger>}
+          {showExecutiveTabs && <TabsTrigger value="pm">PM Plan Builder</TabsTrigger>}
+          {showExecutiveTabs && <TabsTrigger value="sd">Sales Director</TabsTrigger>}
+          {showExecutiveTabs && <TabsTrigger value="marketing">Marketing</TabsTrigger>}
           {/* Product Director tabs */}
           {isPD && <TabsTrigger value="myplan">My Plan</TabsTrigger>}
           {isPD && <TabsTrigger value="myteam">My Team</TabsTrigger>}
