@@ -1265,15 +1265,22 @@ export function OpportunitiesPage() {
 
   const loadFilterOptions = useCallback(async () => {
     try {
-      const res = await analyticsAPI.getFilters();
-      if (res.data) {
-        setFilterOptions({
-          years: res.data.years || [],
-          salesReps: res.data.sales_reps || res.data.salesReps || [],  // Handle both naming conventions
-          accounts: res.data.accounts || [],
-          stages: res.data.stages || []
-        });
-      }
+      const [filterRes, pmRes, catRes] = await Promise.allSettled([
+        analyticsAPI.getFilters(),
+        targetAPI.getProductManagers(),
+        targetAPI.getSolutionCategories(),
+      ]);
+      const fData = filterRes.status === 'fulfilled' ? filterRes.value.data : {};
+      const pms = pmRes.status === 'fulfilled' ? pmRes.value.data : [];
+      const cats = catRes.status === 'fulfilled' ? catRes.value.data : [];
+      setFilterOptions({
+        years: fData.years || [],
+        salesReps: fData.sales_reps || fData.salesReps || [],
+        accounts: fData.accounts || [],
+        stages: fData.stages || [],
+        productDirectors: pms.map(p => p.name),
+        solutionCategories: cats.map(c => c.name),
+      });
     } catch (error) {
       console.error('Failed to load filter options:', error);
     }
