@@ -598,3 +598,161 @@ function MultiVectorIncentiveCalc({ plans }) {
   );
 }
 
+
+function TeamComparisonView({ plans }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    targetAPI.getTeamComparison().then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <Skeleton className="h-64" />;
+
+  const chartData = data.map(d => ({
+    name: d.product_manager?.split(' ').slice(-1)[0] || 'Unknown',
+    Revenue: d.revenue.pct,
+    Activity: d.activity.pct,
+    Leads: Math.min((d.leads_generated / 10) * 100, 100),
+    composite: d.composite,
+  }));
+
+  return (
+    <div className="space-y-4" data-testid="team-comparison">
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Award className="h-4 w-4 text-[#800000]" /> PM Performance Comparison</CardTitle></CardHeader>
+        <CardContent>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartData} barGap={2}>
+                <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                <RTooltip />
+                <Bar dataKey="Revenue" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Revenue %" />
+                <Bar dataKey="Activity" fill="#10b981" radius={[3, 3, 0, 0]} name="Activity %" />
+                <Bar dataKey="Leads" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Leads Score" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <p className="text-gray-400 text-center py-8">No comparison data. Assign revenue targets to PMs first.</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>Product Manager</TableHead>
+                <TableHead className="text-right">Target</TableHead>
+                <TableHead className="text-right">Pipeline</TableHead>
+                <TableHead className="text-right">Won</TableHead>
+                <TableHead className="text-right">Rev %</TableHead>
+                <TableHead className="text-right">Activities</TableHead>
+                <TableHead className="text-right">Act %</TableHead>
+                <TableHead className="text-right">Leads</TableHead>
+                <TableHead className="text-right">Score</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((d, idx) => (
+                <TableRow key={d.plan_id} className={idx === 0 ? 'bg-yellow-50/50' : ''}>
+                  <TableCell>{idx === 0 ? <Trophy className="h-4 w-4 text-yellow-500" /> : <span className="text-gray-400">{idx + 1}</span>}</TableCell>
+                  <TableCell className="font-medium">{d.product_manager}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">OMR {(d.target_amount || 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-gray-500">{(d.revenue.pipeline || 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-emerald-600">{(d.revenue.won || 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right"><Badge variant={d.revenue.pct >= 80 ? 'default' : 'secondary'} className={d.revenue.pct >= 100 ? 'bg-emerald-100 text-emerald-700' : ''}>{d.revenue.pct}%</Badge></TableCell>
+                  <TableCell className="text-right text-sm">{d.activity.actual}/{d.activity.target}</TableCell>
+                  <TableCell className="text-right"><Badge variant={d.activity.pct >= 80 ? 'default' : 'secondary'} className={d.activity.pct >= 100 ? 'bg-emerald-100 text-emerald-700' : ''}>{d.activity.pct}%</Badge></TableCell>
+                  <TableCell className="text-right text-sm">{d.leads_generated}</TableCell>
+                  <TableCell className="text-right font-bold text-[#800000]">{d.composite}</TableCell>
+                </TableRow>
+              ))}
+              {data.length === 0 && <TableRow><TableCell colSpan={10} className="text-center py-8 text-gray-400">No data</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MarketingMetricsView() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    targetAPI.getMarketingMetrics().then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <Skeleton className="h-64" />;
+  if (!data) return <p className="text-gray-400 text-center py-8">No marketing data</p>;
+
+  const funnelData = (data.lead_funnel || []).slice(0, 8).map(f => ({
+    name: f.stage || 'Unknown',
+    count: f.count,
+  }));
+
+  return (
+    <div className="space-y-4" data-testid="marketing-metrics">
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card><CardContent className="p-4"><p className="text-xs text-gray-500">Total Leads</p><p className="text-2xl font-bold text-gray-900">{data.total_leads}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-gray-500">Opportunities</p><p className="text-2xl font-bold text-gray-900">{data.total_opportunities}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-gray-500">Conversion Rate</p><p className="text-2xl font-bold text-emerald-600">{data.conversion_rate}%</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-gray-500">Converted</p><p className="text-2xl font-bold text-gray-900">{data.converted_count}</p></CardContent></Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Lead Funnel */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Lead Funnel by Stage</CardTitle></CardHeader>
+          <CardContent>
+            {funnelData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={funnelData} layout="vertical" margin={{ left: 80 }}>
+                  <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
+                  <RTooltip />
+                  <Bar dataKey="count" fill="#800000" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="text-gray-400 text-xs text-center py-4">No funnel data</p>}
+          </CardContent>
+        </Card>
+
+        {/* Leads by PM */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Leads by Product Manager</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>Product Manager</TableHead><TableHead className="text-right">Leads</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {(data.leads_by_pm || []).map(pm => (
+                  <TableRow key={pm.pm}><TableCell className="text-sm font-medium">{pm.pm}</TableCell><TableCell className="text-right font-semibold">{pm.count}</TableCell></TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Leads by Category */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Leads by Solution Category</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Lead Count</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {(data.leads_by_category || []).map(cat => (
+                <TableRow key={cat.category}><TableCell className="text-sm">{cat.category}</TableCell><TableCell className="text-right font-semibold">{cat.count}</TableCell></TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
