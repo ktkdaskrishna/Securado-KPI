@@ -2,8 +2,8 @@
 
 export const CURRENCIES = {
   USD: { code: 'USD', symbol: '$', name: 'US Dollar', locale: 'en-US' },
-  OMR: { code: 'OMR', symbol: 'OMR', name: 'Omani Rial', locale: 'en-US' },
-  AED: { code: 'AED', symbol: 'AED', name: 'UAE Dirham', locale: 'en-US' },
+  OMR: { code: 'OMR', symbol: 'ر.ع.', name: 'Omani Rial', locale: 'en-US' },
+  AED: { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', locale: 'en-US' },
   INR: { code: 'INR', symbol: '₹', name: 'Indian Rupee', locale: 'en-IN' },
   PKR: { code: 'PKR', symbol: 'Rs', name: 'Pakistani Rupee', locale: 'en-PK' },
   EUR: { code: 'EUR', symbol: '€', name: 'Euro', locale: 'en-US' },
