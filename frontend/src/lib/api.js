@@ -303,6 +303,7 @@ export const targetAPI = {
   calculateMultiVectorIncentive: (data) => api.post('/target-actuals/multi-vector-incentive', data),
   getTeamComparison: () => api.get('/target-actuals/team-comparison'),
   getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
+  getAlerts: () => api.get('/alerts'),
 };
 
 // Events/DLQ APIs
