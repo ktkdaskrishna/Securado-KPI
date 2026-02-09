@@ -388,7 +388,7 @@ export function DashboardPage() {
                   style={{ cursor: 'pointer' }}
                 >
                   <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000000 ? `OMR ${(v/1000000).toFixed(1)}M` : v >= 1000 ? `OMR ${(v/1000).toFixed(0)}K` : `OMR ${v}`} width={85} />
                   <Tooltip 
                     formatter={(value) => [formatCurrency(value), 'Value']}
                     labelFormatter={(label) => `Stage: ${label}`}
