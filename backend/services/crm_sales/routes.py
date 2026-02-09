@@ -260,9 +260,22 @@ async def list_opportunities(
     # Apply RBAC filter (merged with base query)
     query.update(rbac_filter)
     
+    # Stage aliases (Odoo uses various formats)
+    STAGE_ALIASES = {
+        "closed_won": ["Won", "Closed Won", "closed_won"],
+        "closed_lost": ["Lost", "Closed Lost", "closed_lost"],
+        "qualified": ["Qualified Opportunity", "Qualified", "qualified"],
+        "proposal": ["Proposal", "proposal"],
+        "negotiation": ["Review&Negotiation", "Negotiation", "negotiation"],
+    }
+    
     # Apply non-date filters
     if stage:
-        query["stage"] = stage
+        aliases = STAGE_ALIASES.get(stage.lower())
+        if aliases:
+            query["stage"] = {"$in": aliases}
+        else:
+            query["stage"] = stage
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
