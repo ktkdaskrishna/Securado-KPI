@@ -136,7 +136,9 @@ export default function PerformanceHubPage() {
   // Drill handlers
   const drillOpps = async (params = {}) => {
     try {
-      const res = await crmAPI.listOpportunities({ limit: 50, ...params });
+      const p = { limit: 50, ...params };
+      if (yearFilter && yearFilter !== 'all') p.year = yearFilter;
+      const res = await crmAPI.listOpportunities(p);
       const items = res.data?.items || res.data || [];
       setDrillData({ title: `Opportunities ${params.stage ? `(${params.stage})` : ''}`, data: items, type: 'opportunities' });
     } catch { toast.error('Failed to load'); }
