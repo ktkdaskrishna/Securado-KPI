@@ -90,8 +90,6 @@ export default function PerformanceHubPage() {
 
   useEffect(() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); }, [selectedPlan, loadPlanDetails]);
 
-  const isPD = myData?.is_product_director;
-  const isRep = myData?.is_sales_rep;
   const defaultTab = showExecutiveTabs ? 'ceo' : isPD ? 'myplan' : 'mytargets';
 
   const [tab, setTab] = useState(null);
