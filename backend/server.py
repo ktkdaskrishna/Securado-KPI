@@ -110,6 +110,7 @@ from services.target_management.planning import (
     actuals_router as target_actuals_router
 )
 from services.target_management.alerts import alerts_router as target_alerts_router
+from services.target_management.org_structure import org_router
 
 
 @asynccontextmanager
