@@ -192,7 +192,7 @@ export function InvoicesPage() {
             <SelectContent>
               {getCurrencyOptions().map((curr) => (
                 <SelectItem key={curr.code} value={curr.code}>
-                  {curr.symbol} {curr.code}
+                  {curr.code === 'OMR' || curr.code === 'SAR' ? curr.code : `${curr.symbol} ${curr.code}`}
                 </SelectItem>
               ))}
             </SelectContent>
