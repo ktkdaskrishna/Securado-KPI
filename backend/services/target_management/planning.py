@@ -139,6 +139,63 @@ async def get_accounts(
     return accounts
 
 
+@lookups_router.get("/teams-with-members")
+async def get_teams_with_members(current_user: dict = Depends(get_current_user)):
+    """Get sales teams with their members from Odoo employees"""
+    canonical_db = get_canonical_db()
+
+    # Get teams
+    teams = await canonical_db.sales_teams.find({}, {"_id": 0}).to_list(20)
+
+    # Get employees in Sales department with manager info
+    employees = await canonical_db.employees.find(
+        {"department_name": {"$regex": "Sales|Business", "$options": "i"}},
+        {"_id": 0, "canonical_id": 1, "name": 1, "job_title": 1, "manager_id": 1, "department_name": 1}
+    ).to_list(100)
+
+    # Build manager → reports mapping
+    managers = {}
+    for emp in employees:
+        mgr_id = emp.get("manager_id")
+        if mgr_id:
+            if mgr_id not in managers:
+                managers[mgr_id] = {"members": []}
+            managers[mgr_id]["members"].append({
+                "id": emp.get("canonical_id"),
+                "name": emp.get("name"),
+                "job_title": emp.get("job_title")
+            })
+
+    # Find who are managers
+    manager_emps = [e for e in employees if e.get("canonical_id") in managers]
+    for mgr in manager_emps:
+        mid = mgr.get("canonical_id")
+        managers[mid]["manager_name"] = mgr.get("name")
+        managers[mid]["manager_title"] = mgr.get("job_title")
+
+    result = []
+    for team in teams:
+        t = {
+            "name": team.get("name"),
+            "member_ids": team.get("member_ids", []),
+            "target": team.get("invoiced_target", 0)
+        }
+        result.append(t)
+
+    # Also add manager-based teams
+    for mid, data in managers.items():
+        if data.get("manager_name"):
+            result.append({
+                "name": f"{data['manager_name']}'s Team",
+                "manager_name": data["manager_name"],
+                "manager_title": data.get("manager_title"),
+                "members": data["members"],
+                "member_count": len(data["members"])
+            })
+
+    return result
+
+
 @lookups_router.get("/activity-types")
 async def get_activity_types(current_user: dict = Depends(get_current_user)):
     """Get activity types from Odoo"""
