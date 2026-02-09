@@ -132,7 +132,7 @@ export default function PerformanceHubPage() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList><TabsTrigger value="ceo">CEO View</TabsTrigger><TabsTrigger value="pm">PM Plan Builder</TabsTrigger><TabsTrigger value="sd">Sales Director Bucket</TabsTrigger><TabsTrigger value="collection">Collection</TabsTrigger><TabsTrigger value="incentive">Incentive Score</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="ceo">CEO View</TabsTrigger><TabsTrigger value="pm">PM Plan Builder</TabsTrigger><TabsTrigger value="sd">Sales Director</TabsTrigger><TabsTrigger value="compare">Team Compare</TabsTrigger><TabsTrigger value="marketing">Marketing</TabsTrigger><TabsTrigger value="collection">Collection</TabsTrigger><TabsTrigger value="incentive">Incentive</TabsTrigger></TabsList>
 
         {/* =========== CEO VIEW =========== */}
         <TabsContent value="ceo" className="mt-4 space-y-4">
