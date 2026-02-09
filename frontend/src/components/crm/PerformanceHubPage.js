@@ -92,7 +92,7 @@ export default function PerformanceHubPage() {
 
   const isPD = myData?.is_product_director;
   const isRep = myData?.is_sales_rep;
-  const defaultTab = isAdmin || isSD ? 'ceo' : isPD ? 'myplan' : 'mytargets';
+  const defaultTab = showExecutiveTabs ? 'ceo' : isPD ? 'myplan' : 'mytargets';
 
   const [tab, setTab] = useState(null);
   useEffect(() => { if (myData && !tab) setTab(defaultTab); }, [myData, defaultTab, tab]);
