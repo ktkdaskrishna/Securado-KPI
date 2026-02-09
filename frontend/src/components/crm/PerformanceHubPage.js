@@ -48,11 +48,11 @@ export default function PerformanceHubPage() {
   const loadCore = useCallback(async () => {
     setLoading(true);
     try {
-      const [plansR, pmR, collR, pmsR, catsR, spR, atR] = await Promise.allSettled([
+      const [plansR, pmR, collR, pmsR, catsR, spR, atR, alertsR] = await Promise.allSettled([
         targetAPI.listRevenuePlans(), targetAPI.getActualsByPM(),
         targetAPI.getCollectionActuals(), targetAPI.getProductManagers(),
         targetAPI.getSolutionCategories(), targetAPI.getSalespersons(),
-        targetAPI.getActivityTypes(),
+        targetAPI.getActivityTypes(), targetAPI.getAlerts(),
       ]);
       if (plansR.status === 'fulfilled') setPlans(plansR.value.data);
       if (pmR.status === 'fulfilled') setPmActuals(pmR.value.data);
@@ -61,6 +61,7 @@ export default function PerformanceHubPage() {
       if (catsR.status === 'fulfilled') setSolutionCats(catsR.value.data);
       if (spR.status === 'fulfilled') setSalespersons(spR.value.data);
       if (atR.status === 'fulfilled') setActivityTypes(atR.value.data);
+      if (alertsR.status === 'fulfilled') setAlertsData(alertsR.value.data);
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
   }, []);
