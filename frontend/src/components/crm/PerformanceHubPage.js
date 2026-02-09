@@ -529,18 +529,102 @@ function AddItemDialog({ open, onClose, onCreated, planId, solutionCats, activit
 }
 
 function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
-  const [form, setForm] = useState({ assigned_to_name: '', assigned_count: 0 });
+  const [form, setForm] = useState({ assign_type: 'person', assigned_to_name: '', assigned_count: 0, team_name: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [teams, setTeams] = useState([]);
   const remaining = (item.target_count || 0) - (item.redistributed_total || 0);
-  const handleSubmit = async () => { if (!form.assigned_to_name || !form.assigned_count) { toast.error('Select person and count'); return; } setSubmitting(true); try { await targetAPI.redistributePlanItem(item.id, { plan_item_id: item.id, assigned_to_name: form.assigned_to_name, assigned_count: form.assigned_count }); toast.success('Assigned'); onCreated(); } catch { toast.error('Failed'); } finally { setSubmitting(false); } };
+
+  useEffect(() => {
+    targetAPI.getTeamsWithMembers().then(r => setTeams(r.data)).catch(() => {});
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!form.assigned_to_name || !form.assigned_count) { toast.error('Select assignee and count'); return; }
+    setSubmitting(true);
+    try {
+      await targetAPI.redistributePlanItem(item.id, {
+        plan_item_id: item.id,
+        assign_type: form.assign_type,
+        assigned_to_name: form.assigned_to_name,
+        assigned_count: form.assigned_count,
+        team_name: form.team_name || undefined,
+        notes: form.notes || undefined,
+      });
+      toast.success(`Assigned ${form.assigned_count} ${item.activity_type} to ${form.assigned_to_name}`);
+      onCreated();
+    } catch { toast.error('Failed'); } finally { setSubmitting(false); }
+  };
+
+  const teamOptions = teams.filter(t => t.members && t.members.length > 0);
+
   return (
-    <Dialog open={open} onOpenChange={onClose}><DialogContent><DialogHeader><DialogTitle>Assign: {item.activity_type}</DialogTitle></DialogHeader>
-      <p className="text-sm text-gray-500">Target: {item.target_count} | Assigned: {item.redistributed_total || 0} | <span className="text-orange-600 font-semibold">Remaining: {remaining}</span></p>
-      <div className="space-y-3">
-        <div><Label className="text-xs">Salesperson</Label><Select value={form.assigned_to_name} onValueChange={v => setForm(f => ({ ...f, assigned_to_name: v }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{salespersons.map(sp => <SelectItem key={sp.name} value={sp.name}>{sp.name} ({sp.opp_count} opps)</SelectItem>)}</SelectContent></Select></div>
-        <div><Label className="text-xs">Count (max {remaining})</Label><Input type="number" value={form.assigned_count} onChange={e => setForm(f => ({ ...f, assigned_count: Math.min(parseInt(e.target.value) || 0, remaining) }))} /></div>
-      </div>
-      <DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={handleSubmit} disabled={submitting} className="bg-[#800000] hover:bg-[#9a1919] text-white">{submitting ? 'Assigning...' : 'Assign'}</Button></DialogFooter>
-    </DialogContent></Dialog>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Assign: {item.target_count} {item.activity_type} ({item.solution_category || 'General'})</DialogTitle></DialogHeader>
+        <p className="text-sm text-gray-500">Assigned: {item.redistributed_total || 0} | <span className="text-orange-600 font-semibold">Remaining: {remaining}</span></p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Assign To</Label>
+            <Select value={form.assign_type} onValueChange={v => setForm(f => ({ ...f, assign_type: v, assigned_to_name: '', team_name: '' }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="person">Individual Salesperson</SelectItem>
+                <SelectItem value="team">Sales Team</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.assign_type === 'person' && (
+            <div>
+              <Label className="text-xs">Salesperson</Label>
+              <Select value={form.assigned_to_name} onValueChange={v => setForm(f => ({ ...f, assigned_to_name: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select salesperson" /></SelectTrigger>
+                <SelectContent>{salespersons.map(sp => <SelectItem key={sp.name} value={sp.name}>{sp.name} ({sp.opp_count || 0} opps)</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {form.assign_type === 'team' && (
+            <div>
+              <Label className="text-xs">Team (HOD will redistribute to members)</Label>
+              <Select value={form.assigned_to_name} onValueChange={v => {
+                const team = teamOptions.find(t => t.name === v);
+                setForm(f => ({ ...f, assigned_to_name: v, team_name: v, notes: team ? `Team: ${team.manager_name || v} (${team.member_count || 0} members)` : '' }));
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select team" /></SelectTrigger>
+                <SelectContent>
+                  {teamOptions.map(t => (
+                    <SelectItem key={t.name} value={t.name}>{t.name} {t.manager_name ? `(${t.manager_name})` : ''} - {t.member_count || t.members?.length || 0} members</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.team_name && teamOptions.find(t => t.name === form.team_name)?.members && (
+                <div className="mt-2 p-2 bg-gray-50 rounded-lg text-xs">
+                  <p className="font-medium text-gray-600 mb-1">Team Members:</p>
+                  {teamOptions.find(t => t.name === form.team_name)?.members?.map(m => (
+                    <p key={m.name} className="text-gray-500">{m.name} - {m.job_title || 'Member'}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="text-xs">Count (max {remaining})</Label>
+            <Input type="number" value={form.assigned_count} onChange={e => setForm(f => ({ ...f, assigned_count: Math.min(parseInt(e.target.value) || 0, remaining) }))} max={remaining} />
+          </div>
+          <div>
+            <Label className="text-xs">Notes (optional)</Label>
+            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Focus on enterprise accounts" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting || !form.assigned_to_name} className="bg-[#800000] hover:bg-[#9a1919] text-white">
+            {submitting ? 'Assigning...' : form.assign_type === 'team' ? 'Assign to Team' : 'Assign to Person'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
