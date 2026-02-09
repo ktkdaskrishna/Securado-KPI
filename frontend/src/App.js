@@ -25,6 +25,7 @@ import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
 import AnalyticsPage from './components/crm/AnalyticsPage';
 import PerformanceHubPage from './components/crm/PerformanceHubPage';
 import IncentiveCalcPage from './components/crm/IncentiveCalcPage';
+import OrgStructurePage from './components/crm/OrgStructurePage';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
