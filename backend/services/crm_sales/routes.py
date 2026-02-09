@@ -1766,10 +1766,18 @@ async def list_activities(
     }
     app_query = {"org_id": org_id}
     
-    # Apply RBAC filter to activities (filter by assigned_user)
-    if rbac_filter and "owner_name" in rbac_filter:
-        canonical_query["assigned_user"] = rbac_filter["owner_name"]
-        app_query["owner_name"] = rbac_filter["owner_name"]
+    # Apply RBAC filter to activities
+    if rbac_filter:
+        if "$or" in rbac_filter:
+            # Complex filter (e.g., assigned_user OR owner_name)
+            canonical_query.update(rbac_filter)
+            app_query.update(rbac_filter)
+        elif "owner_name" in rbac_filter:
+            canonical_query["assigned_user"] = rbac_filter["owner_name"]
+            app_query["owner_name"] = rbac_filter["owner_name"]
+        elif "assigned_user" in rbac_filter:
+            canonical_query["assigned_user"] = rbac_filter["assigned_user"]
+            app_query.update(rbac_filter)
     
     if opportunity_id:
         canonical_query = {
