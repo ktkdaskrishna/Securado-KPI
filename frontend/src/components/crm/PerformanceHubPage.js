@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { targetAPI } from '../../lib/api';
+import { targetAPI, crmAPI } from '../../lib/api';
 import { useRBAC } from '../../lib/RBACContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
