@@ -407,6 +407,112 @@ async def delete_redistribution(redist_id: str, current_user: dict = Depends(get
     return {"success": True}
 
 
+
+# ==================== MY DATA (role-specific) ====================
+
+@actuals_router.get("/my-data")
+async def get_my_data(current_user: dict = Depends(get_current_user)):
+    """Get role-specific data for the current user from Odoo"""
+    canonical_db = get_canonical_db()
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    user_name = current_user.get("name", "")
+    user_email = current_user.get("email", "")
+
+    # Determine user's role context
+    user_record = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+    roles = user_record.get("roles", []) if user_record else []
+
+    is_admin = "admin" in roles or "sales_admin" in roles
+    is_pd = "product_director" in roles or "product_manager" in roles
+    is_sd = "sales_director" in roles
+    is_rep = not is_admin and not is_pd and not is_sd
+
+    result = {
+        "user_name": user_name,
+        "user_email": user_email,
+        "roles": roles,
+        "is_admin": is_admin,
+        "is_product_director": is_pd,
+        "is_sales_director": is_sd,
+        "is_sales_rep": is_rep,
+    }
+
+    if is_pd:
+        # Product Director: show opportunities under my management
+        pm_opps = await canonical_db.opportunities.aggregate([
+            {"$match": {"product_manager": {"$regex": user_name, "$options": "i"}}},
+            {"$group": {
+                "_id": None,
+                "total_pipeline": {"$sum": "$amount"},
+                "opp_count": {"$sum": 1},
+                "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
+                "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            }}
+        ]).to_list(1)
+
+        result["pm_summary"] = pm_opps[0] if pm_opps else {"total_pipeline": 0, "opp_count": 0, "won_count": 0, "won_amount": 0}
+        if result["pm_summary"].get("_id"):
+            del result["pm_summary"]["_id"]
+
+        # My categories
+        cats = await canonical_db.opportunities.distinct("solution_category", {"product_manager": {"$regex": user_name, "$options": "i"}})
+        result["my_categories"] = [c for c in cats if c]
+
+        # My salespersons
+        sp_pipeline = [
+            {"$match": {"product_manager": {"$regex": user_name, "$options": "i"}, "owner_name": {"$ne": None}}},
+            {"$group": {"_id": "$owner_name", "count": {"$sum": 1}, "pipeline": {"$sum": "$amount"}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 20}
+        ]
+        result["my_salespersons"] = [{"name": s["_id"], "opp_count": s["count"], "pipeline": s["pipeline"]} for s in await canonical_db.opportunities.aggregate(sp_pipeline).to_list(20)]
+
+        # My plans
+        plans = await app_db.target_plans.find({"product_manager_name": {"$regex": user_name, "$options": "i"}, "org_id": org_id}).to_list(10)
+        result["my_plans"] = serialize_doc(plans)
+
+        # My plan items
+        for plan in result["my_plans"]:
+            items = await app_db.target_plan_items.find({"revenue_plan_id": plan["id"], "org_id": org_id}).to_list(100)
+            plan["items"] = serialize_doc(items)
+
+    if is_rep or (not is_admin and not is_sd and not is_pd):
+        # Sales Rep: show my assigned targets, activities, accounts
+        # My opportunities
+        my_opps = await canonical_db.opportunities.aggregate([
+            {"$match": {"owner_name": {"$regex": user_name, "$options": "i"}}},
+            {"$group": {
+                "_id": None,
+                "total_pipeline": {"$sum": "$amount"},
+                "opp_count": {"$sum": 1},
+                "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
+                "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            }}
+        ]).to_list(1)
+        result["my_opp_summary"] = my_opps[0] if my_opps else {"total_pipeline": 0, "opp_count": 0, "won_count": 0, "won_amount": 0}
+        if result["my_opp_summary"].get("_id"):
+            del result["my_opp_summary"]["_id"]
+
+        # My activities from Odoo
+        my_acts = await canonical_db.activities.aggregate([
+            {"$match": {"assigned_user": {"$regex": user_name, "$options": "i"}}},
+            {"$group": {"_id": "$activity_type", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ]).to_list(20)
+        result["my_activities"] = [{"type": a["_id"], "count": a["count"]} for a in my_acts]
+
+        # My accounts
+        my_accts = await canonical_db.accounts.count_documents({"owner_name": {"$regex": user_name, "$options": "i"}})
+        result["my_accounts_count"] = my_accts
+
+        # Redistributed tasks assigned to me
+        my_tasks = await app_db.target_redistributions.find({"assigned_to_name": {"$regex": user_name, "$options": "i"}, "org_id": org_id}).to_list(100)
+        result["my_assigned_tasks"] = serialize_doc(my_tasks)
+
+    return result
+
+
 # ==================== ACTUALS (from Odoo data) ====================
 
 @actuals_router.get("/by-product-manager")
