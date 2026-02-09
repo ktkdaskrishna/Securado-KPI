@@ -134,7 +134,7 @@ export default function PerformanceHubPage() {
         </TabsList>
 
         {/* ===== CEO VIEW (Admin/SD only) ===== */}
-        {(isAdmin || isSD) && (
+        {showExecutiveTabs && (
           <TabsContent value="ceo" className="mt-4 space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card className="lg:col-span-2">
@@ -174,7 +174,7 @@ export default function PerformanceHubPage() {
         )}
 
         {/* ===== PM PLAN BUILDER (Admin/SD) ===== */}
-        {(isAdmin || isSD) && (
+        {showExecutiveTabs && (
           <TabsContent value="pm" className="mt-4 space-y-4">
             <PlanBuilderView selectedPlan={selectedPlan} planItems={planItems} redistributions={redistributions}
               onAddItem={() => setShowAddItem(true)} onRedistribute={setShowRedistribute}
@@ -185,7 +185,7 @@ export default function PerformanceHubPage() {
         )}
 
         {/* ===== SALES DIRECTOR (Admin/SD) ===== */}
-        {(isAdmin || isSD) && (
+        {showExecutiveTabs && (
           <TabsContent value="sd" className="mt-4 space-y-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Award className="h-4 w-4 text-yellow-500" /> Salesperson Performance (Odoo)</CardTitle></CardHeader>
@@ -209,7 +209,7 @@ export default function PerformanceHubPage() {
         )}
 
         {/* ===== MARKETING (Admin/SD) ===== */}
-        {(isAdmin || isSD) && <TabsContent value="marketing" className="mt-4"><MarketingView /></TabsContent>}
+        {showExecutiveTabs && <TabsContent value="marketing" className="mt-4"><MarketingView /></TabsContent>}
 
         {/* ===== MY PLAN (Product Director) ===== */}
         {isPD && (
