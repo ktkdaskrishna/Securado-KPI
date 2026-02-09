@@ -340,6 +340,7 @@ app.include_router(target_lookups_router, prefix="/api")
 app.include_router(target_plans_router, prefix="/api")
 app.include_router(target_actuals_router, prefix="/api")
 app.include_router(target_alerts_router, prefix="/api")
+app.include_router(org_router, prefix="/api")
 
 
 # Root endpoint
