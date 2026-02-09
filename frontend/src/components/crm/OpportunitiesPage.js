@@ -1217,7 +1217,7 @@ export function OpportunitiesPage() {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const { formatCurrency } = useCurrency();
-  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [] });
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [], productDirectors: [], solutionCategories: [] });
 
   // Initialize filters from URL params
   const getInitialFilters = () => ({
