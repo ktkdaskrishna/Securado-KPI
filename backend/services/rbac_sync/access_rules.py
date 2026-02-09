@@ -118,13 +118,7 @@ class AccessRuleEngine:
         import re as _re
         # Normalize whitespace in user_name (JWT may have stale data)
         user_name = _re.sub(r'\s+', ' ', user_name).strip()
-            org_id: Organization ID
-            entity_type: Type of entity (opportunity, account, activity, etc.)
-            user_email: User's email for RBAC lookup (more reliable than name)
-            
-        Returns:
-            MongoDB query filter dict
-        """
+        
         # First check for local permission override
         override_query = {
             "org_id": org_id,
