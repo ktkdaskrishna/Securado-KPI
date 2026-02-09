@@ -558,6 +558,10 @@ async def get_dashboard_stats(
         query["account_name"] = account
     if stage:
         query["stage"] = stage
+    if product_manager:
+        query["product_manager"] = {"$regex": f"^{product_manager}$", "$options": "i"}
+    if solution_category:
+        query["solution_category"] = solution_category
     
     opps = await canonical_db.opportunities.find(query).to_list(10000)
     
