@@ -234,11 +234,13 @@ async def list_opportunities(
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     stage: Optional[str] = None,
-    year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
-    quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
-    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
     team_id: Optional[str] = Query(None, description="Filter by team ID"),
-    account: Optional[str] = Query(None, description="Filter by account name"),
+    account: Optional[str] = Query(None, description="Filter by account"),
+    product_manager: Optional[str] = Query(None, description="Filter by product director"),
+    solution_category: Optional[str] = Query(None, description="Filter by solution category"),
     date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
