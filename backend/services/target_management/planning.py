@@ -416,12 +416,15 @@ async def get_my_data(current_user: dict = Depends(get_current_user)):
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
-    user_name = current_user.get("name", "")
     user_email = current_user.get("email", "")
 
-    # Determine user's role context
+    # Get fresh user record from DB (JWT name may be stale)
     user_record = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
     roles = user_record.get("roles", []) if user_record else []
+    
+    # Use DB name, normalize whitespace
+    import re
+    user_name = re.sub(r'\s+', ' ', (user_record.get("name") if user_record else current_user.get("name", ""))).strip()
 
     is_admin = "admin" in roles or "sales_admin" in roles
     is_pd = "product_director" in roles or "product_manager" in roles
