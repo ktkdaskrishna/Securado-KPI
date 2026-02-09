@@ -563,6 +563,50 @@ async def get_current_user_rbac(
         odoo_groups = users_rbac_record.get("odoo_group_names", [])
         logger.info(f"User {email} found in users_rbac with groups: {odoo_groups}")
         
+        # If odoo_groups is empty, fall back to app-level roles
+        if not odoo_groups:
+            app_user = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+            app_roles_list = app_user.get("roles", []) if app_user else []
+            if app_roles_list:
+                logger.info(f"User {email} has empty odoo_groups, using app roles: {app_roles_list}")
+                # Use same role_perms mapping as above
+                role_perms = {
+                    "admin": {"perms": ["admin:*", "view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+                        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+                        "view_kpis", "manage_kpis", "view_users", "manage_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile", "system_admin"], "access": "all"},
+                    "sales_director": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+                        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+                        "view_kpis", "manage_kpis", "view_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+                    "sales_manager": {"perms": ["view_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts",
+                        "view_activities", "manage_activities", "view_goals", "view_teams", "view_kpis", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+                    "sales_user_own": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+                    "sales_user_all": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+                    "executive": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+                    "product_manager": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_kpis", "view_analytics", "view_profile"], "access": "all"},
+                    "accountant": {"perms": ["view_dashboard", "view_accounts", "view_invoices", "manage_invoices", "view_analytics", "view_profile"], "access": "all"},
+                    "billing": {"perms": ["view_dashboard", "view_invoices", "manage_invoices", "view_profile"], "access": "all"},
+                }
+                permissions = set(["view_dashboard", "view_profile"])
+                resolved_roles = []
+                record_access = "own"
+                for role in app_roles_list:
+                    if role in role_perms:
+                        permissions.update(role_perms[role]["perms"])
+                        resolved_roles.append(role)
+                        if role_perms[role]["access"] == "all":
+                            record_access = "all"
+                return {
+                    "user_id": users_rbac_record.get("odoo_user_id") or current_user.get("id"),
+                    "name": current_user.get("name"),
+                    "app_roles": resolved_roles or app_roles_list,
+                    "effective_permissions": list(permissions),
+                    "record_access": record_access,
+                    "field_access": "all" if any(r in ["admin", "sales_admin", "sales_director"] for r in app_roles_list) else "standard",
+                    "hidden_fields": [],
+                    "rbac_synced": True,
+                    "source": "app_roles_fallback_from_rbac"
+                }
+        
         # Determine access level from groups (highest wins)
         access_level = "user"  # Default
         record_access = "own"  # Default to own records only
