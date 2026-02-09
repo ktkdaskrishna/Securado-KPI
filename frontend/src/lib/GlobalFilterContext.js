@@ -4,15 +4,17 @@ import { analyticsAPI } from './api';
 
 // Default filter state
 const defaultFilters = {
-  timePeriod: 'all',        // all, year, quarter, month, week
-  year: null,               // 2024, 2025, etc.
-  quarter: null,            // Q1, Q2, Q3, Q4
-  month: null,              // 1-12
-  salesRep: null,           // owner_name
-  team: null,               // team_id
-  account: null,            // account_id or account_name
-  stage: null,              // stage name
-  dateField: 'create_date', // which date to filter on: close_date, create_date
+  timePeriod: 'all',
+  year: null,
+  quarter: null,
+  month: null,
+  salesRep: null,
+  team: null,
+  account: null,
+  stage: null,
+  dateField: 'create_date',
+  productDirector: null,    // Product Director/Manager filter
+  solutionCategory: null,   // Solution category filter
 };
 
 const GlobalFilterContext = createContext(null);
