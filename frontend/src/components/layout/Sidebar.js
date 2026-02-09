@@ -130,6 +130,7 @@ const defaultNavigation = {
     { id: 'invoices', name: 'Invoices', href: '/invoices', icon: 'FileText', default: true },
     { id: 'performance', name: 'Performance Hub', href: '/performance', icon: 'Crosshair', default: true },
     { id: 'incentives', name: 'Incentives', href: '/incentives', icon: 'DollarSign', default: true },
+    { id: 'org-structure', name: 'Organization', href: '/org-structure', icon: 'Building2', default: true },
     { id: 'profile', name: 'My Profile', href: '/profile', icon: 'User', default: true },
   ],
   etl: [
