@@ -245,21 +245,19 @@ class AccessRuleEngine:
                 
                 logger.info(f"User {normalized_name} is Product Director - applying product_manager filter (pattern: {pm_pattern})")
                 if entity_type in ["opportunity", "lead"]:
-                    return {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
+                    return {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
                 elif entity_type == "activity":
-                    # PD sees activities linked to their opportunities
                     from libs.database import get_canonical_db
                     c_db = get_canonical_db()
                     opp_ids = await c_db.opportunities.distinct(
-                        "canonical_id", {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
+                        "canonical_id", {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
                     )
                     return {"opportunity_id": {"$in": opp_ids}} if opp_ids else {}
                 elif entity_type == "invoice":
-                    # PD sees invoices for accounts in their product scope
                     from libs.database import get_canonical_db
                     c_db = get_canonical_db()
                     acct_names = await c_db.opportunities.distinct(
-                        "account_name", {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
+                        "account_name", {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
                     )
                     acct_names = [a for a in acct_names if a]
                     return {"account_name": {"$in": acct_names}} if acct_names else {}
