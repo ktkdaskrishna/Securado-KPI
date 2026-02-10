@@ -369,6 +369,16 @@ export default function PerformanceHubPage() {
       {showExecutiveTabs && <CreatePlanDialog open={showCreatePlan} onClose={() => setShowCreatePlan(false)} onCreated={() => { loadData(); setShowCreatePlan(false); }} productManagers={productManagers} />}
       {selectedPlan && <AddItemDialog open={showAddItem} onClose={() => setShowAddItem(false)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowAddItem(false); }} planId={selectedPlan.id} solutionCats={isPD ? solutionCats.filter(c => (myData?.my_categories || []).includes(c.name)) : solutionCats} activityTypes={activityTypes} />}
       {showRedistribute && <RedistributeDialog open={!!showRedistribute} onClose={() => setShowRedistribute(null)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowRedistribute(null); }} item={showRedistribute} salespersons={isPD ? (myData?.my_salespersons || []).map(s => ({...s, total_pipeline: s.pipeline || 0})) : salespersons} />}
+      <AdvancedFilterBuilder open={showAdvancedFilter} onClose={() => setShowAdvancedFilter(false)}
+        currentFilters={{ year: yearFilter, productDirector: pmFilter, solutionCategory: catFilter }}
+        filterOptions={{ productDirectors: productManagers.map(p => p.name), solutionCategories: solutionCats.map(c => c.name), salespersons: salespersons.map(s => s.name) }}
+        onApply={(filters) => {
+          if (filters.year) setYearFilter(filters.year);
+          if (filters.productDirector) setPmFilter(filters.productDirector);
+          if (filters.solutionCategory) setCatFilter(filters.solutionCategory);
+          if (filters.quarter) setYearFilter(''); // Reset year if quarter set
+        }}
+      />
     </div>
   );
 }
