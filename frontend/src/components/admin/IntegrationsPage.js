@@ -27,7 +27,6 @@ function SyncOverview() {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(null);
-  const [webhookConfig, setWebhookConfig] = useState(null);
 
   useEffect(() => {
     targetAPI.getHubOverview().then(r => {
