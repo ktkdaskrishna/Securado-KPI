@@ -234,6 +234,9 @@ export default function PerformanceHubPage() {
         </div>;
       })}</div>}
 
+      {/* CEO RAG Summary */}
+      {showExecutiveTabs && <CeoSummaryCard />}
+
       {/* Tabs */}
       <Tabs value={tab || defaultTab} onValueChange={setTab}>
         <TabsList>
