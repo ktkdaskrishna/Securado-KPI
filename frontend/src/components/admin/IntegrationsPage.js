@@ -148,7 +148,6 @@ export default function IntegrationsPage() {
           <TabsTrigger value="browser">Model Browser</TabsTrigger>
           <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
           <TabsTrigger value="runs">Run History</TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="rbac">RBAC Sync</TabsTrigger>
           <TabsTrigger value="quality">Data Quality</TabsTrigger>
           <TabsTrigger value="datalake">Data Lake</TabsTrigger>
