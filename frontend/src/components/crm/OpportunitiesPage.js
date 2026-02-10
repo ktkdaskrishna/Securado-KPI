@@ -1623,6 +1623,11 @@ export function OpportunitiesPage() {
         onClose={() => setDetailSheetOpen(false)}
         formatCurrency={formatCurrency}
       />
+      <AdvancedFilterBuilder open={showAdvancedFilter} onClose={() => setShowAdvancedFilter(false)}
+        currentFilters={filters}
+        filterOptions={{ productDirectors: filterOptions.productDirectors, solutionCategories: filterOptions.solutionCategories, salespersons: filterOptions.salesReps }}
+        onApply={(newFilters) => { setFilters(prev => ({ ...prev, ...newFilters })); setCurrentPage(0); }}
+      />
     </div>
   );
 }
