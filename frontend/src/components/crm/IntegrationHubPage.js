@@ -209,40 +209,14 @@ function SourceDetail({ overview, onBack, onRefresh }) {
           )}
         </TabsContent>
 
-        {/* DATA MAPPING */}
+        {/* DATA MAPPING - Full drag-and-drop visual editor */}
         <TabsContent value="mapping" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><GitMerge className="h-4 w-4 text-[#800000]" /> Field Mappings (Odoo → CRM)</CardTitle></CardHeader>
-            <CardContent>
-              {mappings.length > 0 ? (
-                <Table>
-                  <TableHeader><TableRow><TableHead>Mapping</TableHead><TableHead>Source Model</TableHead><TableHead>Target</TableHead><TableHead>Fields</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {mappings.map(m => (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-medium text-sm">{m.name}</TableCell>
-                        <TableCell className="text-xs text-gray-500 font-mono">{m.source_model}</TableCell>
-                        <TableCell className="text-xs text-gray-500">{m.target_entity}</TableCell>
-                        <TableCell><Badge variant="secondary" className="text-xs">{m.field_mappings?.length || 0} fields</Badge></TableCell>
-                        <TableCell><Badge variant={m.status === 'active' ? 'default' : 'secondary'} className={`text-xs ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700' : ''}`}>{m.status || 'active'}</Badge></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8">
-                  <GitMerge className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-400 text-sm">Mappings are auto-configured from ETL templates.</p>
-                  <p className="text-gray-300 text-xs mt-1">Advanced mapping editor available in Settings → Mappings</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <MappingsPage />
         </TabsContent>
 
-        {/* MODEL BROWSER */}
+        {/* MODEL BROWSER - Full Odoo model explorer */}
         <TabsContent value="browser" className="mt-4">
-          <ModelBrowserInline />
+          <OdooModelBrowserPage />
         </TabsContent>
 
         {/* SYNC LOG */}
