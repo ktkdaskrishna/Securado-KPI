@@ -276,7 +276,18 @@ class AccessRuleEngine:
         
         elif access_level == AccessLevel.USER:
             # User sees only their own records
-            return self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
+            owner_filter = self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
+            # For invoices: resolve account names from user's opportunities
+            if owner_filter.get("_needs_account_resolve"):
+                from libs.database import get_canonical_db
+                c_db = get_canonical_db()
+                pat = owner_filter.get("owner_pattern", f"^{user_name}$")
+                acct_names = await c_db.opportunities.distinct(
+                    "account_name", {"owner_name": {"$regex": pat, "$options": "i"}}
+                )
+                acct_names = [a for a in acct_names if a]
+                return {"account_name": {"$in": acct_names}} if acct_names else {"_id": None}
+            return owner_filter
         
         else:
             # Restricted - no access (empty result)
