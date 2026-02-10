@@ -492,6 +492,11 @@ async def get_my_data(current_user: dict = Depends(get_current_user)):
     # Use DB name, normalize whitespace
     import re
     user_name = re.sub(r'\s+', ' ', (user_record.get("name") if user_record else current_user.get("name", ""))).strip()
+    
+    # Resolve canonical Odoo name by email (app name may differ from Odoo name)
+    emp = await canonical_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+    if emp and emp.get("name"):
+        user_name = emp["name"]
 
     is_admin = "admin" in roles or "sales_admin" in roles
     is_pd = "product_director" in roles or "product_manager" in roles
