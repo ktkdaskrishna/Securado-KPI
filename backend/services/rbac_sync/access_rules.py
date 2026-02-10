@@ -119,6 +119,22 @@ class AccessRuleEngine:
         # Normalize whitespace in user_name (JWT may have stale data)
         user_name = _re.sub(r'\s+', ' ', user_name).strip()
         
+        # CRITICAL: Resolve canonical Odoo name from employees by email
+        # Ensures RBAC filters use the exact name Odoo uses (e.g., "Manickath Vimod Chandran" not "Vimod Chandran")
+        canonical_name = user_name
+        if user_email:
+            from libs.database import get_canonical_db
+            c_db = get_canonical_db()
+            emp = await c_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+            if emp and emp.get("name"):
+                canonical_name = emp["name"]
+                logger.info(f"Resolved canonical name: {user_name} -> {canonical_name}")
+            else:
+                su = await c_db.sales_users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+                if su and su.get("name"):
+                    canonical_name = su["name"]
+        user_name = canonical_name
+        
         # First check for local permission override
         override_query = {
             "org_id": org_id,
