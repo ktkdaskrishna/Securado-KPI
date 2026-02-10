@@ -135,8 +135,8 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
 
         {/* ETL Platform - System Admin only */}
-        <Route path="/integration-hub" element={<RBACGuard permission="system_admin"><IntegrationHubPage /></RBACGuard>} />
-        <Route path="/sync-center" element={<RBACGuard permission="system_admin"><IntegrationHubPage /></RBACGuard>} />
+        <Route path="/integration-hub" element={<Navigate to="/admin/integrations" replace />} />
+        <Route path="/sync-center" element={<Navigate to="/admin/integrations" replace />} />
         <Route path="/etl/connections" element={<RBACGuard permission="system_admin"><ConnectionsPage /></RBACGuard>} />
         <Route path="/etl/mappings" element={<RBACGuard permission="system_admin"><MappingEditor /></RBACGuard>} />
         <Route path="/etl/pipelines" element={<RBACGuard permission="system_admin"><PipelinesPage /></RBACGuard>} />
