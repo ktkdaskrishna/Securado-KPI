@@ -88,9 +88,21 @@ export default function PerformanceHubPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // Build filter params for API calls
+      const fParams = {};
+      if (yearFilter && yearFilter !== 'all') fParams.year = yearFilter;
+      if (pmFilter && pmFilter !== 'all') fParams.product_manager = pmFilter;
+
       const calls = [targetAPI.getMyData(), targetAPI.getAlerts(),
         targetAPI.getSolutionCategories(), targetAPI.getSalespersons(), targetAPI.getActivityTypes()];
-      if (canManage) calls.push(targetAPI.listRevenuePlans(), targetAPI.getActualsByPM(), targetAPI.getProductManagers());
+      if (canManage) {
+        const planParams = pmFilter && pmFilter !== 'all' ? { product_manager: pmFilter } : {};
+        calls.push(
+          targetAPI.listRevenuePlans(planParams),
+          targetAPI.getActualsByPM(pmFilter && pmFilter !== 'all' ? { product_manager: pmFilter } : {}),
+          targetAPI.getProductManagers()
+        );
+      }
       const results = await Promise.allSettled(calls);
       if (results[0].status === 'fulfilled') setMyData(results[0].value.data);
       if (results[1].status === 'fulfilled') setAlertsData(results[1].value.data);
@@ -103,7 +115,7 @@ export default function PerformanceHubPage() {
         if (results[7]?.status === 'fulfilled') setProductManagers(results[7].value.data);
       }
       try {
-        const collRes = await crmAPI.getReceivablesStats();
+        const collRes = await crmAPI.getReceivablesStats(yearFilter && yearFilter !== 'all' ? { year: yearFilter } : {});
         const stats = collRes.data?.stats || {};
         setCollection({
           by_state: {
