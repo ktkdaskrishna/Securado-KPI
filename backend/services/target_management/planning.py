@@ -292,6 +292,7 @@ async def create_revenue_plan(
 ):
     """CEO creates revenue target for a Product Manager"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
 
     doc = {
