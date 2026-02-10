@@ -283,25 +283,19 @@ class AccessRuleEngine:
             # Restricted - no access (empty result)
             return {"_id": None}  # Will match nothing
     
-    def _build_owner_filter(self, user_name: str, entity_type: str, user_email: str = None) -> Dict:
-        """Build filter for own records only"""
+    def _build_owner_filter(self, user_name: str, entity_type: str, user_email: str = None, name_pattern: str = None) -> Dict:
+        """Build filter for own records only. Uses name_pattern for OR matching multiple name variants."""
+        pat = name_pattern or f"^{user_name}$"
         if entity_type in ["opportunity", "lead"]:
-            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
         elif entity_type == "activity":
-            return {"$or": [
-                {"assigned_user": {"$regex": f"^{user_name}$", "$options": "i"}},
-                {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
-            ]}
+            return {"$or": [{"assigned_user": {"$regex": pat, "$options": "i"}}, {"owner_name": {"$regex": pat, "$options": "i"}}]}
         elif entity_type in ["account", "contact"]:
-            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
         elif entity_type == "invoice":
-            # For sales reps: filter invoices by accounts they own opportunities for
-            return {"$or": [
-                {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}},
-                {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
-            ]}
+            return {"$or": [{"salesperson": {"$regex": pat, "$options": "i"}}, {"owner_name": {"$regex": pat, "$options": "i"}}]}
         else:
-            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
     
     def _build_manager_filter(
         self, 
