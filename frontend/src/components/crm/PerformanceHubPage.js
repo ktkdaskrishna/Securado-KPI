@@ -320,7 +320,8 @@ export default function PerformanceHubPage() {
               <CardContent>{(plan.items || []).length > 0 ? <Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead>Notes</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader><TableBody>{(plan.items || []).map(item => { const remaining = (item.target_count || 0) - (item.redistributed_total || 0); return (
                 <TableRow key={item.id}><TableCell className="font-medium text-sm">{item.activity_type}</TableCell><TableCell className="text-sm text-gray-500">{item.solution_category || '-'}</TableCell><TableCell className="text-right font-semibold">{item.target_count} {remaining > 0 && <span className="text-xs text-red-500">({remaining} unassigned)</span>}</TableCell><TableCell className="text-sm text-gray-400">{item.notes || '-'}</TableCell>
                   <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedPlan(plan); setShowRedistribute(item); }}>Assign</Button><Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500" onClick={() => targetAPI.deletePlanItem(item.id).then(() => { toast.success('Deleted'); loadData(); })}><Trash2 className="h-3 w-3" /></Button></div></TableCell></TableRow>); })}</TableBody></Table> : <p className="text-gray-400 text-sm py-4 text-center">No items yet. Click "Add Activity Plan" to define targets.</p>}</CardContent>
-            </Card>))}
+            </Card>
+            </React.Fragment>))}
           {(myData.my_plans || []).length === 0 && <Card><CardContent className="p-8 text-center text-gray-400">No plans assigned yet.</CardContent></Card>}
         </TabsContent>}
 
