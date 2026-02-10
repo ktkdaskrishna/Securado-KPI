@@ -322,13 +322,10 @@ export const targetAPI = {
   createFilterPreset: (data) => api.post('/filter-presets', data),
   deleteFilterPreset: (id) => api.delete(`/filter-presets/${id}`),
 
-  // Integration Hub
+  // Integration Hub (sync overview only - webhooks handled by original odoo_rbac)
   getHubOverview: () => api.get('/integration-hub/overview'),
   updateSyncSchedule: (entityId, data) => api.put(`/integration-hub/schedule/${entityId}`, data),
   triggerSync: (entityId) => api.post(`/integration-hub/sync/${entityId}`),
-  getWebhookConfig: () => api.get('/integration-hub/webhook/config'),
-  getWebhookQueue: (limit) => api.get('/integration-hub/webhook/queue', { params: { limit } }),
-  processWebhookQueue: () => api.post('/integration-hub/webhook/process-queue'),
   getSyncHistory: (params) => api.get('/integration-hub/history', { params }),
 };
 
