@@ -30,14 +30,10 @@ function SyncOverview() {
   const [webhookConfig, setWebhookConfig] = useState(null);
 
   useEffect(() => {
-    Promise.allSettled([
-      targetAPI.getHubOverview(),
-      targetAPI.getWebhookConfig()
-    ]).then(([ovR, whR]) => {
-      if (ovR.status === 'fulfilled') setOverview(ovR.value.data);
-      if (whR.status === 'fulfilled') setWebhookConfig(whR.value.data);
+    targetAPI.getHubOverview().then(r => {
+      setOverview(r.data);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleSync = async (entityId) => {
