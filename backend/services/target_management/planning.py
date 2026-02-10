@@ -226,6 +226,7 @@ async def get_sales_teams(current_user: dict = Depends(get_current_user)):
 @plans_router.get("/revenue")
 async def list_revenue_plans(
     period: Optional[str] = None,
+    product_manager: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """List all revenue plans (CEO-level view)"""
@@ -236,6 +237,8 @@ async def list_revenue_plans(
     query = {"org_id": org_id, "plan_type": "revenue"}
     if period:
         query["period"] = period
+    if product_manager:
+        query["product_manager_name"] = {"$regex": f"^{product_manager}$", "$options": "i"}
 
     plans = await app_db.target_plans.find(query).sort("created_at", -1).to_list(100)
     serialized = serialize_doc(plans)
