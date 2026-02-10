@@ -292,7 +292,9 @@ class AccessRuleEngine:
         elif entity_type in ["account", "contact"]:
             return {"owner_name": {"$regex": pat, "$options": "i"}}
         elif entity_type == "invoice":
-            return {"$or": [{"salesperson": {"$regex": pat, "$options": "i"}}, {"owner_name": {"$regex": pat, "$options": "i"}}]}
+            # Invoices don't have salesperson/owner_name - must match by account_name
+            # Get accounts from user's opportunities
+            return {"_needs_account_resolve": True, "owner_pattern": pat}
         else:
             return {"owner_name": {"$regex": pat, "$options": "i"}}
     
