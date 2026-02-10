@@ -236,13 +236,14 @@ class AccessRuleEngine:
             app_roles = app_user.get("roles", []) if app_user else []
             
             if "product_director" in app_roles or "product_manager" in app_roles:
-                # Use the canonical name from DB (not JWT which might have stale data)
-                db_name = app_user.get("name", user_name) if app_user else user_name
-                # Normalize whitespace for matching
+                # Use canonical name (resolved from Odoo employees) for PM matching
                 import re
-                normalized_name = re.sub(r'\s+', ' ', db_name).strip()
+                normalized_name = canonical_name  # Already resolved from employees table above
                 
-                logger.info(f"User {normalized_name} is Product Director - applying product_manager filter")
+                # Also check with name_pattern for broader matching
+                pm_pattern = "|".join([f"^{re.escape(n)}$" for n in all_names])
+                
+                logger.info(f"User {normalized_name} is Product Director - applying product_manager filter (pattern: {pm_pattern})")
                 if entity_type in ["opportunity", "lead"]:
                     return {"product_manager": {"$regex": f"^{normalized_name}$", "$options": "i"}}
                 elif entity_type == "activity":
