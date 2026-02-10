@@ -70,12 +70,6 @@ function SyncOverview() {
             <p className="text-xs text-gray-500">{overview?.connected ? 'Connected' : 'Not connected'} · {overview?.total_records?.toLocaleString()} records</p>
           </div>
         </div>
-        {webhookConfig && (
-          <div className="flex items-center gap-2">
-            <code className="text-[10px] bg-white px-2 py-1 rounded border font-mono text-gray-500 max-w-[300px] truncate">{webhookConfig.webhook_url}</code>
-            <Button size="sm" variant="outline" className="h-7" onClick={() => { navigator.clipboard.writeText(webhookConfig.webhook_url); toast.success('Webhook URL copied'); }}><Copy className="h-3 w-3" /></Button>
-          </div>
-        )}
       </div>
 
       {/* Entity sync table */}
