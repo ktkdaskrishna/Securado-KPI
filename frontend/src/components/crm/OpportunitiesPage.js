@@ -1469,6 +1469,12 @@ export function OpportunitiesPage() {
           categories={filterOptions.solutionCategories}
         />
       </PageFilters>
+      <FilterChipBar
+        filters={filters}
+        onClear={(key) => updateFilter(key, null)}
+        onClearAll={resetFilters}
+        onOpenAdvanced={() => setShowAdvancedFilter(true)}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
