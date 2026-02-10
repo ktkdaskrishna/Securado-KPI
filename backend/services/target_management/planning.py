@@ -308,6 +308,57 @@ async def create_revenue_plan(
     }
 
     await app_db.target_plans.insert_one(doc)
+    
+    # Auto-generate activity suggestions based on PD's historical data
+    pm_name = data.product_manager_name
+    if pm_name and data.target_amount > 0:
+        try:
+            # Get PD's historical metrics from Odoo
+            hist = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}}},
+                {"$group": {
+                    "_id": None,
+                    "total_opps": {"$sum": 1},
+                    "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                    "won_value": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", 0]}, 0]}}
+                }}
+            ]).to_list(1)
+            
+            h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0}
+            avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else data.target_amount / 10
+            win_rate = h["won_count"] / h["total_opps"] if h["total_opps"] > 0 else 0.25
+            
+            required_deals = max(1, round(data.target_amount / avg_deal)) if avg_deal > 0 else 10
+            demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
+            pocs = max(2, round(demos * 0.3))
+            calls = max(10, round(demos * 5))
+            meetings = max(5, round(demos * 2))
+            
+            suggestions = [
+                {"activity_type": "Demo", "count": demos, "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × 0.5", "accepted": False},
+                {"activity_type": "Proof of concept", "count": pocs, "formula": f"demos × 30%", "accepted": False},
+                {"activity_type": "Call", "count": calls, "formula": f"demos × 5", "accepted": False},
+                {"activity_type": "Meeting", "count": meetings, "formula": f"demos × 2", "accepted": False},
+            ]
+            
+            suggestion_doc = {
+                "id": generate_id(),
+                "org_id": org_id,
+                "revenue_plan_id": doc["id"],
+                "product_director_name": pm_name,
+                "revenue_target": data.target_amount,
+                "avg_deal_size": round(avg_deal, 2),
+                "win_rate": round(win_rate * 100, 1),
+                "required_deals": required_deals,
+                "pipeline_coverage": round(data.target_amount * 3, 2),
+                "suggestions": suggestions,
+                "status": "pending_review",
+                "created_at": now_utc()
+            }
+            await app_db.activity_suggestions.insert_one(suggestion_doc)
+        except Exception as e:
+            logger.error(f"Failed to generate activity suggestions: {e}")
+    
     return serialize_doc(doc)
 
 
