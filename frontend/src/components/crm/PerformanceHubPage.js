@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { targetAPI, crmAPI } from '../../lib/api';
 import { useRBAC } from '../../lib/RBACContext';
+import { AdvancedFilterBuilder, FilterChipBar } from '../layout/AdvancedFilterBuilder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
