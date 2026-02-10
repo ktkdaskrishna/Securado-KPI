@@ -160,7 +160,6 @@ export default function IntegrationsPage() {
         <TabsContent value="browser" className="mt-4"><OdooModelBrowserPage /></TabsContent>
         <TabsContent value="pipelines" className="mt-4"><PipelinesPage /></TabsContent>
         <TabsContent value="runs" className="mt-4"><RunsPage /></TabsContent>
-        <TabsContent value="webhooks" className="mt-4"><WebhookConfigPage /></TabsContent>
         <TabsContent value="rbac" className="mt-4"><RBACManagementPage /></TabsContent>
         <TabsContent value="quality" className="mt-4"><DataQualityPage /></TabsContent>
         <TabsContent value="datalake" className="mt-4"><DataLakePage /></TabsContent>
