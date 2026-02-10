@@ -313,7 +313,9 @@ export default function PerformanceHubPage() {
           </div>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm">My Solution Categories</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-2">{(myData.my_categories || []).map(c => <Badge key={c} variant="secondary" className="cursor-pointer hover:bg-gray-200" onClick={() => setCatFilter(c)}>{c}</Badge>)}</div></CardContent></Card>
           {(myData.my_plans || []).map(plan => (
-            <Card key={plan.id} className="border-[#800000]/20">
+            <React.Fragment key={plan.id}>
+            <SuggestionsCard planId={plan.id} onAccepted={loadData} />
+            <Card className="border-[#800000]/20">
               <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base">{plan.name} <Badge variant="outline" className="ml-2">OMR {(plan.target_amount || 0).toLocaleString()}</Badge></CardTitle><Button onClick={() => { setSelectedPlan(plan); setShowAddItem(true); }} className="bg-[#800000] hover:bg-[#9a1919] text-white"><Plus className="h-4 w-4 mr-1" /> Add Activity Plan</Button></div></CardHeader>
               <CardContent>{(plan.items || []).length > 0 ? <Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead>Notes</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader><TableBody>{(plan.items || []).map(item => { const remaining = (item.target_count || 0) - (item.redistributed_total || 0); return (
                 <TableRow key={item.id}><TableCell className="font-medium text-sm">{item.activity_type}</TableCell><TableCell className="text-sm text-gray-500">{item.solution_category || '-'}</TableCell><TableCell className="text-right font-semibold">{item.target_count} {remaining > 0 && <span className="text-xs text-red-500">({remaining} unassigned)</span>}</TableCell><TableCell className="text-sm text-gray-400">{item.notes || '-'}</TableCell>
