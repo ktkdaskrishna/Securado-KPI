@@ -284,56 +284,6 @@ function SourceDetail({ overview, onBack, onRefresh }) {
 }
 
 // Inline model browser
-function ModelBrowserInline() {
-  const [models, setModels] = useState([]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const connections = await etlAPI.listConnections();
-        if (connections.data?.length > 0) {
-          const connId = connections.data[0].id;
-          const schema = await etlAPI.getSchema(connId);
-          if (schema.data?.models) {
-            setModels(Object.entries(schema.data.models).map(([name, data]) => ({
-              name, fields: data.fields?.length || 0, description: data.description || ''
-            })));
-          }
-        }
-      } catch {} finally { setLoading(false); }
-    };
-    load();
-  }, []);
-
-  const filtered = models.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()));
-
-  if (loading) return <Skeleton className="h-64" />;
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2"><Search className="h-4 w-4 text-[#800000]" /> Odoo Models ({models.length})</CardTitle>
-          <div className="relative"><Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-gray-400" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search models..." className="pl-7 h-7 w-48 text-xs" /></div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0 max-h-[400px] overflow-y-auto">
-        <Table>
-          <TableHeader><TableRow><TableHead>Model Name</TableHead><TableHead className="text-right">Fields</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {filtered.slice(0, 50).map(m => (
-              <TableRow key={m.name}><TableCell className="text-sm font-mono">{m.name}</TableCell><TableCell className="text-right text-sm">{m.fields}</TableCell></TableRow>
-            ))}
-            {filtered.length === 0 && <TableRow><TableCell colSpan={2} className="text-center py-6 text-gray-400">{models.length === 0 ? 'No models discovered. Run schema discovery first.' : 'No matching models'}</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ==================== MAIN PAGE ====================
 export default function SyncCenterPage() {
   const [overview, setOverview] = useState(null);
