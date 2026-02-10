@@ -156,6 +156,7 @@ function AppRoutes() {
         <Route path="/admin/webhooks" element={<RBACGuard permission="system_admin"><WebhookConfigPage /></RBACGuard>} />
         <Route path="/admin/custom-fields" element={<RBACGuard permission="system_admin"><CustomFieldsPage /></RBACGuard>} />
         <Route path="/admin/data-quality" element={<RBACGuard permission="system_admin"><DataQualityPage /></RBACGuard>} />
+        <Route path="/admin/integrations" element={<RBACGuard permission="system_admin"><IntegrationsPage /></RBACGuard>} />
         <Route path="/help" element={<HelpPage />} />
       </Route>
 
