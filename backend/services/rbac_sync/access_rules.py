@@ -273,12 +273,11 @@ class AccessRuleEngine:
             # Restricted - no access (empty result)
             return {"_id": None}  # Will match nothing
     
-    def _build_owner_filter(self, user_name: str, entity_type: str) -> Dict:
+    def _build_owner_filter(self, user_name: str, entity_type: str, user_email: str = None) -> Dict:
         """Build filter for own records only"""
         if entity_type in ["opportunity", "lead"]:
             return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
         elif entity_type == "activity":
-            # Activities use assigned_user field from Odoo
             return {"$or": [
                 {"assigned_user": {"$regex": f"^{user_name}$", "$options": "i"}},
                 {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
@@ -286,7 +285,11 @@ class AccessRuleEngine:
         elif entity_type in ["account", "contact"]:
             return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
         elif entity_type == "invoice":
-            return {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
+            # For sales reps: filter invoices by accounts they own opportunities for
+            return {"$or": [
+                {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}},
+                {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            ]}
         else:
             return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
     
