@@ -7,13 +7,16 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import {
   Database, Wifi, WifiOff, Play, RefreshCw, CheckCircle2, AlertTriangle,
   Clock, ArrowLeft, Plus, Copy, Loader2, GitMerge, Search, History, Webhook, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Import original ETL components (keeping their full UI)
+import { MappingsPage } from '../etl/MappingsPage';
+import { OdooModelBrowserPage } from '../etl/OdooModelBrowserPage';
+import { RunsPage } from '../etl/RunsPage';
 
 // Source card on main view
 function SourceCard({ source, onClick }) {
