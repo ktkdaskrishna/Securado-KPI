@@ -82,6 +82,7 @@ const iconMap = {
   Activity,
   DollarSign,
   Crosshair,
+  RefreshCw,
 };
 
 // Permission requirements for each navigation item
