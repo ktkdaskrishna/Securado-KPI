@@ -42,7 +42,8 @@ import {
   HelpCircle,
   Activity,
   DollarSign,
-  Crosshair
+  Crosshair,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useRBAC } from '../../lib/RBACContext';
