@@ -581,8 +581,16 @@ async def get_my_data(current_user: dict = Depends(get_current_user)):
         my_accts = await canonical_db.accounts.count_documents({"owner_name": {"$regex": user_name, "$options": "i"}})
         result["my_accounts_count"] = my_accts
 
-        # Redistributed tasks assigned to me
-        my_tasks = await app_db.target_redistributions.find({"assigned_to_name": {"$regex": user_name, "$options": "i"}, "org_id": org_id}).to_list(100)
+        # Redistributed tasks assigned to me (search by canonical name AND app name)
+        app_name = (user_record.get("name", "") if user_record else "").strip()
+        name_patterns = list(set([user_name, app_name]))
+        or_conditions = [{"assigned_to_name": {"$regex": f"^{n}$", "$options": "i"}} for n in name_patterns if n]
+        
+        # Also check team assignments where user is a member
+        my_tasks = await app_db.target_redistributions.find({
+            "org_id": org_id,
+            "$or": or_conditions if or_conditions else [{"assigned_to_name": ""}]
+        }).to_list(100)
         result["my_assigned_tasks"] = serialize_doc(my_tasks)
 
     return result
