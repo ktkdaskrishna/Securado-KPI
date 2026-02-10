@@ -136,11 +136,7 @@ const defaultNavigation = {
     { id: 'profile', name: 'My Profile', href: '/profile', icon: 'User', default: true },
   ],
   etl: [
-    { id: 'integration-hub', name: 'Integration Hub', href: '/integration-hub', icon: 'Database', default: true },
-    { id: 'connections', name: 'Connections', href: '/etl/connections', icon: 'Link', default: false },
-    { id: 'model-browser', name: 'Model Browser', href: '/etl/model-browser', icon: 'Database', default: false },
-    { id: 'mappings', name: 'Mappings', href: '/etl/mappings', icon: 'GitMerge', default: false },
-    { id: 'pipelines', name: 'Pipelines', href: '/etl/pipelines', icon: 'Workflow', default: false },
+    { id: 'sync-center', name: 'Sync Center', href: '/sync-center', icon: 'RefreshCw', default: true },
   ],
   admin: [
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
