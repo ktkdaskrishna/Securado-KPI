@@ -1,23 +1,53 @@
-# Securado CRM - PRD
+# Securado CRM - PRD (Updated Feb 10, 2026)
 
-## Global Filter System (Option C - Smart + Advanced)
-- PD (Product Director) and Solution Category filters added to GlobalFilterContext
-- Filters work across: Opportunities, Dashboard, Performance Hub
-- URL param persistence for shareable links
-- Backend: `product_manager` and `solution_category` query params on opportunities + dashboard endpoints
+## Framework: Securado Enterprise KPI Framework
+Strategy → Activity → Revenue → Delivery → Cash → Capability
 
-## AI Analytics Conversion Fix
-- Was showing 313% (impossible). Now shows 35% (realistic)
-- Funnel: Lead 14.7% → Qualified 26.1% → Proposal 13.8% → Negotiation 10.4% → Won 35%
-- Fixed: uses total opps as denominator, includes all types (not just type=opportunity)
+## Current Implementation Status
 
-## Bluesheet Won = 100%
-- Won stage auto-returns 100% probability, skips calculation
+### Fully Implemented (✅)
+- Performance Hub with 7 role-based tabs + CEO RAG Summary
+- Auto-generated activity suggestions from PD historical data
+- Revenue cap rule (activity < 80% → revenue capped at 70%)
+- CEO Executive Summary (5 RAG signals + auto-insight)
+- RBAC with canonical name resolution (multi-name pattern matching)
+- 12 roles defined (Admin, ETL Admin, Sales Manager, Sales Rep, Sales Director, Product Director, System Admin, Finance, Marketing, Strategy, Operations, Support)
+- Advanced Filter Builder (Notion-style) with saved presets
+- Alert Center (6 alert types)
+- Organization Structure (Org Tree, Departments, Employees)
+- Global PD + Category filters across all pages
+- AI Analytics conversion rate fixed (65.6% Win Rate)
+- Bluesheet Won = 100%
+- Opportunities pagination (1039 total)
+- Backend ETL RBAC protection (403 for non-admins)
 
-## Organization Structure Page
-- 3 tabs: Org Tree, Departments, All Employees
-- 75 employees from Odoo with hierarchy
-- Archive/Activate toggle for inactive users
-- Cross-referenced with app accounts
+### Phase 2 (Ready to Build)
+- Collection Escalation Workflow (Day 0→30→45→60 ladder)
+- SD Scorecard (3 KPIs: Team Revenue 40% + Activity 30% + Collections 30%)
+- DSO Calculation
+- Finance KPIs (invoicing timeliness, costing approval)
 
-## All Tests: 9/9 passing
+### Phase 3 (Needs Additional Odoo Data)
+- Gross Margin % (needs cost/COGS data)
+- Billable Utilization % (needs timesheet/man-days)
+- Delivery cost vs planned (needs project costing)
+- Costing sheet validation workflow
+
+### Roles Coverage
+| Role | Performance Hub Tabs | Data Scope |
+|------|---------------------|-----------|
+| CEO/Admin | CEO View, PM Builder, SD, Activities, Collection, Incentive | All data |
+| Sales Director | CEO View, PM Builder, SD, Activities, Collection, Incentive | All CRM data |
+| Product Director | My Plan, My Team, Activities, Collection, Incentive | PM-scoped |
+| Sales Rep | My Targets, Activities, Collection | Own data only |
+| Finance | Collection | Invoice-scoped |
+| Marketing | (to be built) | Leads/campaigns |
+| Strategy | (to be built) | New logos |
+| Operations | (to be built) | Delivery tasks |
+
+## Key Files
+- `/app/backend/services/target_management/planning.py` - Planning APIs + CEO Summary + Revenue Cap
+- `/app/backend/services/rbac_sync/access_rules.py` - RBAC with canonical name resolution
+- `/app/frontend/src/components/crm/PerformanceHubPage.js` - Main UI
+- `/app/docs/BEHAVIOR_ENFORCEMENT_PLAN.md` - Full enforcement system design
+- `/app/docs/PERFORMANCE_HUB_SUMMARY.md` - Complete configuration doc
