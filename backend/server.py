@@ -323,9 +323,8 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(dlq_router, prefix="/api")
 
-# Odoo RBAC & Webhooks
+# Odoo RBAC
 app.include_router(odoo_rbac_router, prefix="/api")
-app.include_router(webhook_router, prefix="/api")
 
 # RBAC Sync (Hybrid RBAC Implementation)
 app.include_router(rbac_sync_router, prefix="/api")
