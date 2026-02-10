@@ -18,7 +18,6 @@ import { PipelinesPage } from '../etl/PipelinesPage';
 import { RunsPage } from '../etl/RunsPage';
 import { DataLakePage } from '../etl/DataLakePage';
 import { DLQPage } from '../etl/DLQPage';
-import { WebhookConfigPage } from '../admin/WebhookConfigPage';
 import { DataQualityPage } from '../admin/DataQualityPage';
 import RBACManagementPage from '../admin/RBACManagementPage';
 
