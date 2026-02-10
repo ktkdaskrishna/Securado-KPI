@@ -73,7 +73,8 @@ export default function PerformanceHubPage() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showRedistribute, setShowRedistribute] = useState(null);
   const [showAlerts, setShowAlerts] = useState(false);
-  const [drillData, setDrillData] = useState(null); // {title, type, data}
+  const [drillData, setDrillData] = useState(null);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   // Filters
   const [yearFilter, setYearFilter] = useState('');
   const [pmFilter, setPmFilter] = useState('');
