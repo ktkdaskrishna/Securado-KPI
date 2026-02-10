@@ -51,6 +51,7 @@ import { CustomFieldsPage } from './components/admin/CustomFieldsPage';
 import { DataQualityPage } from './components/admin/DataQualityPage';
 import RBACManagementPage from './components/admin/RBACManagementPage';
 import HelpPage from './components/admin/HelpPage';
+import IntegrationsPage from './components/admin/IntegrationsPage';
 
 import './App.css';
 
