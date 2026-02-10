@@ -306,6 +306,10 @@ export const targetAPI = {
   getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
   getAlerts: () => api.get('/alerts'),
   getMyData: () => api.get('/target-actuals/my-data'),
+  getRevenueCap: (planId) => api.get(`/target-actuals/revenue-cap/${planId}`),
+  getCeoSummary: () => api.get('/target-actuals/ceo-summary'),
+  getActivitySuggestions: (planId) => api.get(`/target-plans/revenue/${planId}/suggestions`),
+  acceptSuggestions: (planId, modifications) => api.post(`/target-plans/revenue/${planId}/suggestions/accept`, modifications),
 
   // Org Structure
   getOrgTree: () => api.get('/org-structure/tree'),
