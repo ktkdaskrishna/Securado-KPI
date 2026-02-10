@@ -98,6 +98,7 @@ const permissionRequirements = {
   'org-structure': null, // visible to all
   profile: null, // Always visible
   // ETL Platform - System Admin only
+  'integration-hub': 'system_admin',
   connections: 'system_admin',
   'model-browser': 'system_admin',
   mappings: 'system_admin',
