@@ -137,9 +137,7 @@ const defaultNavigation = {
     { id: 'org-structure', name: 'Organization', href: '/org-structure', icon: 'Building2', default: true },
     { id: 'profile', name: 'My Profile', href: '/profile', icon: 'User', default: true },
   ],
-  etl: [
-    { id: 'sync-center', name: 'Sync Center', href: '/sync-center', icon: 'RefreshCw', default: true },
-  ],
+  etl: [],
   admin: [
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
     { id: 'roles', name: 'Roles', href: '/admin/roles', icon: 'Shield', default: true },
