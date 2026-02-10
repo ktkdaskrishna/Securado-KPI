@@ -233,7 +233,7 @@ export function Sidebar() {
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
     if (section === 'crm') return true; // CRM always visible
-    if (section === 'etl') return hasPermission('system_admin'); // DATA SYNC - System Admin only
+    if (section === 'etl') return false; // Moved to Settings → Integrations
     if (section === 'admin') return hasPermission('manage_users') || hasPermission('system_admin');
     return true;
   };
