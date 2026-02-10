@@ -111,6 +111,7 @@ from services.target_management.planning import (
 )
 from services.target_management.alerts import alerts_router as target_alerts_router
 from services.target_management.org_structure import org_router
+from services.target_management.filter_presets import filter_presets_router
 
 
 @asynccontextmanager
