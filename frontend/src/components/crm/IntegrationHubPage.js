@@ -80,7 +80,6 @@ function SourceDetail({ overview, onBack, onRefresh }) {
     targetAPI.getWebhookQueue(30).then(r => setQueue(r.data)).catch(() => {});
     targetAPI.getSyncHistory({ limit: 30 }).then(r => setHistory(r.data)).catch(() => {});
     targetAPI.getWebhookConfig().then(r => setWebhookConfig(r.data)).catch(() => {});
-    etlAPI.listMappings().then(r => setMappings(r.data)).catch(() => {});
   }, []);
 
   const handleSync = async (entityId) => {
