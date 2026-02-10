@@ -312,6 +312,11 @@ export const targetAPI = {
   getDepartments: () => api.get('/org-structure/departments'),
   getEmployees: (params) => api.get('/org-structure/employees', { params }),
   toggleArchiveEmployee: (id) => api.patch(`/org-structure/employees/${id}/archive`),
+
+  // Filter Presets
+  listFilterPresets: () => api.get('/filter-presets'),
+  createFilterPreset: (data) => api.post('/filter-presets', data),
+  deleteFilterPreset: (id) => api.delete(`/filter-presets/${id}`),
 };
 
 // Events/DLQ APIs
