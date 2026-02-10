@@ -97,7 +97,7 @@ const permissionRequirements = {
   incentives: 'view_goals',
   'org-structure': null, // visible to all
   profile: null, // Always visible
-  // ETL Platform - System Admin only
+  // DATA SYNC - System Admin only
   'sync-center': 'system_admin',
   connections: 'system_admin',
   'model-browser': 'system_admin',
@@ -237,7 +237,7 @@ export function Sidebar() {
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
     if (section === 'crm') return true; // CRM always visible
-    if (section === 'etl') return hasPermission('system_admin'); // ETL Platform - System Admin only
+    if (section === 'etl') return hasPermission('system_admin'); // DATA SYNC - System Admin only
     if (section === 'admin') return hasPermission('manage_users') || hasPermission('system_admin');
     return true;
   };
@@ -371,7 +371,7 @@ export function Sidebar() {
             {hasSectionAccess('etl') && (
             <div>
               <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
-                ETL Platform
+                DATA SYNC
               </h4>
               <div className="space-y-3">
                 {defaultNavigation.etl.map((item) => {
@@ -525,12 +525,12 @@ export function Sidebar() {
             <Separator className="bg-white/10 my-4" />
           )}
 
-          {/* ETL Platform */}
+          {/* DATA SYNC */}
           {getVisibleItems(defaultNavigation.etl).length > 0 && (
             <div className="mb-6">
               {!collapsed && (
                 <h3 className="px-3 mb-2 text-xs font-semibold text-[#86c881] uppercase tracking-wider">
-                  ETL Platform
+                  DATA SYNC
                 </h3>
               )}
               <nav className="space-y-1">
