@@ -206,6 +206,23 @@ export default function PerformanceHubPage() {
         </div>
       </div>
 
+      {/* Active Filter Chips */}
+      {(yearFilter && yearFilter !== 'all' || pmFilter && pmFilter !== 'all' || catFilter && catFilter !== 'all') && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="h-3.5 w-3.5 text-gray-400" />
+          {yearFilter && yearFilter !== 'all' && (
+            <Badge variant="secondary" className="text-xs gap-1 pr-1">Year: {yearFilter} <button onClick={() => setYearFilter('')} className="ml-0.5 hover:text-red-500">&times;</button></Badge>
+          )}
+          {pmFilter && pmFilter !== 'all' && (
+            <Badge variant="secondary" className="text-xs gap-1 pr-1">PD: {pmFilter.split(' ').slice(-2).join(' ')} <button onClick={() => setPmFilter('')} className="ml-0.5 hover:text-red-500">&times;</button></Badge>
+          )}
+          {catFilter && catFilter !== 'all' && (
+            <Badge variant="secondary" className="text-xs gap-1 pr-1">Category: {catFilter} <button onClick={() => setCatFilter('')} className="ml-0.5 hover:text-red-500">&times;</button></Badge>
+          )}
+          <Button variant="ghost" size="sm" className="h-6 text-xs text-gray-400" onClick={() => { setYearFilter(''); setPmFilter(''); setCatFilter(''); }}>Clear All</Button>
+        </div>
+      )}
+
       {/* Alert Center */}
       {alertsData.summary?.total > 0 && canManage && (
         <button onClick={() => setShowAlerts(!showAlerts)} className={`w-full p-2.5 rounded-lg border flex items-center justify-between text-left ${alertsData.summary.critical > 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
