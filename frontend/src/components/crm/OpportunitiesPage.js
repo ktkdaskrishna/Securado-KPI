@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Search, Filter, GripVertical, DollarSign, User, Mail, Phone, Calendar, MessageSquare, Activity, Target, TrendingUp, AlertTriangle, CheckCircle, Plus, Send, Clock, Building2, Users, Tag, Briefcase, FileText, Check, X, Edit2, Maximize2, Minimize2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, AccountFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
+import { AdvancedFilterBuilder, FilterChipBar } from '../layout/AdvancedFilterBuilder';
 
 const STAGES = ['qualified', 'proposal', 'negotiation', 'review_negotiation', 'closed_won', 'closed_lost'];
 
