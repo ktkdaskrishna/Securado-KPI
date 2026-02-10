@@ -74,7 +74,6 @@ function SourceDetail({ overview, onBack, onRefresh }) {
   const [queue, setQueue] = useState({ items: [], pending: 0 });
   const [history, setHistory] = useState([]);
   const [webhookConfig, setWebhookConfig] = useState(null);
-  const [mappings, setMappings] = useState([]);
 
   useEffect(() => {
     targetAPI.getWebhookQueue(30).then(r => setQueue(r.data)).catch(() => {});
