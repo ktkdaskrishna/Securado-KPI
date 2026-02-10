@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { targetAPI, etlAPI } from '../../lib/api';
+import { targetAPI } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
