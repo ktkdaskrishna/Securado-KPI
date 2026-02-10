@@ -120,19 +120,29 @@ class AccessRuleEngine:
         user_name = _re.sub(r'\s+', ' ', user_name).strip()
         
         # CRITICAL: Resolve canonical Odoo name from employees by email
-        # Ensures RBAC filters use the exact name Odoo uses (e.g., "Manickath Vimod Chandran" not "Vimod Chandran")
+        # Keep both names (app name + Odoo name) for flexible matching
         canonical_name = user_name
+        all_names = [user_name]
         if user_email:
             from libs.database import get_canonical_db
             c_db = get_canonical_db()
             emp = await c_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
-            if emp and emp.get("name"):
+            if emp and emp.get("name") and emp["name"] != user_name:
                 canonical_name = emp["name"]
-                logger.info(f"Resolved canonical name: {user_name} -> {canonical_name}")
-            else:
-                su = await c_db.sales_users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
-                if su and su.get("name"):
-                    canonical_name = su["name"]
+                all_names.append(canonical_name)
+            su = await c_db.sales_users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+            if su and su.get("name") and su["name"] not in all_names:
+                all_names.append(su["name"])
+            # Also check opportunity owner_name for this user
+            opp_name = await c_db.opportunities.find_one({"$or": [{"owner_name": {"$regex": f"^{n}$", "$options": "i"}} for n in all_names]}, {"_id": 0, "owner_name": 1})
+            if opp_name and opp_name.get("owner_name") and opp_name["owner_name"] not in all_names:
+                all_names.append(opp_name["owner_name"])
+        
+        # Build a regex that matches ANY of the user's known names
+        name_pattern = "|".join([f"^{_re.escape(n)}$" for n in all_names])
+        logger.info(f"RBAC names for {user_email}: {all_names}")
+        
+        # Use canonical name for product_manager lookups, pattern for owner_name lookups
         user_name = canonical_name
         
         # First check for local permission override
