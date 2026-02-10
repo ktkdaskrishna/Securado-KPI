@@ -150,9 +150,12 @@ export default function PerformanceHubPage() {
     try {
       const p = { limit: 50, ...params };
       if (yearFilter && yearFilter !== 'all') p.year = yearFilter;
+      if (pmFilter && pmFilter !== 'all') p.product_manager = pmFilter;
+      if (catFilter && catFilter !== 'all') p.solution_category = catFilter;
       const res = await crmAPI.listOpportunities(p);
       const items = res.data?.items || res.data || [];
-      setDrillData({ title: `Opportunities ${params.stage ? `(${params.stage})` : ''}`, data: items, type: 'opportunities' });
+      const title = ['Opportunities', params.stage ? `(${params.stage})` : '', yearFilter && yearFilter !== 'all' ? `- ${yearFilter}` : ''].filter(Boolean).join(' ');
+      setDrillData({ title, data: items, type: 'opportunities' });
     } catch { toast.error('Failed to load'); }
   };
   const drillActivities = async (status) => {
