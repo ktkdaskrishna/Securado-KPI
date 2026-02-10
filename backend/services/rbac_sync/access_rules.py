@@ -183,7 +183,7 @@ class AccessRuleEngine:
                     direct_report_names = user_rbac.get("direct_report_names", []) if user_rbac else []
                     return self._build_manager_filter(user_name, team_names, direct_report_names, entity_type)
                 elif override_level == AccessLevel.USER:
-                    return self._build_owner_filter(user_name, entity_type)
+                    return self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
                 else:
                     return {"_id": {"$eq": "NO_ACCESS_RESTRICTED_BY_OVERRIDE"}}
         
@@ -277,7 +277,7 @@ class AccessRuleEngine:
         
         elif access_level == AccessLevel.USER:
             # User sees only their own records
-            return self._build_owner_filter(user_name, entity_type)
+            return self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
         
         else:
             # Restricted - no access (empty result)
