@@ -1042,3 +1042,248 @@ async def calculate_multi_vector_incentive(
         ]
     }
 
+
+
+# ==================== SUGGESTIONS ====================
+
+@plans_router.get("/revenue/{plan_id}/suggestions")
+async def get_activity_suggestions(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Get auto-generated activity suggestions for a revenue plan"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    suggestion = await app_db.activity_suggestions.find_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    )
+    if not suggestion:
+        return None
+    return serialize_doc(suggestion)
+
+
+@plans_router.post("/revenue/{plan_id}/suggestions/accept")
+async def accept_suggestions(
+    plan_id: str,
+    modifications: Optional[List[dict]] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """PD accepts suggestions (optionally modified) and creates plan items"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    suggestion = await app_db.activity_suggestions.find_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    )
+    if not suggestion:
+        raise HTTPException(status_code=404, detail="No suggestions found")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    # Use modifications if provided, otherwise use original suggestions
+    items_to_create = modifications if modifications else suggestion.get("suggestions", [])
+    
+    created = []
+    for item in items_to_create:
+        if item.get("count", 0) <= 0:
+            continue
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "revenue_plan_id": plan_id,
+            "product_manager_name": plan.get("product_manager_name"),
+            "activity_type": item.get("activity_type"),
+            "solution_category": item.get("solution_category", ""),
+            "target_count": item.get("count", 0),
+            "notes": item.get("formula", "Auto-generated from revenue target"),
+            "status": "active",
+            "created_by": current_user["id"],
+            "created_at": now_utc()
+        }
+        await app_db.target_plan_items.insert_one(doc)
+        created.append(doc)
+    
+    # Mark suggestions as accepted
+    await app_db.activity_suggestions.update_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id},
+        {"$set": {"status": "accepted", "accepted_at": now_utc()}}
+    )
+    
+    return {"success": True, "items_created": len(created)}
+
+
+# ==================== REVENUE CAP ====================
+
+@actuals_router.get("/revenue-cap/{plan_id}")
+async def get_revenue_cap(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Check if revenue is capped due to low activity for a plan"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    # Calculate activity completion
+    items = await app_db.target_plan_items.find(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    ).to_list(100)
+    
+    total_target = sum(i.get("target_count", 0) for i in items)
+    total_actual = 0
+    for item in items:
+        atype = item.get("activity_type")
+        if atype:
+            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id})
+            total_actual += min(actual, item.get("target_count", 0))
+    
+    activity_pct = round(total_actual / total_target * 100, 1) if total_target > 0 else 0
+    
+    # Revenue calculation
+    pm_name = plan.get("product_manager_name", "")
+    target_amount = plan.get("target_amount", 0)
+    won_r = await canonical_db.opportunities.aggregate([
+        {"$match": {"product_manager": {"$regex": f"{pm_name}", "$options": "i"}, "stage": "Won"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+    ]).to_list(1)
+    actual_revenue = won_r[0]["total"] if won_r else 0
+    raw_revenue_pct = round(actual_revenue / target_amount * 100, 1) if target_amount > 0 else 0
+    
+    # Apply cap
+    is_capped = False
+    cap_pct = 100
+    effective_revenue_pct = raw_revenue_pct
+    
+    if total_target > 0:  # Only cap if activity targets exist
+        if activity_pct < 50:
+            is_capped = True
+            cap_pct = 40
+            effective_revenue_pct = min(raw_revenue_pct, 40)
+        elif activity_pct < 80:
+            is_capped = True
+            cap_pct = 70
+            effective_revenue_pct = min(raw_revenue_pct, 70)
+    
+    return {
+        "plan_id": plan_id,
+        "product_director": pm_name,
+        "is_capped": is_capped,
+        "cap_percentage": cap_pct,
+        "activity_completion": activity_pct,
+        "activity_target": total_target,
+        "activity_actual": total_actual,
+        "raw_revenue_pct": raw_revenue_pct,
+        "effective_revenue_pct": effective_revenue_pct,
+        "actual_revenue": actual_revenue,
+        "target_revenue": target_amount,
+        "reason": f"Activity completion {activity_pct}% {'< 80% threshold' if is_capped else '>= 80%'}" if total_target > 0 else "No activity targets set"
+    }
+
+
+# ==================== CEO SUMMARY ====================
+
+@actuals_router.get("/ceo-summary")
+async def get_ceo_summary(current_user: dict = Depends(get_current_user)):
+    """CEO single-screen RAG summary with 5 signals + auto-insight"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    from datetime import datetime
+    
+    # 1. Revenue vs Plan
+    plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": "revenue"}).to_list(100)
+    total_target = sum(p.get("target_amount", 0) for p in plans)
+    total_won = 0
+    for plan in plans:
+        pm = plan.get("product_manager_name", "")
+        if pm:
+            r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"{pm}", "$options": "i"}, "stage": "Won"}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+            ]).to_list(1)
+            total_won += r[0]["total"] if r else 0
+    rev_pct = round(total_won / total_target * 100, 1) if total_target > 0 else 0
+    rev_signal = "green" if rev_pct >= 80 else "amber" if rev_pct >= 50 else "red"
+    
+    # 2. Activity Coverage
+    all_items = await app_db.target_plan_items.find({"org_id": org_id}).to_list(500)
+    act_target = sum(i.get("target_count", 0) for i in all_items)
+    act_actual = 0
+    for item in all_items:
+        atype = item.get("activity_type")
+        if atype:
+            c = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id})
+            act_actual += min(c, item.get("target_count", 0))
+    act_pct = round(act_actual / act_target * 100, 1) if act_target > 0 else 0
+    act_signal = "green" if act_pct >= 80 else "amber" if act_pct >= 50 else "red"
+    
+    # 3. Collections Health
+    total_inv = await canonical_db.invoices.count_documents({})
+    overdue = await canonical_db.invoices.count_documents({
+        "payment_state": {"$in": ["not_paid", "partial"]},
+        "due_date": {"$lt": datetime.now().strftime("%Y-%m-%d")}
+    })
+    overdue_pct = round(overdue / total_inv * 100, 1) if total_inv > 0 else 0
+    coll_signal = "green" if overdue_pct < 10 else "amber" if overdue_pct < 25 else "red"
+    
+    overdue_amt_r = await canonical_db.invoices.aggregate([
+        {"$match": {"payment_state": {"$in": ["not_paid", "partial"]}, "due_date": {"$lt": datetime.now().strftime("%Y-%m-%d")}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_total"}}}
+    ]).to_list(1)
+    overdue_amt = overdue_amt_r[0]["total"] if overdue_amt_r else 0
+    
+    # 4. Pipeline Coverage
+    pipeline_r = await canonical_db.opportunities.aggregate([
+        {"$match": {"stage": {"$nin": ["Won", "Lost"]}}},
+        {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+    ]).to_list(1)
+    pipeline = pipeline_r[0]["total"] if pipeline_r else 0
+    coverage = round(pipeline / total_target, 1) if total_target > 0 else 0
+    pipe_signal = "green" if coverage >= 3 else "amber" if coverage >= 2 else "red"
+    
+    # 5. Team Execution (based on plan items redistribution)
+    total_items = len(all_items)
+    items_with_assignment = 0
+    for item in all_items:
+        redist = await app_db.target_redistributions.count_documents({"plan_item_id": item.get("id"), "org_id": org_id})
+        if redist > 0:
+            items_with_assignment += 1
+    exec_pct = round(items_with_assignment / total_items * 100, 1) if total_items > 0 else 0
+    exec_signal = "green" if exec_pct >= 80 else "amber" if exec_pct >= 50 else "red"
+    
+    # Auto-generate insight
+    issues = []
+    if rev_signal == "red":
+        issues.append(f"revenue at {rev_pct}% of target")
+    if act_signal == "red":
+        # Find worst activity
+        worst_items = sorted(all_items, key=lambda x: x.get("target_count", 0), reverse=True)
+        if worst_items:
+            issues.append(f"low activity in {worst_items[0].get('solution_category', worst_items[0].get('activity_type', 'unknown'))}")
+    if coll_signal == "red":
+        issues.append(f"{overdue} overdue invoices (OMR {overdue_amt:,.0f})")
+    if pipe_signal == "red":
+        issues.append(f"pipeline coverage only {coverage}x (need 3x)")
+    
+    insight = f"Risk driven by {' and '.join(issues)}." if issues else "All signals healthy."
+    
+    signals = [
+        {"name": "Revenue vs Plan", "value": f"{rev_pct}%", "detail": f"OMR {total_won:,.0f} / {total_target:,.0f}", "signal": rev_signal},
+        {"name": "Activity Coverage", "value": f"{act_pct}%", "detail": f"{act_actual} / {act_target} activities", "signal": act_signal},
+        {"name": "Collections Health", "value": f"{100 - overdue_pct:.0f}%", "detail": f"{overdue} overdue (OMR {overdue_amt:,.0f})", "signal": coll_signal},
+        {"name": "Pipeline Coverage", "value": f"{coverage}x", "detail": f"OMR {pipeline:,.0f} pipeline", "signal": pipe_signal},
+        {"name": "Team Execution", "value": f"{exec_pct}%", "detail": f"{items_with_assignment}/{total_items} items assigned", "signal": exec_signal},
+    ]
+    
+    red_count = len([s for s in signals if s["signal"] == "red"])
+    amber_count = len([s for s in signals if s["signal"] == "amber"])
+    
+    return {
+        "signals": signals,
+        "insight": insight,
+        "overall": "red" if red_count >= 2 else "amber" if red_count >= 1 or amber_count >= 2 else "green",
+        "red_count": red_count,
+        "amber_count": amber_count
+    }
+
