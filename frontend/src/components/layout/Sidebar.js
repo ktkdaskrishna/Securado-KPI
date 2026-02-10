@@ -100,8 +100,8 @@ const permissionRequirements = {
   'org-structure': null, // visible to all
   profile: null, // Always visible
   // DATA SYNC - System Admin only
-  'sync-center': 'system_admin',
-  connections: 'system_admin',
+  integrations: 'system_admin',
+  settings: 'system_admin',
   'model-browser': 'system_admin',
   mappings: 'system_admin',
   'data-model': 'system_admin',
