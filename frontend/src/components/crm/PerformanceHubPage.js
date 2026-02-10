@@ -439,3 +439,107 @@ function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
     </DialogContent></Dialog>
   );
 }
+
+function CeoSummaryCard() {
+  const [data, setData] = useState(null);
+  useEffect(() => { targetAPI.getCeoSummary().then(r => setData(r.data)).catch(() => {}); }, []);
+  if (!data) return null;
+
+  const signalColors = { green: 'bg-emerald-500', amber: 'bg-yellow-500', red: 'bg-red-500' };
+  const signalBg = { green: 'bg-emerald-50', amber: 'bg-yellow-50', red: 'bg-red-50' };
+  const signalText = { green: 'text-emerald-700', amber: 'text-yellow-700', red: 'text-red-700' };
+
+  return (
+    <Card className={`border-2 ${data.overall === 'red' ? 'border-red-200 bg-red-50/30' : data.overall === 'amber' ? 'border-yellow-200 bg-yellow-50/30' : 'border-emerald-200 bg-emerald-50/30'}`} data-testid="ceo-summary">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900">Executive Summary</h3>
+          <Badge variant="outline" className={`text-xs ${signalText[data.overall]} border-current`}>{data.red_count} Red · {data.amber_count} Amber</Badge>
+        </div>
+        <div className="grid grid-cols-5 gap-3 mb-3">
+          {data.signals.map(s => (
+            <div key={s.name} className={`p-2.5 rounded-lg ${signalBg[s.signal]} text-center`}>
+              <div className={`w-3 h-3 rounded-full ${signalColors[s.signal]} mx-auto mb-1`} />
+              <p className="text-xs font-medium text-gray-700">{s.name}</p>
+              <p className={`text-lg font-bold ${signalText[s.signal]}`}>{s.value}</p>
+              <p className="text-[10px] text-gray-500">{s.detail}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-gray-600 italic">{data.insight}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SuggestionsCard({ planId, onAccepted }) {
+  const [data, setData] = useState(null);
+  const [mods, setMods] = useState([]);
+  const [accepting, setAccepting] = useState(false);
+
+  useEffect(() => {
+    if (planId) {
+      targetAPI.getActivitySuggestions(planId).then(r => {
+        if (r.data && r.data.status === 'pending_review') {
+          setData(r.data);
+          setMods(r.data.suggestions.map(s => ({ ...s })));
+        }
+      }).catch(() => {});
+    }
+  }, [planId]);
+
+  if (!data || data.status !== 'pending_review') return null;
+
+  const handleAccept = async () => {
+    setAccepting(true);
+    try {
+      await targetAPI.acceptSuggestions(planId, mods);
+      toast.success('Activity plan accepted');
+      setData(null);
+      if (onAccepted) onAccepted();
+    } catch { toast.error('Failed'); }
+    finally { setAccepting(false); }
+  };
+
+  return (
+    <Card className="border-2 border-blue-200 bg-blue-50/30" data-testid="suggestions-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
+          <Target className="h-4 w-4" /> Suggested Activity Plan
+          <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Auto-generated</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-gray-600">
+          Based on your historical data: Avg deal OMR {data.avg_deal_size?.toLocaleString()}, Win rate {data.win_rate}%, {data.required_deals} deals needed.
+          Pipeline coverage: OMR {data.pipeline_coverage?.toLocaleString()} (3x target).
+        </p>
+        <Table>
+          <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Formula</TableHead><TableHead className="text-right w-24">Count</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {mods.map((s, idx) => (
+              <TableRow key={idx}>
+                <TableCell className="font-medium text-sm">{s.activity_type}</TableCell>
+                <TableCell className="text-xs text-gray-500">{s.formula}</TableCell>
+                <TableCell className="text-right">
+                  <Input type="number" value={s.count} onChange={e => {
+                    const newMods = [...mods];
+                    newMods[idx] = { ...newMods[idx], count: parseInt(e.target.value) || 0 };
+                    setMods(newMods);
+                  }} className="w-20 h-7 text-xs text-right" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => setData(null)}>Dismiss</Button>
+          <Button size="sm" className="bg-[#800000] hover:bg-[#9a1919] text-white text-xs" onClick={handleAccept} disabled={accepting}>
+            {accepting ? 'Accepting...' : 'Accept & Create Plan Items'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
