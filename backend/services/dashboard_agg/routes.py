@@ -561,23 +561,47 @@ async def get_dashboard_stats(
     if solution_category:
         query["solution_category"] = solution_category
     
-    # STANDARDIZED DATE FILTERING (same logic as Opportunities page)
-    # All records filtered by create_date for the selected year
-    # Won deals additionally checked by date_closed
+    # ODOO-MATCHING DATE FILTER LOGIC:
+    # - Won/Lost deals: filter by date_last_stage_update (when stage changed)
+    # - Open deals: filter by create_date (when deal was created)
+    # This matches Odoo's dashboard behavior exactly
+    
     if year:
-        query["create_date"] = {"$regex": f"^{year}"}
-    if quarter:
-        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
-        months = quarter_months.get(quarter, [])
-        if months and year:
-            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
+        # Fetch ALL non-deleted active records (we'll split by stage then filter dates)
+        opps = await canonical_db.opportunities.find(query).to_list(10000)
+        opps = filter_out_test_records(opps)
+        
+        # Classify first
+        def is_won(o):
+            stage = str(o.get("stage", "")).lower()
+            return stage == "won" or "closed won" in stage
+        def is_lost(o):
+            stage = str(o.get("stage", "")).lower()
+            return stage == "lost" or "closed lost" in stage
+        
+        open_opps = [o for o in opps if not is_won(o) and not is_lost(o)]
+        won_opps = [o for o in opps if is_won(o)]
+        lost_opps = [o for o in opps if is_lost(o)]
+        
+        # Filter by year using Odoo's logic
+        open_opps = [o for o in open_opps if str(o.get("create_date", "")).startswith(year)]
+        won_opps = [o for o in won_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "").startswith(year)]
+        lost_opps = [o for o in lost_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "").startswith(year)]
+        
+        if quarter:
+            quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
+            months = quarter_months.get(quarter, [])
+            if months:
+                open_opps = [o for o in open_opps if any(f"-{m}-" in str(o.get("create_date", "")) for m in months)]
+                won_opps = [o for o in won_opps if any(f"-{m}-" in str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "") for m in months)]
+                lost_opps = [o for o in lost_opps if any(f"-{m}-" in str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "") for m in months)]
+        
+        opps = open_opps + won_opps + lost_opps
+    else:
+        opps = await canonical_db.opportunities.find(query).to_list(10000)
+        opps = filter_out_test_records(opps)
     
-    opps = await canonical_db.opportunities.find(query).to_list(10000)
-    
-    # Filter out test/demo records
-    opps = filter_out_test_records(opps)
-    
-    # Classify opportunities
+    # Classify (or re-classify if already done above)
     def is_won(o):
         stage = str(o.get("stage", "")).lower()
         return stage == "won" or "closed won" in stage
