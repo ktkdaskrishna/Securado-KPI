@@ -1045,7 +1045,6 @@ async def create_pipeline(
         "schedule_type": pipeline_data.schedule_type,
         "interval_minutes": pipeline_data.interval_minutes,
         "cron_expression": pipeline_data.cron_expression,
-        "webhook_enabled": pipeline_data.webhook_enabled,
         "sync_mode": pipeline_data.sync_mode,
         "incremental_field": pipeline_data.incremental_field,
         "delete_mode": pipeline_data.delete_mode,
