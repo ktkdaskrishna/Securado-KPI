@@ -1,10 +1,9 @@
-"""Integration Hub - Sync overview, schedule config, and manual trigger ONLY.
+"""Integration Hub - Sync overview, schedule config, and manual trigger.
 
-Webhook handling is done by the ORIGINAL odoo_rbac webhook_router.
-This file provides ONLY:
+This file provides:
 1. Entity sync overview (record counts, last sync, schedules)
 2. Schedule configuration per entity
-3. Manual sync trigger
+3. Manual sync trigger via API (XML-RPC to Odoo)
 """
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import Optional
