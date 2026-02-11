@@ -283,6 +283,7 @@ export default function PerformanceHubPage() {
         {/* PM PLAN BUILDER */}
         {showExecutiveTabs && <TabsContent value="pm" className="mt-4 space-y-4">
           {!selectedPlan ? <Card><CardContent className="p-8 text-center text-gray-400">Select a plan from CEO View</CardContent></Card> : <>
+            <SuggestionsCard planId={selectedPlan.id} onAccepted={() => { loadPlanDetails(selectedPlan.id); loadData(); }} />
             <Card className="border-[#800000]/20"><CardContent className="p-4 flex items-center justify-between"><div><h3 className="font-semibold">{selectedPlan.name}</h3><p className="text-sm text-gray-500">PD: {selectedPlan.product_manager_name} | Target: OMR {(selectedPlan.target_amount || 0).toLocaleString()}</p></div><Button onClick={() => setShowAddItem(true)} className="bg-[#800000] hover:bg-[#9a1919] text-white"><Plus className="h-4 w-4 mr-1" /> Add Activity Plan</Button></CardContent></Card>
             <Card><CardHeader className="pb-2"><CardTitle className="text-base">Plan Items <Badge variant="secondary" className="ml-2">{planItems.length}</Badge></CardTitle></CardHeader>
               <CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead className="text-right">Actual</TableHead><TableHead>Assigned</TableHead><TableHead>Match</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader>
