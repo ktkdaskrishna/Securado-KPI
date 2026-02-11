@@ -72,14 +72,15 @@ class PlanRedistributionCreate(BaseModel):
 
 @lookups_router.get("/product-managers")
 async def get_product_managers(current_user: dict = Depends(get_current_user)):
-    """Get list of product managers from Odoo opportunities data"""
+    """Get list of product managers from Odoo - current year only"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
     pipeline = [
-        {"$match": {"product_manager": {"$ne": None}}},
+        {"$match": {"product_manager": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}},
         {"$group": {
             "_id": {"name": "$product_manager", "id": "$product_manager_id"},
             "opp_count": {"$sum": 1},
-            "total_pipeline": {"$sum": "$amount"}
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}
         }},
         {"$sort": {"opp_count": -1}}
     ]
