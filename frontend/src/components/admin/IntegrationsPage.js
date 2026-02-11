@@ -271,3 +271,169 @@ export default function IntegrationsPage() {
     </div>
   );
 }
+
+// Data Tools Tab - Excel Download/Upload
+function DataToolsTab() {
+  const [uploading, setUploading] = useState(false);
+  const [uploadEntity, setUploadEntity] = useState('opportunities');
+  const [downloadEntity, setDownloadEntity] = useState('opportunities');
+  const [uploadResult, setUploadResult] = useState(null);
+
+  const handleDownloadMappings = async () => {
+    try {
+      const res = await targetAPI.downloadFieldMappings();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'securado_field_mappings.xlsx';
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Field mappings downloaded');
+    } catch { toast.error('Download failed'); }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await targetAPI.downloadDataTemplate(downloadEntity);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `securado_${downloadEntity}_template.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success(`${downloadEntity} template downloaded`);
+    } catch { toast.error('Download failed'); }
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const res = await targetAPI.uploadDataCorrections(file, uploadEntity);
+      setUploadResult(res.data);
+      toast.success(`Updated: ${res.data.updated}, Inserted: ${res.data.inserted}`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const entities = [
+    { value: 'opportunities', label: 'Opportunities' },
+    { value: 'accounts', label: 'Accounts' },
+    { value: 'invoices', label: 'Invoices' },
+    { value: 'activities', label: 'Activities' },
+    { value: 'employees', label: 'Employees' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Download Field Mappings */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-[#800000]/10"><FileSpreadsheet className="h-5 w-5 text-[#800000]" /></div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Field Mapping Export</h3>
+                <p className="text-sm text-gray-500">Download all field mappings, canonical schema, and user identity map as Excel</p>
+              </div>
+            </div>
+            <Button onClick={handleDownloadMappings} className="bg-[#800000] hover:bg-[#9a1919] text-white">
+              <Download className="h-4 w-4 mr-2" /> Download Mappings (.xlsx)
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Download Data Template */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-50"><Download className="h-5 w-5 text-emerald-600" /></div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Data Correction Template</h3>
+                <p className="text-sm text-gray-500">Download current data as Excel template. Edit values and re-upload to correct data.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={downloadEntity} onValueChange={setDownloadEntity}>
+                <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>{entities.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button onClick={handleDownloadTemplate} variant="outline">
+                <Download className="h-4 w-4 mr-2" /> Download Template
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upload Corrections */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-blue-50"><Upload className="h-5 w-5 text-blue-600" /></div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Upload Data Corrections</h3>
+                <p className="text-sm text-gray-500">Upload corrected Excel file. System will update existing records and insert new ones.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={uploadEntity} onValueChange={setUploadEntity}>
+                <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>{entities.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <label className="cursor-pointer">
+                <input type="file" accept=".xlsx,.xls" onChange={handleUpload} className="hidden" disabled={uploading} />
+                <Button variant="outline" disabled={uploading} asChild>
+                  <span>{uploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</> : <><Upload className="h-4 w-4 mr-2" /> Upload Excel</>}</span>
+                </Button>
+              </label>
+            </div>
+          </div>
+          {uploadResult && (
+            <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <p className="text-sm font-medium text-emerald-700">Upload Complete</p>
+              <p className="text-xs text-emerald-600 mt-1">
+                Updated: {uploadResult.updated} records · Inserted: {uploadResult.inserted} records · Total rows: {uploadResult.total_rows}
+                {uploadResult.errors?.length > 0 && <span className="text-red-600"> · {uploadResult.errors.length} errors</span>}
+              </p>
+              {uploadResult.errors?.length > 0 && (
+                <div className="mt-2 text-xs text-red-600">{uploadResult.errors.map((e, i) => <p key={i}>{e}</p>)}</div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Rebuild Identity Map */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-purple-50"><RefreshCw className="h-5 w-5 text-purple-600" /></div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Rebuild User Identity Map</h3>
+                <p className="text-sm text-gray-500">Re-scan employees, sales users, and app users to rebuild name→email mapping</p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={async () => {
+              try {
+                const res = await targetAPI.rebuildIdentityMap();
+                toast.success(`Identity map rebuilt: ${res.data.users_mapped} users`);
+              } catch { toast.error('Failed'); }
+            }}><RefreshCw className="h-4 w-4 mr-2" /> Rebuild Map</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
