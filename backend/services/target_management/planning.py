@@ -108,15 +108,16 @@ async def get_solution_categories(current_user: dict = Depends(get_current_user)
 
 @lookups_router.get("/salespersons")
 async def get_salespersons(current_user: dict = Depends(get_current_user)):
-    """Get salespersons (opportunity owners) from Odoo"""
+    """Get salespersons (opportunity owners) from Odoo - current year"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
     pipeline = [
-        {"$match": {"owner_name": {"$ne": None}}},
+        {"$match": {"owner_name": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}},
         {"$group": {
             "_id": "$owner_name",
             "owner_id": {"$first": "$owner_id"},
             "opp_count": {"$sum": 1},
-            "total_pipeline": {"$sum": "$amount"},
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}},
             "teams": {"$addToSet": "$team_name"}
         }},
         {"$sort": {"total_pipeline": -1}}
