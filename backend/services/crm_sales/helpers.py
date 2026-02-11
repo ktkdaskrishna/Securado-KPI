@@ -43,3 +43,58 @@ def apply_date_filters(records, year=None, quarter=None, date_field='create_date
         if months:
             filtered = [r for r in filtered if any(f"-{m}-" in str(r.get(date_field, '')) for m in months)]
     return filtered
+
+# Stage normalization
+STAGE_MAPPING = {
+    "new": "qualified", "enquiry": "qualified", "qualified": "qualified",
+    "qualified opportunity": "qualified", "proposal": "proposal",
+    "review&negotiation": "negotiation", "negotiation": "negotiation",
+    "won": "closed_won", "closed won": "closed_won",
+    "lost": "closed_lost", "closed lost": "closed_lost",
+    "hold": "qualified", "prospect": "qualified",
+    "junk lead": "closed_lost",
+}
+
+def normalize_stage(stage: str) -> str:
+    """Normalize Odoo stage names to frontend expected values"""
+    if not stage:
+        return "qualified"
+    stage_lower = stage.lower().strip()
+    if stage_lower in STAGE_MAPPING:
+        return STAGE_MAPPING[stage_lower]
+    valid_stages = ["qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    if stage_lower in valid_stages:
+        return stage_lower
+    if "new" in stage_lower or "enquir" in stage_lower or "qualif" in stage_lower:
+        return "qualified"
+    if "prop" in stage_lower:
+        return "proposal"
+    if "negot" in stage_lower:
+        return "negotiation"
+    if "won" in stage_lower:
+        return "closed_won"
+    if "lost" in stage_lower:
+        return "closed_lost"
+    return "qualified"
+
+
+async def merge_with_overrides(records, org_id: str, app_db):
+    """Merge canonical records with local overrides"""
+    from libs.utils import serialize_doc
+    canonical_ids = [r.get("canonical_id") for r in records]
+    overrides = await app_db.overrides.find({"canonical_id": {"$in": canonical_ids}, "org_id": org_id}).to_list(1000)
+    override_map = {o["canonical_id"]: o for o in overrides}
+    merged = []
+    for record in records:
+        merged_record = serialize_doc(record)
+        override = override_map.get(record.get("canonical_id"))
+        if override:
+            for key in ["stage", "probability", "owner"]:
+                if key in override:
+                    merged_record[key] = override[key]
+            merged_record["has_overrides"] = True
+        else:
+            merged_record["has_overrides"] = False
+        merged_record["stage"] = normalize_stage(merged_record.get("stage"))
+        merged.append(merged_record)
+    return merged
