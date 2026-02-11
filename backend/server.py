@@ -68,6 +68,7 @@ from services.etl_control.routes import (
     mapping_editor_router
 )
 from services.etl_runner.runner import etl_runner
+from services.etl_runner.incremental_sync import incremental_worker
 from services.serving_cache.cache_builder import cache_builder
 from services.serving_cache.cache_reader import cache_reader
 from services.serving_cache.routes import router as serving_cache_router
