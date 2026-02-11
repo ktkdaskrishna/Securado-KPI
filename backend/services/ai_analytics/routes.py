@@ -155,14 +155,11 @@ async def get_analytics_overview(
             "stage_distribution": [], "filters_applied": {}
         }
     
-    # Build query with RBAC
+    # Build query with RBAC + year filter at DB level
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
-    # Get OPPORTUNITIES only (exclude leads by filtering type='opportunity')
-    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
-    
-    # Convert time_period to specific year/quarter if not already set
+    # Convert time_period to year/quarter
     if time_period != "all" and not year and not quarter:
         from datetime import datetime
         now = datetime.now()
@@ -172,6 +169,20 @@ async def get_analytics_overview(
         if time_period == "year":
             year = current_year
         elif time_period == "quarter":
+            q = (current_month - 1) // 3 + 1
+            quarter = f"Q{q}"
+            year = current_year
+    
+    # Apply year/quarter to MongoDB query (not post-filter)
+    if year:
+        query["create_date"] = {"$regex": f"^{year}"}
+    if quarter and year:
+        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
+        months = quarter_months.get(quarter, [])
+        if months:
+            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
+    
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
             # Determine current quarter
             if current_month <= 3:
                 quarter = "Q1"
