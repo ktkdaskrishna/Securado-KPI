@@ -185,20 +185,13 @@ async def get_analytics_overview(
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # No post-filtering needed for dates - done at DB query level
-        elif time_period == "month":
-            # For month, we'll filter to current month
-            year = current_year
-            # The apply_filters will handle month filtering
     
-    # Apply filters
+    # Apply remaining filters (sales_rep, account, stage - NOT year/quarter)
     filters = {
-        "year": year,
-        "quarter": quarter,
         "sales_rep": sales_rep,
         "team_id": team_id,
         "account": account,
         "stage": stage,
-        "time_period": time_period
     }
     opps = apply_filters(all_opps, filters)
     
