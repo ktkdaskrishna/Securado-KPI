@@ -268,20 +268,24 @@ async def list_opportunities(
     if solution_category:
         query["solution_category"] = solution_category
     
-    # Get from canonical - get more records if filtering to ensure we have enough after date filter
-    fetch_limit = limit * 10 if (year or quarter) else limit
-    records = await canonical_db.opportunities.find(query).skip(skip).limit(fetch_limit).to_list(fetch_limit)
+    # Add year/quarter to MongoDB query directly (not post-filter)
+    if year:
+        query["create_date"] = {"$regex": f"^{year}"}
+    if quarter:
+        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
+        months = quarter_months.get(quarter, [])
+        if months and year:
+            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
+        elif months:
+            query["$or"] = [{"create_date": {"$regex": f"-{m}-"}} for m in months]
     
-    # Get total count for pagination (without skip/limit)
+    # Get records with proper pagination
+    records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
+    
+    # Get total count (with all filters including year)
     total_count = await canonical_db.opportunities.count_documents(query)
     
-    # Apply date-based filters using the improved helper function
-    records = apply_date_filters(records, year=year, quarter=quarter, date_field=date_field or 'create_date')
-    
-    # Trim to requested limit
-    records = records[:limit]
-    
-    logger.info(f"After filtering: {len(records)} opportunities (RBAC applied), total: {total_count}")
+    logger.info(f"Opportunities: {len(records)} fetched, {total_count} total (year={year}, quarter={quarter})")
     
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
