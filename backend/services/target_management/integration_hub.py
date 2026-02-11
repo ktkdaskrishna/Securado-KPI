@@ -191,7 +191,7 @@ async def start_incremental(current_user: dict = Depends(get_current_user)):
     """Start incremental sync polling"""
     from services.etl_runner.incremental_sync import incremental_worker
     await incremental_worker.start()
-    return {"success": True, "message": "Incremental sync started (5-min interval)"}
+    return {"success": True, "message": f"Incremental sync started (interval: {incremental_worker.poll_interval}s)"}
 
 
 @hub_router.post("/incremental/stop")
@@ -200,4 +200,28 @@ async def stop_incremental(current_user: dict = Depends(get_current_user)):
     from services.etl_runner.incremental_sync import incremental_worker
     await incremental_worker.stop()
     return {"success": True, "message": "Incremental sync stopped"}
+
+
+@hub_router.put("/incremental/interval")
+async def set_incremental_interval(
+    interval_seconds: int = 300,
+    current_user: dict = Depends(get_current_user)
+):
+    """Set the polling interval (in seconds). Min 60, max 3600."""
+    if interval_seconds < 60:
+        interval_seconds = 60
+    if interval_seconds > 3600:
+        interval_seconds = 3600
+    
+    app_db = get_app_db()
+    await app_db.sync_configs.update_one(
+        {"entity": "_incremental_settings"},
+        {"$set": {"entity": "_incremental_settings", "interval_seconds": interval_seconds, "updated_at": now_utc()}},
+        upsert=True
+    )
+    
+    from services.etl_runner.incremental_sync import incremental_worker
+    incremental_worker.poll_interval = interval_seconds
+    
+    return {"success": True, "interval_seconds": interval_seconds, "message": f"Sync interval set to {interval_seconds}s ({interval_seconds // 60} min)"}
 
