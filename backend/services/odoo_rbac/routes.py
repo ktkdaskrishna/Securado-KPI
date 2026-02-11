@@ -4,7 +4,6 @@ Syncs Odoo user groups to application roles and handles:
 - User groups (res.groups) sync
 - User-group membership sync
 - Role mapping from Odoo to app permissions
-- Real-time sync via webhooks
 """
 import logging
 from typing import Optional, List, Dict, Any
