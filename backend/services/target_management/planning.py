@@ -312,13 +312,13 @@ async def create_revenue_plan(
 
     await app_db.target_plans.insert_one(doc)
     
-    # Auto-generate activity suggestions based on PD's historical data
+    # Auto-generate activity suggestions based on PD's historical data + solution categories
     pm_name = data.product_manager_name
     if pm_name and data.target_amount > 0:
         try:
-            # Get PD's historical metrics from Odoo
+            # Get PD's historical metrics
             hist = await canonical_db.opportunities.aggregate([
-                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}}},
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}}},
                 {"$group": {
                     "_id": None,
                     "total_opps": {"$sum": 1},
@@ -330,19 +330,54 @@ async def create_revenue_plan(
             h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0}
             avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else data.target_amount / 10
             win_rate = h["won_count"] / h["total_opps"] if h["total_opps"] > 0 else 0.25
-            
             required_deals = max(1, round(data.target_amount / avg_deal)) if avg_deal > 0 else 10
-            demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
-            pocs = max(2, round(demos * 0.3))
-            calls = max(10, round(demos * 5))
-            meetings = max(5, round(demos * 2))
             
-            suggestions = [
-                {"activity_type": "Demo", "count": demos, "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × 0.5", "accepted": False},
-                {"activity_type": "Proof of concept", "count": pocs, "formula": f"demos × 30%", "accepted": False},
-                {"activity_type": "Call", "count": calls, "formula": f"demos × 5", "accepted": False},
-                {"activity_type": "Meeting", "count": meetings, "formula": f"demos × 2", "accepted": False},
+            # Get PM's solution categories with revenue weight
+            current_year = datetime.now().strftime("%Y")
+            cat_pipeline = [
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                {"$sort": {"value": -1}}
             ]
+            categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(20)
+            total_cat_value = sum(c["value"] for c in categories) or 1
+            
+            suggestions = []
+            activity_types = [
+                ("Demo", 0.5, "product demos"),
+                ("Proof of concept", 0.15, "POC/pilot"),
+                ("Call", 2.5, "outbound calls"),
+                ("Meeting", 1.0, "client meetings"),
+            ]
+            
+            if categories:
+                # Generate suggestions PER solution category, weighted by revenue
+                for cat in categories:
+                    cat_name = cat["_id"]
+                    weight = cat["value"] / total_cat_value
+                    cat_deals = max(1, round(required_deals * weight))
+                    
+                    for act_type, multiplier, desc in activity_types:
+                        count = max(1, round(cat_deals / max(win_rate, 0.1) * multiplier))
+                        suggestions.append({
+                            "activity_type": act_type,
+                            "solution_category": cat_name,
+                            "count": count,
+                            "formula": f"{cat_deals} deals × {multiplier} ({desc}) [{cat_name}]",
+                            "accepted": False
+                        })
+            else:
+                # No categories found - generate generic suggestions
+                demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
+                for act_type, multiplier, desc in activity_types:
+                    count = max(2, round(demos * multiplier / 0.5))
+                    suggestions.append({
+                        "activity_type": act_type,
+                        "solution_category": "",
+                        "count": count,
+                        "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × {multiplier}",
+                        "accepted": False
+                    })
             
             suggestion_doc = {
                 "id": generate_id(),
@@ -354,6 +389,7 @@ async def create_revenue_plan(
                 "win_rate": round(win_rate * 100, 1),
                 "required_deals": required_deals,
                 "pipeline_coverage": round(data.target_amount * 3, 2),
+                "categories": [c["_id"] for c in categories],
                 "suggestions": suggestions,
                 "status": "pending_review",
                 "created_at": now_utc()
