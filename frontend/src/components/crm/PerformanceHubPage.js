@@ -84,7 +84,7 @@ export default function PerformanceHubPage() {
   const isPD = myData?.is_product_director;
   const isSD = myData?.is_sales_director && !isPD;
   const isRep = myData?.is_sales_rep;
-  const canManage = permissions.includes('manage_goals');
+  const canManage = permissions.includes('manage_goals') || permissions.includes('admin:*');
   const showExecutiveTabs = isAdmin || isSD;
 
   const loadData = useCallback(async () => {
