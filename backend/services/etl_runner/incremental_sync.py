@@ -341,8 +341,15 @@ class IncrementalSyncWorker:
             doc["product_manager_id"] = doc.get("productmanager_id_id")
             doc["solution_category"] = doc.get("productcategory_id", "")
             # Stage: custom_stage (x_studio) is authoritative, stage_id is the pipeline stage
-            doc["custom_stage"] = record.get("x_studio_opportunity_stages_1") or doc.get("stage_id", "")
-            doc["lead_stage"] = doc.get("stage_id", "")
+            raw_custom = record.get("x_studio_opportunity_stages_1")
+            raw_stage = doc.get("stage_id", "")
+            # Resolve Many2one arrays to strings
+            if isinstance(raw_custom, (list, tuple)) and len(raw_custom) == 2:
+                raw_custom = raw_custom[1]
+            if isinstance(raw_stage, (list, tuple)) and len(raw_stage) == 2:
+                raw_stage = raw_stage[1]
+            doc["custom_stage"] = raw_custom or raw_stage or ""
+            doc["lead_stage"] = raw_stage or ""
             doc["stage"] = doc["custom_stage"] or doc["lead_stage"]
         
         elif entity_id == "accounts":
