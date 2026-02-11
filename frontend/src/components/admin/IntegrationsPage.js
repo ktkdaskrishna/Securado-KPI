@@ -112,6 +112,43 @@ function SyncOverview() {
         </Button>
       </div>
 
+      {/* Incremental Sync Control */}
+      <Card className="border-blue-200 bg-blue-50/30">
+        <CardContent className="p-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <RefreshCw className={`h-4 w-4 ${incrementalStatus?.running ? 'text-emerald-500 animate-spin' : 'text-gray-400'}`} />
+            <div>
+              <p className="text-sm font-medium">Incremental Sync (Auto)</p>
+              <p className="text-xs text-gray-500">
+                {incrementalStatus?.running 
+                  ? `Polling every ${(incrementalStatus?.poll_interval || 300) / 60} min · Last: ${incrementalStatus?.last_poll ? new Date(incrementalStatus.last_poll).toLocaleTimeString() : 'Starting...'}`
+                  : 'Stopped'}
+                {incrementalStatus?.sync_states && Object.keys(incrementalStatus.sync_states).length > 0 && (
+                  <> · {Object.entries(incrementalStatus.sync_states).map(([k, v]) => `${k}: ${v.records_synced || 0}`).join(', ')}</>
+                )}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant={incrementalStatus?.running ? "outline" : "default"}
+            className={!incrementalStatus?.running ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+            onClick={async () => {
+              try {
+                if (incrementalStatus?.running) {
+                  await targetAPI.stopIncremental();
+                  toast.success('Incremental sync stopped');
+                } else {
+                  await targetAPI.startIncremental();
+                  toast.success('Incremental sync started');
+                }
+                const r = await targetAPI.getIncrementalStatus();
+                setIncrementalStatus(r.data);
+              } catch { toast.error('Failed'); }
+            }}>
+            {incrementalStatus?.running ? 'Stop Auto-Sync' : 'Start Auto-Sync'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Entity sync table */}
       <Card>
         <CardContent className="p-0">
