@@ -519,11 +519,12 @@ function SuggestionsCard({ planId, onAccepted }) {
           Pipeline coverage: OMR {data.pipeline_coverage?.toLocaleString()} (3x target).
         </p>
         <Table>
-          <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Formula</TableHead><TableHead className="text-right w-24">Count</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Solution Category</TableHead><TableHead>Formula</TableHead><TableHead className="text-right w-24">Count</TableHead></TableRow></TableHeader>
           <TableBody>
             {mods.map((s, idx) => (
               <TableRow key={idx}>
                 <TableCell className="font-medium text-sm">{s.activity_type}</TableCell>
+                <TableCell className="text-xs text-gray-500">{s.solution_category || '-'}</TableCell>
                 <TableCell className="text-xs text-gray-500">{s.formula}</TableCell>
                 <TableCell className="text-right">
                   <Input type="number" value={s.count} onChange={e => {
