@@ -278,13 +278,14 @@ class IncrementalSyncWorker:
             logger.info(f"Incremental sync {entity_id}: {updated_count} records updated (write_date > {last_sync_ts})")
         
         # === DELETE DETECTION ===
-        # Fetch all active IDs from Odoo (lightweight - just IDs)
+        # Fetch ALL Odoo IDs including archived (active_test=False)
+        # Only truly deleted records get soft-deleted here
         deleted_count = 0
         try:
             base_domain = entity_def.get("domain", [])
             odoo_ids = models.execute_kw(
                 db_name, uid, api_key, odoo_model, 'search',
-                [base_domain], {'limit': 0}  # limit=0 means ALL IDs
+                [base_domain], {'limit': 0, 'context': {'active_test': False}}
             )
             odoo_id_set = set(str(oid) for oid in odoo_ids)
             
