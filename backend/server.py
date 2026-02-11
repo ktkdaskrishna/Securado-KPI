@@ -286,7 +286,8 @@ async def health_check():
             "event_bus": "running" if event_bus._running else "stopped",
             "event_queue": "running" if event_queue_service._running else "stopped",
             "event_worker": "running" if event_worker._running else "stopped",
-            "etl_runner": "running" if etl_runner.running else "stopped"
+            "etl_runner": "running" if etl_runner.running else "stopped",
+            "incremental_sync": incremental_worker.get_status()
         }
     }
 
