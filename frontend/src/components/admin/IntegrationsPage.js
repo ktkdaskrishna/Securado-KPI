@@ -251,6 +251,7 @@ export default function IntegrationsPage() {
           <TabsTrigger value="runs">Run History</TabsTrigger>
           <TabsTrigger value="rbac">RBAC Sync</TabsTrigger>
           <TabsTrigger value="quality">Data Quality</TabsTrigger>
+          <TabsTrigger value="tools">Data Tools</TabsTrigger>
           <TabsTrigger value="datalake">Data Lake</TabsTrigger>
           <TabsTrigger value="dlq">DLQ</TabsTrigger>
         </TabsList>
