@@ -53,7 +53,7 @@ async def get_overview(current_user: dict = Depends(get_current_user)):
     for entity_id, entity_def in SYNC_ENTITIES.items():
         db = app_db if entity_def.get("use_app_db") else canonical_db
         coll_name = entity_def["canonical_collection"]
-        count = await db[coll_name].count_documents({})
+        count = await db[coll_name].count_documents({"deleted": {"$ne": True}})
         
         # Get last sync time - synced_at first (when WE pulled), then Odoo timestamps
         last_sync = None
