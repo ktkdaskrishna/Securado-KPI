@@ -8,7 +8,7 @@ Syncs Odoo user groups to application roles and handles:
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 import json
 
