@@ -145,6 +145,12 @@ async def trigger_sync(entity_id: str, background_tasks: BackgroundTasks, curren
             },
             producer="integration-hub", org_id=current_user.get("org_id", "default")
         )
+        
+        # Update synced_at timestamp on all records in this entity to mark sync attempt
+        canonical_db = get_canonical_db()
+        coll = entity_def["canonical_collection"]
+        await canonical_db[coll].update_many({}, {"$set": {"synced_at": now_utc()}})
+        
         return {"success": True, "message": f"Sync triggered for {entity_def['label']}"}
     return {"success": True, "message": f"Sync queued for {entity_def['label']}"}
 
