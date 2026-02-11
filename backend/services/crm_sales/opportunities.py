@@ -237,7 +237,7 @@ async def list_opportunities(
         "org_id": current_user.get("org_id", "default"),
         "type": "opportunity",
         "deleted": {"$ne": True},
-        "active": {"$ne": False}
+        "active": True
     }
     
     # Apply RBAC filter (merged with base query)

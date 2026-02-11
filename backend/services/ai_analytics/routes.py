@@ -156,7 +156,7 @@ async def get_analytics_overview(
         }
     
     # Build query with RBAC + year filter at DB level
-    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
     # Convert time_period to year/quarter
@@ -284,7 +284,7 @@ async def get_conversion_funnel(
         }
     
     # Build query with RBAC - include ALL records, filter by year at DB level
-    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": {"$ne": False}}
+    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
     # Add year filter to DB query
@@ -370,7 +370,7 @@ async def get_rep_performance(
         return {"reps": [], "top_performer": None, "avg_win_rate": 0, "applied_filters": {}}
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
     # Get opportunities only (not leads)
@@ -463,7 +463,7 @@ async def get_team_performance(
         }
     
     # Build query with RBAC + year filter at DB level
-    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     if year:
         query["create_date"] = {"$regex": f"^{year}"}
@@ -589,7 +589,7 @@ async def get_account_health(
         }
     
     # Build query with RBAC + year filter
-    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     if year:
         query["create_date"] = {"$regex": f"^{year}"}
@@ -911,7 +911,7 @@ async def get_available_filters(
             active_names.add(emp["name"])
     # From sales_users (active only, exclude system accounts)
     system_names = {"securado erp", "administrator", "admin", "odoobot"}
-    async for su in canonical_db.sales_users.find({"active": {"$ne": False}}, {"_id": 0, "name": 1}):
+    async for su in canonical_db.sales_users.find({"active": True}, {"_id": 0, "name": 1}):
         name = su.get("name", "")
         if name and name.lower() not in system_names and not name.endswith("_odoo"):
             active_names.add(name)
