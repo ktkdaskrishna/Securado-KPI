@@ -175,7 +175,7 @@ export function DashboardPage() {
   // Reload when filters change
   useEffect(() => {
     loadStats();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.stage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.stage, filters.productDirector, filters.solutionCategory]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
