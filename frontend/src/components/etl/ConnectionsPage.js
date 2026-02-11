@@ -195,7 +195,7 @@ export function ConnectionsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Connection</DialogTitle>
+              <DialogTitle>{editingId ? 'Edit Connection' : 'Create Connection'}</DialogTitle>
               <DialogDescription>
                 Choose a template or configure a custom connection
               </DialogDescription>
