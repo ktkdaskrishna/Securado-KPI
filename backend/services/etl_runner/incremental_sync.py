@@ -243,8 +243,9 @@ class IncrementalSyncWorker:
             doc["org_id"] = "default"
             
             # UPSERT: update if exists, insert if new
+            # Use source_record_id + org_id as unique key (matches existing index)
             result = await canonical_db[collection].update_one(
-                {"canonical_id": canonical_id},
+                {"source_record_id": str(odoo_id), "org_id": "default"},
                 {"$set": doc},
                 upsert=True
             )
