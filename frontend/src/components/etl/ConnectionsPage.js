@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Link, RefreshCw, CheckCircle, XCircle, AlertCircle, Trash2, TestTube, Database, Cloud, Target, TrendingUp, FileText, FlaskConical } from 'lucide-react';
+import { Plus, Link, RefreshCw, CheckCircle, XCircle, AlertCircle, Trash2, TestTube, Database, Cloud, Target, TrendingUp, FileText, FlaskConical, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusColors = {
