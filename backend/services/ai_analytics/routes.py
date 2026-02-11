@@ -888,6 +888,16 @@ async def get_available_filters(
             except:
                 pass
     
+    # Filter sales_reps to only active employees
+    # Cross-reference with canonical employees collection
+    active_employees = set()
+    async for emp in canonical_db.employees.find({"active": True}, {"_id": 0, "name": 1}):
+        if emp.get("name"):
+            active_employees.add(emp["name"])
+    
+    # Only include owners that are active employees (or at least exist in current year data)
+    active_owners = [o for o in owners if o in active_employees]
+    
     return {
         "time_periods": [
             {"value": "week", "label": "This Week"},
@@ -899,9 +909,9 @@ async def get_available_filters(
         "years": sorted(list(years), reverse=True),
         "quarters": ["Q1", "Q2", "Q3", "Q4"],
         "stages": sorted(stages),
-        "sales_reps": sorted(owners),
+        "sales_reps": sorted(active_owners) if active_owners else sorted(owners),
         "teams": [{"id": str(t.get("source_record_id")), "name": t.get("name")} for t in teams if t.get("name")],
-        "accounts": sorted(opp_accounts, key=lambda x: x["name"])  # Return as objects with id/name
+        "accounts": sorted(opp_accounts, key=lambda x: x["name"])
     }
 
 
