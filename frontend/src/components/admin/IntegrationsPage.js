@@ -114,14 +114,14 @@ function SyncOverview() {
 
       {/* Incremental Sync Control */}
       <Card className="border-blue-200 bg-blue-50/30">
-        <CardContent className="p-3 flex items-center justify-between">
+        <CardContent className="p-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <RefreshCw className={`h-4 w-4 ${incrementalStatus?.running ? 'text-emerald-500 animate-spin' : 'text-gray-400'}`} />
             <div>
-              <p className="text-sm font-medium">Incremental Sync (Auto)</p>
+              <p className="text-sm font-medium">Auto-Sync (Incremental Polling)</p>
               <p className="text-xs text-gray-500">
                 {incrementalStatus?.running 
-                  ? `Polling every ${(incrementalStatus?.poll_interval || 300) / 60} min · Last: ${incrementalStatus?.last_poll ? new Date(incrementalStatus.last_poll).toLocaleTimeString() : 'Starting...'}`
+                  ? `Every ${(incrementalStatus?.poll_interval || 300) / 60} min · Last: ${incrementalStatus?.last_poll ? new Date(incrementalStatus.last_poll).toLocaleTimeString() : 'Starting...'}`
                   : 'Stopped'}
                 {incrementalStatus?.sync_states && Object.keys(incrementalStatus.sync_states).length > 0 && (
                   <> · {Object.entries(incrementalStatus.sync_states).map(([k, v]) => `${k}: ${v.records_synced || 0}`).join(', ')}</>
@@ -129,23 +129,43 @@ function SyncOverview() {
               </p>
             </div>
           </div>
-          <Button size="sm" variant={incrementalStatus?.running ? "outline" : "default"}
-            className={!incrementalStatus?.running ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
-            onClick={async () => {
+          <div className="flex items-center gap-2">
+            <Select value={String(incrementalStatus?.poll_interval || 300)} onValueChange={async (v) => {
               try {
-                if (incrementalStatus?.running) {
-                  await targetAPI.stopIncremental();
-                  toast.success('Incremental sync stopped');
-                } else {
-                  await targetAPI.startIncremental();
-                  toast.success('Incremental sync started');
-                }
+                await targetAPI.setIncrementalInterval(parseInt(v));
+                toast.success(`Interval set to ${parseInt(v) / 60} min`);
                 const r = await targetAPI.getIncrementalStatus();
                 setIncrementalStatus(r.data);
               } catch { toast.error('Failed'); }
             }}>
-            {incrementalStatus?.running ? 'Stop Auto-Sync' : 'Start Auto-Sync'}
-          </Button>
+              <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="60">1 min</SelectItem>
+                <SelectItem value="300">5 min</SelectItem>
+                <SelectItem value="600">10 min</SelectItem>
+                <SelectItem value="900">15 min</SelectItem>
+                <SelectItem value="1800">30 min</SelectItem>
+                <SelectItem value="3600">60 min</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant={incrementalStatus?.running ? "outline" : "default"}
+              className={!incrementalStatus?.running ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+              onClick={async () => {
+                try {
+                  if (incrementalStatus?.running) {
+                    await targetAPI.stopIncremental();
+                    toast.success('Auto-sync stopped');
+                  } else {
+                    await targetAPI.startIncremental();
+                    toast.success('Auto-sync started');
+                  }
+                  const r = await targetAPI.getIncrementalStatus();
+                  setIncrementalStatus(r.data);
+                } catch { toast.error('Failed'); }
+              }}>
+              {incrementalStatus?.running ? 'Stop' : 'Start'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
