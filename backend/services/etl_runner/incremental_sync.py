@@ -277,6 +277,38 @@ class IncrementalSyncWorker:
         if updated_count > 0:
             logger.info(f"Incremental sync {entity_id}: {updated_count} records updated (write_date > {last_sync_ts})")
         
+        # === DELETE DETECTION ===
+        # Fetch all active IDs from Odoo (lightweight - just IDs)
+        deleted_count = 0
+        try:
+            base_domain = entity_def.get("domain", [])
+            odoo_ids = models.execute_kw(
+                db_name, uid, api_key, odoo_model, 'search',
+                [base_domain], {'limit': 0}  # limit=0 means ALL IDs
+            )
+            odoo_id_set = set(str(oid) for oid in odoo_ids)
+            
+            # Get our canonical IDs
+            our_ids = set()
+            async for doc in canonical_db[collection].find(
+                {"source_record_id": {"$exists": True}, "deleted": {"$ne": True}},
+                {"_id": 0, "source_record_id": 1}
+            ):
+                our_ids.add(str(doc.get("source_record_id", "")))
+            
+            # Find records in our DB but not in Odoo = deleted
+            deleted_ids = our_ids - odoo_id_set
+            if deleted_ids:
+                result = await canonical_db[collection].update_many(
+                    {"source_record_id": {"$in": list(deleted_ids)}, "deleted": {"$ne": True}},
+                    {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                deleted_count = result.modified_count
+                if deleted_count > 0:
+                    logger.info(f"Incremental sync {entity_id}: {deleted_count} records soft-deleted (removed from Odoo)")
+        except Exception as e:
+            logger.error(f"Delete detection failed for {entity_id}: {e}")
+        
         return updated_count
 
     def _transform_record(self, record: dict, entity_id: str, canonical_id: str) -> dict:
