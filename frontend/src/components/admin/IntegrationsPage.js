@@ -7,7 +7,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Database, Wifi, WifiOff, Play, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Database, Wifi, WifiOff, Play, RefreshCw, CheckCircle2, AlertTriangle, Loader2, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Import ALL original ETL components - preserving full functionality
