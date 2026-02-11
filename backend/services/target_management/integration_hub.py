@@ -21,7 +21,6 @@ from pydantic import BaseModel
 
 class SyncScheduleUpdate(BaseModel):
     schedule: str  # manual, hourly, daily, weekly
-    webhook_enabled: bool = False
 
 SYNC_ENTITIES = {
     "opportunities": {"label": "Opportunities", "canonical_collection": "opportunities", "odoo_model": "crm.lead", "default_schedule": "daily"},
