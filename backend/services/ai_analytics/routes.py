@@ -173,27 +173,30 @@ async def get_analytics_overview(
             quarter = f"Q{q}"
             year = current_year
     
-    # Apply year/quarter to MongoDB query (not post-filter)
-    if year:
-        query["create_date"] = {"$regex": f"^{year}"}
-    if quarter and year:
-        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
-        months = quarter_months.get(quarter, [])
-        if months:
-            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
-    
+    # ODOO-MATCHING: Don't filter year at DB level for Won/Lost
+    # Fetch all, then split by stage and apply date filter per category
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
-    logger.info(f"AI Analytics overview: query keys={list(query.keys())}, year={year}, found {len(all_opps)} opps")
     
-    # No post-filtering needed for dates - done at DB query level
-    
-    # Apply remaining filters (sales_rep, account, stage - NOT year/quarter)
+    # Apply remaining filters (sales_rep, account, stage)
     filters = {
         "sales_rep": sales_rep,
         "team_id": team_id,
         "account": account,
         "stage": stage,
     }
+    all_opps = apply_filters(all_opps, filters)
+    
+    # Apply Odoo-style year filtering
+    if year:
+        def is_won_or_lost(o):
+            s = str(o.get("stage", "")).lower()
+            return s == "won" or s == "lost" or "closed" in s
+        
+        open_filtered = [o for o in all_opps if not is_won_or_lost(o) and str(o.get("create_date", "")).startswith(year)]
+        closed_filtered = [o for o in all_opps if is_won_or_lost(o) and str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "").startswith(year)]
+        all_opps = open_filtered + closed_filtered
+    
+    logger.info(f"AI Analytics overview: year={year}, found {len(all_opps)} opps (Odoo-style filter)")
     opps = apply_filters(all_opps, filters)
     
     # Get all accounts
