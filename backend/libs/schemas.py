@@ -99,7 +99,7 @@ class PipelineRunCommandPayload(BaseModel):
     pipeline_id: str
     connection_id: str
     mapping_id: str
-    trigger_type: str = "manual"  # manual, scheduled, webhook
+    trigger_type: str = "manual"  # manual, scheduled, api
     config: Dict[str, Any] = {}
 
 
