@@ -83,13 +83,13 @@ async def download_field_mappings(current_user: dict = Depends(get_current_user)
 
     for m in mappings:
         for fm in m.get("field_mappings", []):
-            ws2.append([
+            ws2b.append([
                 m.get("name"),
+                m.get("source_model"),
+                m.get("target_entity"),
                 fm.get("source_field") or fm.get("source"),
                 fm.get("target_field") or fm.get("target"),
-                fm.get("transform", ""),
-                fm.get("required", False),
-                fm.get("default_value", "")
+                fm.get("transform", "")
             ])
 
     # Sheet 3: Canonical Schema
