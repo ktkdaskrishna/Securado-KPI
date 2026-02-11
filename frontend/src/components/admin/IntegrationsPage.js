@@ -264,6 +264,7 @@ export default function IntegrationsPage() {
         <TabsContent value="runs" className="mt-4"><RunsPage /></TabsContent>
         <TabsContent value="rbac" className="mt-4"><RBACManagementPage /></TabsContent>
         <TabsContent value="quality" className="mt-4"><DataQualityPage /></TabsContent>
+        <TabsContent value="tools" className="mt-4"><DataToolsTab /></TabsContent>
         <TabsContent value="datalake" className="mt-4"><DataLakePage /></TabsContent>
         <TabsContent value="dlq" className="mt-4"><DLQPage /></TabsContent>
       </Tabs>
