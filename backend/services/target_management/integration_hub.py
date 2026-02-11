@@ -52,10 +52,18 @@ async def get_overview(current_user: dict = Depends(get_current_user)):
     entities = []
     for entity_id, entity_def in SYNC_ENTITIES.items():
         count = await canonical_db[entity_def["canonical_collection"]].count_documents({})
-        last_record = await canonical_db[entity_def["canonical_collection"]].find_one(
-            {"synced_at": {"$exists": True}}, {"_id": 0, "synced_at": 1}, sort=[("synced_at", -1)]
-        )
-        last_sync = last_record.get("synced_at") if last_record else None
+        
+        # Get last sync time - try synced_at first, then write_date, then any date field
+        last_sync = None
+        for date_field in ["synced_at", "write_date", "create_date", "updated_at"]:
+            last_record = await canonical_db[entity_def["canonical_collection"]].find_one(
+                {date_field: {"$exists": True, "$ne": None}},
+                {"_id": 0, date_field: 1},
+                sort=[(date_field, -1)]
+            )
+            if last_record and last_record.get(date_field):
+                last_sync = last_record[date_field]
+                break
         cfg = configs.get(entity_id, {})
         schedule = cfg.get("schedule", entity_def["default_schedule"])
 
