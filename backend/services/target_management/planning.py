@@ -247,28 +247,27 @@ async def list_revenue_plans(
     for plan in serialized:
         pm_name = plan.get("product_manager_name")
         if pm_name:
-            # Get actual revenue from opportunities for this PM
+            # Current year filter for realistic data
+            current_year = datetime.now().strftime("%Y")
+            year_filter = {"create_date": {"$regex": f"^{current_year}"}}
+            
+            # Get actual revenue from Won opportunities for this PM (current year)
             pipeline = [
-                {"$match": {"product_manager": pm_name, "stage": {"$in": ["Won", "Closed Won", "closed_won"]}}},
-                {"$group": {"_id": None, "actual_revenue": {"$sum": "$amount"}, "won_count": {"$sum": 1}}}
+                {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
+                {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "won_count": {"$sum": 1}}}
             ]
             result = await canonical_db.opportunities.aggregate(pipeline).to_list(1)
-            if result:
-                plan["actual_revenue"] = result[0].get("actual_revenue", 0)
-                plan["won_deals"] = result[0].get("won_count", 0)
-            else:
-                plan["actual_revenue"] = 0
-                plan["won_deals"] = 0
+            plan["actual_revenue"] = result[0].get("actual_revenue", 0) if result else 0
+            plan["won_deals"] = result[0].get("won_count", 0) if result else 0
 
-            # Get total pipeline
+            # Get total pipeline (current year, exclude deleted)
             pipeline2 = [
-                {"$match": {"product_manager": pm_name}},
-                {"$group": {"_id": None, "pipeline": {"$sum": "$amount"}, "total_opps": {"$sum": 1}}}
+                {"$match": {"product_manager": pm_name, "deleted": {"$ne": True}, **year_filter}},
+                {"$group": {"_id": None, "pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "total_opps": {"$sum": 1}}}
             ]
             result2 = await canonical_db.opportunities.aggregate(pipeline2).to_list(1)
-            if result2:
-                plan["total_pipeline"] = result2[0].get("pipeline", 0)
-                plan["total_opps"] = result2[0].get("total_opps", 0)
+            plan["total_pipeline"] = result2[0].get("pipeline", 0) if result2 else 0
+            plan["total_opps"] = result2[0].get("total_opps", 0) if result2 else 0
 
             # Count activity plan items
             items_count = await app_db.target_plan_items.count_documents({
