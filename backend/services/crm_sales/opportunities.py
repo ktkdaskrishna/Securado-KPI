@@ -285,8 +285,6 @@ async def list_opportunities(
             {"date_closed": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}, "date_last_stage_update": None},
         ]}
         query.update(year_filter)
-        elif months:
-            query["$or"] = [{"create_date": {"$regex": f"-{m}-"}} for m in months]
     
     # Get records with proper pagination
     records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
