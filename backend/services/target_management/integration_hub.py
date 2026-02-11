@@ -165,3 +165,39 @@ async def get_sync_history(entity: Optional[str] = None, limit: int = 50, curren
     combined = serialize_doc(history) + serialize_doc(runs)
     combined.sort(key=lambda x: str(x.get("started_at", "")), reverse=True)
     return combined[:limit]
+
+
+# ==================== INCREMENTAL SYNC CONTROL ====================
+
+@hub_router.get("/incremental-status")
+async def get_incremental_status(current_user: dict = Depends(get_current_user)):
+    """Get incremental sync worker status"""
+    from services.etl_runner.incremental_sync import incremental_worker
+    app_db = get_app_db()
+    
+    status = incremental_worker.get_status()
+    
+    # Get sync state per entity
+    states = {}
+    async for s in app_db.sync_state.find({}, {"_id": 0}):
+        states[s.get("entity")] = s
+    
+    status["sync_states"] = states
+    return status
+
+
+@hub_router.post("/incremental/start")
+async def start_incremental(current_user: dict = Depends(get_current_user)):
+    """Start incremental sync polling"""
+    from services.etl_runner.incremental_sync import incremental_worker
+    await incremental_worker.start()
+    return {"success": True, "message": "Incremental sync started (5-min interval)"}
+
+
+@hub_router.post("/incremental/stop")
+async def stop_incremental(current_user: dict = Depends(get_current_user)):
+    """Stop incremental sync polling"""
+    from services.etl_runner.incremental_sync import incremental_worker
+    await incremental_worker.stop()
+    return {"success": True, "message": "Incremental sync stopped"}
+
