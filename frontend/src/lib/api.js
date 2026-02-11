@@ -333,6 +333,16 @@ export const targetAPI = {
   startIncremental: () => api.post('/integration-hub/incremental/start'),
   stopIncremental: () => api.post('/integration-hub/incremental/stop'),
   setIncrementalInterval: (seconds) => api.put('/integration-hub/incremental/interval', null, { params: { interval_seconds: seconds } }),
+  rebuildIdentityMap: () => api.post('/integration-hub/rebuild-identity-map'),
+  
+  // Data Tools (Excel)
+  downloadFieldMappings: () => api.get('/data-tools/mappings/download', { responseType: 'blob' }),
+  downloadDataTemplate: (entity) => api.get('/data-tools/data-template/download', { params: { entity }, responseType: 'blob' }),
+  uploadDataCorrections: (file, entity) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/data-tools/data-template/upload?entity=${entity}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // Events/DLQ APIs
