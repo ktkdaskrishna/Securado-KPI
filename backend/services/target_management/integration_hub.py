@@ -122,7 +122,7 @@ async def trigger_sync(entity_id: str, background_tasks: BackgroundTasks, curren
         {"$or": [
             {"mappings": {"$elemMatch": {"$regex": entity_def["canonical_collection"], "$options": "i"}}},
             {"name": {"$regex": entity_def["label"], "$options": "i"}}
-        ]}, {"_id": 0, "id": 1}
+        ]}, {"_id": 0, "id": 1, "mapping_id": 1, "connection_id": 1}
     )
 
     sync_log = {
@@ -136,7 +136,13 @@ async def trigger_sync(entity_id: str, background_tasks: BackgroundTasks, curren
         from libs.schemas import Topics
         await emit_event(
             event_type=Topics.ETL_PIPELINE_RUN_COMMAND,
-            payload={"pipeline_id": pipeline["id"], "run_id": generate_id(), "trigger_type": "manual_hub"},
+            payload={
+                "pipeline_id": pipeline["id"],
+                "mapping_id": pipeline.get("mapping_id"),
+                "connection_id": pipeline.get("connection_id"),
+                "run_id": generate_id(),
+                "trigger_type": "manual_hub"
+            },
             producer="integration-hub", org_id=current_user.get("org_id", "default")
         )
         return {"success": True, "message": f"Sync triggered for {entity_def['label']}"}
