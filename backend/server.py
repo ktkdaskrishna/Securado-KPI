@@ -114,6 +114,7 @@ from services.target_management.alerts import alerts_router as target_alerts_rou
 from services.target_management.org_structure import org_router
 from services.target_management.filter_presets import filter_presets_router
 from services.target_management.integration_hub import hub_router as integration_hub_router
+from services.target_management.excel_tools import excel_router
 
 
 @asynccontextmanager
