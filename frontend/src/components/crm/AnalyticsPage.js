@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
   const [aiInsights, setAiInsights] = useState(null);
   const [localFilters, setLocalFilters] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedQuarter, setSelectedQuarter] = useState('');
   
   // Modal state for At Risk/Dormant accounts
