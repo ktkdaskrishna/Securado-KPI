@@ -31,7 +31,9 @@ export function DashboardPage() {
     year: currentYear,  // Default to current year
     quarter: null,
     salesRep: null,
-    stage: null
+    stage: null,
+    productDirector: null,
+    solutionCategory: null,
   });
 
   // Export dashboard data to Excel
