@@ -323,18 +323,16 @@ class DashboardAggregator:
             
             # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
             def get_opp_value(opp):
-                sale_val = opp.get("sale_value", 0)
-                if sale_val and sale_val != 'False':
-                    try:
-                        return float(sale_val)
-                    except:
-                        pass
-                amount = opp.get("amount", 0)
-                if amount and amount != 'False':
-                    try:
-                        return float(amount)
-                    except:
-                        pass
+                """Priority: x_studio_sale_value > sale_value > sale_amount_total > amount"""
+                for field in ["x_studio_sale_value", "sale_value", "sale_amount_total", "amount"]:
+                    val = opp.get(field, 0)
+                    if val and val != 'False' and val != False:
+                        try:
+                            v = float(val)
+                            if v > 0:
+                                return v
+                        except:
+                            pass
                 return 0
             
             # Calculate aggregates for OPPORTUNITIES only - use sale_value as primary
