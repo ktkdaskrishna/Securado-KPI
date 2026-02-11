@@ -279,10 +279,8 @@ async def list_opportunities(
         year_filter = {"$or": [
             # Open deals created in the year
             {"create_date": {"$regex": f"^{year}"}, "stage": {"$nin": ["Won", "Lost"]}},
-            # Won/Lost deals with stage update in the year
+            # Won/Lost deals with stage update in the year (Odoo's date_last_stage_update)
             {"date_last_stage_update": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}},
-            # Fallback for Won/Lost without date_last_stage_update
-            {"date_closed": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}, "date_last_stage_update": None},
         ]}
         query.update(year_filter)
     
