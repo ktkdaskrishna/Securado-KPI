@@ -849,7 +849,7 @@ async def get_available_filters(
     teams = await canonical_db.sales_teams.find({"org_id": org_id}).to_list(100)
     
     # Get unique stages
-    stages = list(set(o.get("stage") for o in opps if o.get("stage")))
+    stages = list(set(o.get("stage") for o in opps if o.get("stage") and isinstance(o.get("stage"), str)))
     
     # Get unique owners from opportunities (not from sales_users)
     owners = list(set(o.get("owner_name") for o in opps if o.get("owner_name")))
