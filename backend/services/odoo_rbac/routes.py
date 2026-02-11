@@ -560,8 +560,9 @@ async def get_current_user_rbac(
         odoo_groups = users_rbac_record.get("odoo_group_names", [])
         logger.info(f"User {email} found in users_rbac with groups: {odoo_groups}")
         
-        # If odoo_groups is empty, fall back to app-level roles
-        if not odoo_groups:
+        # If odoo_groups is empty OR all numeric IDs (no readable names), fall back to app roles
+        named_groups = [g for g in odoo_groups if not g.startswith("group_")]
+        if not named_groups:
             app_user = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
             app_roles_list = app_user.get("roles", []) if app_user else []
             if app_roles_list:
