@@ -225,15 +225,6 @@ FIELD_ACCESS_RULES = {
 }
 
 
-class OdooWebhookPayload(BaseModel):
-    """Payload received from Odoo webhook/automation"""
-    model: str
-    action: str  # create, write, unlink
-    record_id: int
-    record_data: Optional[Dict[str, Any]] = None
-    timestamp: Optional[str] = None
-
-
 class SyncResult(BaseModel):
     synced_groups: int
     synced_users: int
