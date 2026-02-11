@@ -13,7 +13,7 @@ from services.identity.routes import get_current_user
 from services.crm_sales.models import *
 from services.crm_sales.bluesheet import calculate_bluesheet_probability, get_bluesheet_form_options, BUYING_INFLUENCES, COMPETITION_STATUS, BUDGET_STATUS
 from services.rbac_sync.middleware import get_rbac_filter
-from services.crm_sales.helpers import STAGE_ALIASES, apply_date_filters
+from services.crm_sales.helpers import STAGE_ALIASES, apply_date_filters, merge_with_overrides, normalize_stage, STAGE_MAPPING
 
 logger = logging.getLogger(__name__)
 
