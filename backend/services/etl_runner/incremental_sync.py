@@ -294,7 +294,7 @@ class IncrementalSyncWorker:
         # Entity-specific transformations
         if entity_id == "opportunities":
             doc["name"] = record.get("name", "")
-            doc["amount"] = record.get("expected_revenue") or record.get("sale_amount_total") or 0
+            doc["amount"] = record.get("x_studio_sale_value") or record.get("sale_amount_total") or record.get("expected_revenue") or 0
             doc["sale_value"] = record.get("x_studio_sale_value") or doc["amount"]
             doc["owner_name"] = doc.get("user_id", "")
             doc["owner_id"] = doc.get("user_id_id")
@@ -304,9 +304,10 @@ class IncrementalSyncWorker:
             doc["product_manager"] = doc.get("productmanager_id", "")
             doc["product_manager_id"] = doc.get("productmanager_id_id")
             doc["solution_category"] = doc.get("productcategory_id", "")
-            doc["stage"] = doc.get("stage_id", "")
-            doc["custom_stage"] = doc.get("x_studio_opportunity_stages_1", doc.get("stage"))
-            doc["lead_stage"] = doc.get("stage")
+            # Stage: custom_stage (x_studio) is authoritative, stage_id is the pipeline stage
+            doc["custom_stage"] = record.get("x_studio_opportunity_stages_1") or doc.get("stage_id", "")
+            doc["lead_stage"] = doc.get("stage_id", "")
+            doc["stage"] = doc["custom_stage"] or doc["lead_stage"]
         
         elif entity_id == "accounts":
             doc["name"] = record.get("name", "")
