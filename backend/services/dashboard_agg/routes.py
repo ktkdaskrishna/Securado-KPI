@@ -545,7 +545,7 @@ async def get_dashboard_stats(
     
     # Calculate filtered stats in real-time
     # Build MongoDB query for non-date filters
-    query = {"org_id": org_id}
+    query = {"org_id": org_id, "deleted": {"$ne": True}}
     
     # Apply RBAC filter
     query.update(rbac_filter)
