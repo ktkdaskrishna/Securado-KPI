@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
-import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } from '../layout/PageFilters';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
 
 export function DashboardPage() {
   const navigate = useNavigate();
