@@ -219,7 +219,7 @@ export function PipelinesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>Create Pipeline</DialogTitle>
+              <DialogTitle>{editingPipelineId ? 'Edit Pipeline' : 'Create Pipeline'}</DialogTitle>
               <DialogDescription>
                 Configure a pipeline to sync data from your connections
               </DialogDescription>
