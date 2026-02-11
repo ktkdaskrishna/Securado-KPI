@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { 
-  Plus, GitMerge, Trash2, Play, RefreshCw, Workflow, Clock, CheckCircle, XCircle,
+  Plus, GitMerge, Trash2, Play, RefreshCw, Workflow, Clock, CheckCircle, XCircle, Pencil,
   Calendar, Webhook, Settings, Copy, Eye, Pause, AlertTriangle, Database, ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
