@@ -70,7 +70,6 @@ class PipelineUpdate(BaseModel):
     schedule_type: Optional[str] = None
     interval_minutes: Optional[int] = None
     cron_expression: Optional[str] = None
-    webhook_enabled: Optional[bool] = None
     sync_mode: Optional[str] = None
     incremental_field: Optional[str] = None
     delete_mode: Optional[str] = None
