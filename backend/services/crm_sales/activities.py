@@ -1,3 +1,25 @@
+"""CRM Sales - Split module. See helpers.py for shared imports."""
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from bson import ObjectId
+import logging
+
+from libs.database import get_app_db, get_canonical_db
+from libs.utils import serialize_doc, generate_id, now_utc, PipelineStages
+from libs.event_bus import emit_event
+from libs.schemas import Topics
+from services.identity.routes import get_current_user
+from services.crm_sales.models import *
+from services.crm_sales.bluesheet import calculate_bluesheet_probability, get_bluesheet_form_options, BUYING_INFLUENCES, COMPETITION_STATUS, BUDGET_STATUS
+from services.rbac_sync.middleware import get_rbac_filter
+from services.crm_sales.helpers import STAGE_ALIASES, apply_date_filters
+
+logger = logging.getLogger(__name__)
+
+activities_router = APIRouter(prefix="/activities", tags=["activities"])
+
+
 # ==================== ACTIVITIES ====================
 
 @activities_router.get("")
