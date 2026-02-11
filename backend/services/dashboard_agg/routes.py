@@ -585,8 +585,8 @@ async def get_dashboard_stats(
         
         # Filter by year using Odoo's logic
         open_opps = [o for o in open_opps if str(o.get("create_date", "")).startswith(year)]
-        won_opps = [o for o in won_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "").startswith(year)]
-        lost_opps = [o for o in lost_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "").startswith(year)]
+        won_opps = [o for o in won_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or "").startswith(year)]
+        lost_opps = [o for o in lost_opps if str(o.get("date_last_stage_update") or o.get("date_closed") or "").startswith(year)]
         
         if quarter:
             quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
