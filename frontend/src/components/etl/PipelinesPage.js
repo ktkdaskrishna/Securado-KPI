@@ -160,10 +160,21 @@ export function PipelinesPage() {
     }
   };
 
-  const copyWebhookUrl = (pipelineId) => {
-    const url = `${window.location.origin}/api/webhooks/pipeline/${pipelineId}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Webhook URL copied to clipboard');
+  const handleEditPipeline = (pipeline) => {
+    // Pre-fill the form with pipeline data
+    setFormData({
+      name: pipeline.name || '',
+      description: pipeline.description || '',
+      connection_id: pipeline.connection_id || '',
+      schedule_type: pipeline.schedule_type || 'manual',
+      interval_minutes: pipeline.interval_minutes || 60,
+      cron_expression: pipeline.cron_expression || '',
+      sync_mode: pipeline.sync_mode || 'full',
+      incremental_field: pipeline.incremental_field || 'write_date',
+    });
+    setSelectedMappings(pipeline.mappings || (pipeline.mapping_id ? [pipeline.mapping_id] : []));
+    setEditingPipelineId(pipeline.id);
+    setDialogOpen(true);
   };
 
   // Filter mappings by selected connection
