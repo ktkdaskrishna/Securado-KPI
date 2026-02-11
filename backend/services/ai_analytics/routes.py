@@ -183,16 +183,8 @@ async def get_analytics_overview(
             query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
-            # Determine current quarter
-            if current_month <= 3:
-                quarter = "Q1"
-            elif current_month <= 6:
-                quarter = "Q2"
-            elif current_month <= 9:
-                quarter = "Q3"
-            else:
-                quarter = "Q4"
-            year = current_year
+    
+    # No post-filtering needed for dates - done at DB query level
         elif time_period == "month":
             # For month, we'll filter to current month
             year = current_year
