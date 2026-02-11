@@ -332,6 +332,7 @@ export const targetAPI = {
   getIncrementalStatus: () => api.get('/integration-hub/incremental-status'),
   startIncremental: () => api.post('/integration-hub/incremental/start'),
   stopIncremental: () => api.post('/integration-hub/incremental/stop'),
+  setIncrementalInterval: (seconds) => api.put('/integration-hub/incremental/interval', null, { params: { interval_seconds: seconds } }),
 };
 
 // Events/DLQ APIs
