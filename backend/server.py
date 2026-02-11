@@ -174,6 +174,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Dashboard aggregator start failed: {e}")
     
+    try:
+        # Start incremental sync worker (5-min polling for opportunities, accounts, invoices)
+        await incremental_worker.start()
+    except Exception as e:
+        logger.error(f"Incremental sync worker start failed: {e}")
+    
     logger.info("Event Mesh CRM Platform started successfully")
     
     yield
