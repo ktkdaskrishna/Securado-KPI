@@ -167,6 +167,61 @@ async def get_sync_history(entity: Optional[str] = None, limit: int = 50, curren
     return combined[:limit]
 
 
+
+@hub_router.post("/rebuild-identity-map")
+async def rebuild_identity_map(current_user: dict = Depends(get_current_user)):
+    """Rebuild user identity map from employees + sales_users + app users"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    identity_map = {}
+    
+    # From employees
+    async for emp in canonical_db.employees.find({"active": True}, {"_id": 0, "name": 1, "email": 1, "source_record_id": 1}):
+        email = (emp.get("email") or "").lower().strip()
+        if not email: continue
+        if email not in identity_map:
+            identity_map[email] = {"email": email, "all_names": set(), "active": True}
+        identity_map[email]["canonical_name"] = emp["name"]
+        identity_map[email]["employee_id"] = emp.get("source_record_id")
+        identity_map[email]["all_names"].add(emp["name"])
+    
+    # From sales_users
+    async for su in canonical_db.sales_users.find({}, {"_id": 0, "name": 1, "email": 1}):
+        email = (su.get("email") or "").lower().strip()
+        if not email: continue
+        if email not in identity_map:
+            identity_map[email] = {"email": email, "all_names": set(), "active": True}
+        identity_map[email]["display_name"] = su["name"]
+        identity_map[email]["all_names"].add(su["name"])
+    
+    # From app users
+    async for u in app_db.users.find({}, {"_id": 0, "name": 1, "email": 1}):
+        email = (u.get("email") or "").lower().strip()
+        if not email: continue
+        if email not in identity_map:
+            identity_map[email] = {"email": email, "all_names": set(), "active": True}
+        identity_map[email]["app_name"] = u["name"]
+        identity_map[email]["all_names"].add(u["name"])
+    
+    # Finalize
+    for data in identity_map.values():
+        if "display_name" not in data:
+            data["display_name"] = data.get("canonical_name") or data.get("app_name") or data["email"]
+        if "canonical_name" not in data:
+            data["canonical_name"] = data.get("display_name")
+        data["all_names"] = list(data["all_names"])
+    
+    # Write
+    await app_db.user_identity_map.drop()
+    docs = list(identity_map.values())
+    if docs:
+        await app_db.user_identity_map.insert_many(docs)
+        await app_db.user_identity_map.create_index("email", unique=True)
+    
+    return {"success": True, "users_mapped": len(docs)}
+
+
 # ==================== INCREMENTAL SYNC CONTROL ====================
 
 @hub_router.get("/incremental-status")
