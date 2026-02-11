@@ -156,7 +156,7 @@ async def get_analytics_overview(
         }
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
     # Get OPPORTUNITIES only (exclude leads by filtering type='opportunity')
@@ -284,7 +284,7 @@ async def get_conversion_funnel(
         }
     
     # Build query with RBAC - include ALL records for full funnel (opportunities + leads)
-    query = {"org_id": org_id}
+    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
     # Get all opportunities (include leads for proper funnel analysis)
@@ -366,7 +366,7 @@ async def get_rep_performance(
         return {"reps": [], "top_performer": None, "avg_win_rate": 0, "applied_filters": {}}
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
     # Get opportunities only (not leads)
@@ -459,7 +459,7 @@ async def get_team_performance(
         }
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
@@ -579,7 +579,7 @@ async def get_account_health(
         }
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
     
     account_query = {"org_id": org_id}
