@@ -458,9 +458,15 @@ async def get_team_performance(
             "top_pm": None, "top_category": None, "applied_filters": {}
         }
     
-    # Build query with RBAC
+    # Build query with RBAC + year filter at DB level
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
+    if year:
+        query["create_date"] = {"$regex": f"^{year}"}
+    elif not quarter:
+        # Default to current year
+        from datetime import datetime
+        query["create_date"] = {"$regex": f"^{datetime.now().year}"}
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
