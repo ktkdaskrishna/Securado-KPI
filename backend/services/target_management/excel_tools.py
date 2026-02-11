@@ -34,9 +34,52 @@ async def download_field_mappings(current_user: dict = Depends(get_current_user)
             m.get("version", 1), m.get("status", "active")
         ])
 
-    # Sheet 2: Field Details (all mappings)
-    ws2 = wb.create_sheet("Field Mappings")
-    ws2.append(["Mapping Name", "Source Field (Odoo)", "Target Field (CRM)", "Transform", "Required", "Default Value"])
+    # Sheet 2: Active Field Mappings (from incremental sync - the ACTUAL mappings being used)
+    ws2 = wb.create_sheet("Active Field Mappings")
+    ws2.append(["Entity", "Odoo Model", "Odoo Field (source)", "CRM Field (target)", "Transform Notes"])
+
+    from services.etl_runner.incremental_sync import INCREMENTAL_ENTITIES
+    for entity_id, edef in INCREMENTAL_ENTITIES.items():
+        for field in edef.get("default_fields", []):
+            # Map Odoo field to CRM canonical field
+            transform = ""
+            target = field  # Default: same name
+            if field == "user_id":
+                target = "owner_name"
+                transform = "Many2one → name string"
+            elif field == "partner_id":
+                target = "account_name"
+                transform = "Many2one → name string"
+            elif field == "stage_id":
+                target = "lead_stage"
+                transform = "Many2one → stage name"
+            elif field == "productmanager_id":
+                target = "product_manager"
+                transform = "Many2one → PM name"
+            elif field == "productcategory_id":
+                target = "solution_category"
+                transform = "Many2one → category name"
+            elif field == "x_studio_sale_value":
+                target = "sale_value"
+                transform = "Primary value field"
+            elif field == "x_studio_opportunity_stages_1":
+                target = "custom_stage / stage"
+                transform = "Many2one → authoritative stage"
+            elif field == "sale_amount_total":
+                target = "sale_amount_total"
+                transform = "Secondary value (may differ from x_studio_sale_value)"
+            elif field == "expected_revenue":
+                target = "expected_revenue"
+                transform = "Often 0 in Odoo - NOT used for pipeline"
+            elif field.startswith("x_studio_"):
+                target = field
+                transform = "Custom Studio field"
+            
+            ws2.append([entity_id, edef["odoo_model"], field, target, transform])
+
+    # Also add the DB-stored mappings (legacy ETL)
+    ws2b = wb.create_sheet("Legacy ETL Mappings")
+    ws2b.append(["Mapping Name", "Source Model", "Target Entity", "Source Field", "Target Field", "Transform"])
 
     for m in mappings:
         for fm in m.get("field_mappings", []):
