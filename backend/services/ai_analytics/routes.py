@@ -584,11 +584,16 @@ async def get_account_health(
             "applied_filters": {}
         }
     
-    # Build query with RBAC
+    # Build query with RBAC + year filter
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": {"$ne": False}}
     query.update(rbac_filter)
+    if year:
+        query["create_date"] = {"$regex": f"^{year}"}
+    elif not quarter:
+        from datetime import datetime
+        query["create_date"] = {"$regex": f"^{datetime.now().year}"}
     
-    account_query = {"org_id": org_id}
+    account_query = {"org_id": org_id, "deleted": {"$ne": True}}
     account_query.update(rbac_filter)
     
     accounts = await canonical_db.accounts.find(account_query).to_list(10000)
