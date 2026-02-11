@@ -545,7 +545,7 @@ async def get_dashboard_stats(
     
     # Calculate filtered stats in real-time
     # Build MongoDB query - ALL filters applied at DB level for consistency
-    query = {"org_id": org_id, "deleted": {"$ne": True}}
+    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": {"$ne": False}}
     
     # Apply RBAC filter
     query.update(rbac_filter)
