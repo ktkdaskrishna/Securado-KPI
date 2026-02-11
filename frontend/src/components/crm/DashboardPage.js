@@ -108,7 +108,7 @@ export function DashboardPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, salesRep: null, stage: null });
+    setFilters({ year: null, quarter: null, salesRep: null, stage: null, productDirector: null, solutionCategory: null });
   };
 
   const hasActiveFilters = () => {
