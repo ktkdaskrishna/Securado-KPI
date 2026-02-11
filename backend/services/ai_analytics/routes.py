@@ -955,52 +955,6 @@ def apply_filters(opps: list, filters: dict) -> list:
     
     # Year and quarter are now filtered at MongoDB query level
     # No post-filtering needed for dates
-        def get_month_for_filtering(o):
-            # For Won deals, use won_at (date_last_stage_update from Odoo)
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    if o.get(field):
-                        return str(o.get(field, ""))[5:7]
-            if o.get("close_date"):
-                return str(o.get("close_date", ""))[5:7]
-            return str(o.get("create_date", ""))[5:7]
-        
-        filtered = [o for o in filtered if get_month_for_filtering(o) in months]
-    
-    # Filter by time_period (week, month, quarter, year)
-    if filters.get("time_period") and filters.get("time_period") not in ["all", "year", "quarter"]:
-        from datetime import datetime, timedelta
-        now = datetime.now()
-        tp = filters["time_period"]
-        
-        def get_opp_date(o):
-            """Get relevant date from opportunity - use won_at for Won deals"""
-            # For Won deals, prioritize won_at
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    date_str = o.get(field)
-                    if date_str:
-                        break
-            else:
-                date_str = o.get("close_date") or o.get("create_date")
-            
-            if not date_str:
-                return None
-            try:
-                if isinstance(date_str, str):
-                    return datetime.fromisoformat(date_str.replace('Z', '+00:00').split('+')[0])
-                return date_str
-            except:
-                return None
-        
-        if tp == "week":
-            # Last 7 days
-            cutoff = now - timedelta(days=7)
-            filtered = [o for o in filtered if (d := get_opp_date(o)) and d >= cutoff]
-        elif tp == "month":
-            # Current month
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            filtered = [o for o in filtered if (d := get_opp_date(o)) and d >= month_start]
     
     # Filter by sales rep
     if filters.get("sales_rep"):
