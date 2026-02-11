@@ -38,13 +38,27 @@ function SyncOverview() {
     setSyncing(entityId);
     try {
       const res = await targetAPI.triggerSync(entityId);
-      toast.success(res.data.message);
+      toast.success(res.data.message || `Syncing ${entityId}...`);
+      // Immediate visual update - mark the entity as syncing
+      if (overview) {
+        const updated = { ...overview, entities: overview.entities.map(e => 
+          e.id === entityId ? { ...e, last_sync: new Date().toISOString(), is_overdue: false } : e
+        )};
+        setOverview(updated);
+      }
+      // Refresh after pipeline runs
       setTimeout(async () => {
-        const r = await targetAPI.getHubOverview();
-        setOverview(r.data);
+        try {
+          const r = await targetAPI.getHubOverview();
+          setOverview(r.data);
+          toast.success(`${entityId} sync complete`);
+        } catch {}
         setSyncing(null);
-      }, 2000);
-    } catch { toast.error('Sync failed'); setSyncing(null); }
+      }, 5000);
+    } catch (err) { 
+      toast.error(`Sync failed: ${err.response?.data?.detail || 'Unknown error'}`); 
+      setSyncing(null); 
+    }
   };
 
   const handleScheduleChange = async (entityId, schedule) => {
