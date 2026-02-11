@@ -204,6 +204,13 @@ class DatabaseManager:
         await self.app_db.target_redistributions.create_index("revenue_plan_id")
         
         logger.info("Database indexes created")
+        # Mark as done
+        from datetime import datetime, timezone
+        await self.app_db.system_meta.update_one(
+            {"key": "indexes_created"},
+            {"$set": {"key": "indexes_created", "timestamp": datetime.now(timezone.utc), "count": 89}},
+            upsert=True
+        )
 
 
 # Global database manager instance
