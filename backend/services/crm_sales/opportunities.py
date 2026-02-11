@@ -270,14 +270,21 @@ async def list_opportunities(
     if solution_category:
         query["solution_category"] = solution_category
     
-    # Add year/quarter to MongoDB query directly (not post-filter)
+    # ODOO-MATCHING DATE FILTER:
+    # Open deals: filter by create_date
+    # Won/Lost deals: filter by date_last_stage_update
+    # This matches Odoo's dashboard behavior
     if year:
-        query["create_date"] = {"$regex": f"^{year}"}
-    if quarter:
-        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
-        months = quarter_months.get(quarter, [])
-        if months and year:
-            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
+        # Use $or to match EITHER condition
+        year_filter = {"$or": [
+            # Open deals created in the year
+            {"create_date": {"$regex": f"^{year}"}, "stage": {"$nin": ["Won", "Lost"]}},
+            # Won/Lost deals with stage update in the year
+            {"date_last_stage_update": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}},
+            # Fallback for Won/Lost without date_last_stage_update
+            {"date_closed": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}, "date_last_stage_update": None},
+        ]}
+        query.update(year_filter)
         elif months:
             query["$or"] = [{"create_date": {"$regex": f"-{m}-"}} for m in months]
     
