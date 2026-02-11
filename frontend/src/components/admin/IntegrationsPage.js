@@ -136,7 +136,7 @@ export default function IntegrationsPage() {
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Database className="h-6 w-6 text-[#800000]" /> Integrations
         </h1>
-        <p className="text-gray-500 text-sm">Odoo ERP connection, data sync, field mapping, webhooks, RBAC</p>
+        <p className="text-gray-500 text-sm">Odoo ERP connection, data sync, field mapping, RBAC</p>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
