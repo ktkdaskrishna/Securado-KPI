@@ -329,6 +329,9 @@ export const targetAPI = {
   updateSyncSchedule: (entityId, data) => api.put(`/integration-hub/schedule/${entityId}`, data),
   triggerSync: (entityId) => api.post(`/integration-hub/sync/${entityId}`),
   getSyncHistory: (params) => api.get('/integration-hub/history', { params }),
+  getIncrementalStatus: () => api.get('/integration-hub/incremental-status'),
+  startIncremental: () => api.post('/integration-hub/incremental/start'),
+  stopIncremental: () => api.post('/integration-hub/incremental/stop'),
 };
 
 // Events/DLQ APIs
