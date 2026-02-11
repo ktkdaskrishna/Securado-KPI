@@ -657,10 +657,11 @@ async def get_actuals_by_pm(
     product_manager: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get actual performance data per product manager from Odoo"""
+    """Get actual performance data per product manager - current year"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
 
-    match = {"product_manager": {"$ne": None}}
+    match = {"product_manager": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}
     if product_manager:
         match["product_manager"] = product_manager
 
@@ -668,10 +669,10 @@ async def get_actuals_by_pm(
         {"$match": match},
         {"$group": {
             "_id": "$product_manager",
-            "total_pipeline": {"$sum": "$amount"},
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}},
             "opp_count": {"$sum": 1},
-            "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
-            "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+            "won_amount": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", "$amount"]}, 0]}},
             "categories": {"$addToSet": "$solution_category"}
         }},
         {"$sort": {"total_pipeline": -1}}
