@@ -68,7 +68,18 @@ class DatabaseManager:
             logger.info("Disconnected from MongoDB")
     
     async def _create_indexes(self):
-        """Create database indexes"""
+        """Create database indexes - idempotent, skips if recently created"""
+        from datetime import datetime, timezone, timedelta
+        meta = await self.app_db.system_meta.find_one({"key": "indexes_created"})
+        if meta and meta.get("timestamp"):
+            last = meta["timestamp"]
+            if hasattr(last, 'replace'):
+                last_utc = last.replace(tzinfo=timezone.utc) if last.tzinfo is None else last
+                if last_utc > datetime.now(timezone.utc) - timedelta(hours=24):
+                    logger.info("Indexes created recently, skipping (use force_reindex to override)")
+                    return
+
+        logger.info("Creating database indexes (89 indexes)...")
         # App DB indexes
         await self.app_db.users.create_index("id", unique=True)
         await self.app_db.users.create_index("email", unique=True)
