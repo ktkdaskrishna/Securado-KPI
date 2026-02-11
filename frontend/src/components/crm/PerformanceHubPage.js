@@ -373,7 +373,7 @@ export default function PerformanceHubPage() {
       </DrillPopup>
 
       {/* DIALOGS */}
-      {showExecutiveTabs && <CreatePlanDialog open={showCreatePlan} onClose={() => setShowCreatePlan(false)} onCreated={() => { loadData(); setShowCreatePlan(false); }} productManagers={productManagers} />}
+      {showExecutiveTabs && <CreatePlanDialog open={showCreatePlan} onClose={() => setShowCreatePlan(false)} onCreated={(newPlan) => { loadData().then(() => { setShowCreatePlan(false); if (newPlan) { setSelectedPlan(newPlan); setTab('pm'); } }); }} productManagers={productManagers} />}
       {selectedPlan && <AddItemDialog open={showAddItem} onClose={() => setShowAddItem(false)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowAddItem(false); }} planId={selectedPlan.id} solutionCats={isPD ? solutionCats.filter(c => (myData?.my_categories || []).includes(c.name)) : solutionCats} activityTypes={activityTypes} />}
       {showRedistribute && <RedistributeDialog open={!!showRedistribute} onClose={() => setShowRedistribute(null)} onCreated={() => { if (selectedPlan) loadPlanDetails(selectedPlan.id); loadData(); setShowRedistribute(null); }} item={showRedistribute} salespersons={isPD ? (myData?.my_salespersons || []).map(s => ({...s, total_pipeline: s.pipeline || 0})) : salespersons} />}
       <AdvancedFilterBuilder open={showAdvancedFilter} onClose={() => setShowAdvancedFilter(false)}
