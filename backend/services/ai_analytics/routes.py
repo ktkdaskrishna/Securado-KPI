@@ -888,15 +888,31 @@ async def get_available_filters(
             except:
                 pass
     
-    # Filter sales_reps to only active employees
-    # Cross-reference with canonical employees collection
-    active_employees = set()
+    # Filter sales_reps to active employees/sales_users
+    # Cross-reference with BOTH employees AND sales_users (names may differ)
+    active_names = set()
     async for emp in canonical_db.employees.find({"active": True}, {"_id": 0, "name": 1}):
         if emp.get("name"):
-            active_employees.add(emp["name"])
+            active_names.add(emp["name"])
+    async for su in canonical_db.sales_users.find({"active": {"$ne": False}}, {"_id": 0, "name": 1}):
+        if su.get("name"):
+            active_names.add(su["name"])
     
-    # Only include owners that are active employees (or at least exist in current year data)
-    active_owners = [o for o in owners if o in active_employees]
+    # Include owners that match any active employee/sales_user name
+    # Use case-insensitive partial matching for names with different formatting
+    active_owners = []
+    for owner in owners:
+        # Direct match
+        if owner in active_names:
+            active_owners.append(owner)
+            continue
+        # Fuzzy: check if first+last name words match any active name
+        owner_words = set(owner.lower().replace("-", " ").replace(".", " ").split())
+        for active_name in active_names:
+            active_words = set(active_name.lower().replace("-", " ").replace(".", " ").split())
+            if len(owner_words & active_words) >= 2:  # At least 2 name words match
+                active_owners.append(owner)
+                break
     
     return {
         "time_periods": [
