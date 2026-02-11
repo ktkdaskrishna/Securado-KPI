@@ -323,6 +323,16 @@ export function DashboardPage() {
           onChange={(v) => updateFilter('stage', v)} 
           stages={filterOptions.stages}
         />
+        <ProductDirectorFilter
+          value={filters.productDirector}
+          onChange={(v) => updateFilter('productDirector', v)}
+          productDirectors={filterOptions.productDirectors}
+        />
+        <SolutionCategoryFilter
+          value={filters.solutionCategory}
+          onChange={(v) => updateFilter('solutionCategory', v)}
+          categories={filterOptions.solutionCategories}
+        />
       </PageFilters>
 
       {/* KPI Cards - Clickable */}
