@@ -20,7 +20,7 @@ export function DashboardPage() {
   const [categoryStats, setCategoryStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [] });
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [], productDirectors: [], solutionCategories: [] });
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
   
   // Get current year for default filter
