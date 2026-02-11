@@ -119,7 +119,7 @@ async def download_field_mappings(current_user: dict = Depends(get_current_user)
     from openpyxl.styles import Font, PatternFill
     header_fill = PatternFill(start_color="800000", end_color="800000", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
-    for ws in [ws1, ws2, ws3, ws4]:
+    for ws in [ws1, ws2, ws2b, ws3, ws4]:
         for cell in ws[1]:
             cell.fill = header_fill
             cell.font = header_font
