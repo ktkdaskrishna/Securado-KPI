@@ -235,6 +235,11 @@ class AccessRuleEngine:
             app_user = await self.app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
             app_roles = app_user.get("roles", []) if app_user else []
             
+            # Admin/System Admin gets full access regardless of Odoo groups
+            if "admin" in app_roles or "system_admin" in app_roles or "sales_admin" in app_roles:
+                logger.info(f"User {user_name} has admin role ({app_roles}) - full access")
+                return {}
+            
             if "product_director" in app_roles or "product_manager" in app_roles:
                 # Use canonical name (resolved from Odoo employees) for PM matching
                 import re
