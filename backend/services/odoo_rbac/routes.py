@@ -669,7 +669,35 @@ async def get_current_user_rbac(
         
         if users_rbac_record:
             odoo_groups = users_rbac_record.get("odoo_group_names", [])
-            # Determine access from groups (same logic as above)
+            named_groups2 = [g for g in odoo_groups if not g.startswith("group_")]
+            
+            # If all groups are numeric IDs, fall back to app roles
+            if not named_groups2:
+                app_user2 = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+                app_roles2 = app_user2.get("roles", []) if app_user2 else []
+                if app_roles2:
+                    permissions2 = set(["view_dashboard", "view_profile"])
+                    resolved2 = []
+                    rec_access2 = "own"
+                    for role in app_roles2:
+                        if role in APP_ROLE_PERMS:
+                            permissions2.update(APP_ROLE_PERMS[role]["perms"])
+                            resolved2.append(role)
+                            if APP_ROLE_PERMS[role]["access"] == "all":
+                                rec_access2 = "all"
+                    return {
+                        "user_id": user.get("odoo_user_id") or current_user.get("id"),
+                        "name": current_user.get("name"),
+                        "app_roles": resolved2 or app_roles2,
+                        "effective_permissions": list(permissions2),
+                        "record_access": rec_access2,
+                        "field_access": "all" if any(r in ["admin", "system_admin", "sales_admin"] for r in app_roles2) else "standard",
+                        "hidden_fields": [],
+                        "rbac_synced": True,
+                        "source": "app_roles_fallback_numeric_groups"
+                    }
+            
+            # Determine access from named groups
             access_level = "user"
             record_access = "own"
             
