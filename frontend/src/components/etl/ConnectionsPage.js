@@ -442,6 +442,14 @@ export function ConnectionsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleEdit(conn)}
+                        title="Edit Connection"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleTest(conn.id)}
                         disabled={testingId === conn.id}
                         data-testid={`connection-test-button-${conn.id}`}
