@@ -32,7 +32,7 @@ SYNC_ENTITIES = {
     "sales_users": {"label": "Sales Users", "canonical_collection": "sales_users", "odoo_model": "res.users", "default_schedule": "weekly"},
     "sales_teams": {"label": "Sales Teams", "canonical_collection": "sales_teams", "odoo_model": "crm.team", "default_schedule": "weekly"},
     "tasks": {"label": "Tasks", "canonical_collection": "tasks", "odoo_model": "project.task", "default_schedule": "daily"},
-    "rbac": {"label": "RBAC / Permissions", "canonical_collection": "odoo_groups", "odoo_model": "res.groups", "default_schedule": "daily"},
+    "rbac": {"label": "RBAC / Permissions", "canonical_collection": "users_rbac", "odoo_model": "res.groups", "default_schedule": "daily", "use_app_db": True},
 }
 
 
