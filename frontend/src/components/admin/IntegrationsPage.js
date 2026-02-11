@@ -26,12 +26,17 @@ function SyncOverview() {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(null);
+  const [incrementalStatus, setIncrementalStatus] = useState(null);
 
   useEffect(() => {
-    targetAPI.getHubOverview().then(r => {
-      setOverview(r.data);
+    Promise.allSettled([
+      targetAPI.getHubOverview(),
+      targetAPI.getIncrementalStatus(),
+    ]).then(([ovR, incR]) => {
+      if (ovR.status === 'fulfilled') setOverview(ovR.value.data);
+      if (incR.status === 'fulfilled') setIncrementalStatus(incR.value.data);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    });
   }, []);
 
   const handleSync = async (entityId) => {
