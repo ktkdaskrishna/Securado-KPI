@@ -84,24 +84,44 @@ export function ConnectionsPage() {
 
   const handleCreate = async () => {
     try {
-      if (selectedTemplate) {
+      if (editingId) {
+        await etlAPI.updateConnection(editingId, formData);
+        toast.success('Connection updated');
+      } else if (selectedTemplate) {
         await etlAPI.createConnectionFromTemplate(selectedTemplate.id, formData);
+        toast.success('Connection created');
       } else {
         await etlAPI.createConnection(formData);
+        toast.success('Connection created');
       }
-      toast.success('Connection created');
       setDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create connection');
+      toast.error(error.response?.data?.detail || 'Failed to save connection');
     }
+  };
+
+  const handleEdit = (conn) => {
+    setEditingId(conn.id);
+    setFormData({
+      name: conn.name || '',
+      type: conn.type || 'odoo',
+      url: conn.url || '',
+      database: conn.database || '',
+      username: conn.username || '',
+      api_key: conn.api_key || '',
+      description: conn.description || '',
+    });
+    setCreateMode('manual');
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
     setFormData({ name: '', type: 'odoo', url: '', database: '', username: '', api_key: '', description: '' });
     setSelectedTemplate(null);
     setCreateMode('template');
+    setEditingId(null);
   };
 
   const handleTest = async (id) => {
