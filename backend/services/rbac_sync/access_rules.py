@@ -119,26 +119,27 @@ class AccessRuleEngine:
         # Normalize whitespace in user_name (JWT may have stale data)
         user_name = _re.sub(r'\s+', ' ', user_name).strip()
         
-        # CRITICAL: Resolve canonical Odoo name from employees by email
-        # Keep both names (app name + Odoo name) for flexible matching
+        # Resolve ALL name variants from user_identity_map (single DB lookup)
         canonical_name = user_name
         all_names = [user_name]
         if user_email:
-            from libs.database import get_canonical_db
-            c_db = get_canonical_db()
-            emp = await c_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
-            if emp and emp.get("name") and emp["name"] != user_name:
-                canonical_name = emp["name"]
-                all_names.append(canonical_name)
-            su = await c_db.sales_users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
-            if su and su.get("name") and su["name"] not in all_names:
-                all_names.append(su["name"])
-            # Also check opportunity owner_name for this user
-            opp_name = await c_db.opportunities.find_one({"$or": [{"owner_name": {"$regex": f"^{n}$", "$options": "i"}} for n in all_names]}, {"_id": 0, "owner_name": 1})
-            if opp_name and opp_name.get("owner_name") and opp_name["owner_name"] not in all_names:
-                all_names.append(opp_name["owner_name"])
+            identity = await self.app_db.user_identity_map.find_one(
+                {"email": user_email.lower().strip()}, {"_id": 0}
+            )
+            if identity:
+                canonical_name = identity.get("canonical_name", user_name)
+                all_names = list(set([user_name] + identity.get("all_names", [])))
+                logger.info(f"Identity map: {user_email} → {len(all_names)} name variants")
+            else:
+                # Fallback to old method if not in identity map
+                from libs.database import get_canonical_db
+                c_db = get_canonical_db()
+                emp = await c_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+                if emp and emp.get("name") and emp["name"] != user_name:
+                    canonical_name = emp["name"]
+                    all_names.append(canonical_name)
         
-        # Build a regex that matches ANY of the user's known names
+        # Build regex pattern matching ANY name variant
         name_pattern = "|".join([f"^{_re.escape(n)}$" for n in all_names])
         logger.info(f"RBAC names for {user_email}: {all_names}")
         
