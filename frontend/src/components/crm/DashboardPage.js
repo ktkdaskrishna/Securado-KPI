@@ -87,6 +87,8 @@ export function DashboardPage() {
     // Always pass year and quarter from current filters
     if (filters.year) params.append('year', filters.year);
     if (filters.quarter) params.append('quarter', filters.quarter);
+    if (filters.productDirector) params.append('productDirector', filters.productDirector);
+    if (filters.solutionCategory) params.append('solutionCategory', filters.solutionCategory);
     navigate(`/opportunities?${params.toString()}`);
   };
 
