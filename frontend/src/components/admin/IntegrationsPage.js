@@ -92,7 +92,7 @@ function SyncOverview() {
 
   return (
     <div className="space-y-4">
-      {/* Connection status */}
+      {/* Connection status + Sync All */}
       <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
         <div className="flex items-center gap-3">
           {overview?.connected ? <Wifi className="h-5 w-5 text-emerald-500" /> : <WifiOff className="h-5 w-5 text-red-500" />}
@@ -101,6 +101,10 @@ function SyncOverview() {
             <p className="text-xs text-gray-500">{overview?.connected ? 'Connected' : 'Not connected'} · {overview?.total_records?.toLocaleString()} records</p>
           </div>
         </div>
+        <Button onClick={handleSyncAll} disabled={syncing === 'all'} className="bg-[#800000] hover:bg-[#9a1919] text-white">
+          {syncing === 'all' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          {syncing === 'all' ? 'Syncing All...' : 'Sync All'}
+        </Button>
       </div>
 
       {/* Entity sync table */}
