@@ -193,6 +193,11 @@ async def lifespan(app: FastAPI):
         logger.error(f"Dashboard aggregator stop failed: {e}")
     
     try:
+        await incremental_worker.stop()
+    except Exception as e:
+        logger.error(f"Incremental sync worker stop failed: {e}")
+    
+    try:
         await etl_runner.stop()
     except Exception as e:
         logger.error(f"ETL runner stop failed: {e}")
