@@ -145,6 +145,8 @@ export function DashboardPage() {
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
       if (filters.stage) params.stage = filters.stage;
+      if (filters.productDirector) params.product_manager = filters.productDirector;
+      if (filters.solutionCategory) params.solution_category = filters.solutionCategory;
       
       // Load all dashboard data in parallel
       const [statsRes, pmRes, catRes] = await Promise.all([
