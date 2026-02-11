@@ -622,6 +622,14 @@ export function PipelinesPage() {
                   <div className="flex items-center gap-2 pt-2 border-t">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleEditPipeline(pipeline)}
+                      title="Edit Pipeline"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={() => handleRun(pipeline.id)}
                       disabled={runningId === pipeline.id || pipeline.status === 'running'}
                       className="flex-1 bg-primary hover:bg-primary/90"
@@ -633,16 +641,6 @@ export function PipelinesPage() {
                       )}
                       Run Now
                     </Button>
-                    {pipeline.webhook_enabled && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyWebhookUrl(pipeline.id)}
-                        title="Copy Webhook URL"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    )}
                     <Button
                       variant="ghost"
                       size="icon"
