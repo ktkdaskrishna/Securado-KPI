@@ -39,6 +39,7 @@ export function ConnectionsPage() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [testingId, setTestingId] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [createMode, setCreateMode] = useState('template'); // 'template' or 'manual'
