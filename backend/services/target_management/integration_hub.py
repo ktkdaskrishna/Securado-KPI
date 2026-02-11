@@ -26,7 +26,7 @@ SYNC_ENTITIES = {
     "opportunities": {"label": "Opportunities", "canonical_collection": "opportunities", "odoo_model": "crm.lead", "default_schedule": "daily"},
     "accounts": {"label": "Accounts", "canonical_collection": "accounts", "odoo_model": "res.partner", "default_schedule": "daily"},
     "contacts": {"label": "Contacts", "canonical_collection": "contacts", "odoo_model": "res.partner", "default_schedule": "daily"},
-    "activities": {"label": "Activities", "canonical_collection": "activities", "odoo_model": "mail.activity", "default_schedule": "hourly"},
+    "activities": {"label": "Activities", "canonical_collection": "activities", "odoo_model": "mail.activity", "default_schedule": "daily"},
     "invoices": {"label": "Invoices", "canonical_collection": "invoices", "odoo_model": "account.move", "default_schedule": "daily"},
     "employees": {"label": "Employees", "canonical_collection": "employees", "odoo_model": "hr.employee", "default_schedule": "weekly"},
     "sales_users": {"label": "Sales Users", "canonical_collection": "sales_users", "odoo_model": "res.users", "default_schedule": "weekly"},
