@@ -51,12 +51,14 @@ async def get_overview(current_user: dict = Depends(get_current_user)):
 
     entities = []
     for entity_id, entity_def in SYNC_ENTITIES.items():
-        count = await canonical_db[entity_def["canonical_collection"]].count_documents({})
+        db = app_db if entity_def.get("use_app_db") else canonical_db
+        coll_name = entity_def["canonical_collection"]
+        count = await db[coll_name].count_documents({})
         
-        # Get last sync time - try most recent timestamp fields
+        # Get last sync time
         last_sync = None
         for date_field in ["updated_at", "write_date", "synced_at", "create_date"]:
-            last_record = await canonical_db[entity_def["canonical_collection"]].find_one(
+            last_record = await db[coll_name].find_one(
                 {date_field: {"$exists": True, "$ne": None}},
                 {"_id": 0, date_field: 1},
                 sort=[(date_field, -1)]
