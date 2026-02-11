@@ -232,10 +232,11 @@ async def list_opportunities(
     # Get RBAC filter for current user
     rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
     
-    # Build query - ONLY type=opportunity (exclude leads)
+    # Build query - ONLY type=opportunity (exclude leads), exclude soft-deleted
     query = {
         "org_id": current_user.get("org_id", "default"),
-        "type": "opportunity"  # Filter to only opportunities
+        "type": "opportunity",
+        "deleted": {"$ne": True}
     }
     
     # Apply RBAC filter (merged with base query)
