@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { crmAPI, analyticsAPI } from '../../lib/api';
+import { crmAPI, analyticsAPI, targetAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
