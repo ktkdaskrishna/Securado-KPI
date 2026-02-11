@@ -98,16 +98,20 @@ class IncrementalSyncWorker:
 
     async def _poll_loop(self):
         """Main polling loop"""
-        # Wait 30 seconds before first poll to let app fully start
-        await asyncio.sleep(30)
+        await asyncio.sleep(30)  # Wait for app startup
         
         while self.running:
             try:
+                # Read interval from DB config (user-configurable)
+                app_db = get_app_db()
+                config = await app_db.sync_configs.find_one({"entity": "_incremental_settings"})
+                if config:
+                    self.poll_interval = config.get("interval_seconds", 300)
+                
                 await self._do_incremental_sync()
                 self.last_poll = datetime.now(timezone.utc)
             except Exception as e:
                 logger.error(f"Incremental sync error: {e}")
-                # Wait 30s before retry on error
                 await asyncio.sleep(30)
             
             await asyncio.sleep(self.poll_interval)
