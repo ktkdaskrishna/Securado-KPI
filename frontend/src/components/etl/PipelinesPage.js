@@ -44,6 +44,7 @@ export function PipelinesPage() {
   const [mappings, setMappings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPipelineId, setEditingPipelineId] = useState(null);
   const [runningId, setRunningId] = useState(null);
   const [selectedMappings, setSelectedMappings] = useState([]);
   const [activeTab, setActiveTab] = useState('basic');
