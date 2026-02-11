@@ -20,7 +20,6 @@ from services.etl_runner.runner import ETLRunner
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/odoo-rbac", tags=["odoo-rbac"])
-webhook_router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 # Odoo group to app role mapping
 # Maps Odoo group IDs to application roles with permissions
