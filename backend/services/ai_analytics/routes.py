@@ -947,33 +947,14 @@ async def get_available_filters(
 
 
 def apply_filters(opps: list, filters: dict) -> list:
-    """Apply filter parameters to opportunity list"""
+    """Apply filter parameters to opportunity list.
+    NOTE: Year/quarter filtering is now done at DB query level (create_date).
+    This function only handles remaining filters (sales_rep, account, stage).
+    """
     filtered = opps
     
-    # Filter by year - use won_at for Won deals (date_last_stage_update from Odoo)
-    if filters.get("year"):
-        year = filters["year"]
-        def get_date_for_filtering(o):
-            # For Won deals, use won_at (the actual date they were marked as won)
-            # This is date_last_stage_update from Odoo which is reliable
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    if o.get(field):
-                        return str(o.get(field, ""))
-            # Otherwise use close_date (expected close)
-            if o.get("close_date"):
-                return str(o.get("close_date", ""))
-            # Fallback to create_date
-            return str(o.get("create_date", ""))
-        
-        filtered = [o for o in filtered if get_date_for_filtering(o)[:4] == year]
-    
-    # Filter by quarter
-    if filters.get("quarter"):
-        q = filters["quarter"]
-        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
-                         "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
-        months = quarter_months.get(q, [])
+    # Year and quarter are now filtered at MongoDB query level
+    # No post-filtering needed for dates
         def get_month_for_filtering(o):
             # For Won deals, use won_at (date_last_stage_update from Odoo)
             if is_won(o):
