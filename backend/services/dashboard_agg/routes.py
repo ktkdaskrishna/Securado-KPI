@@ -544,7 +544,7 @@ async def get_dashboard_stats(
             return serialize_doc(stats)
     
     # Calculate filtered stats in real-time
-    # Build MongoDB query for non-date filters
+    # Build MongoDB query - ALL filters applied at DB level for consistency
     query = {"org_id": org_id, "deleted": {"$ne": True}}
     
     # Apply RBAC filter
@@ -563,51 +563,42 @@ async def get_dashboard_stats(
     if solution_category:
         query["solution_category"] = solution_category
     
+    # STANDARDIZED DATE FILTERING (same logic as Opportunities page)
+    # All records filtered by create_date for the selected year
+    # Won deals additionally checked by date_closed
+    if year:
+        query["create_date"] = {"$regex": f"^{year}"}
+    if quarter:
+        quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
+        months = quarter_months.get(quarter, [])
+        if months and year:
+            query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
+    
     opps = await canonical_db.opportunities.find(query).to_list(10000)
     
-    # Filter out test/demo records from analytics
+    # Filter out test/demo records
     opps = filter_out_test_records(opps)
     
-    # Apply date filters (year and quarter) using the helper function
-    # For open opportunities, filter by create_date
-    # For closed (won/lost), filter by date_closed
-    
-    # Classify opportunities:
-    # - Won = stage is 'Won' (use date_closed)
-    # - Lost = active=False and has lost_reason_id (use date_closed)
-    # - Open = everything else (use create_date)
-    
+    # Classify opportunities
     def is_won(o):
-        stage = o.get("stage", "").lower()
+        stage = str(o.get("stage", "")).lower()
         return stage == "won" or "closed won" in stage
     
     def is_lost(o):
-        active = o.get("active", True)
-        if active == 'False' or active is False:
-            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
-        return False
+        stage = str(o.get("stage", "")).lower()
+        return stage == "lost" or "closed lost" in stage
     
     open_opps = [o for o in opps if not is_won(o) and not is_lost(o)]
     won_opps = [o for o in opps if is_won(o)]
     lost_opps = [o for o in opps if is_lost(o)]
     
-    # Apply date filters
-    if year or quarter:
-        # Open opportunities: filter by create_date
-        open_opps = apply_date_filters(open_opps, year=year, quarter=quarter, date_field='create_date')
-        # Won opportunities: filter by date_closed
-        won_opps = apply_date_filters_for_won_lost(won_opps, year=year, quarter=quarter)
-        # Lost opportunities: filter by date_closed  
-        lost_opps = apply_date_filters_for_won_lost(lost_opps, year=year, quarter=quarter)
-    
-    # Combine all
-    opps = open_opps + won_opps + lost_opps
+    # NO additional post-filtering - year is already in MongoDB query
     
     # Separate leads from opportunities by type field
     opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
     leads_only = [o for o in opps if o.get("type") == "lead"]
     
-    logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
+    logger.info(f"Dashboard stats: {len(opps)} total ({len(opportunities_only)} opps, {len(leads_only)} leads, {len(won_opps)} won, {len(lost_opps)} lost, {len(open_opps)} open) [year={year}]")
     logger.info(f"  Open: {len(open_opps)}, Won: {len(won_opps)}, Lost: {len(lost_opps)}")
     
     # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
