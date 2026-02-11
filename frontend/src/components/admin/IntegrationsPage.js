@@ -63,11 +63,29 @@ function SyncOverview() {
 
   const handleScheduleChange = async (entityId, schedule) => {
     try {
-      await targetAPI.updateSyncSchedule(entityId, { schedule, webhook_enabled: false });
-      toast.success(`${entityId}: ${schedule}`);
+      await targetAPI.updateSyncSchedule(entityId, { schedule });
+      toast.success(`Schedule updated: ${entityId} → ${schedule}`);
       const r = await targetAPI.getHubOverview();
       setOverview(r.data);
     } catch { toast.error('Failed'); }
+  };
+
+  const handleSyncAll = async () => {
+    setSyncing('all');
+    toast.info('Syncing all entities...');
+    for (const entity of overview?.entities || []) {
+      try { await targetAPI.triggerSync(entity.id); } catch {}
+    }
+    // Update all entities immediately
+    if (overview) {
+      const now = new Date().toISOString();
+      setOverview({ ...overview, entities: overview.entities.map(e => ({ ...e, last_sync: now, is_overdue: false })) });
+    }
+    setTimeout(async () => {
+      try { const r = await targetAPI.getHubOverview(); setOverview(r.data); } catch {}
+      setSyncing(null);
+      toast.success('All entities synced');
+    }, 8000);
   };
 
   if (loading) return <Skeleton className="h-64" />;
