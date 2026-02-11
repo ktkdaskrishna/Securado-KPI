@@ -105,18 +105,22 @@ export function PipelinesPage() {
       const pipelineData = {
         ...formData,
         mapping_ids: selectedMappings,
-        // For backward compatibility, also set mapping_id to first selection
         mapping_id: selectedMappings[0],
         cron_expression: SCHEDULE_OPTIONS.find(s => s.value === formData.schedule)?.cron,
       };
       
-      await etlAPI.createPipeline(pipelineData);
-      toast.success('Pipeline created');
+      if (editingPipelineId) {
+        await etlAPI.updatePipeline(editingPipelineId, pipelineData);
+        toast.success('Pipeline updated');
+      } else {
+        await etlAPI.createPipeline(pipelineData);
+        toast.success('Pipeline created');
+      }
       setDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create pipeline');
+      toast.error(error.response?.data?.detail || 'Failed to save pipeline');
     }
   };
 
@@ -130,11 +134,10 @@ export function PipelinesPage() {
       description: '',
       schedule: 'manual',
       schedule_enabled: false,
-      webhook_enabled: false,
-      webhook_secret: '',
     });
     setSelectedMappings([]);
     setActiveTab('basic');
+    setEditingPipelineId(null);
   };
 
   const handleRun = async (id) => {
