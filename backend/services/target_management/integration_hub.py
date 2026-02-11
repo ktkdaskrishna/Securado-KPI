@@ -55,9 +55,9 @@ async def get_overview(current_user: dict = Depends(get_current_user)):
         coll_name = entity_def["canonical_collection"]
         count = await db[coll_name].count_documents({})
         
-        # Get last sync time
+        # Get last sync time - synced_at first (when WE pulled), then Odoo timestamps
         last_sync = None
-        for date_field in ["updated_at", "write_date", "synced_at", "create_date"]:
+        for date_field in ["synced_at", "updated_at", "write_date", "create_date"]:
             last_record = await db[coll_name].find_one(
                 {date_field: {"$exists": True, "$ne": None}},
                 {"_id": 0, date_field: 1},
