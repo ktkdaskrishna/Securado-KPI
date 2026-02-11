@@ -183,6 +183,7 @@ async def get_analytics_overview(
             query["create_date"] = {"$regex": f"^{year}-({'|'.join(months)})"}
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
+    logger.info(f"AI Analytics overview: query keys={list(query.keys())}, year={year}, found {len(all_opps)} opps")
     
     # No post-filtering needed for dates - done at DB query level
     
