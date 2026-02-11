@@ -25,7 +25,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Don't redirect if already on login page (allows login error to show)
       const isLoginRequest = error.config?.url?.includes('/auth/login');
-      if (!isLoginRequest) {
+      const isOnLoginPage = window.location.pathname === '/login';
+      if (!isLoginRequest && !isOnLoginPage) {
+        // Only clear tokens and redirect if we're not in the middle of navigating
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';
