@@ -221,14 +221,26 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
-cors_origins = os.environ.get("CORS_ORIGINS", "*")
-# Parse CORS origins - support comma-separated values or wildcard
-parsed_origins = cors_origins.split(",") if cors_origins != "*" else ["*"]
+# CORS configuration - restrict in production
+cors_origins = os.environ.get("CORS_ORIGINS", "")
+if not cors_origins:
+    # Auto-detect from REACT_APP_BACKEND_URL
+    backend_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    if backend_url:
+        cors_origins = backend_url
+    else:
+        cors_origins = "http://localhost:3000"
+
+parsed_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+# Never use wildcard with credentials
+allow_creds = "*" not in parsed_origins
+if "*" in parsed_origins:
+    logger.warning("CORS: Wildcard origin detected. Credentials disabled for security.")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parsed_origins,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
