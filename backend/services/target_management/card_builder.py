@@ -242,13 +242,31 @@ async def save_template_layout(
 ):
     """Save the layout (block positions + types) for a template"""
     app_db = get_app_db()
+    blocks = layout.get("blocks", [])
+    card_ids = [b["card_id"] for b in blocks if b.get("card_id")]
     result = await app_db.dashboard_templates_v2.update_one(
         {"id": template_id},
-        {"$set": {"blocks": layout.get("blocks", []), "updated_at": now_utc()}}
+        {"$set": {"blocks": blocks, "cards": card_ids, "updated_at": now_utc()}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Template not found")
     return {"success": True}
+
+
+@card_builder_router.get("/available-roles")
+async def list_available_roles(current_user: dict = Depends(get_current_user)):
+    """List all available roles for template assignment"""
+    app_db = get_app_db()
+    roles = await app_db.roles.find({}, {"_id": 0}).to_list(100)
+    if not roles:
+        return [
+            {"id": "admin", "name": "Admin"},
+            {"id": "sales_admin", "name": "Sales Admin"},
+            {"id": "sales_director", "name": "Sales Director"},
+            {"id": "product_director", "name": "Product Director"},
+            {"id": "sales_rep", "name": "Sales Representative"},
+        ]
+    return roles
 
 
 
