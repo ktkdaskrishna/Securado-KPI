@@ -101,6 +101,7 @@ const permissionRequirements = {
   profile: null, // Always visible
   // DATA SYNC - System Admin only
   integrations: 'system_admin',
+  'dashboard-builder': 'manage_dashboard',
   settings: 'system_admin',
   'model-browser': 'system_admin',
   mappings: 'system_admin',
