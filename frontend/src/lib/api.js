@@ -356,6 +356,8 @@ export const targetAPI = {
   updateTemplate: (id, data) => api.put(`/card-builder/templates/${id}`, data),
   deleteTemplate: (id) => api.delete(`/card-builder/templates/${id}`),
   renderTemplate: (id, year) => api.get(`/card-builder/templates/${id}/render`, { params: { year } }),
+  getMyDashboard: (year) => api.get('/card-builder/my-dashboard', { params: { year } }),
+  saveTemplateLayout: (id, blocks) => api.post(`/card-builder/templates/${id}/layout`, { blocks }),
   seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
 };
 
