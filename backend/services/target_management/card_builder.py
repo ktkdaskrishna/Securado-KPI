@@ -172,19 +172,44 @@ async def get_my_dashboard(
     if not template:
         return {"template": None, "blocks": []}
     
-    # Get layout blocks
+    # Get layout blocks - auto-generate from cards list if blocks are empty
     blocks = template.get("blocks", [])
+    if not blocks and template.get("cards"):
+        card_ids = template["cards"]
+        col = 0
+        row = 0
+        for card_id in card_ids:
+            card = await app_db.dashboard_cards.find_one({"id": card_id})
+            if not card:
+                continue
+            is_chart = card.get("display_type") in ("chart", "pie", "leaderboard", "progress")
+            w = 2 if is_chart else 1
+            h = 3 if is_chart else 1
+            if col + w > 4:
+                col = 0
+                row += max(1, h)
+            blocks.append({
+                "i": card_id, "x": col, "y": row, "w": w, "h": h,
+                "type": "query_card", "card_id": card_id
+            })
+            col += w
+            if col >= 4:
+                col = 0
+                row += h
+        # Persist generated blocks
+        await app_db.dashboard_templates_v2.update_one(
+            {"id": template["id"]}, {"$set": {"blocks": blocks}}
+        )
     
     # Execute query cards
     rendered_blocks = []
     for block in blocks:
-        rendered = {**block}
+        rendered = {k: v for k, v in block.items() if k != "_id"}
         if block.get("type") == "query_card" and block.get("card_id"):
             card = await app_db.dashboard_cards.find_one({"id": block["card_id"]})
             if card:
                 rendered["card"] = serialize_doc(card)
                 try:
-                    # For win_rate display, we need group_by=stage to get Won/Lost counts
                     group_by = card.get("group_by")
                     if card.get("display_type") == "win_rate" and not group_by:
                         group_by = "stage"
