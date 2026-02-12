@@ -429,7 +429,7 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
         {"x": 9, "y": 4, "w": 3, "h": 1},  # Total Accounts
     ]
     for idx, card_id in enumerate(card_ids):
-        pos = grid_positions[idx] if idx < len(grid_positions) else {"x": idx % 4, "y": 7 + idx // 4, "w": 1, "h": 1}
+        pos = grid_positions[idx] if idx < len(grid_positions) else {"x": (idx % 4) * 3, "y": 7 + idx // 4, "w": 3, "h": 1}
         blocks.append({
             "i": card_id, "type": "query_card", "card_id": card_id, **pos
         })
