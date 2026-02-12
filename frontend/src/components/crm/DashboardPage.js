@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink, Pencil } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
