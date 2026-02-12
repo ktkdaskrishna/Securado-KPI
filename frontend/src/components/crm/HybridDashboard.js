@@ -678,6 +678,7 @@ export default function HybridDashboard() {
           breakpoints={{ lg: 1200, md: 996, sm: 768 }}
           cols={{ lg: 12, md: 8, sm: 4 }}
           rowHeight={80}
+          width={containerWidth || 1200}
           isDraggable={editMode}
           isResizable={editMode}
           onLayoutChange={(newLayout) => onLayoutChange(newLayout)}
