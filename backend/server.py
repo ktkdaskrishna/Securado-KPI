@@ -372,6 +372,7 @@ app.include_router(org_router, prefix="/api")
 app.include_router(filter_presets_router, prefix="/api")
 app.include_router(integration_hub_router, prefix="/api")
 app.include_router(excel_router, prefix="/api")
+app.include_router(card_builder_router, prefix="/api")
 
 
 # Root endpoint
