@@ -183,9 +183,9 @@ async def get_my_dashboard(
             if not card:
                 continue
             is_chart = card.get("display_type") in ("chart", "pie", "leaderboard", "progress")
-            w = 2 if is_chart else 1
+            w = 6 if is_chart else 3
             h = 3 if is_chart else 1
-            if col + w > 4:
+            if col + w > 12:
                 col = 0
                 row += max(1, h)
             blocks.append({
@@ -193,7 +193,7 @@ async def get_my_dashboard(
                 "type": "query_card", "card_id": card_id
             })
             col += w
-            if col >= 4:
+            if col >= 12:
                 col = 0
                 row += h
         # Persist generated blocks
