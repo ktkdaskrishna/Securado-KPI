@@ -281,9 +281,7 @@ class IncrementalSyncWorker:
         )
         
         if updated_count > 0:
-        
-        # Invalidate dashboard cache after sync
-        if updated_count > 0:
+            # Invalidate dashboard cache after sync
             try:
                 from libs.redis_pipeline import invalidate_dashboard_cache
                 await invalidate_dashboard_cache()
