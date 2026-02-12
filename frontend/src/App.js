@@ -122,7 +122,8 @@ function AppRoutes() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* CRM Platform - with RBAC guards */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<HybridDashboard />} />
+        <Route path="/dashboard-classic" element={<DashboardPage />} />
         <Route path="/dashboard-builder" element={<RBACGuard permission="manage_dashboard"><ConfigurableDashboard /></RBACGuard>} />
         <Route path="/opportunities" element={<RBACGuard permission="view_opportunities"><OpportunitiesPage /></RBACGuard>} />
         <Route path="/leads" element={<RBACGuard permission="view_opportunities"><LeadsPage /></RBACGuard>} />
