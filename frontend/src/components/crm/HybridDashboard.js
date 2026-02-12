@@ -608,7 +608,7 @@ export default function HybridDashboard() {
   const existingCardIds = blocks.map(b => b.card_id).filter(Boolean);
 
   return (
-    <div className="space-y-4" data-testid="dashboard-page">
+    <div className="space-y-4" data-testid="dashboard-page" ref={containerRef}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
