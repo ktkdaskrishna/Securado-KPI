@@ -1,5 +1,29 @@
 /* Securado CRM Platform - Application Styles */
 
+/* react-grid-layout overrides */
+.react-grid-layout {
+  position: relative;
+}
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+.react-grid-item > .react-resizable-handle {
+  display: none;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle {
+  display: block;
+}
+.react-grid-item.react-grid-placeholder {
+  background: #800000 !important;
+  opacity: 0.15 !important;
+  border-radius: 12px;
+}
+
+
 /* Main Layout */
 .app-container {
   min-height: 100vh;
