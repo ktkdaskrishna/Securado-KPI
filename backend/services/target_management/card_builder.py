@@ -184,12 +184,17 @@ async def get_my_dashboard(
             if card:
                 rendered["card"] = serialize_doc(card)
                 try:
+                    # For win_rate display, we need group_by=stage to get Won/Lost counts
+                    group_by = card.get("group_by")
+                    if card.get("display_type") == "win_rate" and not group_by:
+                        group_by = "stage"
+                    
                     query_config = {
                         "collection": card.get("collection", "opportunities"),
                         "aggregation": card.get("aggregation", "count"),
                         "field": card.get("field"),
                         "filters": card.get("filters", {}),
-                        "group_by": card.get("group_by"),
+                        "group_by": group_by,
                         "year": year if card.get("year_filter") else None,
                         "cache_ttl": card.get("cache_ttl", 60),
                     }
