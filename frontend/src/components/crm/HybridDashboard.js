@@ -177,20 +177,33 @@ export default function HybridDashboard() {
       const template = templateRes.status === 'fulfilled' ? templateRes.value.data : null;
       const stats = statsRes.status === 'fulfilled' ? statsRes.value.data : {};
       
-      // Build leaderboard, PM, category data from stats
-      const leaderboard = stats.leaderboard || [];
-      const pmData = stats.product_manager_stats || [];
-      const categoryData = stats.category_stats || [];
-      const stageData = stats.stage_distribution || [];
+      // Map dashboard stats to widget data
+      const leaderboard = (stats.leaderboard || []).map(l => ({
+        name: l.name, value: l.value || l.won_value || 0, deals: l.deals_won || 0
+      }));
       
-      setDashData({
-        template,
-        stats,
-        leaderboard,
-        pmData,
-        categoryData,
-        stageData,
-      });
+      const stageData = Object.entries(stats.stage_values || {}).map(([stage, value]) => ({
+        stage, value, count: (stats.stage_counts || {})[stage] || 0
+      }));
+      
+      // PM data from pipeline_by_stage or a separate call
+      let pmData = [];
+      let categoryData = [];
+      try {
+        const pmRes = await analyticsAPI.getTeamPerformance({ year });
+        if (pmRes.data?.product_managers) {
+          pmData = pmRes.data.product_managers.map(pm => ({
+            name: pm.name, won_value: pm.won_value || 0, deals: pm.won_deals || pm.total_opps || 0
+          }));
+        }
+        if (pmRes.data?.solution_categories) {
+          categoryData = pmRes.data.solution_categories.map(c => ({
+            name: c.category || c.name, value: c.won_value || 0, deals: c.won_count || c.count || 0
+          }));
+        }
+      } catch {}
+      
+      setDashData({ template, stats, leaderboard, pmData, categoryData, stageData });
     } catch {} finally { setLoading(false); }
   }, [year]);
 
