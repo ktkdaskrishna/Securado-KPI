@@ -256,6 +256,12 @@ class IncrementalSyncWorker:
             
             if result.modified_count > 0 or result.upserted_id:
                 updated_count += 1
+                # Publish to Redis Stream
+                try:
+                    from libs.redis_pipeline import publish_sync_event, invalidate_dashboard_cache
+                    await publish_sync_event(entity_id, "upsert", str(odoo_id), {"name": doc.get("name", "")})
+                except:
+                    pass  # Redis publish is best-effort
             
             # Track max write_date
             wd = record.get("write_date", "")
