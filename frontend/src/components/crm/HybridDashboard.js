@@ -1,166 +1,206 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { targetAPI, crmAPI, analyticsAPI } from '../../lib/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { targetAPI } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { RenderCard, QueryEditorDialog } from './ConfigurableDashboard';
+import { QueryEditorDialog } from './ConfigurableDashboard';
 import {
-  Target, TrendingUp, DollarSign, Trophy, Users, Pencil, RefreshCw,
-  BarChart2, Layers, Settings, Award, Activity
+  Target, TrendingUp, DollarSign, Trophy, AlertTriangle, Building2,
+  Users, BarChart2, Pencil, RefreshCw, Layers, Activity
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
 
-const STAGE_COLORS = { Qualified: '#3b82f6', Proposal: '#8b5cf6', Negotiation: '#f59e0b', 'Closed Won': '#10b981', Won: '#10b981', 'Closed Lost': '#ef4444', Lost: '#ef4444' };
-const AVATAR_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
+const ICONS = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart2, Activity };
+const CHART_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+const AVATAR_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
-// ==================== PREMIUM WIDGETS ====================
+// ============ UNIVERSAL CARD RENDERER (all display types from query data) ============
+function UniversalCard({ card, data, onEdit }) {
+  const Icon = ICONS[card.icon] || Target;
+  const groups = data?.groups || [];
+  const isLarge = card.size === 'large' || card.display_type === 'chart' || card.display_type === 'leaderboard' || card.display_type === 'progress';
 
-function KPISummaryWidget({ title, value, format, icon: Icon = Target, color = '#800000' }) {
-  const formatted = format === 'currency' ? `OMR ${(value || 0).toLocaleString()}` 
-    : format === 'percent' ? `${(value || 0).toFixed(1)}%`
-    : (value || 0).toLocaleString();
-  
   return (
-    <Card className="hover:shadow-md transition-all">
+    <Card className={`overflow-hidden transition-all duration-200 hover:shadow-lg group relative border-0 shadow-sm ${isLarge ? 'col-span-2' : ''}`}
+      style={{ borderTop: `3px solid ${card.color || '#800000'}` }}>
+      {onEdit && (
+        <button onClick={() => onEdit(card)} className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-gray-100">
+          <Pencil className="h-3.5 w-3.5 text-gray-400" />
+        </button>
+      )}
       <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-gray-500 font-medium">{title}</span>
-          <div className="p-2 rounded-full" style={{ backgroundColor: `${color}10` }}>
-            <Icon className="h-4 w-4" style={{ color }} />
-          </div>
-        </div>
-        <p className="text-2xl font-bold text-gray-900">{formatted}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SalesLeaderboardWidget({ data, year }) {
-  return (
-    <Card className="hover:shadow-md transition-all">
-      <CardHeader className="pb-2"><CardTitle className="text-base">Sales Leaderboard</CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        {(data || []).map((person, idx) => (
-          <div key={person.name || idx} className="flex items-center gap-3">
-            <span className="text-sm font-bold text-gray-400 w-5">{idx + 1}</span>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-              style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
-              {(person.name || '?').charAt(0)}
+        {/* NUMBER CARD */}
+        {(card.display_type === 'number') && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{card.name}</span>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${card.color}12` }}>
+                <Icon className="h-4 w-4" style={{ color: card.color }} />
+              </div>
             </div>
-            <span className="flex-1 text-sm font-medium text-gray-700 truncate">{person.name}</span>
-            <span className="text-sm font-bold text-gray-900">OMR {(person.value || 0).toLocaleString()}</span>
+            <p className="text-3xl font-bold text-gray-900">
+              {card.aggregation === 'sum' || card.aggregation === 'avg' ? `OMR ${(data?.value || 0).toLocaleString()}` : (data?.value || 0).toLocaleString()}
+            </p>
+            {data?.count > 0 && <p className="text-xs text-gray-400 mt-1">{data.count} records</p>}
           </div>
-        ))}
-        {(!data || data.length === 0) && <p className="text-gray-400 text-sm text-center py-4">No data</p>}
-      </CardContent>
-    </Card>
-  );
-}
+        )}
 
-function PipelineByStageWidget({ data }) {
-  return (
-    <Card className="hover:shadow-md transition-all">
-      <CardHeader className="pb-2"><CardTitle className="text-base">Pipeline by Stage</CardTitle></CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data || []}>
-            <XAxis dataKey="stage" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false}
-              tickFormatter={v => v >= 1000000 ? `OMR${(v/1000000).toFixed(1)}M` : v >= 1000 ? `OMR${(v/1000).toFixed(0)}K` : `OMR${v}`} width={70} />
-            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              formatter={v => [`OMR ${v.toLocaleString()}`]} />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-              {(data || []).map((entry, i) => <Cell key={i} fill={STAGE_COLORS[entry.stage] || '#3b82f6'} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-}
+        {/* WIN RATE (special number) */}
+        {card.display_type === 'win_rate' && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{card.name}</span>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${card.color}12` }}>
+                <TrendingUp className="h-4 w-4" style={{ color: card.color }} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-gray-900">
+              {groups.length > 0 ? (() => {
+                const won = groups.find(g => g.label === 'Won')?.count || 0;
+                const lost = groups.find(g => g.label === 'Lost')?.count || 0;
+                return ((won / Math.max(won + lost, 1)) * 100).toFixed(1) + '%';
+              })() : '0%'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Won / (Won + Lost)</p>
+          </div>
+        )}
 
-function PMLeaderboardWidget({ data }) {
-  const total = (data || []).reduce((s, p) => s + (p.won_value || 0), 0);
-  return (
-    <Card className="hover:shadow-md transition-all">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2"><Award className="h-4 w-4 text-yellow-500" /> Product Manager Leaderboard</CardTitle>
-          <Badge variant="secondary">{(data || []).reduce((s, p) => s + (p.deals || 0), 0)} deals</Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <table className="w-full text-sm">
-          <thead><tr className="text-xs text-gray-400"><th className="text-left w-6">#</th><th className="text-left">Product Manager</th><th className="text-right">Won Value</th><th className="text-right">Deals</th></tr></thead>
-          <tbody>
-            {(data || []).map((pm, idx) => (
-              <tr key={pm.name || idx} className="border-t border-gray-50">
-                <td className="py-2 text-gray-400">{idx + 1}</td>
-                <td className="py-2 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
-                    {(pm.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('')}
+        {/* BAR CHART */}
+        {card.display_type === 'chart' && (
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">{card.name}</h4>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={groups.slice(0, 12)} margin={{ left: -10 }}>
+                <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
+                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false}
+                  tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }}
+                  formatter={v => [`OMR ${typeof v === 'number' ? v.toLocaleString() : v}`]} />
+                <Bar dataKey={card.aggregation === 'count' ? 'count' : 'total'} radius={[6, 6, 0, 0]}>
+                  {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* PIE CHART */}
+        {card.display_type === 'pie' && (
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">{card.name}</h4>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width="50%" height={160}>
+                <PieChart>
+                  <Pie data={groups.slice(0, 8)} dataKey={card.aggregation === 'count' ? 'count' : 'total'} nameKey="label" cx="50%" cy="50%" innerRadius={25} outerRadius={60} paddingAngle={2}>
+                    {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={v => [`OMR ${v.toLocaleString()}`]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 flex-1">
+                {groups.slice(0, 6).map((g, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="text-gray-500 truncate flex-1">{g.label || '-'}</span>
+                    <span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span>
                   </div>
-                  <span className="truncate">{pm.name}</span>
-                </td>
-                <td className="py-2 text-right font-bold text-[#800000]">OMR {(pm.won_value || 0).toLocaleString()}</td>
-                <td className="py-2 text-right text-gray-500">{pm.deals || 0}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-3 pt-3 border-t flex justify-between text-sm">
-          <span className="text-gray-500">Total Won Value</span>
-          <span className="font-bold text-[#800000]">OMR {total.toLocaleString()}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CategoryPerformanceWidget({ data }) {
-  const total = (data || []).reduce((s, c) => s + (c.value || 0), 0);
-  const maxVal = Math.max(...(data || []).map(c => c.value || 0), 1);
-  const catColors = ['#06b6d4', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
-  
-  return (
-    <Card className="hover:shadow-md transition-all">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Solution Category Performance</CardTitle>
-          <Badge variant="secondary">{(data || []).reduce((s, c) => s + (c.deals || 0), 0)} deals</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2.5">
-        {(data || []).map((cat, idx) => (
-          <div key={cat.name || idx}>
-            <div className="flex justify-between text-xs mb-0.5">
-              <span className="text-gray-600 truncate flex-1">{cat.name}</span>
-              <span className="text-gray-400 ml-2">{cat.deals} deals</span>
-              <span className="font-semibold text-gray-900 ml-2">OMR {(cat.value || 0).toLocaleString()}</span>
-            </div>
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all" style={{ width: `${(cat.value / maxVal) * 100}%`, backgroundColor: catColors[idx % catColors.length] }} />
+                ))}
+              </div>
             </div>
           </div>
-        ))}
-        <div className="pt-2 border-t flex justify-between text-sm">
-          <span className="text-gray-500">Total Won Value</span>
-          <span className="font-bold text-[#800000]">OMR {total.toLocaleString()}</span>
-        </div>
+        )}
+
+        {/* LEADERBOARD (with avatars) */}
+        {card.display_type === 'leaderboard' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-700">{card.name}</h4>
+              <Badge variant="secondary" className="text-xs">{groups.reduce((s, g) => s + (g.count || 0), 0)} deals</Badge>
+            </div>
+            <div className="space-y-2.5">
+              {groups.slice(0, 8).map((g, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-gray-400 w-5">{idx + 1}</span>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
+                    {(g.label || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  <span className="flex-1 text-sm font-medium text-gray-700 truncate">{g.label || '-'}</span>
+                  <span className="text-sm font-bold" style={{ color: card.color }}>OMR {(g.total || 0).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+            {groups.length > 0 && (
+              <div className="mt-3 pt-3 border-t flex justify-between text-sm">
+                <span className="text-gray-500">Total</span>
+                <span className="font-bold" style={{ color: card.color }}>OMR {groups.reduce((s, g) => s + (g.total || 0), 0).toLocaleString()}</span>
+              </div>
+            )}
+            {groups.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No data</p>}
+          </div>
+        )}
+
+        {/* PROGRESS BARS */}
+        {card.display_type === 'progress' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-700">{card.name}</h4>
+              <Badge variant="secondary" className="text-xs">{groups.reduce((s, g) => s + (g.count || 0), 0)} deals</Badge>
+            </div>
+            <div className="space-y-2.5">
+              {(() => {
+                const maxVal = Math.max(...groups.map(g => g.total || g.count || 0), 1);
+                return groups.slice(0, 8).map((g, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-gray-600 truncate flex-1">{g.label || '-'}</span>
+                      <span className="text-gray-400 ml-2">{g.count || 0} deals</span>
+                      <span className="font-semibold text-gray-900 ml-2">OMR {(g.total || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${((g.total || g.count || 0) / maxVal) * 100}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+            {groups.length > 0 && (
+              <div className="mt-3 pt-3 border-t flex justify-between text-sm">
+                <span className="text-gray-500">Total</span>
+                <span className="font-bold" style={{ color: card.color }}>OMR {groups.reduce((s, g) => s + (g.total || 0), 0).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TABLE */}
+        {card.display_type === 'table' && (
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">{card.name}</h4>
+            <div className="space-y-1 max-h-52 overflow-y-auto">
+              {(data?.records || groups || []).slice(0, 10).map((r, i) => (
+                <div key={i} className="flex justify-between items-center py-1.5 px-2 rounded hover:bg-gray-50 text-xs">
+                  <span className="text-gray-600 truncate flex-1">{r.name || r.label || r.invoice_number || '-'}</span>
+                  <span className="font-mono font-semibold text-gray-900 ml-2">OMR {(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// ==================== MAIN HYBRID DASHBOARD ====================
-
+// ============ MAIN DASHBOARD ============
 export default function HybridDashboard() {
   const [loading, setLoading] = useState(true);
-  const [dashData, setDashData] = useState(null);
+  const [blocks, setBlocks] = useState([]);
+  const [templateName, setTemplateName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [editCard, setEditCard] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -168,104 +208,60 @@ export default function HybridDashboard() {
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      // Load both: the template blocks + the traditional dashboard stats
-      const [templateRes, statsRes] = await Promise.allSettled([
-        targetAPI.getMyDashboard(year),
-        crmAPI.getDashboardStats({ year }),
-      ]);
-      
-      const template = templateRes.status === 'fulfilled' ? templateRes.value.data : null;
-      const stats = statsRes.status === 'fulfilled' ? statsRes.value.data : {};
-      
-      // Map dashboard stats to widget data
-      const leaderboard = (stats.leaderboard || []).map(l => ({
-        name: l.name, value: l.value || l.won_value || 0, deals: l.deals_won || 0
-      }));
-      
-      const stageData = Object.entries(stats.stage_values || {}).map(([stage, value]) => ({
-        stage, value, count: (stats.stage_counts || {})[stage] || 0
-      }));
-      
-      // PM data from pipeline_by_stage or a separate call
-      let pmData = [];
-      let categoryData = [];
-      try {
-        const pmRes = await analyticsAPI.getTeamPerformance({ year });
-        if (pmRes.data?.product_managers) {
-          pmData = pmRes.data.product_managers.map(pm => ({
-            name: pm.name, won_value: pm.won_value || 0, deals: pm.won_deals || pm.total_opps || 0
-          }));
-        }
-        if (pmRes.data?.solution_categories) {
-          categoryData = pmRes.data.solution_categories.map(c => ({
-            name: c.category || c.name, value: c.won_value || 0, deals: c.won_count || c.count || 0
-          }));
-        }
-      } catch {}
-      
-      setDashData({ template, stats, leaderboard, pmData, categoryData, stageData });
+      const res = await targetAPI.getMyDashboard(year);
+      const data = res.data;
+      setBlocks(data.blocks || []);
+      setTemplateName(data.template?.name || 'Dashboard');
     } catch {} finally { setLoading(false); }
   }, [year]);
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
+  const handleEditCard = (card) => {
+    setEditCard({...card, filters: typeof card.filters === 'string' ? card.filters : JSON.stringify(card.filters || {}, null, 2)});
+    setShowEditor(true);
+  };
+
+  const handleSaveCard = async (formData) => {
+    try {
+      if (editCard?.id) {
+        await targetAPI.updateCard(editCard.id, formData);
+        toast.success('Card updated');
+      } else {
+        await targetAPI.createCard(formData);
+        toast.success('Card created');
+      }
+      setShowEditor(false);
+      setEditCard(null);
+      loadDashboard();
+    } catch { toast.error('Failed'); }
+  };
+
+  // Group blocks by row
+  const kpiRow = blocks.filter(b => b.y === 0);
+  const chartRow = blocks.filter(b => b.y >= 1 && b.y < 4);
+  const midRow = blocks.filter(b => b.y >= 4 && b.y < 7);
+  const extraRow = blocks.filter(b => b.y >= 7);
+
+  const renderBlock = (block) => {
+    if (!block.card) return null;
+    return <UniversalCard key={block.i} card={block.card} data={block.data} onEdit={handleEditCard} />;
+  };
+
   if (loading) return (
-    <div className="space-y-4">
-      <div className="flex justify-between"><Skeleton className="h-8 w-48" /><Skeleton className="h-8 w-32" /></div>
-      <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+    <div className="space-y-5">
+      <div className="flex justify-between"><Skeleton className="h-8 w-48" /><Skeleton className="h-9 w-32" /></div>
+      <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
       <div className="grid grid-cols-2 gap-4"><Skeleton className="h-64 rounded-xl" /><Skeleton className="h-64 rounded-xl" /></div>
     </div>
   );
 
-  const stats = dashData?.stats || {};
-  const blocks = dashData?.template?.blocks || [];
-
-  // Render blocks based on their type
-  const renderBlock = (block) => {
-    if (block.type === 'premium_widget') {
-      switch (block.widget) {
-        case 'kpi_summary': {
-          const metricMap = {
-            total_pipeline: { value: stats.total_pipeline, icon: DollarSign, color: '#3b82f6' },
-            win_rate: { value: stats.win_rate, icon: TrendingUp, color: '#10b981' },
-            open_opportunities: { value: stats.open_count || stats.open_opportunities, icon: Target, color: '#6366f1' },
-            won_value: { value: stats.won_value, icon: Trophy, color: '#f59e0b' },
-          };
-          const m = metricMap[block.config?.metric] || { value: 0 };
-          return <KPISummaryWidget key={block.i} title={block.config?.title || ''} value={m.value} format={block.config?.format} icon={m.icon} color={m.color} />;
-        }
-        case 'pipeline_by_stage':
-          return <PipelineByStageWidget key={block.i} data={dashData?.stageData} />;
-        case 'sales_leaderboard':
-          return <SalesLeaderboardWidget key={block.i} data={dashData?.leaderboard} year={year} />;
-        case 'pm_leaderboard':
-          return <PMLeaderboardWidget key={block.i} data={dashData?.pmData} />;
-        case 'category_performance':
-          return <CategoryPerformanceWidget key={block.i} data={dashData?.categoryData} />;
-        default:
-          return <Card key={block.i}><CardContent className="p-4 text-gray-400">Unknown widget: {block.widget}</CardContent></Card>;
-      }
-    } else if (block.type === 'query_card' && block.card && block.data) {
-      return <RenderCard key={block.i} card={block.card} data={block.data}
-        onEdit={c => { setEditCard(c); setShowEditor(true); }}
-        showControls={true} />;
-    }
-    return null;
-  };
-
-  // Group blocks by row (y position)
-  const kpiBlocks = blocks.filter(b => b.y === 0);
-  const row2Blocks = blocks.filter(b => b.y >= 1 && b.y < 4);
-  const row3Blocks = blocks.filter(b => b.y >= 4 && b.y < 7);
-  const extraBlocks = blocks.filter(b => b.y >= 7);
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">{stats.total_filtered || blocks.length} opportunities · {year}</p>
+          <p className="text-sm text-gray-500">{templateName} · {year}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={year} onValueChange={setYear}>
@@ -277,52 +273,42 @@ export default function HybridDashboard() {
       </div>
 
       {/* KPI Row */}
-      {kpiBlocks.length > 0 ? (
+      {kpiRow.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {kpiBlocks.map(renderBlock)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPISummaryWidget title="Total Pipeline" value={stats.total_pipeline} format="currency" icon={DollarSign} color="#3b82f6" />
-          <KPISummaryWidget title="Win Rate" value={stats.win_rate} format="percent" icon={TrendingUp} color="#10b981" />
-          <KPISummaryWidget title="Open Opportunities" value={stats.open_opportunities} format="number" icon={Target} color="#6366f1" />
-          <KPISummaryWidget title="Won This Period" value={stats.won_value} format="currency" icon={Trophy} color="#f59e0b" />
+          {kpiRow.map(renderBlock)}
         </div>
       )}
 
       {/* Charts Row */}
-      {row2Blocks.length > 0 ? (
+      {chartRow.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {row2Blocks.map(renderBlock)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PipelineByStageWidget data={dashData?.stageData} />
-          <SalesLeaderboardWidget data={dashData?.leaderboard} year={year} />
+          {chartRow.map(renderBlock)}
         </div>
       )}
 
-      {/* PM + Categories Row */}
-      {row3Blocks.length > 0 ? (
+      {/* Mid Row */}
+      {midRow.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {row3Blocks.map(renderBlock)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PMLeaderboardWidget data={dashData?.pmData} />
-          <CategoryPerformanceWidget data={dashData?.categoryData} />
+          {midRow.map(renderBlock)}
         </div>
       )}
 
-      {/* Extra query cards */}
-      {extraBlocks.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {extraBlocks.map(renderBlock)}
+      {/* Extra Row */}
+      {extraRow.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {extraRow.map(renderBlock)}
         </div>
       )}
 
-      <QueryEditorDialog open={showEditor} onClose={() => { setShowEditor(false); setEditCard(null); }} card={editCard}
-        onSave={async (formData) => { try { if (editCard?.id) { await targetAPI.updateCard(editCard.id, formData); } else { await targetAPI.createCard(formData); } toast.success('Saved'); setShowEditor(false); loadDashboard(); } catch { toast.error('Failed'); } }} />
+      {blocks.length === 0 && (
+        <Card className="border-dashed border-2"><CardContent className="p-12 text-center">
+          <Layers className="h-16 w-16 text-gray-200 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-400">No Dashboard Configured</h3>
+          <p className="text-gray-300 mb-4">Go to Dashboard Builder to create and assign a template</p>
+        </CardContent></Card>
+      )}
+
+      <QueryEditorDialog open={showEditor} onClose={() => { setShowEditor(false); setEditCard(null); }} card={editCard} onSave={handleSaveCard} />
     </div>
   );
 }
