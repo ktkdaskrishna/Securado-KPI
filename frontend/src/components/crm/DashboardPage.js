@@ -350,7 +350,7 @@ export function DashboardPage() {
           <Card 
             key={index} 
             data-testid={`crm-kpi-card-${kpi.title.toLowerCase().replace(/\s/g, '-')}`}
-            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group overflow-hidden"
+            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group overflow-hidden relative"
             onClick={() => {
               if (kpi.title === 'Total Pipeline' || kpi.title === 'Open Opportunities') {
                 handleNavigateToOpportunities();
@@ -361,6 +361,11 @@ export function DashboardPage() {
               }
             }}
           >
+            {/* Edit query button */}
+            <button className="absolute top-2 right-2 z-10 p-1 rounded bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); setEditingCard({ name: kpi.title, collection: 'opportunities', aggregation: kpi.format === 'currency' ? 'sum' : 'count', field: kpi.format === 'currency' ? 'sale_value' : '', display_type: 'number', color: '#800000', icon: 'Target', year_filter: true, filters: kpi.title.includes('Won') ? '{"type":"opportunity","stage":"Won"}' : '{"type":"opportunity"}' }); setShowQueryEditor(true); }}>
+              <Pencil className="h-3 w-3 text-gray-400" />
+            </button>
             <CardContent className="pt-6">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
