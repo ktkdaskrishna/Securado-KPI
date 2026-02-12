@@ -359,6 +359,7 @@ export const targetAPI = {
   getMyDashboard: (year) => api.get('/card-builder/my-dashboard', { params: { year } }),
   saveTemplateLayout: (id, blocks) => api.post(`/card-builder/templates/${id}/layout`, { blocks }),
   seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
+  getAvailableRoles: () => api.get('/card-builder/available-roles'),
 };
 
 // Events/DLQ APIs
