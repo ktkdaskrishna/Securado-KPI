@@ -526,7 +526,7 @@ export default function HybridDashboard() {
     const maxY = blocks.reduce((max, b) => Math.max(max, (b.y || 0) + (b.h || 1)), 0);
     const isChart = ['chart', 'pie', 'leaderboard', 'progress'].includes(card.display_type);
     const newBlock = {
-      i: card.id, x: 0, y: maxY, w: isChart ? 2 : 1, h: isChart ? 3 : 1,
+      i: card.id, x: 0, y: maxY, w: isChart ? 6 : 3, h: isChart ? 3 : 1,
       type: 'query_card', card_id: card.id, card, data: null
     };
     setBlocks(prev => [...prev, newBlock]);
