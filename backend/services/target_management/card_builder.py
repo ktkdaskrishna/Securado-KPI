@@ -145,6 +145,84 @@ async def execute_adhoc_query(
     return result
 
 
+@card_builder_router.get("/my-dashboard")
+async def get_my_dashboard(
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the dashboard template assigned to the current user's role, render all blocks"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get user's roles
+    user = await app_db.users.find_one({"email": {"$regex": f"^{current_user.get('email', '')}$", "$options": "i"}})
+    user_roles = user.get("roles", []) if user else []
+    
+    # Find template assigned to user's role (or default)
+    template = None
+    for role in user_roles:
+        t = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "assigned_roles": role})
+        if t:
+            template = t
+            break
+    
+    if not template:
+        template = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "is_default": True})
+    
+    if not template:
+        return {"template": None, "blocks": []}
+    
+    # Get layout blocks
+    blocks = template.get("blocks", [])
+    
+    # Execute query cards
+    rendered_blocks = []
+    for block in blocks:
+        rendered = {**block}
+        if block.get("type") == "query_card" and block.get("card_id"):
+            card = await app_db.dashboard_cards.find_one({"id": block["card_id"]})
+            if card:
+                rendered["card"] = serialize_doc(card)
+                try:
+                    query_config = {
+                        "collection": card.get("collection", "opportunities"),
+                        "aggregation": card.get("aggregation", "count"),
+                        "field": card.get("field"),
+                        "filters": card.get("filters", {}),
+                        "group_by": card.get("group_by"),
+                        "year": year if card.get("year_filter") else None,
+                        "cache_ttl": card.get("cache_ttl", 60),
+                    }
+                    rendered["data"] = await execute_query(query_config)
+                except:
+                    rendered["data"] = {"error": True}
+        rendered_blocks.append(rendered)
+    
+    return {
+        "template": serialize_doc(template),
+        "blocks": rendered_blocks
+    }
+
+
+@card_builder_router.post("/templates/{template_id}/layout")
+async def save_template_layout(
+    template_id: str,
+    layout: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Save the layout (block positions + types) for a template"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_templates_v2.update_one(
+        {"id": template_id},
+        {"$set": {"blocks": layout.get("blocks", []), "updated_at": now_utc()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+
+
 # ==================== TEMPLATES ====================
 
 @card_builder_router.get("/templates")
