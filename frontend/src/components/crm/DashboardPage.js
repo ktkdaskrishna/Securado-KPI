@@ -709,6 +709,19 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Query Editor for dashboard cards */}
+      <QueryEditorDialog open={showQueryEditor} onClose={() => { setShowQueryEditor(false); setEditingCard(null); }}
+        card={editingCard}
+        onSave={async (formData) => {
+          try {
+            await targetAPI.createCard(formData);
+            toast.success('Card saved to Dashboard Builder');
+            setShowQueryEditor(false);
+            setEditingCard(null);
+          } catch { toast.error('Failed'); }
+        }}
+      />
     </div>
   );
 }
