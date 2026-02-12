@@ -281,6 +281,14 @@ class IncrementalSyncWorker:
         )
         
         if updated_count > 0:
+        
+        # Invalidate dashboard cache after sync
+        if updated_count > 0:
+            try:
+                from libs.redis_pipeline import invalidate_dashboard_cache
+                await invalidate_dashboard_cache()
+            except:
+                pass
             logger.info(f"Incremental sync {entity_id}: {updated_count} records updated (write_date > {last_sync_ts})")
         
         # === DELETE DETECTION ===
