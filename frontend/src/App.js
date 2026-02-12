@@ -27,6 +27,7 @@ import PerformanceHubPage from './components/crm/PerformanceHubPage';
 import IncentiveCalcPage from './components/crm/IncentiveCalcPage';
 import OrgStructurePage from './components/crm/OrgStructurePage';
 import IntegrationsPage from './components/admin/IntegrationsPage';
+import ConfigurableDashboard from './components/crm/ConfigurableDashboard';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
