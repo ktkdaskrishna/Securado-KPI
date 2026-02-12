@@ -483,12 +483,12 @@ export default function HybridDashboard() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  // Build react-grid-layout items
+  // Build react-grid-layout items (12-column grid)
   const layout = blocks.map(b => ({
     i: b.i || b.card_id || String(Math.random()),
     x: b.x ?? 0, y: b.y ?? 0,
-    w: b.w ?? 1, h: b.h ?? 1,
-    minW: 1, minH: 1, maxW: 4,
+    w: b.w ?? 3, h: b.h ?? 1,
+    minW: 2, minH: 1, maxW: 12,
   }));
 
   const onLayoutChange = (newLayout) => {
