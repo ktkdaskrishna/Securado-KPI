@@ -467,6 +467,7 @@ export default function HybridDashboard() {
   const [showEditor, setShowEditor] = useState(false);
   const { hasPermission, permissions } = useRBAC();
   const isAdmin = permissions.includes('admin:*') || hasPermission('manage_dashboard');
+  const [containerRef, containerWidth] = useContainerWidth();
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
