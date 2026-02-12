@@ -138,7 +138,7 @@ Platform 1 can verify Platform 2 connectivity:
 
 **Endpoint:**
 ```
-GET https://permission-audit-2.preview.emergentagent.com/api/data-lake/health
+GET https://layout-manager-1.preview.emergentagent.com/api/data-lake/health
 ```
 
 **Response:**
@@ -207,13 +207,13 @@ Call the API:
 
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  https://permission-audit-2.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities
+  https://layout-manager-1.preview.emergentagent.com/api/data-lake/canonical?entity_type=opportunities
 ```
 
 ### Step 3: Check Dashboard
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  https://permission-audit-2.preview.emergentagent.com/api/dashboard/stats
+  https://layout-manager-1.preview.emergentagent.com/api/dashboard/stats
 ```
 
 ## Support
@@ -224,5 +224,5 @@ For questions or issues with the integration, contact the Platform 2 team.
 
 Full API documentation is available at:
 ```
-https://permission-audit-2.preview.emergentagent.com/docs
+https://layout-manager-1.preview.emergentagent.com/docs
 ```
