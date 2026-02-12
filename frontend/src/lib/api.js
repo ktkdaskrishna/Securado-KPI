@@ -343,6 +343,20 @@ export const targetAPI = {
     formData.append('file', file);
     return api.post(`/data-tools/data-template/upload?entity=${entity}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+
+  // Card Builder
+  listCards: () => api.get('/card-builder/cards'),
+  createCard: (data) => api.post('/card-builder/cards', data),
+  updateCard: (id, data) => api.put(`/card-builder/cards/${id}`, data),
+  deleteCard: (id) => api.delete(`/card-builder/cards/${id}`),
+  executeCard: (id, year) => api.post(`/card-builder/cards/${id}/execute`, null, { params: { year } }),
+  executeQuery: (config) => api.post('/card-builder/execute-query', config),
+  listTemplates: () => api.get('/card-builder/templates'),
+  createTemplate: (data) => api.post('/card-builder/templates', data),
+  updateTemplate: (id, data) => api.put(`/card-builder/templates/${id}`, data),
+  deleteTemplate: (id) => api.delete(`/card-builder/templates/${id}`),
+  renderTemplate: (id, year) => api.get(`/card-builder/templates/${id}/render`, { params: { year } }),
+  seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
 };
 
 // Events/DLQ APIs
