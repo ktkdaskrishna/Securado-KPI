@@ -575,16 +575,16 @@ export default function HybridDashboard() {
         });
         setBlocks(enriched);
       } else {
-        // Generate blocks from cards
+        // Generate blocks from cards (12-column grid)
         let col = 0, row = 0;
         const genBlocks = cards.map(c => {
           const isChart = ['chart', 'pie', 'leaderboard', 'progress'].includes(c.card?.display_type);
-          const w = isChart ? 2 : 1;
+          const w = isChart ? 6 : 3;
           const h = isChart ? 3 : 1;
-          if (col + w > 4) { col = 0; row += 3; }
+          if (col + w > 12) { col = 0; row += 3; }
           const block = { i: c.card_id, x: col, y: row, w, h, type: 'query_card', card_id: c.card_id, card: c.card, data: c.data };
           col += w;
-          if (col >= 4) { col = 0; row += h; }
+          if (col >= 12) { col = 0; row += h; }
           return block;
         });
         setBlocks(genBlocks);
