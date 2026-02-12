@@ -292,6 +292,14 @@ async def health_check():
             "incremental_sync": incremental_worker.get_status()
         }
     }
+    # Add Redis health
+    try:
+        from libs.redis_pipeline import get_redis_health
+        health_data["services"]["redis"] = await get_redis_health()
+    except:
+        health_data["services"]["redis"] = {"status": "not_configured"}
+    
+    return health_data
 
 
 # Include all service routers under /api prefix
