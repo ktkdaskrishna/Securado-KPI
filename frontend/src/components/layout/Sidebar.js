@@ -142,6 +142,7 @@ const defaultNavigation = {
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
     { id: 'roles', name: 'Roles', href: '/admin/roles', icon: 'Shield', default: true },
     { id: 'integrations', name: 'Integrations', href: '/admin/integrations', icon: 'Database', default: true },
+    { id: 'dashboard-builder', name: 'Dashboard Builder', href: '/dashboard-builder', icon: 'BarChart2', default: true },
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
     { id: 'system-logs', name: 'System Logs', href: '/admin/logs', icon: 'AlertTriangle', default: true },
     { id: 'help', name: 'Help & Support', href: '/help', icon: 'HelpCircle', default: true },
