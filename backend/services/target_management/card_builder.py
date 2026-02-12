@@ -1,0 +1,307 @@
+"""Dashboard Card Builder - Configurable dashboard cards with query engine.
+
+Each card is a saved query configuration:
+- collection: which data source
+- aggregation: count, sum, avg
+- field: which field to aggregate
+- filters: MongoDB-style filters
+- display: card type (number, chart, table, progress)
+- group_by: optional grouping
+
+Templates group cards into layouts assignable to roles.
+"""
+from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional, List
+from pydantic import BaseModel
+import logging
+
+from libs.database import get_app_db
+from libs.utils import serialize_doc, generate_id, now_utc
+from libs.redis_pipeline import execute_query, invalidate_dashboard_cache
+from services.identity.routes import get_current_user
+
+logger = logging.getLogger(__name__)
+card_builder_router = APIRouter(prefix="/card-builder", tags=["card-builder"])
+
+
+class CardConfig(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    collection: str = "opportunities"
+    aggregation: str = "count"  # count, sum, avg, list
+    field: Optional[str] = None  # field to aggregate
+    filters: Optional[dict] = {}
+    group_by: Optional[str] = None
+    display_type: str = "number"  # number, chart, table, progress, pie
+    color: Optional[str] = "#800000"
+    icon: Optional[str] = "Target"
+    size: str = "small"  # small (1x1), medium (2x1), large (2x2)
+    year_filter: bool = True  # apply year filter
+    cache_ttl: int = 60
+
+
+class TemplateConfig(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    cards: List[str] = []  # card IDs in order
+    layout: Optional[str] = "grid"  # grid, list
+    assigned_roles: List[str] = []  # role IDs
+    is_default: bool = False
+
+
+# ==================== CARDS ====================
+
+@card_builder_router.get("/cards")
+async def list_cards(current_user: dict = Depends(get_current_user)):
+    """List all dashboard cards"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    cards = await app_db.dashboard_cards.find({"org_id": org_id}).sort("created_at", -1).to_list(200)
+    return serialize_doc(cards)
+
+
+@card_builder_router.get("/cards/{card_id}")
+async def get_card(card_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a single card config"""
+    app_db = get_app_db()
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return serialize_doc(card)
+
+
+@card_builder_router.post("/cards")
+async def create_card(data: CardConfig, current_user: dict = Depends(get_current_user)):
+    """Create a new dashboard card"""
+    app_db = get_app_db()
+    doc = {
+        "id": generate_id(),
+        "org_id": current_user.get("org_id", "default"),
+        "created_by": current_user.get("name", ""),
+        "created_at": now_utc(),
+        **data.model_dump()
+    }
+    await app_db.dashboard_cards.insert_one(doc)
+    return serialize_doc(doc)
+
+
+@card_builder_router.put("/cards/{card_id}")
+async def update_card(card_id: str, data: CardConfig, current_user: dict = Depends(get_current_user)):
+    """Update a dashboard card"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_cards.update_one(
+        {"id": card_id},
+        {"$set": {**data.model_dump(), "updated_at": now_utc()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Card not found")
+    await invalidate_dashboard_cache()
+    return {"success": True}
+
+
+@card_builder_router.delete("/cards/{card_id}")
+async def delete_card(card_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a dashboard card"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_cards.delete_one({"id": card_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return {"success": True}
+
+
+@card_builder_router.post("/cards/{card_id}/execute")
+async def execute_card(
+    card_id: str,
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Execute a card's query and return data"""
+    app_db = get_app_db()
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    query_config = {
+        "collection": card.get("collection", "opportunities"),
+        "aggregation": card.get("aggregation", "count"),
+        "field": card.get("field"),
+        "filters": card.get("filters", {}),
+        "group_by": card.get("group_by"),
+        "year": year if card.get("year_filter") else None,
+        "cache_ttl": card.get("cache_ttl", 60),
+    }
+    
+    result = await execute_query(query_config)
+    return {"card_id": card_id, "card_name": card.get("name"), "display_type": card.get("display_type"), **result}
+
+
+@card_builder_router.post("/execute-query")
+async def execute_adhoc_query(
+    query_config: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Execute an ad-hoc query (for preview/testing)"""
+    result = await execute_query(query_config)
+    return result
+
+
+# ==================== TEMPLATES ====================
+
+@card_builder_router.get("/templates")
+async def list_templates(current_user: dict = Depends(get_current_user)):
+    """List all dashboard templates"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    templates = await app_db.dashboard_templates_v2.find({"org_id": org_id}).sort("created_at", -1).to_list(50)
+    return serialize_doc(templates)
+
+
+@card_builder_router.post("/templates")
+async def create_template(data: TemplateConfig, current_user: dict = Depends(get_current_user)):
+    """Create a dashboard template"""
+    app_db = get_app_db()
+    doc = {
+        "id": generate_id(),
+        "org_id": current_user.get("org_id", "default"),
+        "created_by": current_user.get("name", ""),
+        "created_at": now_utc(),
+        **data.model_dump()
+    }
+    await app_db.dashboard_templates_v2.insert_one(doc)
+    return serialize_doc(doc)
+
+
+@card_builder_router.put("/templates/{template_id}")
+async def update_template(template_id: str, data: TemplateConfig, current_user: dict = Depends(get_current_user)):
+    """Update a template"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_templates_v2.update_one(
+        {"id": template_id},
+        {"$set": {**data.model_dump(), "updated_at": now_utc()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+@card_builder_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a template"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_templates_v2.delete_one({"id": template_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+@card_builder_router.get("/templates/{template_id}/render")
+async def render_template(
+    template_id: str,
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Render a template - execute all its cards and return results"""
+    app_db = get_app_db()
+    template = await app_db.dashboard_templates_v2.find_one({"id": template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    card_ids = template.get("cards", [])
+    cards = await app_db.dashboard_cards.find({"id": {"$in": card_ids}}).to_list(50)
+    card_map = {c["id"]: serialize_doc(c) for c in cards}
+    
+    results = []
+    for card_id in card_ids:
+        card = card_map.get(card_id)
+        if not card:
+            continue
+        
+        query_config = {
+            "collection": card.get("collection", "opportunities"),
+            "aggregation": card.get("aggregation", "count"),
+            "field": card.get("field"),
+            "filters": card.get("filters", {}),
+            "group_by": card.get("group_by"),
+            "year": year if card.get("year_filter") else None,
+            "cache_ttl": card.get("cache_ttl", 60),
+        }
+        
+        try:
+            data = await execute_query(query_config)
+        except Exception as e:
+            data = {"error": str(e)}
+        
+        results.append({
+            "card_id": card_id,
+            "card": card,
+            "data": data
+        })
+    
+    return {
+        "template": serialize_doc(template),
+        "cards": results,
+        "rendered_at": now_utc()
+    }
+
+
+# ==================== SEED DEFAULT CARDS ====================
+
+@card_builder_router.post("/seed-defaults")
+async def seed_default_cards(current_user: dict = Depends(get_current_user)):
+    """Seed default dashboard cards matching Odoo's dashboard"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    default_cards = [
+        {"name": "Total Pipeline", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "display_type": "number", "color": "#3b82f6", "icon": "DollarSign"},
+        {"name": "Won Value", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "number", "color": "#10b981", "icon": "Trophy"},
+        {"name": "Win Rate", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity", "stage": {"$in": ["Won", "Lost"]}}, "display_type": "number", "color": "#f59e0b", "icon": "TrendingUp"},
+        {"name": "Total Opportunities", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity"}, "display_type": "number", "color": "#6366f1", "icon": "Target"},
+        {"name": "Pipeline by Stage", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "stage", "display_type": "chart", "size": "large"},
+        {"name": "Won by Salesperson", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "group_by": "owner_name", "display_type": "chart", "size": "large"},
+        {"name": "Pipeline by PM", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "product_manager", "display_type": "chart", "size": "medium"},
+        {"name": "Overdue Invoices", "collection": "invoices", "aggregation": "count",
+         "filters": {"payment_state": {"$in": ["not_paid", "partial"]}}, "display_type": "number", "color": "#ef4444", "icon": "AlertTriangle", "year_filter": False},
+        {"name": "Total Accounts", "collection": "accounts", "aggregation": "count",
+         "filters": {}, "display_type": "number", "color": "#06b6d4", "icon": "Building2", "year_filter": False},
+    ]
+    
+    created = 0
+    card_ids = []
+    for card_def in default_cards:
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "created_by": "system",
+            "created_at": now_utc(),
+            "cache_ttl": 60,
+            "year_filter": True,
+            **card_def
+        }
+        await app_db.dashboard_cards.insert_one(doc)
+        card_ids.append(doc["id"])
+        created += 1
+    
+    # Create default template
+    template = {
+        "id": generate_id(),
+        "org_id": org_id,
+        "name": "CEO Dashboard",
+        "description": "Default executive dashboard matching Odoo KPIs",
+        "cards": card_ids,
+        "layout": "grid",
+        "assigned_roles": ["admin", "sales_admin", "sales_director"],
+        "is_default": True,
+        "created_by": "system",
+        "created_at": now_utc()
+    }
+    await app_db.dashboard_templates_v2.insert_one(template)
+    
+    return {"success": True, "cards_created": created, "template_id": template["id"]}
