@@ -20,6 +20,8 @@ export function DashboardPage() {
   const [pmLeaderboard, setPmLeaderboard] = useState(null);
   const [categoryStats, setCategoryStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editingCard, setEditingCard] = useState(null);
+  const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [], productDirectors: [], solutionCategories: [] });
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
