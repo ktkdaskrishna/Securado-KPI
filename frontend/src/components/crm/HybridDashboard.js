@@ -671,11 +671,11 @@ export default function HybridDashboard() {
       {/* Grid Layout */}
       {blocks.length > 0 ? (
         <ResponsiveGridLayout
-          className="layout"
+          className={`layout ${editMode ? 'dashboard-editing' : ''}`}
           layouts={{ lg: layout }}
           breakpoints={{ lg: 1200, md: 996, sm: 768 }}
           cols={{ lg: 12, md: 8, sm: 4 }}
-          rowHeight={80}
+          rowHeight={85}
           width={containerWidth || 1200}
           isDraggable={editMode}
           isResizable={editMode}
