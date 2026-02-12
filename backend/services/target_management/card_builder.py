@@ -397,6 +397,25 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
         card_ids.append(doc["id"])
         created += 1
     
+    # Build blocks with grid positions
+    blocks = []
+    grid_positions = [
+        {"x": 0, "y": 0, "w": 1, "h": 1},  # Total Pipeline
+        {"x": 1, "y": 0, "w": 1, "h": 1},  # Won Value
+        {"x": 2, "y": 0, "w": 1, "h": 1},  # Win Rate
+        {"x": 3, "y": 0, "w": 1, "h": 1},  # Total Opportunities
+        {"x": 0, "y": 1, "w": 2, "h": 3},  # Pipeline by Stage (chart)
+        {"x": 2, "y": 1, "w": 2, "h": 3},  # Won by Salesperson (chart)
+        {"x": 0, "y": 4, "w": 2, "h": 3},  # Pipeline by PM (chart)
+        {"x": 2, "y": 4, "w": 1, "h": 1},  # Overdue Invoices
+        {"x": 3, "y": 4, "w": 1, "h": 1},  # Total Accounts
+    ]
+    for idx, card_id in enumerate(card_ids):
+        pos = grid_positions[idx] if idx < len(grid_positions) else {"x": idx % 4, "y": 7 + idx // 4, "w": 1, "h": 1}
+        blocks.append({
+            "i": card_id, "type": "query_card", "card_id": card_id, **pos
+        })
+
     # Create default template
     template = {
         "id": generate_id(),
@@ -404,6 +423,7 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
         "name": "CEO Dashboard",
         "description": "Default executive dashboard matching Odoo KPIs",
         "cards": card_ids,
+        "blocks": blocks,
         "layout": "grid",
         "assigned_roles": ["admin", "sales_admin", "sales_director"],
         "is_default": True,
