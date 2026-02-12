@@ -228,7 +228,7 @@ export default function HybridDashboard() {
           const metricMap = {
             total_pipeline: { value: stats.total_pipeline, icon: DollarSign, color: '#3b82f6' },
             win_rate: { value: stats.win_rate, icon: TrendingUp, color: '#10b981' },
-            open_opportunities: { value: stats.open_opportunities, icon: Target, color: '#6366f1' },
+            open_opportunities: { value: stats.open_count || stats.open_opportunities, icon: Target, color: '#6366f1' },
             won_value: { value: stats.won_value, icon: Trophy, color: '#f59e0b' },
           };
           const m = metricMap[block.config?.metric] || { value: 0 };
