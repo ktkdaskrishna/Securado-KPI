@@ -1,53 +1,77 @@
-# Securado CRM - PRD (Updated Feb 10, 2026)
+# Securado CRM Platform - PRD
 
-## Framework: Securado Enterprise KPI Framework
-Strategy → Activity → Revenue → Delivery → Cash → Capability
+## Original Problem Statement
+Build a sales target, incentive, and KPI management system integrated with Odoo. Evolved into a full configurable dashboard system with dynamic query engine, RBAC, and data sync.
 
-## Current Implementation Status
+## Core Architecture
+- **Frontend:** React 19 + Shadcn/UI + TailwindCSS + react-grid-layout v2
+- **Backend:** FastAPI + MongoDB + Redis (cache/query engine)
+- **Data Sync:** Incremental polling worker syncing from Odoo v17
+- **Auth:** JWT + Microsoft Azure AD SSO
+- **Dashboard:** Configurable react-grid-layout with 12-column responsive grid
 
-### Fully Implemented (✅)
-- Performance Hub with 7 role-based tabs + CEO RAG Summary
-- Auto-generated activity suggestions from PD historical data
-- Revenue cap rule (activity < 80% → revenue capped at 70%)
-- CEO Executive Summary (5 RAG signals + auto-insight)
-- RBAC with canonical name resolution (multi-name pattern matching)
-- 12 roles defined (Admin, ETL Admin, Sales Manager, Sales Rep, Sales Director, Product Director, System Admin, Finance, Marketing, Strategy, Operations, Support)
-- Advanced Filter Builder (Notion-style) with saved presets
-- Alert Center (6 alert types)
-- Organization Structure (Org Tree, Departments, Employees)
-- Global PD + Category filters across all pages
-- AI Analytics conversion rate fixed (65.6% Win Rate)
-- Bluesheet Won = 100%
-- Opportunities pagination (1039 total)
-- Backend ETL RBAC protection (403 for non-admins)
+## What's Been Implemented
 
-### Phase 2 (Ready to Build)
-- Collection Escalation Workflow (Day 0→30→45→60 ladder)
-- SD Scorecard (3 KPIs: Team Revenue 40% + Activity 30% + Collections 30%)
-- DSO Calculation
-- Finance KPIs (invoicing timeliness, costing approval)
+### Phase 1: Core CRM Platform (Complete)
+- Auth (register, login, SSO), RBAC with centralized user identity map
+- Opportunities, Accounts, Activities, Invoices pages
+- ETL pipeline management (connections, mappings, runs)
+- AI Analytics with filter builder
 
-### Phase 3 (Needs Additional Odoo Data)
-- Gross Margin % (needs cost/COGS data)
-- Billable Utilization % (needs timesheet/man-days)
-- Delivery cost vs planned (needs project costing)
-- Costing sheet validation workflow
+### Phase 2: Target Management (Complete)
+- Sales targets, activity targets, incentive plans
+- Performance Hub with role-specific views
+- Organization page with org chart from Odoo
+- Data Tools (Excel export/import)
 
-### Roles Coverage
-| Role | Performance Hub Tabs | Data Scope |
-|------|---------------------|-----------|
-| CEO/Admin | CEO View, PM Builder, SD, Activities, Collection, Incentive | All data |
-| Sales Director | CEO View, PM Builder, SD, Activities, Collection, Incentive | All CRM data |
-| Product Director | My Plan, My Team, Activities, Collection, Incentive | PM-scoped |
-| Sales Rep | My Targets, Activities, Collection | Own data only |
-| Finance | Collection | Invoice-scoped |
-| Marketing | (to be built) | Leads/campaigns |
-| Strategy | (to be built) | New logos |
-| Operations | (to be built) | Delivery tasks |
+### Phase 3: Data Architecture (Complete)
+- Redis-backed query engine for dashboard cards
+- Incremental polling sync worker (replaced webhooks)
+- Centralized email-based user identity map
+- Serving cache layer for consistent analytics
 
-## Key Files
-- `/app/backend/services/target_management/planning.py` - Planning APIs + CEO Summary + Revenue Cap
-- `/app/backend/services/rbac_sync/access_rules.py` - RBAC with canonical name resolution
-- `/app/frontend/src/components/crm/PerformanceHubPage.js` - Main UI
-- `/app/docs/BEHAVIOR_ENFORCEMENT_PLAN.md` - Full enforcement system design
-- `/app/docs/PERFORMANCE_HUB_SUMMARY.md` - Complete configuration doc
+### Phase 4: Configurable Dashboard (Complete - Feb 2026)
+- **react-grid-layout v2.2.2 integration** with drag-drop-resize
+- **12-column responsive grid** with proper breakpoints (lg:12, md:8, sm:4)
+- **Edit Mode** toggle (admin only) with amber banner, save layout
+- **Template Manager UI** - create, edit, delete dashboard templates
+- **Role Assignment** - assign templates to user roles
+- **Win Rate fix** - displays formatted percentage (85.7%) not raw number
+- **Add/Remove cards** from dashboard layout
+- **Save Layout** persists card positions to database
+- **Dynamic card rendering** for all display types: number, win_rate, chart, pie, leaderboard, progress, table
+
+## Key Endpoints
+- `GET /api/card-builder/my-dashboard` - User's dashboard with rendered blocks
+- `GET/POST /api/card-builder/cards` - Cards CRUD
+- `GET/POST /api/card-builder/templates` - Templates CRUD
+- `POST /api/card-builder/templates/{id}/layout` - Save layout
+- `GET /api/card-builder/available-roles` - Roles for assignment
+- `POST /api/card-builder/seed-defaults` - Seed default CEO dashboard
+
+## Key DB Collections
+- `dashboard_cards` - Card configurations with queries
+- `dashboard_templates_v2` - Templates with blocks layout + role assignments
+- `user_identity_map` - Centralized user identity linking
+- `sync_settings` - Incremental sync configuration
+
+## Prioritized Backlog
+
+### P1 - Next Up
+- Implement Gross Profit & Costing KPIs (costing sheets, project man-days from Odoo)
+- Replace In-Memory Event Bus with Redis Streams
+
+### P2
+- Build Strategy & Marketing Team KPIs
+- Refactor crm_sales analytics to use dashboard_query_engine
+- Refactor to Services/Repositories pattern
+
+### P3
+- Implement Refresh Token Storage
+- Dashboard card templates gallery (pre-built card configs)
+
+## Test Credentials
+- Admin: krishna@securado.net / test123456
+- Product Director 1: vimod.chandran@securado.net / test123456
+- Product Director 2: tajuddin.mohammed@securado.net / test123456
+- Sales Rep: nabisaheb.m@securado.net / test123456
