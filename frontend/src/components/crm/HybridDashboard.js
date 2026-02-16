@@ -132,7 +132,7 @@ function DrillDownPanel({ open, onClose, card, year }) {
 }
 
 // ============ KPI CARD (Read-only, Odoo-style) ============
-function KpiCard({ card, data, onDrillDown }) {
+function KpiCard({ card, data, onDrillDown, onNavigate }) {
   const Icon = ICONS[card?.icon] || Target;
   const groups = data?.groups || [];
   const bg = card?.color || '#1e3a5f';
