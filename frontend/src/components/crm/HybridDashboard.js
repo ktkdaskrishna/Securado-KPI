@@ -680,7 +680,6 @@ export default function HybridDashboard() {
           isDraggable={editMode}
           isResizable={editMode}
           onLayoutChange={(currentLayout, allLayouts) => onLayoutChange(currentLayout)}
-          draggableHandle="[data-testid='drag-handle']"
           compactor={verticalCompactor}
           margin={[16, 16]}
         >
