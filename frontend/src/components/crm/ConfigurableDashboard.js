@@ -416,32 +416,54 @@ export default function ConfigurableDashboard() {
           </div>
         </TabsContent>
 
-        {/* ALL CARDS TAB */}
+        {/* ALL CARDS TAB - Visual previews */}
         <TabsContent value="cards" className="mt-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-500">{allCards.length} cards available</p>
             <Button onClick={() => { setEditCard({}); setShowEditor(true); }} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="new-card-btn"><Plus className="h-4 w-4 mr-1" /> Create New Chart</Button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {allCards.map(card => (
-              <Card key={card.id} className="overflow-hidden hover:shadow-md transition-shadow group" data-testid={`card-item-${card.id}`}>
-                <div className="h-2" style={{ backgroundColor: card.color || '#800000' }} />
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-gray-900 truncate">{card.name}</span>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEditCard(card)} className="p-1 rounded hover:bg-gray-100"><Pencil className="h-3 w-3 text-gray-400" /></button>
-                      <button onClick={() => handleDeleteCard(card.id)} className="p-1 rounded hover:bg-red-50"><Trash2 className="h-3 w-3 text-red-400" /></button>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {allCards.map(card => {
+              const isKpiType = ['number', 'win_rate'].includes(card.display_type);
+              const Icon = ICONS[card.icon] || Target;
+              return (
+                <Card key={card.id} className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer" data-testid={`card-item-${card.id}`}
+                  onClick={() => handleEditCard(card)}>
+                  {isKpiType ? (
+                    /* KPI card visual preview */
+                    <div className="h-24 flex flex-col items-center justify-center text-center relative" style={{ backgroundColor: card.color || '#1e3a5f' }}>
+                      <Icon className="h-4 w-4 text-white/40 mb-1" />
+                      <p className="text-lg font-black text-white">{card.display_type === 'win_rate' ? '%' : '#'}</p>
+                      <p className="text-[9px] text-white/70 uppercase tracking-wider px-2 truncate w-full">{card.name}</p>
+                      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); handleDeleteCard(card.id); }}
+                          className="p-0.5 rounded bg-black/20 hover:bg-red-500/40"><Trash2 className="h-3 w-3 text-white/80" /></button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1.5 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">{card.display_type}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{card.collection}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{card.aggregation}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  ) : (
+                    /* Chart card visual preview */
+                    <div className="h-24 flex flex-col items-center justify-center bg-gray-50 relative border-b">
+                      <div className="flex gap-0.5 items-end h-10">
+                        {[40, 65, 30, 80, 50, 45].map((h, i) => (
+                          <div key={i} className="w-3 rounded-t" style={{ height: `${h}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length], opacity: 0.7 }} />
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-gray-500 mt-1.5 uppercase tracking-wider px-2 truncate w-full text-center">{card.name}</p>
+                      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); handleDeleteCard(card.id); }}
+                          className="p-0.5 rounded bg-white/80 hover:bg-red-50"><Trash2 className="h-3 w-3 text-red-400" /></button>
+                      </div>
+                    </div>
+                  )}
+                  <CardContent className="p-2">
+                    <div className="flex gap-1 flex-wrap">
+                      <Badge variant="outline" className="text-[9px] h-4">{card.display_type}</Badge>
+                      <Badge variant="outline" className="text-[9px] h-4">{card.collection}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>
