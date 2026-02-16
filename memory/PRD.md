@@ -101,6 +101,15 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - Builder: 3 tabs (Layout Editor, Templates, All Cards), drag/drop/resize, Edit Chart dialog
 - Edit Chart Dialog: Chart type grid, Data/Display/Target tabs, live preview, color swatches
 
+
+### Phase 9: Chart Types + Won/Lost Lists + Domain Builder (Complete - Feb 2026)
+- **9 chart types**: KPI, Bar, Area (new), Pie, Radial (new), List, Progress, Rate, Table
+- **Won Top 10 / Lost Top 10** table cards added to seed defaults
+- **Pipeline Trend** (Area chart) and **Solution Mix** (Radial chart) seed cards
+- **Visual Domain Builder** — Odoo-style rule editor: Field→Operator→Value dropdowns, Match all/any, Add/Delete rules
+- **Date Filter Field** selector matching Odoo (Last Stage Update, Created Date, etc.)
+- Seed defaults now creates 13 cards (was 9)
+
 ## Test Credentials
 - Admin: krishna@securado.net / test123456
 - Product Director 1: vimod.chandran@securado.net / test123456
