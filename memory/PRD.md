@@ -94,6 +94,13 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - Implement Refresh Token Storage
 - Dashboard card templates gallery (pre-built card configs)
 
+
+### Phase 8: Dashboard Architecture Split (Complete - Feb 2026)
+- Split into `/dashboard` (read-only) and `/dashboard-builder` (full Odoo-style editor)
+- Dashboard: Clean view showing assigned template, drill-down on click, no edit controls
+- Builder: 3 tabs (Layout Editor, Templates, All Cards), drag/drop/resize, Edit Chart dialog
+- Edit Chart Dialog: Chart type grid, Data/Display/Target tabs, live preview, color swatches
+
 ## Test Credentials
 - Admin: krishna@securado.net / test123456
 - Product Director 1: vimod.chandran@securado.net / test123456
