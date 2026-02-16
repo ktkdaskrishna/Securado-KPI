@@ -170,7 +170,7 @@ function KpiCard({ card, data, onDrillDown, onNavigate }) {
 }
 
 // ============ CHART CARD (Read-only, shadcn charts) ============
-function ChartCard({ card, data, onDrillDown }) {
+function ChartCard({ card, data, onDrillDown, onNavigate }) {
   const groups = data?.groups || [];
   if (!card) return null;
 
