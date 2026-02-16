@@ -120,6 +120,28 @@ function BuilderChartCard({ card, data, onEdit, onRemove }) {
             <Pie data={groups.slice(0, 8)} dataKey={dk} nameKey="label" cx="50%" cy="50%" innerRadius="30%" outerRadius="65%" paddingAngle={2}>{groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}</Pie></PieChart></ChartContainer>
             <div className="space-y-1 flex-1 overflow-auto">{groups.slice(0, 6).map((g, i) => (<div key={i} className="flex items-center gap-1.5 text-xs"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} /><span className="text-gray-500 truncate flex-1">{g.label || '-'}</span><span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span></div>))}</div></div>);
         })()}
+        {card.display_type === 'area' && (() => {
+          const dk = card.aggregation === 'count' ? 'count' : 'total';
+          const cfg = {}; groups.slice(0, 12).forEach((g, i) => { cfg[g.label || `i${i}`] = { label: g.label, color: CHART_COLORS[i % CHART_COLORS.length] }; }); cfg[dk] = { label: card.name };
+          return (<ChartContainer config={cfg} className="h-full w-full"><AreaChart accessibilityLayer data={groups.slice(0, 12)} margin={{ left: -10, bottom: 20, right: 10 }}>
+            <CartesianGrid vertical={false} /><XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
+            <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <defs><linearGradient id="bFillArea" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#800000" stopOpacity={0.8}/><stop offset="95%" stopColor="#800000" stopOpacity={0.1}/></linearGradient></defs>
+            <Area dataKey={dk} type="monotone" fill="url(#bFillArea)" stroke="#800000" strokeWidth={2} />
+          </AreaChart></ChartContainer>);
+        })()}
+        {card.display_type === 'radial' && (() => {
+          const dk = card.aggregation === 'count' ? 'count' : 'total'; const cfg = {};
+          const rd = groups.slice(0, 6).map((g, i) => ({ ...g, fill: CHART_COLORS[i % CHART_COLORS.length] }));
+          rd.forEach((g, i) => { cfg[g.label || `s${i}`] = { label: g.label, color: CHART_COLORS[i % CHART_COLORS.length] }; });
+          return (<div className="flex items-center gap-3 h-full"><ChartContainer config={cfg} className="h-full w-1/2">
+            <RadialBarChart data={rd} innerRadius="20%" outerRadius="90%" startAngle={180} endAngle={0}>
+              <PolarGrid gridType="circle" radialLines={false} stroke="none" /><RadialBar dataKey={dk} background cornerRadius={6} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="label" />} />
+            </RadialBarChart></ChartContainer>
+            <div className="space-y-1 flex-1 overflow-auto">{rd.map((g, i) => (<div key={i} className="flex items-center gap-1.5 text-xs"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: g.fill }} /><span className="text-gray-500 truncate flex-1">{g.label || '-'}</span><span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span></div>))}</div></div>);
+        })()}
         {card.display_type === 'leaderboard' && (<div className="px-2 space-y-1.5 overflow-auto h-full">{groups.slice(0, 10).map((g, idx) => (
           <div key={idx} className="flex items-center gap-2 hover:bg-gray-50 rounded px-2 py-1"><span className="text-xs font-bold text-gray-400 w-4">{idx + 1}</span>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>{(g.label || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>
