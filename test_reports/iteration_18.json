@@ -1,0 +1,97 @@
+{
+  "summary": "Testing of RBAC hierarchy-based scoping, delete card from layout, 7 default roles, and template update preservation. All 20 backend tests passed. Frontend delete card functionality working (X button removes cards with toast). RBAC confirmed: Admin sees 2.46M pipeline/17 opps, Sales Rep sees 1.99M/4 opps, Product Director sees 236K/7 opps.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard charts",
+        "issues": ["Console warnings about chart dimensions (-1 width/height) during initial load - charts render correctly after container calculates size. Known non-blocking issue."]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "✅ Backend: GET /api/card-builder/available-roles returns 7 default roles (admin, sales_admin, sales_director, product_director, sales_rep, marketing, user)",
+    "✅ RBAC: Admin (krishna@securado.net) sees ALL data - Total Pipeline 2,463,001.75, 17 open opps",
+    "✅ RBAC: Sales Rep (nabisaheb@securado.net) sees ONLY own data - Pipeline 1,991,946.75, 4 opps",
+    "✅ RBAC: Product Director (vimod.c@securado.net) sees own+subordinates - Pipeline 236,269, 7 opps",
+    "✅ RBAC: execute-query endpoint also respects hierarchy filters",
+    "✅ Template update preserves cards/blocks - editing name/roles does NOT wipe layout",
+    "✅ Win Rate shows formatted percentage (85.7%)",
+    "✅ Delete card from layout works - X button on cards in edit mode removes card and shows toast",
+    "✅ Save Layout button appears after removing cards",
+    "✅ Edit mode banner displays with drag instructions",
+    "✅ Template Manager CRUD operations working",
+    "✅ Backend test: test_available_roles_returns_7_default_roles PASSED",
+    "✅ Backend test: test_admin_sees_all_data PASSED",
+    "✅ Backend test: test_sales_rep_sees_own_data_only PASSED",
+    "✅ Backend test: test_product_director_sees_team_data PASSED",
+    "✅ Backend test: test_rbac_comparison PASSED",
+    "✅ Backend test: test_update_template_preserves_cards PASSED",
+    "✅ Backend test: test_win_rate_groups_data PASSED",
+    "✅ Backend test: test_adhoc_query_respects_rbac PASSED",
+    "✅ Backend test: test_cleanup_test_templates PASSED"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_rbac_hierarchy.py",
+    "/app/backend/tests/test_card_builder.py",
+    "/app/test_reports/pytest/rbac_tests.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "resolve_hierarchy_filter() correctly walks employee tree using manager_id from canonical_db.employees",
+    "RBAC filter is applied to execute_query via rbac_filter parameter - properly scopes all dashboard queries",
+    "Admin/sales_admin users bypass RBAC filter (see all data) - correct behavior",
+    "Template update endpoint only updates metadata (name, description, roles) - does NOT overwrite cards/blocks - correct",
+    "Delete button uses onMouseDown with stopPropagation to prevent drag capture - working correctly"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_rbac_hierarchy.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (20/20 tests passed)",
+    "frontend": "100% (all features verified working)"
+  },
+
+  "test_credentials": {
+    "admin": "krishna@securado.net / test123456",
+    "sales_rep": "nabisaheb@securado.net / test123456",
+    "product_director": "vimod.c@securado.net / test123456"
+  },
+
+  "seed_data_creation": "None - used existing database records",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "RBAC hierarchy-based scoping fully implemented and tested. resolve_hierarchy_filter() in card_builder.py walks the employee tree to build name-based filters. Available-roles endpoint returns 7 default roles. Delete card from layout uses onMouseDown with stopPropagation. Template update endpoint preserves cards/blocks.",
+
+  "verified_data": {
+    "admin_dashboard": {
+      "total_pipeline": "OMR 2,463,001.75",
+      "open_opportunities": "17",
+      "win_rate": "85.7%"
+    },
+    "sales_rep_dashboard": {
+      "total_pipeline": "OMR 1,991,946.75",
+      "open_opportunities": "4"
+    },
+    "product_director_dashboard": {
+      "total_pipeline": "OMR 236,269",
+      "open_opportunities": "7"
+    },
+    "available_roles": ["admin", "sales_admin", "sales_director", "product_director", "sales_rep", "marketing", "user"]
+  }
+}
