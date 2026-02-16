@@ -67,32 +67,61 @@ function DrillDownPanel({ open, onClose, card, year }) {
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="right" className="w-[700px] sm:w-[800px] sm:max-w-[800px] p-0" data-testid="drill-down-panel">
         <div className="flex flex-col h-full">
-          <SheetHeader className="px-6 py-4 border-b bg-gray-50/80">
-            <SheetTitle className="flex items-center gap-2">
-              <span className="text-lg font-bold text-gray-900">{card?.name || 'Records'}</span>
-              <Badge className="bg-[#800000]/10 text-[#800000]">{total} records</Badge>
+          <SheetHeader className="px-6 py-4 border-b" style={{ backgroundColor: card?.color || '#1e3a5f' }}>
+            <SheetTitle className="text-white">
+              <span className="text-lg font-bold">{card?.name || 'Records'}</span>
+              <Badge className="ml-2 bg-white/20 text-white border-0">{total} records</Badge>
             </SheetTitle>
             <div className="relative mt-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search records..." className="pl-9 h-9 text-sm" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search records..."
+                className="pl-9 h-9 text-sm bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:bg-white/20" />
             </div>
           </SheetHeader>
-          <ScrollArea className="flex-1">
-            {loading ? <div className="p-6 space-y-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
+          <ScrollArea className="flex-1 bg-gray-50">
+            {loading ? <div className="p-4 space-y-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
             : filtered.length === 0 ? <div className="p-12 text-center text-gray-400"><Target className="h-12 w-12 mx-auto mb-3 text-gray-300" /><p>No records found</p></div>
-            : <div className="divide-y divide-gray-100">{filtered.map((r, idx) => (
-                <div key={idx} className="px-6 py-3 hover:bg-gray-50/80 transition-colors" data-testid={`drill-down-row-${idx}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate text-sm">{r.name || r.invoice_number || r.summary || Object.values(r)[0]}</p>
-                      <div className="flex flex-wrap gap-x-4 mt-1">{columns.slice(1, 5).map(c => <span key={c} className="text-xs text-gray-500"><span className="text-gray-400">{fmtH(c)}:</span> <span className="font-medium text-gray-700">{fmtV(c, r[c])}</span></span>)}</div>
+            : <div className="p-4 space-y-2">{filtered.map((r, idx) => {
+                const mainVal = r.sale_value || r.amount_total || 0;
+                const name = r.name || r.invoice_number || r.summary || Object.values(r)[0];
+                return (
+                  <div key={idx} className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer" data-testid={`drill-down-row-${idx}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{name}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                          {columns.slice(1, 6).map(c => {
+                            const val = fmtV(c, r[c]);
+                            if (val === '-') return null;
+                            return (
+                              <div key={c} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-400 uppercase tracking-wide">{fmtH(c)}</span>
+                                <span className="text-xs font-medium text-gray-700 bg-gray-50 px-1.5 py-0.5 rounded">{val}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {mainVal > 0 && (
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-[#800000]">OMR {mainVal.toLocaleString()}</p>
+                          {r.probability && <p className="text-[10px] text-gray-400">{r.probability}% prob.</p>}
+                        </div>
+                      )}
                     </div>
-                    {(r.sale_value || r.amount_total) && <span className="text-sm font-bold text-[#800000] ml-3 whitespace-nowrap">OMR {(r.sale_value || r.amount_total || 0).toLocaleString()}</span>}
+                    {r.stage && (
+                      <div className="mt-2 pt-2 border-t border-gray-50">
+                        <Badge variant="outline" className="text-[10px]">{r.stage}</Badge>
+                        {r.owner_name && <Badge variant="outline" className="text-[10px] ml-1">{r.owner_name}</Badge>}
+                        {r.product_manager && <Badge variant="outline" className="text-[10px] ml-1">{r.product_manager}</Badge>}
+                      </div>
+                    )}
                   </div>
-                </div>))}</div>}
+                );
+              })}</div>}
           </ScrollArea>
-          <div className="px-6 py-3 border-t bg-gray-50/80 flex items-center justify-between text-xs text-gray-500">
-            <span>Showing {filtered.length} of {total}</span><span>{card?.collection}</span>
+          <div className="px-6 py-3 border-t bg-white flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {filtered.length} of {total}</span><span className="text-gray-400">{card?.collection}</span>
           </div>
         </div>
       </SheetContent>
