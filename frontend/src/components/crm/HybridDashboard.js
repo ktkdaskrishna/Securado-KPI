@@ -273,16 +273,58 @@ export default function HybridDashboard() {
   const [templateName, setTemplateName] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [drillDown, setDrillDown] = useState({ open: false, card: null });
+  // Global filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterOptions, setFilterOptions] = useState({ salespersons: [], product_directors: [], solution_categories: [] });
+  const [filters, setFilters] = useState({ salesperson: '', product_director: '', solution_category: '' });
+  const navigate = useNavigate();
+
+  const activeFilterCount = Object.values(filters).filter(v => v).length;
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
-    try { const r = await targetAPI.getMyDashboard(year); setBlocks(r.data.blocks || []); setTemplateName(r.data.template?.name || 'Dashboard'); } catch {} finally { setLoading(false); }
-  }, [year]);
+    try {
+      const filterParams = {};
+      if (filters.salesperson) filterParams.salesperson = filters.salesperson;
+      if (filters.product_director) filterParams.product_director = filters.product_director;
+      if (filters.solution_category) filterParams.solution_category = filters.solution_category;
+      const r = await targetAPI.getMyDashboard(year, filterParams);
+      setBlocks(r.data.blocks || []);
+      setTemplateName(r.data.template?.name || 'Dashboard');
+    } catch {} finally { setLoading(false); }
+  }, [year, filters]);
+
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  const isKpi = (b) => ['number', 'win_rate'].includes(b.card?.display_type);
+  // Load filter options once
+  useEffect(() => {
+    (async () => {
+      try { const r = await targetAPI.getFilterOptions(); setFilterOptions(r.data); } catch {}
+    })();
+  }, []);
 
-  // Separate KPI cards and chart cards
+  const clearFilters = () => setFilters({ salesperson: '', product_director: '', solution_category: '' });
+
+  // Navigate to opportunities page with filters from a card
+  const handleCardNavigate = (card) => {
+    if (!card) return;
+    const params = new URLSearchParams();
+    if (card.filters) {
+      const f = typeof card.filters === 'string' ? JSON.parse(card.filters) : card.filters;
+      if (f.stage === 'Won') params.set('stage', 'Won');
+      else if (f.stage === 'Lost') params.set('stage', 'Lost');
+      else if (f.stage?.$nin) params.set('stage_exclude', f.stage.$nin.join(','));
+    }
+    if (filters.salesperson) params.set('salesperson', filters.salesperson);
+    if (filters.product_director) params.set('product_director', filters.product_director);
+
+    if (card.collection === 'opportunities') navigate(`/opportunities?${params.toString()}`);
+    else if (card.collection === 'invoices') navigate('/invoices');
+    else if (card.collection === 'accounts') navigate('/accounts');
+    else if (card.collection === 'activities') navigate('/activities');
+  };
+
+  const isKpi = (b) => ['number', 'win_rate'].includes(b.card?.display_type);
   const kpiBlocks = blocks.filter(b => isKpi(b));
   const chartBlocks = blocks.filter(b => !isKpi(b));
 
@@ -295,7 +337,7 @@ export default function HybridDashboard() {
   );
 
   return (
-    <div className="space-y-5" data-testid="dashboard-page">
+    <div className="space-y-4" data-testid="dashboard-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900" data-testid="dashboard-title">{templateName}</h1>
@@ -304,9 +346,67 @@ export default function HybridDashboard() {
             <SelectTrigger className="w-32 h-9 text-sm" data-testid="year-select"><Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" /><SelectValue /></SelectTrigger>
             <SelectContent>{DATE_PRESETS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
           </Select>
+          <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}
+            className={showFilters ? "bg-[#800000] hover:bg-[#9a1919] text-white" : ""} data-testid="filter-toggle-btn">
+            <Filter className="h-4 w-4 mr-1" /> Filters
+            {activeFilterCount > 0 && <Badge className="ml-1.5 bg-white/20 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">{activeFilterCount}</Badge>}
+          </Button>
           <Button variant="outline" size="sm" onClick={loadDashboard} data-testid="refresh-btn"><RefreshCw className="h-4 w-4" /></Button>
         </div>
       </div>
+
+      {/* Global Filter Panel */}
+      {showFilters && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm" data-testid="global-filter-panel">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-700">Global Filters</span>
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-gray-500 h-7">
+                <X className="h-3 w-3 mr-1" /> Clear all
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Salesperson</label>
+              <Select value={filters.salesperson || '_all'} onValueChange={v => setFilters(f => ({ ...f, salesperson: v === '_all' ? '' : v }))}>
+                <SelectTrigger className="h-9 text-sm" data-testid="filter-salesperson"><SelectValue placeholder="All Salespersons" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All Salespersons</SelectItem>
+                  {filterOptions.salespersons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Product Director</label>
+              <Select value={filters.product_director || '_all'} onValueChange={v => setFilters(f => ({ ...f, product_director: v === '_all' ? '' : v }))}>
+                <SelectTrigger className="h-9 text-sm" data-testid="filter-pd"><SelectValue placeholder="All Product Directors" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All Product Directors</SelectItem>
+                  {filterOptions.product_directors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Solution Category</label>
+              <Select value={filters.solution_category || '_all'} onValueChange={v => setFilters(f => ({ ...f, solution_category: v === '_all' ? '' : v }))}>
+                <SelectTrigger className="h-9 text-sm" data-testid="filter-category"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All Categories</SelectItem>
+                  {filterOptions.solution_categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <div className="flex gap-1.5 mt-3 pt-3 border-t">
+              {filters.salesperson && <Badge className="bg-blue-50 text-blue-700 border-blue-200" variant="outline">{filters.salesperson} <button onClick={() => setFilters(f => ({...f, salesperson: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
+              {filters.product_director && <Badge className="bg-purple-50 text-purple-700 border-purple-200" variant="outline">{filters.product_director} <button onClick={() => setFilters(f => ({...f, product_director: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
+              {filters.solution_category && <Badge className="bg-green-50 text-green-700 border-green-200" variant="outline">{filters.solution_category} <button onClick={() => setFilters(f => ({...f, solution_category: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
+            </div>
+          )}
+        </div>
+      )}
 
       {blocks.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
@@ -316,19 +416,23 @@ export default function HybridDashboard() {
         </div>
       ) : (
         <>
-          {/* KPI Cards Row (6 per row, Odoo-style) */}
+          {/* KPI Cards Row */}
           {kpiBlocks.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {kpiBlocks.map(b => <KpiCard key={b.card_id} card={b.card} data={b.data} onDrillDown={c => setDrillDown({ open: true, card: c })} />)}
+              {kpiBlocks.map(b => <KpiCard key={b.card_id} card={b.card} data={b.data}
+                onDrillDown={c => setDrillDown({ open: true, card: c })}
+                onNavigate={handleCardNavigate} />)}
             </div>
           )}
 
-          {/* Chart Cards (2 per row) */}
+          {/* Chart Cards */}
           {chartBlocks.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {chartBlocks.map(b => (
                 <div key={b.card_id} className="min-h-[280px]">
-                  <ChartCard card={b.card} data={b.data} onDrillDown={c => setDrillDown({ open: true, card: c })} />
+                  <ChartCard card={b.card} data={b.data}
+                    onDrillDown={c => setDrillDown({ open: true, card: c })}
+                    onNavigate={handleCardNavigate} />
                 </div>
               ))}
             </div>
@@ -336,7 +440,7 @@ export default function HybridDashboard() {
         </>
       )}
 
-      <DrillDownPanel open={drillDown.open} onClose={() => setDrillDown({ open: false, card: null })} card={drillDown.card} year={year} />
+      <DrillDownPanel open={drillDown.open} onClose={() => setDrillDown({ open: false, card: null })} card={drillDown.card} year={year} onNavigate={handleCardNavigate} />
     </div>
   );
 }
