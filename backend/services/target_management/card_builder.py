@@ -334,6 +334,10 @@ async def get_my_dashboard(
             {"id": template["id"]}, {"$set": {"blocks": blocks}}
         )
     
+    # Resolve RBAC hierarchy filter for this user (once, shared across all cards)
+    # This caches per-collection filters to avoid repeated hierarchy walks
+    rbac_filters_cache = {}
+    
     # Execute query cards
     rendered_blocks = []
     for block in blocks:
@@ -347,8 +351,15 @@ async def get_my_dashboard(
                     if card.get("display_type") == "win_rate" and not group_by:
                         group_by = "stage"
                     
+                    collection = card.get("collection", "opportunities")
+                    
+                    # Get RBAC filter for this collection (cached)
+                    if collection not in rbac_filters_cache:
+                        rbac_filters_cache[collection] = await resolve_hierarchy_filter(current_user, collection)
+                    rbac_filter = rbac_filters_cache[collection]
+                    
                     query_config = {
-                        "collection": card.get("collection", "opportunities"),
+                        "collection": collection,
                         "aggregation": card.get("aggregation", "count"),
                         "field": card.get("field"),
                         "filters": card.get("filters", {}),
@@ -356,6 +367,9 @@ async def get_my_dashboard(
                         "year": year if card.get("year_filter") else None,
                         "cache_ttl": card.get("cache_ttl", 60),
                     }
+                    if rbac_filter:
+                        query_config["rbac_filter"] = rbac_filter
+                    
                     rendered["data"] = await execute_query(query_config)
                 except:
                     rendered["data"] = {"error": True}
