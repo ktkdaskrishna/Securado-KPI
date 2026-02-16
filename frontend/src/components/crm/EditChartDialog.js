@@ -14,7 +14,7 @@ import {
   BarChart3, PieChart, LineChart, Activity, Target, TrendingUp,
   DollarSign, Trophy, AlertTriangle, Building2, Users, List,
   Save, Play, Eye, Palette, Database, Crosshair, FileText,
-  LayoutGrid, Gauge
+  LayoutGrid, Gauge, Waves, Circle, Hexagon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
