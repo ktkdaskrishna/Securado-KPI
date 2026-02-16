@@ -683,6 +683,10 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
         {"x": 0, "y": 4, "w": 6, "h": 3},  # Pipeline by PM (chart)
         {"x": 6, "y": 4, "w": 3, "h": 1},  # Overdue Invoices
         {"x": 9, "y": 4, "w": 3, "h": 1},  # Total Accounts
+        {"x": 0, "y": 7, "w": 6, "h": 3},  # Won Top 10
+        {"x": 6, "y": 7, "w": 6, "h": 3},  # Lost Top 10
+        {"x": 0, "y": 10, "w": 6, "h": 3}, # Pipeline Trend (area)
+        {"x": 6, "y": 10, "w": 6, "h": 3}, # Solution Mix (radial)
     ]
     for idx, card_id in enumerate(card_ids):
         pos = grid_positions[idx] if idx < len(grid_positions) else {"x": (idx % 4) * 3, "y": 7 + idx // 4, "w": 3, "h": 1}
