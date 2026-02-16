@@ -645,6 +645,14 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
          "filters": {"payment_state": {"$in": ["not_paid", "partial"]}}, "display_type": "number", "color": "#ef4444", "icon": "AlertTriangle", "year_filter": False},
         {"name": "Total Accounts", "collection": "accounts", "aggregation": "count",
          "filters": {}, "display_type": "number", "color": "#06b6d4", "icon": "Building2", "year_filter": False},
+        {"name": "Won Top 10", "collection": "opportunities", "aggregation": "list",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "table", "size": "large", "color": "#1a6b4a"},
+        {"name": "Lost Top 10", "collection": "opportunities", "aggregation": "list",
+         "filters": {"type": "opportunity", "stage": "Lost"}, "display_type": "table", "size": "large", "color": "#8b1a1a"},
+        {"name": "Pipeline Trend", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "stage", "display_type": "area", "size": "large"},
+        {"name": "Solution Mix", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "group_by": "solution_category", "display_type": "radial", "size": "large"},
     ]
     
     created = 0
