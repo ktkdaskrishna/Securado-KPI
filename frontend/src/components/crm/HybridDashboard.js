@@ -123,7 +123,11 @@ function DrillDownPanel({ open, onClose, card, year, onNavigate }) {
               })}</div>}
           </ScrollArea>
           <div className="px-6 py-3 border-t bg-white flex items-center justify-between text-xs text-gray-500">
-            <span>Showing {filtered.length} of {total}</span><span className="text-gray-400">{card?.collection}</span>
+            <span>Showing {filtered.length} of {total}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">{card?.collection}</span>
+              {onNavigate && <Button variant="outline" size="sm" onClick={() => { onNavigate(card); onClose(); }} className="h-7 text-xs"><ArrowRight className="h-3 w-3 mr-1" /> View All in Page</Button>}
+            </div>
           </div>
         </div>
       </SheetContent>
