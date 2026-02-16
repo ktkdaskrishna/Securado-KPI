@@ -9,19 +9,152 @@ Each card is a saved query configuration:
 - group_by: optional grouping
 
 Templates group cards into layouts assignable to roles.
+RBAC: Queries are scoped by org hierarchy - users see only their data,
+managers see their team's data, directors see entire reporting chain.
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, List
 from pydantic import BaseModel
 import logging
+import re
 
-from libs.database import get_app_db
+from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, now_utc
 from libs.redis_pipeline import execute_query, invalidate_dashboard_cache
 from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
 card_builder_router = APIRouter(prefix="/card-builder", tags=["card-builder"])
+
+
+async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optional[dict]:
+    """Resolve RBAC filter based on org hierarchy.
+    
+    - Admin/CEO: no filter (sees all)
+    - Manager/Director: sees own + entire subordinate chain's data
+    - User: sees only own data
+    
+    Uses the employee hierarchy (manager_id) from Odoo to walk the tree.
+    """
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    user_email = current_user.get("email", "")
+    
+    if not user_email:
+        return None
+    
+    # Check if user is admin
+    user = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+    user_roles = user.get("roles", []) if user else []
+    if any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        return None  # Admin sees all
+    
+    # Check RBAC groups for admin-level access
+    rbac_user = await app_db.users_rbac.find_one({
+        "$or": [
+            {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
+            {"login": {"$regex": f"^{user_email}$", "$options": "i"}}
+        ]
+    })
+    if rbac_user:
+        group_names = rbac_user.get("odoo_group_names", [])
+        admin_patterns = ["administration / settings", "sales / administrator", "sales / all documents"]
+        if any(p in g.lower() for g in group_names for p in admin_patterns):
+            return None  # Admin sees all
+    
+    # Find employee by email
+    employee = await canonical_db.employees.find_one(
+        {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
+        {"_id": 0, "source_record_id": 1, "name": 1}
+    )
+    if not employee:
+        # Try identity map
+        identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()})
+        if identity:
+            emp_name = identity.get("canonical_name", "")
+            if emp_name:
+                employee = await canonical_db.employees.find_one(
+                    {"name": {"$regex": f"^{re.escape(emp_name)}$", "$options": "i"}},
+                    {"_id": 0, "source_record_id": 1, "name": 1}
+                )
+    
+    if not employee:
+        return None  # Can't determine hierarchy, allow access
+    
+    emp_id = str(employee.get("source_record_id", ""))
+    emp_name = employee.get("name", "")
+    
+    # Walk the tree: find ALL subordinates recursively
+    all_employees = await canonical_db.employees.find(
+        {"active": True},
+        {"_id": 0, "source_record_id": 1, "name": 1, "manager_id": 1, "email": 1}
+    ).to_list(500)
+    
+    # Build parent→children map
+    children_map = {}
+    for e in all_employees:
+        mgr = str(e.get("manager_id", ""))
+        if mgr:
+            children_map.setdefault(mgr, []).append(e)
+    
+    # Check if this user has any subordinates
+    def collect_subordinate_names(manager_id):
+        names = []
+        for child in children_map.get(manager_id, []):
+            child_name = child.get("name", "")
+            if child_name:
+                names.append(child_name)
+            child_id = str(child.get("source_record_id", ""))
+            if child_id:
+                names.extend(collect_subordinate_names(child_id))
+        return names
+    
+    subordinate_names = collect_subordinate_names(emp_id)
+    
+    # Also get identity map name variants for the user
+    all_user_names = [emp_name]
+    identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()})
+    if identity:
+        all_user_names = list(set([emp_name] + identity.get("all_names", [])))
+    
+    # Combine: user's names + all subordinate names
+    all_visible_names = list(set(all_user_names + subordinate_names))
+    
+    if not subordinate_names:
+        # Pure user - sees only own data
+        name_pattern = "|".join([f"^{re.escape(n)}$" for n in all_user_names])
+        logger.info(f"RBAC scope: {emp_name} is USER - sees own data only ({len(all_user_names)} name variants)")
+    else:
+        name_pattern = "|".join([f"^{re.escape(n)}$" for n in all_visible_names])
+        logger.info(f"RBAC scope: {emp_name} is MANAGER - sees {len(subordinate_names)} subordinates + own data")
+    
+    # Apply filter based on collection type
+    if collection in ["opportunities", "leads"]:
+        return {"$or": [
+            {"owner_name": {"$regex": name_pattern, "$options": "i"}},
+            {"product_manager": {"$regex": name_pattern, "$options": "i"}}
+        ]}
+    elif collection == "activities":
+        return {"$or": [
+            {"assigned_user": {"$regex": name_pattern, "$options": "i"}},
+            {"owner_name": {"$regex": name_pattern, "$options": "i"}}
+        ]}
+    elif collection == "invoices":
+        # For invoices, filter by accounts owned by visible users
+        acct_names = await canonical_db.opportunities.distinct(
+            "account_name",
+            {"owner_name": {"$regex": name_pattern, "$options": "i"}, "active": True}
+        )
+        acct_names = [a for a in acct_names if a]
+        if acct_names:
+            return {"account_name": {"$in": acct_names}}
+        return {"owner_name": {"$regex": name_pattern, "$options": "i"}}
+    elif collection == "accounts":
+        return None  # Accounts are shared, no ownership filter
+    elif collection == "employees":
+        return None  # Employees visible to all
+    else:
+        return {"owner_name": {"$regex": name_pattern, "$options": "i"}}
 
 
 class CardConfig(BaseModel):
