@@ -257,16 +257,27 @@ async def save_template_layout(
 async def list_available_roles(current_user: dict = Depends(get_current_user)):
     """List all available roles for template assignment"""
     app_db = get_app_db()
-    roles = await app_db.roles.find({}, {"_id": 0}).to_list(100)
-    if not roles:
-        return [
-            {"id": "admin", "name": "Admin"},
-            {"id": "sales_admin", "name": "Sales Admin"},
-            {"id": "sales_director", "name": "Sales Director"},
-            {"id": "product_director", "name": "Product Director"},
-            {"id": "sales_rep", "name": "Sales Representative"},
-        ]
-    return roles
+    
+    # Default CRM roles always available
+    default_roles = [
+        {"id": "admin", "name": "Admin"},
+        {"id": "sales_admin", "name": "Sales Admin"},
+        {"id": "sales_director", "name": "Sales Director"},
+        {"id": "product_director", "name": "Product Director"},
+        {"id": "sales_rep", "name": "Sales Representative"},
+        {"id": "marketing", "name": "Marketing"},
+        {"id": "user", "name": "User"},
+    ]
+    default_ids = {r["id"] for r in default_roles}
+    
+    # Add any custom roles from the database
+    db_roles = await app_db.roles.find({}, {"_id": 0}).to_list(100)
+    for r in db_roles:
+        rid = r.get("id") or r.get("name", "").lower().replace(" ", "_")
+        if rid not in default_ids:
+            default_roles.append({"id": rid, "name": r.get("name", rid)})
+    
+    return default_roles
 
 
 
