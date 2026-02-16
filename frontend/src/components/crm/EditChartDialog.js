@@ -10,7 +10,7 @@ import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import DomainBuilderDialog, { DATE_FILTER_FIELDS } from './DomainBuilderDialog';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, AreaChart, Area } from 'recharts';
 import {
   BarChart3, PieChart, LineChart, Activity, Target, TrendingUp,
   DollarSign, Trophy, AlertTriangle, Building2, Users, List,
