@@ -430,6 +430,15 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Domain Builder Dialog */}
+      <DomainBuilderDialog
+        open={showDomain}
+        onClose={() => setShowDomain(false)}
+        collection={form.collection}
+        currentFilters={form.filters}
+        onSave={(mongoFilter) => u('filters', JSON.stringify(mongoFilter, null, 2))}
+      />
     </Dialog>
   );
 }
