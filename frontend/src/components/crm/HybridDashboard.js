@@ -178,7 +178,10 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
     <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="px-4 pt-3 pb-1 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-gray-800">{card.name}</h4>
-        {onDrillDown && <button onClick={() => onDrillDown(card)} className="p-1 rounded hover:bg-gray-100"><ExternalLink className="h-3.5 w-3.5 text-gray-400" /></button>}
+        <div className="flex gap-1">
+          {onNavigate && <button onClick={() => onNavigate(card)} className="p-1 rounded hover:bg-gray-100" title="Open in page"><ArrowRight className="h-3.5 w-3.5 text-gray-400" /></button>}
+          {onDrillDown && <button onClick={() => onDrillDown(card)} className="p-1 rounded hover:bg-gray-100" title="Drill down"><ExternalLink className="h-3.5 w-3.5 text-gray-400" /></button>}
+        </div>
       </div>
       <div className="flex-1 min-h-0 px-2 pb-2">
         {card.display_type === 'chart' && (() => {
