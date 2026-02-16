@@ -227,6 +227,10 @@ const HelpPage = () => {
             <Lightbulb className="h-4 w-4 mr-2" />
             Roadmap
           </TabsTrigger>
+          <TabsTrigger value="integrations" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
+            <Link2 className="h-4 w-4 mr-2" />
+            Integration Guides
+          </TabsTrigger>
         </TabsList>
 
         {/* Documentation Tab */}
