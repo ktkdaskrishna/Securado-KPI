@@ -460,7 +460,7 @@ async def get_my_dashboard(
                         "collection": collection,
                         "aggregation": card.get("aggregation", "count"),
                         "field": card.get("field"),
-                        "filters": card.get("filters", {}),
+                        "filters": {**card.get("filters", {}), **({k: v for k, v in global_filter.items()} if collection == "opportunities" else {})},
                         "group_by": group_by,
                         "year": year if card.get("year_filter") else None,
                         "cache_ttl": card.get("cache_ttl", 60),
