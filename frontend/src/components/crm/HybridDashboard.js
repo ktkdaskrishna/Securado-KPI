@@ -44,7 +44,7 @@ const DATE_PRESETS = [
 ];
 
 // ============ DRILL-DOWN PANEL ============
-function DrillDownPanel({ open, onClose, card, year }) {
+function DrillDownPanel({ open, onClose, card, year, onNavigate }) {
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
