@@ -56,6 +56,15 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - **7 default roles** in template assignment (Admin, Sales Admin, Sales Director, Product Director, Sales Rep, Marketing, User)
 - **Fixed template update** — editing name/roles no longer overwrites cards/blocks
 
+### Phase 7: Premium Dashboard & Drill-Down (Complete - Feb 2026)
+- **Colorful gradient KPI cards** — Odoo-style fully colored cards with large background icons
+- **Drill-down panel** — Click any KPI card to see underlying records in a slide-out panel
+- **Drill-down API** — `POST /api/card-builder/cards/{id}/drill-down` returns RBAC-scoped records
+- **Chart bar click** — Click chart bars to drill into specific segments
+- **Animated progress bars** with framer-motion
+- **Date presets** — This Year / Last Year selector
+- Premium hover effects, scale transitions, backdrop blur
+
 ## Key Endpoints
 - `GET /api/card-builder/my-dashboard` - User's dashboard with rendered blocks
 - `GET/POST /api/card-builder/cards` - Cards CRUD
