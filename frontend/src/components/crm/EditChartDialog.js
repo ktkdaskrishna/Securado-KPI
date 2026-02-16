@@ -245,28 +245,57 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
 
                 <Separator />
 
-                {/* Domain / Filters */}
+                {/* Domain / Filters — Visual Builder */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-xs text-gray-500">Domain (Filter Rules)</Label>
-                    <div className="flex gap-1 flex-wrap">
-                      {FILTER_PRESETS.map(p => (
-                        <button key={p.label} onClick={() => u('filters', p.filters)}
-                          className="text-[10px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:bg-[#800000] hover:text-white hover:border-[#800000] transition-colors">
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
-                  <textarea value={form.filters} onChange={e => u('filters', e.target.value)}
-                    className="w-full h-20 text-xs font-mono p-3 border rounded-lg bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#800000] focus:border-[#800000] resize-none"
-                    placeholder='{"type": "opportunity", "stage": "Won"}' data-testid="chart-filters-input" />
+                  <div className="bg-gray-50 rounded-lg border p-3 space-y-2">
+                    {(() => {
+                      let parsed = form.filters;
+                      if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch { parsed = {}; } }
+                      const keys = Object.keys(parsed || {}).filter(k => !k.startsWith('$'));
+                      const ruleCount = keys.length + (parsed?.$or ? parsed.$or.length : 0) + (parsed?.$and ? parsed.$and.length : 0);
+                      return (
+                        <>
+                          {ruleCount > 0 ? (
+                            <div className="space-y-1">
+                              {keys.slice(0, 4).map(k => {
+                                const v = parsed[k];
+                                const display = typeof v === 'object' ? (v.$in ? `in [${v.$in.join(', ')}]` : v.$nin ? `not in [${v.$nin.join(', ')}]` : v.$ne ? `!= ${v.$ne}` : JSON.stringify(v)) : `= ${v}`;
+                                return <div key={k} className="flex items-center gap-2 text-xs"><Badge variant="outline" className="text-[10px]">{k}</Badge><span className="text-gray-500">{display}</span></div>;
+                              })}
+                              {ruleCount > 4 && <p className="text-[10px] text-gray-400">+{ruleCount - 4} more rules</p>}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400">No filter rules defined. Click Edit Domain to add.</p>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <Button variant="outline" size="sm" onClick={() => setShowDomain(true)} className="w-full text-sm" data-testid="edit-domain-btn">
+                      Edit Domain
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Date Filter Field */}
+                <div>
+                  <Label className="text-xs text-gray-500">Date Filter Field</Label>
+                  <Select value={form.date_filter_field || ''} onValueChange={v => u('date_filter_field', v)}>
+                    <SelectTrigger><SelectValue placeholder="None (auto)" /></SelectTrigger>
+                    <SelectContent>
+                      {(DATE_FILTER_FIELDS[form.collection] || DATE_FILTER_FIELDS.opportunities).map(f => (
+                        <SelectItem key={f.key || '_none'} value={f.key || '_none'}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <Switch checked={form.year_filter} onCheckedChange={v => u('year_filter', v)} />
-                    <Label className="text-xs">Apply Date Filter</Label>
+                    <Label className="text-xs">Apply Year Filter</Label>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Label className="text-xs text-gray-500">Cache TTL:</Label>
