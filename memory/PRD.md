@@ -41,6 +41,12 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - **Save Layout** persists card positions to database
 - **Dynamic card rendering** for all display types: number, win_rate, chart, pie, leaderboard, progress, table
 
+### Phase 5: Help & Documentation (Complete - Feb 2026)
+- **Integration Guides tab** in Help page with Microsoft Azure AD SSO Setup KB
+- **Troubleshooting section** with expandable accordion for common SSO errors
+- **Technical flow diagram** and Quick Reference table for Azure AD values
+- Updated backend Microsoft SSO redirect URI config for current app URL
+
 ## Key Endpoints
 - `GET /api/card-builder/my-dashboard` - User's dashboard with rendered blocks
 - `GET/POST /api/card-builder/cards` - Cards CRUD
