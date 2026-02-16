@@ -28,7 +28,11 @@ import {
   Terminal,
   Lightbulb,
   MessageSquare,
-  Mail
+  Mail,
+  Link2,
+  Copy,
+  ArrowRight,
+  Info
 } from 'lucide-react';
 
 const HelpPage = () => {
