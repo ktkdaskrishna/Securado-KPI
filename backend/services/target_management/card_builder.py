@@ -310,11 +310,19 @@ async def create_template(data: TemplateConfig, current_user: dict = Depends(get
 
 @card_builder_router.put("/templates/{template_id}")
 async def update_template(template_id: str, data: TemplateConfig, current_user: dict = Depends(get_current_user)):
-    """Update a template"""
+    """Update a template metadata (name, description, roles). Does NOT overwrite cards/blocks."""
     app_db = get_app_db()
+    # Only update metadata fields, never overwrite cards/blocks from this endpoint
+    update_fields = {
+        "name": data.name,
+        "description": data.description,
+        "assigned_roles": data.assigned_roles,
+        "is_default": data.is_default,
+        "updated_at": now_utc()
+    }
     result = await app_db.dashboard_templates_v2.update_one(
         {"id": template_id},
-        {"$set": {**data.model_dump(), "updated_at": now_utc()}}
+        {"$set": update_fields}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Template not found")
