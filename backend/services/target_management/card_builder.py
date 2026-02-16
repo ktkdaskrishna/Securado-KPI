@@ -248,14 +248,17 @@ async def execute_card(
     year: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Execute a card's query and return data"""
+    """Execute a card's query and return data (RBAC-scoped)"""
     app_db = get_app_db()
     card = await app_db.dashboard_cards.find_one({"id": card_id})
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     
+    collection = card.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    
     query_config = {
-        "collection": card.get("collection", "opportunities"),
+        "collection": collection,
         "aggregation": card.get("aggregation", "count"),
         "field": card.get("field"),
         "filters": card.get("filters", {}),
@@ -263,6 +266,8 @@ async def execute_card(
         "year": year if card.get("year_filter") else None,
         "cache_ttl": card.get("cache_ttl", 60),
     }
+    if rbac_filter:
+        query_config["rbac_filter"] = rbac_filter
     
     result = await execute_query(query_config)
     return {"card_id": card_id, "card_name": card.get("name"), "display_type": card.get("display_type"), **result}
@@ -273,7 +278,11 @@ async def execute_adhoc_query(
     query_config: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Execute an ad-hoc query (for preview/testing)"""
+    """Execute an ad-hoc query (for preview/testing, RBAC-scoped)"""
+    collection = query_config.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    if rbac_filter:
+        query_config["rbac_filter"] = rbac_filter
     result = await execute_query(query_config)
     return result
 
