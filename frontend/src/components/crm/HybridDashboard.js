@@ -185,42 +185,53 @@ function OdooChartCard({ card, data, editMode, onEdit, onDrillDown, onRemove }) 
       </div>
 
       <div className="flex-1 min-h-0 px-2 pb-2">
-        {card.display_type === 'chart' && (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={groups.slice(0, 12)} margin={{ left: -10, bottom: 20, right: 10 }}>
-              <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
-              <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false}
-                tickFormatter={v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
-              <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }}
-                formatter={v => [`OMR ${typeof v === 'number' ? v.toLocaleString() : v}`]} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-              <Bar dataKey={card.aggregation === 'count' ? 'count' : 'total'} radius={[4, 4, 0, 0]} onClick={(_, idx) => handleBarClick(groups[idx])}>
-                {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} className="cursor-pointer" />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-        {card.display_type === 'pie' && (
-          <div className="flex items-center gap-3 h-full">
-            <ResponsiveContainer width="50%" height="100%">
-              <PieChart>
-                <Pie data={groups.slice(0, 8)} dataKey={card.aggregation === 'count' ? 'count' : 'total'} nameKey="label"
-                  cx="50%" cy="50%" innerRadius="30%" outerRadius="65%" paddingAngle={2} onClick={(_, idx) => handleBarClick(groups[idx])}>
+        {card.display_type === 'chart' && (() => {
+          const dataKey = card.aggregation === 'count' ? 'count' : 'total';
+          const chartConfig = {};
+          groups.slice(0, 12).forEach((g, i) => { chartConfig[g.label || `item${i}`] = { label: g.label, color: CHART_COLORS[i % CHART_COLORS.length] }; });
+          chartConfig[dataKey] = { label: card.name };
+          return (
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <BarChart accessibilityLayer data={groups.slice(0, 12)} margin={{ left: -10, bottom: 20, right: 10 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
+                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false}
+                  tickFormatter={v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(v) => `OMR ${typeof v === 'number' ? v.toLocaleString() : v}`} />} />
+                <Bar dataKey={dataKey} radius={[6, 6, 0, 0]} onClick={(_, idx) => handleBarClick(groups[idx])}>
                   {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} className="cursor-pointer" />)}
-                </Pie>
-                <Tooltip formatter={v => [`OMR ${typeof v === 'number' ? v.toLocaleString() : v}`]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-1 flex-1 overflow-auto">
-              {groups.slice(0, 6).map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5" onClick={() => handleBarClick(g)}>
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                  <span className="text-gray-500 truncate flex-1">{g.label || '-'}</span>
-                  <span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span>
-                </div>
-              ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          );
+        })()}
+        {card.display_type === 'pie' && (() => {
+          const dataKey = card.aggregation === 'count' ? 'count' : 'total';
+          const chartConfig = {};
+          groups.slice(0, 8).forEach((g, i) => { chartConfig[g.label || `s${i}`] = { label: g.label, color: CHART_COLORS[i % CHART_COLORS.length] }; });
+          return (
+            <div className="flex items-center gap-3 h-full">
+              <ChartContainer config={chartConfig} className="h-full w-1/2">
+                <PieChart>
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                  <Pie data={groups.slice(0, 8)} dataKey={dataKey} nameKey="label"
+                    cx="50%" cy="50%" innerRadius="30%" outerRadius="65%" paddingAngle={2} onClick={(_, idx) => handleBarClick(groups[idx])}>
+                    {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} className="cursor-pointer" />)}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <div className="space-y-1 flex-1 overflow-auto">
+                {groups.slice(0, 6).map((g, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5" onClick={() => handleBarClick(g)}>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="text-gray-500 truncate flex-1">{g.label || '-'}</span>
+                    <span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {card.display_type === 'leaderboard' && (
           <div className="px-2 space-y-1.5 overflow-auto h-full">
             {groups.slice(0, 10).map((g, idx) => (
