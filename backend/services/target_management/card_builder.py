@@ -366,11 +366,24 @@ async def execute_adhoc_query(
 @card_builder_router.get("/my-dashboard")
 async def get_my_dashboard(
     year: Optional[str] = None,
+    salesperson: Optional[str] = None,
+    product_director: Optional[str] = None,
+    solution_category: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get the dashboard template assigned to the current user's role, render all blocks"""
+    """Get the dashboard template assigned to the current user's role, render all blocks.
+    Supports global filters that apply across all cards."""
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
+    
+    # Build global filter from query params
+    global_filter = {}
+    if salesperson:
+        global_filter["owner_name"] = {"$regex": f"^{re.escape(salesperson)}$", "$options": "i"}
+    if product_director:
+        global_filter["product_manager"] = {"$regex": f"^{re.escape(product_director)}$", "$options": "i"}
+    if solution_category:
+        global_filter["solution_category"] = solution_category
     
     # Get user's roles
     user = await app_db.users.find_one({"email": {"$regex": f"^{current_user.get('email', '')}$", "$options": "i"}})
