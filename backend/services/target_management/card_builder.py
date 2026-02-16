@@ -347,6 +347,9 @@ async def drill_down_card(
         "skip": skip,
         "limit": limit
     }
+
+
+@card_builder_router.post("/execute-query")
 async def execute_adhoc_query(
     query_config: dict,
     current_user: dict = Depends(get_current_user)
