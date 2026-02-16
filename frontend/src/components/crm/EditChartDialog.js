@@ -24,7 +24,9 @@ const ICONS_MAP = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Build
 const CHART_TYPES = [
   { id: 'number', label: 'KPI', icon: Gauge, description: 'Single number card' },
   { id: 'chart', label: 'Bar', icon: BarChart3, description: 'Bar chart' },
+  { id: 'area', label: 'Area', icon: Waves, description: 'Area chart' },
   { id: 'pie', label: 'Pie', icon: PieChart, description: 'Pie / Donut' },
+  { id: 'radial', label: 'Radial', icon: Circle, description: 'Radial bar' },
   { id: 'leaderboard', label: 'List', icon: List, description: 'Ranked list' },
   { id: 'progress', label: 'Progress', icon: Activity, description: 'Progress bars' },
   { id: 'win_rate', label: 'Rate', icon: TrendingUp, description: 'Percentage KPI' },
