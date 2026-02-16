@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import DomainBuilderDialog, { DATE_FILTER_FIELDS } from './DomainBuilderDialog';
 import {
   BarChart3, PieChart, LineChart, Activity, Target, TrendingUp,
   DollarSign, Trophy, AlertTriangle, Building2, Users, List,
