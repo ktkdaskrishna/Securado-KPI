@@ -273,7 +273,80 @@ async def execute_card(
     return {"card_id": card_id, "card_name": card.get("name"), "display_type": card.get("display_type"), **result}
 
 
-@card_builder_router.post("/execute-query")
+@card_builder_router.post("/cards/{card_id}/drill-down")
+async def drill_down_card(
+    card_id: str,
+    year: Optional[str] = None,
+    group_value: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the actual records behind a card's aggregated value (RBAC-scoped).
+    If group_value is provided, filters to that specific group segment."""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    collection = card.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    
+    # Build query matching the card's filters
+    filters = dict(card.get("filters", {}))
+    query = {"deleted": {"$ne": True}, "active": True}
+    query.update(filters)
+    
+    # Apply RBAC
+    if rbac_filter:
+        for k, v in rbac_filter.items():
+            if k == "$or":
+                query.setdefault("$and", []).append({"$or": v})
+            else:
+                query[k] = v
+    
+    # Year filter
+    if year and card.get("year_filter", True):
+        stage_val = filters.get("stage", "")
+        if stage_val in ["Won", "Lost"]:
+            query["date_last_stage_update"] = {"$regex": f"^{year}"}
+        else:
+            query["create_date"] = {"$regex": f"^{year}"}
+    
+    # Group drill-down: filter to specific group value
+    if group_value and card.get("group_by"):
+        query[card["group_by"]] = group_value
+    
+    # Determine DB
+    db = canonical_db
+    if collection in ["target_plans", "target_plan_items", "users", "roles"]:
+        db = app_db
+    
+    # Define display fields per collection
+    field_configs = {
+        "opportunities": {"fields": {"_id": 0, "name": 1, "owner_name": 1, "stage": 1, "sale_value": 1, "product_manager": 1, "account_name": 1, "create_date": 1, "probability": 1, "solution_category": 1}},
+        "accounts": {"fields": {"_id": 0, "name": 1, "city": 1, "country": 1, "phone": 1, "email": 1, "is_company": 1}},
+        "invoices": {"fields": {"_id": 0, "invoice_number": 1, "partner_name": 1, "amount_total": 1, "payment_state": 1, "invoice_date": 1, "salesperson_name": 1}},
+        "activities": {"fields": {"_id": 0, "summary": 1, "activity_type": 1, "assigned_user": 1, "date_deadline": 1, "state": 1, "opportunity_name": 1}},
+        "employees": {"fields": {"_id": 0, "name": 1, "job_title": 1, "department_name": 1, "email": 1}},
+    }
+    config = field_configs.get(collection, {"fields": {"_id": 0}})
+    
+    total = await db[collection].count_documents(query)
+    records = await db[collection].find(query, config["fields"]).sort("create_date", -1).skip(skip).limit(limit).to_list(limit)
+    
+    return {
+        "card_id": card_id,
+        "card_name": card.get("name"),
+        "collection": collection,
+        "group_value": group_value,
+        "total": total,
+        "records": serialize_doc(records),
+        "skip": skip,
+        "limit": limit
+    }
 async def execute_adhoc_query(
     query_config: dict,
     current_user: dict = Depends(get_current_user)
