@@ -47,6 +47,15 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - **Technical flow diagram** and Quick Reference table for Azure AD values
 - Updated backend Microsoft SSO redirect URI config for current app URL
 
+### Phase 6: Hierarchy-Based RBAC & Bug Fixes (Complete - Feb 2026)
+- **Org hierarchy RBAC scoping** — Dashboard queries filtered by employee reporting chain
+  - Admin: sees all data | Manager/Director: own + subordinate chain | User: own only
+  - Uses recursive tree walk on `employees.manager_id` from Odoo
+  - Applied to: my-dashboard, execute-card, execute-adhoc-query endpoints
+- **Fixed delete card from layout** — onMouseDown stopPropagation prevents drag capture
+- **7 default roles** in template assignment (Admin, Sales Admin, Sales Director, Product Director, Sales Rep, Marketing, User)
+- **Fixed template update** — editing name/roles no longer overwrites cards/blocks
+
 ## Key Endpoints
 - `GET /api/card-builder/my-dashboard` - User's dashboard with rendered blocks
 - `GET/POST /api/card-builder/cards` - Cards CRUD
