@@ -479,6 +479,21 @@ async def get_my_dashboard(
     }
 
 
+
+@card_builder_router.get("/filter-options")
+async def get_filter_options(current_user: dict = Depends(get_current_user)):
+    """Get distinct values for global dashboard filters"""
+    canonical_db = get_canonical_db()
+    salespersons = await canonical_db.opportunities.distinct("owner_name", {"active": True, "owner_name": {"$ne": None}})
+    pds = await canonical_db.opportunities.distinct("product_manager", {"active": True, "product_manager": {"$ne": None}})
+    categories = await canonical_db.opportunities.distinct("solution_category", {"active": True, "solution_category": {"$ne": None}})
+    return {
+        "salespersons": sorted([s for s in salespersons if s]),
+        "product_directors": sorted([p for p in pds if p]),
+        "solution_categories": sorted([c for c in categories if c])
+    }
+
+
 @card_builder_router.post("/templates/{template_id}/layout")
 async def save_template_layout(
     template_id: str,
