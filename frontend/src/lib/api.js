@@ -350,6 +350,7 @@ export const targetAPI = {
   updateCard: (id, data) => api.put(`/card-builder/cards/${id}`, data),
   deleteCard: (id) => api.delete(`/card-builder/cards/${id}`),
   executeCard: (id, year) => api.post(`/card-builder/cards/${id}/execute`, null, { params: { year } }),
+  drillDownCard: (id, params) => api.post(`/card-builder/cards/${id}/drill-down`, null, { params }),
   executeQuery: (config) => api.post('/card-builder/execute-query', config),
   listTemplates: () => api.get('/card-builder/templates'),
   createTemplate: (data) => api.post('/card-builder/templates', data),
