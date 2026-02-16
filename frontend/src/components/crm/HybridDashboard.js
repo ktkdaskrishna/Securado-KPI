@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart';
-import { QueryEditorDialog } from './ConfigurableDashboard';
+import EditChartDialog from './EditChartDialog';
 import { useRBAC } from '../../lib/RBACContext';
 import {
   Target, TrendingUp, DollarSign, Trophy, AlertTriangle, Building2,
