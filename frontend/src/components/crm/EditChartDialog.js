@@ -62,6 +62,7 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
   const [preview, setPreview] = useState(null);
   const [previewing, setPreviewing] = useState(false);
   const [tab, setTab] = useState('data');
+  const [showDomain, setShowDomain] = useState(false);
 
   useEffect(() => {
     if (card && open) {
