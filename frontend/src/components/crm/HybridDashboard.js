@@ -689,10 +689,12 @@ export default function HybridDashboard() {
               <Card className="h-full overflow-hidden border-0 shadow-sm relative transition-shadow hover:shadow-lg"
                 style={{ borderTop: `3px solid ${block.card?.color || '#800000'}` }}>
                 {editMode && (
-                  <button onClick={() => handleRemoveCard(block.i || block.card_id)}
-                    className="absolute top-1.5 right-1.5 z-20 p-1 rounded-full bg-red-50 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); handleRemoveCard(block.i || block.card_id); }}
+                    className="absolute top-1.5 right-1.5 z-30 p-1.5 rounded-full bg-red-100 hover:bg-red-200 shadow-sm transition-all cursor-pointer"
                     data-testid={`remove-card-${block.card_id}`}>
-                    <X className="h-3.5 w-3.5 text-red-500" />
+                    <X className="h-4 w-4 text-red-600" />
                   </button>
                 )}
                 <DashboardCard
