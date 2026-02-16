@@ -56,6 +56,45 @@ const FILTER_PRESETS = [
   { label: 'Overdue Invoices', filters: '{"payment_state": {"$in": ["not_paid", "partial"]}}' },
 ];
 
+const PREVIEW_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#06b6d4', '#ec4899'];
+
+// Mini bar/area chart for preview pane
+function MiniBarPreview({ groups, aggregation, isArea }) {
+  const dk = aggregation === 'count' ? 'count' : 'total';
+  const data = groups.slice(0, 8);
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      {isArea ? (
+        <AreaChart data={data} margin={{ left: 0, right: 0, top: 5, bottom: 5 }}>
+          <defs><linearGradient id="prevFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#800000" stopOpacity={0.6}/><stop offset="95%" stopColor="#800000" stopOpacity={0.05}/></linearGradient></defs>
+          <Area dataKey={dk} type="monotone" fill="url(#prevFill)" stroke="#800000" strokeWidth={2} />
+        </AreaChart>
+      ) : (
+        <BarChart data={data} margin={{ left: 0, right: 0, top: 5, bottom: 5 }}>
+          <Bar dataKey={dk} radius={[3, 3, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill={PREVIEW_COLORS[i % PREVIEW_COLORS.length]} />)}
+          </Bar>
+        </BarChart>
+      )}
+    </ResponsiveContainer>
+  );
+}
+
+// Mini pie chart for preview
+function MiniPiePreview({ groups, aggregation }) {
+  const dk = aggregation === 'count' ? 'count' : 'total';
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie data={groups.slice(0, 6)} dataKey={dk} nameKey="label" cx="50%" cy="50%" innerRadius="25%" outerRadius="60%" paddingAngle={2}>
+          {groups.slice(0, 6).map((_, i) => <Cell key={i} fill={PREVIEW_COLORS[i % PREVIEW_COLORS.length]} />)}
+        </Pie>
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+
 export default function EditChartDialog({ open, onClose, card, onSave }) {
   const [form, setForm] = useState({
     name: '', collection: 'opportunities', aggregation: 'count', field: '',
