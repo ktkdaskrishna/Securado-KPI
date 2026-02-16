@@ -600,7 +600,7 @@ export default function HybridDashboard() {
       <DrillDownPanel open={drillDown.open} onClose={() => setDrillDown({ open: false, card: null })} card={drillDown.card} year={year} />
       <TemplateManagerDialog open={showTemplateManager} onClose={() => setShowTemplateManager(false)} currentTemplateId={templateId} onSwitch={handleSwitchTemplate} />
       <AddCardDialog open={showAddCard} onClose={() => setShowAddCard(false)} existingCardIds={blocks.map(b => b.card_id).filter(Boolean)} onAdd={handleAddCard} />
-      <QueryEditorDialog open={showEditor} onClose={() => { setShowEditor(false); setEditCard(null); }} card={editCard} onSave={handleSaveCard} />
+      <EditChartDialog open={showEditor} onClose={() => { setShowEditor(false); setEditCard(null); }} card={editCard} onSave={handleSaveCard} />
     </div>
   );
 }
