@@ -85,11 +85,11 @@ function MiniPiePreview({ groups, aggregation }) {
   const dk = aggregation === 'count' ? 'count' : 'total';
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
+      <RechartsPie>
         <Pie data={groups.slice(0, 6)} dataKey={dk} nameKey="label" cx="50%" cy="50%" innerRadius="25%" outerRadius="60%" paddingAngle={2}>
           {groups.slice(0, 6).map((_, i) => <Cell key={i} fill={PREVIEW_COLORS[i % PREVIEW_COLORS.length]} />)}
         </Pie>
-      </PieChart>
+      </RechartsPie>
     </ResponsiveContainer>
   );
 }
