@@ -123,6 +123,7 @@ async def execute_query(query_config: dict) -> dict:
         group_by: str (optional group by field)
         year: str (optional year filter)
         cache_ttl: int (cache TTL in seconds, default 60)
+        rbac_filter: dict (optional RBAC scope filter from hierarchy)
     """
     from libs.database import get_canonical_db, get_app_db
     
@@ -144,10 +145,19 @@ async def execute_query(query_config: dict) -> dict:
     filters = query_config.get("filters", {})
     group_by = query_config.get("group_by")
     year = query_config.get("year")
+    rbac_filter = query_config.get("rbac_filter")
     
     # Build MongoDB query
     query = {"deleted": {"$ne": True}, "active": True}
     query.update(filters)
+    
+    # Apply RBAC scope filter (hierarchy-based)
+    if rbac_filter:
+        for k, v in rbac_filter.items():
+            if k == "$or":
+                query.setdefault("$and", []).append({"$or": v})
+            else:
+                query[k] = v
     
     # Year filter (Odoo-style: Won/Lost by date_last_stage_update, Open by create_date)
     if year:
