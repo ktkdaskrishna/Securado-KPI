@@ -16,6 +16,32 @@
 }
 .dashboard-editing .react-grid-item > .react-resizable-handle {
   display: block;
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  z-index: 30;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #800000;
+  border-bottom: 2px solid #800000;
+  opacity: 0.6;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle:hover::after {
+  opacity: 1;
+  border-color: #cc0000;
+}
+.dashboard-editing .react-grid-item {
+  border: 1px dashed rgba(128, 0, 0, 0.2);
+  border-radius: 12px;
+}
+.dashboard-editing .react-grid-item:hover {
+  border-color: rgba(128, 0, 0, 0.5);
 }
 .react-grid-item.react-grid-placeholder {
   background: #800000 !important;
