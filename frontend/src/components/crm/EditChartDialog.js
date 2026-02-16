@@ -389,36 +389,76 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 flex items-center justify-center p-6">
-              {['number', 'win_rate'].includes(form.display_type) ? (
+            <div className="flex-1 flex items-center justify-center p-4">
+              {!preview ? (
+                <div className="text-center text-gray-400">
+                  <Eye className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                  <p className="text-xs">Click "Run" to preview</p>
+                </div>
+              ) : ['number', 'win_rate'].includes(form.display_type) ? (
+                /* KPI Card preview */
                 <div className="w-full rounded-lg overflow-hidden" style={{ backgroundColor: form.color }}>
                   <div className="p-5 text-center">
                     <div className="mb-2 inline-flex p-2 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
                       <PreviewIcon className="h-5 w-5 text-white/60" />
                     </div>
-                    <p className="text-3xl font-black text-white tracking-tight">{preview ? previewValue() : '—'}</p>
+                    <p className="text-3xl font-black text-white tracking-tight">{previewValue()}</p>
                     <p className="text-xs font-medium text-white/80 mt-1.5 uppercase tracking-wider">{form.name || 'Card Name'}</p>
                     {preview?.count > 0 && <p className="text-[10px] text-white/50 mt-1">{preview.count} records</p>}
                   </div>
                 </div>
-              ) : preview ? (
+              ) : ['chart', 'area'].includes(form.display_type) && preview.groups ? (
+                /* Bar/Area chart mini preview */
                 <div className="w-full bg-white rounded-lg border p-3">
-                  <p className="text-xs font-semibold text-gray-700 mb-2">{form.name || 'Chart'}</p>
-                  {preview.groups && (
-                    <div className="space-y-1">
-                      {(preview.groups || []).slice(0, 5).map((g, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs py-1">
-                          <span className="text-gray-600 truncate">{g.label || '-'}</span>
-                          <span className="font-semibold text-gray-900">{(g.total || g.count || 0).toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <p className="text-[10px] font-semibold text-gray-500 mb-1">{form.name || 'Chart'}</p>
+                  <div className="h-32">
+                    <MiniBarPreview groups={preview.groups} aggregation={form.aggregation} isArea={form.display_type === 'area'} />
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-1">{preview.groups.length} groups</p>
+                </div>
+              ) : form.display_type === 'pie' && preview.groups ? (
+                /* Pie chart mini preview */
+                <div className="w-full bg-white rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold text-gray-500 mb-1">{form.name || 'Pie'}</p>
+                  <div className="h-32">
+                    <MiniPiePreview groups={preview.groups} aggregation={form.aggregation} />
+                  </div>
+                </div>
+              ) : ['leaderboard', 'progress', 'radial'].includes(form.display_type) && preview.groups ? (
+                /* List/Progress/Radial preview */
+                <div className="w-full bg-white rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold text-gray-500 mb-2">{form.name || 'Chart'}</p>
+                  <div className="space-y-1.5">
+                    {preview.groups.slice(0, 5).map((g, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PREVIEW_COLORS[i % PREVIEW_COLORS.length] }} />
+                        <span className="text-gray-600 truncate flex-1">{g.label || '-'}</span>
+                        <span className="font-bold text-gray-900">{(g.total || g.count || 0).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-1">{preview.groups.length} items</p>
+                </div>
+              ) : form.display_type === 'table' && (preview.records || preview.groups) ? (
+                /* Table preview */
+                <div className="w-full bg-white rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold text-gray-500 mb-2">{form.name || 'Table'}</p>
+                  <div className="space-y-1">
+                    {(preview.records || preview.groups || []).slice(0, 5).map((r, i) => (
+                      <div key={i} className="flex justify-between text-xs py-0.5 border-b border-gray-50 last:border-0">
+                        <span className="text-gray-600 truncate flex-1">{r.name || r.label || '-'}</span>
+                        <span className="font-bold text-gray-900 ml-2">OMR {(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-1">{preview.total || (preview.records||[]).length} records</p>
                 </div>
               ) : (
-                <div className="text-center text-gray-400">
-                  <Eye className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                  <p className="text-xs">Click "Run" to preview</p>
+                /* Fallback: scalar value */
+                <div className="w-full bg-white rounded-lg border p-4 text-center">
+                  <p className="text-2xl font-bold text-gray-900">{previewValue()}</p>
+                  <p className="text-xs text-gray-500 mt-1">{form.name || 'Value'}</p>
+                  {preview?.count > 0 && <p className="text-[10px] text-gray-400">{preview.count} records</p>}
                 </div>
               )}
             </div>
