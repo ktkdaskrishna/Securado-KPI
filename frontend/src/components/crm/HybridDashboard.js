@@ -13,7 +13,7 @@ import {
   Users, BarChart2, Activity, RefreshCw, Layers, Calendar,
   Search, Eye, Info, ExternalLink, ArrowRight
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
 import { toast } from 'sonner';
 
 const ICONS = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart2, Activity };
