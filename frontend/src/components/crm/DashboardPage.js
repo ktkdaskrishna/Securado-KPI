@@ -711,7 +711,7 @@ export function DashboardPage() {
       </div>
 
       {/* Query Editor for dashboard cards */}
-      <QueryEditorDialog open={showQueryEditor} onClose={() => { setShowQueryEditor(false); setEditingCard(null); }}
+      <EditChartDialog open={showQueryEditor} onClose={() => { setShowQueryEditor(false); setEditingCard(null); }}
         card={editingCard}
         onSave={async (formData) => {
           try {
