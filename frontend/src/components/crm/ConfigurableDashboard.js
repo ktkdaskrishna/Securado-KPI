@@ -25,7 +25,7 @@ import {
   LayoutGrid, ChevronRight, X, ExternalLink, Calendar,
   Eye, Info, Copy, PanelLeft
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
 import { toast } from 'sonner';
 
 const ICONS = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart2, Activity };
