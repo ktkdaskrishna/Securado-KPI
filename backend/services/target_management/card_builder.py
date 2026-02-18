@@ -742,3 +742,150 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
     await app_db.dashboard_templates_v2.insert_one(template)
     
     return {"success": True, "cards_created": created, "template_id": template["id"]}
+
+
+@card_builder_router.post("/seed-role-templates")
+async def seed_role_templates(current_user: dict = Depends(get_current_user)):
+    """Seed dashboard templates for all roles using existing cards."""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get all existing cards
+    cards = await app_db.dashboard_cards.find({"org_id": org_id}).to_list(100)
+    card_map = {c.get("name"): c for c in cards}
+    
+    def get_ids(names):
+        return [card_map[n]["id"] for n in names if n in card_map]
+    
+    def make_blocks(names):
+        ids = get_ids(names)
+        blocks = []
+        col, row = 0, 0
+        for cid in ids:
+            c = next((x for x in cards if x["id"] == cid), {})
+            is_chart = c.get("display_type") in ("chart", "pie", "leaderboard", "progress", "area", "radial", "table")
+            w = 6 if is_chart else 3
+            h = 3 if is_chart else 1
+            if col + w > 12:
+                col = 0
+                row += h
+            blocks.append({"i": cid, "x": col, "y": row, "w": w, "h": h, "type": "query_card", "card_id": cid})
+            col += w
+            if col >= 12:
+                col = 0
+                row += h
+        return blocks, ids
+    
+    # First, create any missing cards needed by templates
+    extra_cards = [
+        {"name": "My Pipeline", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "display_type": "number", "color": "#1e3a5f", "icon": "DollarSign"},
+        {"name": "My Won Deals", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "number", "color": "#1a6b4a", "icon": "Trophy"},
+        {"name": "My Activities", "collection": "activities", "aggregation": "count",
+         "filters": {}, "display_type": "number", "color": "#5b21b6", "icon": "Activity", "year_filter": False},
+        {"name": "Leads Count", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "lead"}, "display_type": "number", "color": "#1e3a5f", "icon": "Users"},
+        {"name": "Lead to Opp Conversion", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity"}, "display_type": "win_rate", "color": "#b45309", "icon": "TrendingUp"},
+        {"name": "Invoice Revenue", "collection": "invoices", "aggregation": "sum", "field": "amount_total",
+         "filters": {"payment_state": "paid"}, "display_type": "number", "color": "#1a6b4a", "icon": "DollarSign", "year_filter": False},
+        {"name": "Unpaid Invoices Value", "collection": "invoices", "aggregation": "sum", "field": "amount_total",
+         "filters": {"payment_state": {"$in": ["not_paid", "partial"]}}, "display_type": "number", "color": "#8b1a1a", "icon": "AlertTriangle", "year_filter": False},
+        {"name": "Pipeline by Salesperson", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "group_by": "owner_name", "display_type": "chart", "size": "large"},
+        {"name": "Won by Solution Category", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "group_by": "solution_category", "display_type": "pie", "size": "large"},
+        {"name": "Invoices by Status", "collection": "invoices", "aggregation": "count",
+         "filters": {}, "group_by": "payment_state", "display_type": "pie", "size": "large", "year_filter": False},
+        {"name": "Team Comparison", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "team_name", "display_type": "chart", "size": "large"},
+    ]
+    
+    for ec in extra_cards:
+        if ec["name"] not in card_map:
+            doc = {"id": generate_id(), "org_id": org_id, "created_by": "system", "created_at": now_utc(), "cache_ttl": 60, "year_filter": True, **ec}
+            await app_db.dashboard_cards.insert_one(doc)
+            card_map[ec["name"]] = doc
+            cards.append(doc)
+    
+    # Define templates per role
+    template_defs = [
+        {
+            "name": "CEO Dashboard",
+            "description": "Executive overview of all sales, pipeline, and team performance",
+            "assigned_roles": ["admin", "sales_admin"],
+            "is_default": True,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Stage", "Won by Salesperson", "Pipeline by PM",
+                          "Overdue Invoices", "Total Accounts", "Won Top 10", "Lost Top 10"]
+        },
+        {
+            "name": "Sales Director Dashboard",
+            "description": "Team pipeline, performance rankings, and conversion metrics",
+            "assigned_roles": ["sales_director"],
+            "is_default": False,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Salesperson", "Team Comparison",
+                          "Won by Solution Category", "Won Top 10"]
+        },
+        {
+            "name": "Product Director Dashboard",
+            "description": "Product line performance, solution category analysis",
+            "assigned_roles": ["product_director"],
+            "is_default": False,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Stage", "Solution Mix",
+                          "Won by Solution Category", "Pipeline by PM"]
+        },
+        {
+            "name": "Sales Rep Dashboard",
+            "description": "Personal pipeline, activities, and deal tracking",
+            "assigned_roles": ["sales_rep", "user"],
+            "is_default": False,
+            "card_names": ["My Pipeline", "My Won Deals", "Win Rate", "My Activities",
+                          "Pipeline by Stage", "Won Top 10"]
+        },
+        {
+            "name": "Finance Dashboard",
+            "description": "Invoice tracking, collections, and revenue overview",
+            "assigned_roles": ["finance", "accounting"],
+            "is_default": False,
+            "card_names": ["Invoice Revenue", "Unpaid Invoices Value", "Overdue Invoices", "Total Accounts",
+                          "Invoices by Status", "Won Value"]
+        },
+        {
+            "name": "Marketing Dashboard",
+            "description": "Lead generation, conversion, and pipeline contribution",
+            "assigned_roles": ["marketing"],
+            "is_default": False,
+            "card_names": ["Leads Count", "Lead to Opp Conversion", "Total Opportunities", "Total Pipeline",
+                          "Pipeline by Stage", "Won by Solution Category"]
+        },
+    ]
+    
+    created_templates = []
+    for tdef in template_defs:
+        # Skip if template with same name already exists
+        existing = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "name": tdef["name"]})
+        if existing:
+            continue
+        
+        blocks, card_ids = make_blocks(tdef["card_names"])
+        template = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "name": tdef["name"],
+            "description": tdef["description"],
+            "cards": card_ids,
+            "blocks": blocks,
+            "assigned_roles": tdef["assigned_roles"],
+            "is_default": tdef["is_default"],
+            "created_by": "system",
+            "created_at": now_utc()
+        }
+        await app_db.dashboard_templates_v2.insert_one(template)
+        created_templates.append({"name": tdef["name"], "id": template["id"], "cards": len(card_ids)})
+    
+    return {"success": True, "templates_created": len(created_templates), "templates": created_templates, "total_cards": len(cards)}
+
