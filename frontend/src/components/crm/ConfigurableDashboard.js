@@ -320,7 +320,8 @@ export default function ConfigurableDashboard() {
               <p className="text-sm text-gray-300 mt-1 mb-4">Add cards to this template or seed defaults</p>
               <div className="flex gap-2 justify-center">
                 <Button variant="outline" onClick={() => setShowAddCard(true)}><Plus className="h-4 w-4 mr-1" /> Add Card</Button>
-                <Button onClick={async () => { try { await targetAPI.seedDefaultCards(); toast.success('Created'); loadAll(); } catch {} }} className="bg-[#800000] hover:bg-[#9a1919] text-white"><Layers className="h-4 w-4 mr-1" /> Seed Defaults</Button>
+                <Button onClick={async () => { try { await targetAPI.seedDefaultCards(); toast.success('Default cards created'); loadAll(); } catch {} }} className="bg-[#800000] hover:bg-[#9a1919] text-white"><Layers className="h-4 w-4 mr-1" /> Seed Default Cards</Button>
+                <Button variant="outline" onClick={async () => { try { const r = await targetAPI.seedRoleTemplates(); toast.success(`${r.data.templates_created} templates created`); loadAll(); } catch {} }}><LayoutGrid className="h-4 w-4 mr-1" /> Create All Role Templates</Button>
               </div>
             </CardContent></Card>
           ) : (
