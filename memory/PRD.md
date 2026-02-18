@@ -110,6 +110,16 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 - **Date Filter Field** selector matching Odoo (Last Stage Update, Created Date, etc.)
 - Seed defaults now creates 13 cards (was 9)
 
+### Phase 10: Role Templates + Global Filters (Complete - Feb 2026)
+- **7 role-specific dashboard templates**: CEO, Sales Director, Product Director, Sales Rep, Finance, Marketing, Sales Team
+- **22 total cards** across all templates covering all CRM data models
+- **Seed endpoint** `POST /api/card-builder/seed-role-templates` auto-creates all templates with role assignments
+- **Smart role priority matching** — specific roles (product_director) take precedence over generic (user)
+- **Global Filter Panel** on dashboard — filter ALL cards by Salesperson, Product Director, Solution Category
+- **Card click → navigate** to filtered Opportunities/Invoices/Accounts pages
+- **"View All in Page"** button in drill-down panel footer
+
+
 ## Test Credentials
 - Admin: krishna@securado.net / test123456
 - Product Director 1: vimod.chandran@securado.net / test123456
