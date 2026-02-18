@@ -389,9 +389,13 @@ async def get_my_dashboard(
     user = await app_db.users.find_one({"email": {"$regex": f"^{current_user.get('email', '')}$", "$options": "i"}})
     user_roles = user.get("roles", []) if user else []
     
+    # Sort roles: specific roles first, generic ('user') last for better template matching
+    role_priority = {"admin": 0, "system_admin": 0, "sales_admin": 1, "sales_director": 2, "product_director": 3, "product_manager": 3, "finance": 4, "marketing": 5, "sales_rep": 6, "user": 99}
+    sorted_roles = sorted(user_roles, key=lambda r: role_priority.get(r, 50))
+    
     # Find template assigned to user's role (or default)
     template = None
-    for role in user_roles:
+    for role in sorted_roles:
         t = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "assigned_roles": role})
         if t:
             template = t
