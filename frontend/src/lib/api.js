@@ -361,6 +361,7 @@ export const targetAPI = {
   getFilterOptions: () => api.get('/card-builder/filter-options'),
   saveTemplateLayout: (id, blocks) => api.post(`/card-builder/templates/${id}/layout`, { blocks }),
   seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
+  seedRoleTemplates: () => api.post('/card-builder/seed-role-templates'),
   getAvailableRoles: () => api.get('/card-builder/available-roles'),
 };
 
