@@ -135,8 +135,8 @@ function DrillDownPanel({ open, onClose, card, year, onNavigate }) {
   );
 }
 
-// ============ KPI CARD (Read-only, Odoo-style) ============
-function KpiCard({ card, data, onDrillDown, onNavigate }) {
+// ============ KPI CARD (Read-only, Odoo-style with comparison) ============
+function KpiCard({ card, data, prevPeriod, onDrillDown, onNavigate }) {
   const Icon = ICONS[card?.icon] || Target;
   const groups = data?.groups || [];
   const bg = card?.color || '#1e3a5f';
@@ -157,17 +157,25 @@ function KpiCard({ card, data, onDrillDown, onNavigate }) {
     return val.toLocaleString();
   };
 
+  const changePct = prevPeriod?.change_pct;
+  const hasChange = changePct !== undefined && changePct !== null && changePct !== 0;
+
   return (
     <div className="h-full rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:brightness-110 group"
       style={{ backgroundColor: bg }} onClick={() => onDrillDown?.(card)} data-testid={`kpi-card-${card.id}`}>
       <div className="p-4 flex flex-col h-full justify-center items-center text-center relative">
         <div className="mb-2 p-2 rounded-lg" style={{ backgroundColor: ci.iconBg }}><Icon className="h-5 w-5" style={{ color: ci.muted }} /></div>
         <p className="text-3xl font-black text-white tracking-tight leading-none">{displayValue()}</p>
-        <p className="text-xs font-medium mt-2 uppercase tracking-wider text-white/80">{card.name}</p>
-        {data?.count > 0 && card.display_type !== 'win_rate' && <p className="text-[10px] mt-1 text-white/40">{data.count} records</p>}
-        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-white/0 group-hover:text-white/60 transition-colors">
-          <span>Click to view details</span><ArrowRight className="h-2.5 w-2.5" />
-        </div>
+        <p className="text-xs font-medium mt-1.5 uppercase tracking-wider text-white/80">{card.name}</p>
+        {/* Previous period comparison */}
+        {hasChange && (
+          <div className={`flex items-center gap-1 mt-1.5 text-[11px] font-semibold ${changePct > 0 ? 'text-green-300' : 'text-red-300'}`} data-testid={`kpi-change-${card.id}`}>
+            {changePct > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
+            <span>{changePct > 0 ? '+' : ''}{changePct}%</span>
+            <span className="text-white/40 font-normal">vs {prevPeriod?.year}</span>
+          </div>
+        )}
+        {!hasChange && data?.count > 0 && card.display_type !== 'win_rate' && <p className="text-[10px] mt-1 text-white/40">{data.count} records</p>}
       </div>
     </div>
   );
