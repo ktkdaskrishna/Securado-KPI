@@ -284,6 +284,10 @@ export default function HybridDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [filterOptions, setFilterOptions] = useState({ salespersons: [], product_directors: [], solution_categories: [] });
   const [filters, setFilters] = useState({ salesperson: '', product_director: '', solution_category: '' });
+  // Slideshow mode
+  const [slideshowActive, setSlideshowActive] = useState(false);
+  const [slideshowTemplates, setSlideshowTemplates] = useState([]);
+  const [slideshowIdx, setSlideshowIdx] = useState(0);
   const navigate = useNavigate();
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
