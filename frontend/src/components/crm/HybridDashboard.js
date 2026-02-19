@@ -418,6 +418,9 @@ export default function HybridDashboard() {
             }}>
             {slideshowActive ? <><Pause className="h-4 w-4 mr-1" /> Stop</> : <><Play className="h-4 w-4 mr-1" /> Slideshow</>}
           </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF} data-testid="export-pdf-btn">
+            <Download className="h-4 w-4 mr-1" /> PDF
+          </Button>
         </div>
       </div>
 
