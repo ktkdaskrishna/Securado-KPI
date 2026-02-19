@@ -314,6 +314,29 @@ export default function HybridDashboard() {
     })();
   }, []);
 
+  // Slideshow auto-rotate between templates
+  useEffect(() => {
+    if (!slideshowActive || slideshowTemplates.length < 2) return;
+    const interval = setInterval(async () => {
+      const nextIdx = (slideshowIdx + 1) % slideshowTemplates.length;
+      setSlideshowIdx(nextIdx);
+      const tpl = slideshowTemplates[nextIdx];
+      try {
+        const r = await targetAPI.renderTemplate(tpl.id, year);
+        const t = r.data.template;
+        const cards = r.data.cards || [];
+        const tb = t.blocks || [];
+        const enriched = tb.length > 0
+          ? tb.map(b => { const m = cards.find(c => c.card_id === b.card_id); return { ...b, card: m?.card, data: m?.data }; })
+          : cards.map((c, i) => ({ i: c.card_id, x: (i % 6) * 2, y: Math.floor(i / 6), w: 2, h: 1, type: 'query_card', card_id: c.card_id, card: c.card, data: c.data }));
+        setBlocks(enriched);
+        setTemplateName(t.name);
+      } catch {}
+    }, 10000); // 10 seconds per template
+    return () => clearInterval(interval);
+  }, [slideshowActive, slideshowIdx, slideshowTemplates, year]);
+
+
   const clearFilters = () => setFilters({ salesperson: '', product_director: '', solution_category: '' });
 
   // Navigate to opportunities page with filters from a card
