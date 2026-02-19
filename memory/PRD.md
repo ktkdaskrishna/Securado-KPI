@@ -123,6 +123,12 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 ### Phase 11: AI Analytics Dashboard + Slideshow + All Remaining (Complete - Feb 2026)
 - **AI Analytics Dashboard View** — Toggle between AI Analytics and configurable Dashboard View on Analytics page
 - **Dashboard Slideshow Mode** — Auto-rotates between all templates every 10 seconds for office wall displays
+
+### Phase 12: Future Enhancements (Complete - Feb 2026)
+- **Previous Period Comparison** — KPI cards show % change arrows vs last year (green up/red down)
+- **PDF Export** — "PDF" button generates downloadable PDF snapshot of dashboard using html2canvas + jsPDF
+- Backend computes previous year values and change_pct for all KPI cards
+
 - **All P2/P3 items completed** in this phase
 
 
