@@ -363,6 +363,14 @@ export default function HybridDashboard() {
             {activeFilterCount > 0 && <Badge className="ml-1.5 bg-white/20 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">{activeFilterCount}</Badge>}
           </Button>
           <Button variant="outline" size="sm" onClick={loadDashboard} data-testid="refresh-btn"><RefreshCw className="h-4 w-4" /></Button>
+          <Button variant={slideshowActive ? "default" : "outline"} size="sm" data-testid="slideshow-btn"
+            className={slideshowActive ? "bg-[#800000] hover:bg-[#9a1919] text-white" : ""}
+            onClick={async () => {
+              if (slideshowActive) { setSlideshowActive(false); return; }
+              try { const r = await targetAPI.listTemplates(); setSlideshowTemplates(r.data); setSlideshowIdx(0); setSlideshowActive(true); } catch {}
+            }}>
+            {slideshowActive ? <><Pause className="h-4 w-4 mr-1" /> Stop</> : <><Play className="h-4 w-4 mr-1" /> Slideshow</>}
+          </Button>
         </div>
       </div>
 
