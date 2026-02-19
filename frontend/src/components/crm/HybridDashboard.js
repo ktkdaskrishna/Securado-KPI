@@ -370,6 +370,22 @@ export default function HybridDashboard() {
   const kpiBlocks = blocks.filter(b => isKpi(b));
   const chartBlocks = blocks.filter(b => !isKpi(b));
 
+  const handleExportPDF = async () => {
+    const el = document.querySelector('[data-testid="dashboard-page"]');
+    if (!el) return;
+    toast.info('Generating PDF...');
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f9fafb' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`${templateName.replace(/\s+/g, '_')}_${year}.pdf`);
+      toast.success('PDF downloaded');
+    } catch (e) { toast.error('PDF export failed'); console.error(e); }
+  };
+
   if (loading) return (
     <div className="space-y-5" data-testid="dashboard-loading">
       <div className="flex justify-between"><Skeleton className="h-8 w-48" /><Skeleton className="h-9 w-40" /></div>
