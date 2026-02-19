@@ -470,6 +470,7 @@ export default function HybridDashboard() {
           {kpiBlocks.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {kpiBlocks.map(b => <KpiCard key={b.card_id} card={b.card} data={b.data}
+                prevPeriod={b.prev_period}
                 onDrillDown={c => setDrillDown({ open: true, card: c })}
                 onNavigate={handleCardNavigate} />)}
             </div>
