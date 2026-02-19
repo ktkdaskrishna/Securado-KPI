@@ -473,6 +473,24 @@ async def get_my_dashboard(
                         query_config["rbac_filter"] = rbac_filter
                     
                     rendered["data"] = await execute_query(query_config)
+                    
+                    # Compare with previous period for KPI cards
+                    if card.get("display_type") in ("number", "win_rate") and year and card.get("year_filter"):
+                        try:
+                            prev_year = str(int(year) - 1)
+                            prev_config = {**query_config, "year": prev_year, "cache_ttl": 300}
+                            prev_data = await execute_query(prev_config)
+                            current_val = rendered["data"].get("value", 0)
+                            prev_val = prev_data.get("value", 0)
+                            if prev_val and prev_val > 0:
+                                change_pct = round(((current_val - prev_val) / prev_val) * 100, 1)
+                            elif current_val > 0:
+                                change_pct = 100.0
+                            else:
+                                change_pct = 0
+                            rendered["prev_period"] = {"value": prev_val, "change_pct": change_pct, "year": prev_year}
+                        except:
+                            pass
                 except:
                     rendered["data"] = {"error": True}
         rendered_blocks.append(rendered)
