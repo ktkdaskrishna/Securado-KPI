@@ -168,6 +168,12 @@ export default function AnalyticsPage() {
           <p className="text-muted-foreground">AI-powered insights into your sales performance</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5 border">
+            <button onClick={() => setViewMode('ai')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'ai' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>AI Analytics</button>
+            <button onClick={() => { setViewMode('dashboard'); if (dashBlocks.length === 0) { setDashLoading(true); targetAPI.getMyDashboard(selectedYear, {}).then(r => setDashBlocks(r.data.blocks || [])).catch(() => {}).finally(() => setDashLoading(false)); } }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'dashboard' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Dashboard View</button>
+          </div>
           {/* Year Filter */}
           <Select value={selectedYear || 'all'} onValueChange={(v) => setSelectedYear(v === 'all' ? '' : v)}>
             <SelectTrigger className="w-32" data-testid="analytics-year-filter">
