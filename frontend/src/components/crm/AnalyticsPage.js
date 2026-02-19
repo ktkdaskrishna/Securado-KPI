@@ -33,7 +33,8 @@ import {
   XCircle,
   Clock,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Trophy
 } from 'lucide-react';
 import { toast } from 'sonner';
 
