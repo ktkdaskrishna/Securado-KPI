@@ -52,6 +52,9 @@ export default function AnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedQuarter, setSelectedQuarter] = useState('');
+  const [viewMode, setViewMode] = useState('ai'); // 'ai' or 'dashboard'
+  const [dashBlocks, setDashBlocks] = useState([]);
+  const [dashLoading, setDashLoading] = useState(false);
   
   // Modal state for At Risk/Dormant accounts
   const [riskModalOpen, setRiskModalOpen] = useState(false);
