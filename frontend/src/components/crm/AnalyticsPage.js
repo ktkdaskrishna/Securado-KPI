@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyticsAPI } from '../../lib/api';
+import { analyticsAPI, targetAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
