@@ -1,7 +1,7 @@
 /* Securado CRM Platform - Application Styles */
 
 /* Hide Emergent badge */
-#emergent-badge { display: none !important; }
+#emergent-badge { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
 
 
 /* react-grid-layout overrides */
