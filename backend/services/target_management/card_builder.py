@@ -268,6 +268,8 @@ async def execute_card(
         "group_by": card.get("group_by"),
         "year": year if card.get("year_filter") else None,
         "cache_ttl": card.get("cache_ttl", 60),
+        "sort_by": card.get("sort_by"),
+        "sort_order": card.get("sort_order", "desc"),
     }
     if rbac_filter:
         query_config["rbac_filter"] = rbac_filter
@@ -471,6 +473,8 @@ async def get_my_dashboard(
                         "group_by": group_by,
                         "year": year if card.get("year_filter") else None,
                         "cache_ttl": card.get("cache_ttl", 60),
+        "sort_by": card.get("sort_by"),
+        "sort_order": card.get("sort_order", "desc"),
                     }
                     if rbac_filter:
                         query_config["rbac_filter"] = rbac_filter
@@ -654,6 +658,8 @@ async def render_template(
             "group_by": card.get("group_by"),
             "year": year if card.get("year_filter") else None,
             "cache_ttl": card.get("cache_ttl", 60),
+        "sort_by": card.get("sort_by"),
+        "sort_order": card.get("sort_order", "desc"),
         }
         
         try:
