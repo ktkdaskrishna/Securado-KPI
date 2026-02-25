@@ -139,18 +139,22 @@ export function AccountFilter({ value, onChange, accounts }) {
               >
                 All Accounts
               </CommandItem>
-              {accounts?.map((acc) => (
+              {accounts?.map((acc) => {
+                const accName = typeof acc === 'object' ? (acc.name || acc.id || '') : acc;
+                if (!accName) return null;
+                return (
                 <CommandItem
-                  key={acc}
-                  value={acc}
+                  key={accName}
+                  value={accName}
                   onSelect={(val) => {
                     onChange(val);
                     setOpen(false);
                   }}
                 >
-                  {acc}
+                  {accName}
                 </CommandItem>
-              ))}
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
