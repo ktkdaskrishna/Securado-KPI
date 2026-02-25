@@ -36,12 +36,6 @@ const CARD_COLORS = {
 };
 const getColorInfo = (c) => CARD_COLORS[c] || { muted: 'rgba(255,255,255,0.7)', iconBg: 'rgba(255,255,255,0.12)' };
 
-const DATE_PRESETS = [
-  { label: 'This Year', value: String(new Date().getFullYear()) },
-  { label: 'Last Year', value: String(new Date().getFullYear() - 1) },
-  { label: '2024', value: '2024' },
-];
-
 // ============ DRILL-DOWN PANEL ============
 function DrillDownPanel({ open, onClose, card, year, onNavigate }) {
   const [records, setRecords] = useState([]);
