@@ -360,9 +360,6 @@ export default function HybridDashboard() {
   }, [slideshowActive, slideshowIdx, slideshowTemplates, filters.year]);
 
 
-  const clearFilters = () => setFilters({ salesperson: '', product_director: '', solution_category: '' });
-
-  // Navigate to opportunities page with filters from a card
   const handleCardNavigate = (card) => {
     if (!card) return;
     const params = new URLSearchParams();
