@@ -287,6 +287,31 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-gray-500">Sort By</Label>
+                    <Select value={form.sort_by || '_auto'} onValueChange={v => u('sort_by', v === '_auto' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Auto" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_auto">Auto (default)</SelectItem>
+                        <SelectItem value="total">Value (Total)</SelectItem>
+                        <SelectItem value="count">Count</SelectItem>
+                        <SelectItem value="avg">Average</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Sort Order</Label>
+                    <Select value={form.sort_order} onValueChange={v => u('sort_order', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">Descending (High → Low)</SelectItem>
+                        <SelectItem value="asc">Ascending (Low → High)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
 
                 <Separator />
 
