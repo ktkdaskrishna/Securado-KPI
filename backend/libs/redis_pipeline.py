@@ -192,7 +192,10 @@ async def execute_query(query_config: dict) -> dict:
         elif aggregation == "avg" and field:
             pipeline[1]["$group"]["avg"] = {"$avg": {"$ifNull": [f"${field}", 0]}}
         
-        pipeline.append({"$sort": {"count": -1}})
+        # Sort by the relevant field (total for sum, avg for avg, count for count)
+        sort_field = query_config.get("sort_by", "total" if aggregation == "sum" and field else "avg" if aggregation == "avg" and field else "count")
+        sort_order = -1 if query_config.get("sort_order", "desc") == "desc" else 1
+        pipeline.append({"$sort": {sort_field: sort_order}})
         pipeline.append({"$limit": 50})
         
         groups = await db[collection].aggregate(pipeline).to_list(50)
