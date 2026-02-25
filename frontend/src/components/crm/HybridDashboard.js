@@ -477,6 +477,17 @@ export default function HybridDashboard() {
         </div>
       )}
 
+      {/* Active Filter Status */}
+      {(year || activeFilterCount > 0) && !showFilters && (
+        <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border" data-testid="filter-status">
+          <Filter className="h-3.5 w-3.5 text-gray-400" />
+          <span>Showing data for <strong className="text-gray-900">{year}</strong></span>
+          {filters.salesperson && <><span className="text-gray-300">|</span><span>Salesperson: <strong className="text-gray-900">{filters.salesperson}</strong></span></>}
+          {filters.product_director && <><span className="text-gray-300">|</span><span>PD: <strong className="text-gray-900">{filters.product_director}</strong></span></>}
+          {filters.solution_category && <><span className="text-gray-300">|</span><span>Category: <strong className="text-gray-900">{filters.solution_category}</strong></span></>}
+        </div>
+      )}
+
       {blocks.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <Layers className="h-16 w-16 mx-auto mb-4 text-gray-200" />
