@@ -1,418 +1,229 @@
-# Event Mesh CRM - Architecture Documentation
+# Securado CRM Platform — Comprehensive Architecture Document
 
-## Overview
-
-Event Mesh CRM is a unified CRM platform that integrates with Odoo ERP via ETL pipelines, providing real-time dashboards, analytics, and data management capabilities.
+**Version:** 2.0 | **Last Updated:** February 2026 | **Status:** Production
 
 ---
 
-## Tech Stack
+## 1. SYSTEM OVERVIEW
 
-### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Python** | 3.11+ | Runtime |
-| **FastAPI** | 0.110.1 | Web framework (async REST API) |
-| **Motor** | 3.3.1 | Async MongoDB driver |
-| **Pydantic** | 2.12.5 | Data validation & serialization |
-| **Uvicorn** | 0.25.0 | ASGI server |
-| **python-jose** | 3.5.0 | JWT authentication |
-| **bcrypt** | 4.1.3 | Password hashing |
-
-### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **React** | 19.0.0 | UI framework |
-| **Tailwind CSS** | 3.x | Styling |
-| **Shadcn/UI** | Latest | Component library (Radix-based) |
-| **React Router** | 6.x | Client-side routing |
-| **Axios** | 1.13.3 | HTTP client |
-| **Lucide React** | 0.507.0 | Icons |
-| **Framer Motion** | 12.29.0 | Animations |
-| **React Hook Form** | 7.56.2 | Form management |
-
-### Database
-| Technology | Purpose |
-|------------|---------|
-| **MongoDB** | Primary database (document store) |
-| **Motor (async)** | Non-blocking database operations |
-
-### External Integrations
-| Service | Purpose |
-|---------|---------|
-| **Odoo v17** | Source ERP system (XML-RPC API) |
-| **OpenAI GPT** | AI-powered sales analytics |
-
----
-
-## Architecture Diagram
+Securado CRM is a full-stack sales management platform that integrates with Odoo ERP (v17 Enterprise) for real-time CRM data, providing configurable dashboards, RBAC-scoped analytics, KPI tracking, and sales performance management.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              FRONTEND (React)                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │  Dashboard  │  │ Opportunities│  │  Accounts   │  │   Admin     │        │
-│  │    Page     │  │    Page     │  │    Page     │  │   Pages     │        │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
-│         │                │                │                │                │
-│         └────────────────┴────────────────┴────────────────┘                │
-│                                   │                                         │
-│                          Axios HTTP Client                                  │
-└───────────────────────────────────┼─────────────────────────────────────────┘
-                                    │
-                          ┌─────────▼─────────┐
-                          │   API Gateway     │
-                          │  (FastAPI/CORS)   │
-                          └─────────┬─────────┘
-                                    │
-┌───────────────────────────────────┼─────────────────────────────────────────┐
-│                           BACKEND (FastAPI)                                  │
-│                                   │                                         │
-│  ┌────────────────────────────────┼────────────────────────────────────┐   │
-│  │                         API ROUTERS                                  │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │   │
-│  │  │ Identity │ │   CRM    │ │Dashboard │ │   ETL    │ │  Cache   │  │   │
-│  │  │  /auth   │ │  /crm/*  │ │/dashboard│ │  /etl/*  │ │ /cache/* │  │   │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                   │                                         │
-│  ┌────────────────────────────────┼────────────────────────────────────┐   │
-│  │                      CORE SERVICES                                   │   │
-│  │                                                                      │   │
-│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ │   │
-│  │  │   ETL Runner    │    │  Event Queue    │    │ Serving Cache   │ │   │
-│  │  │ (Odoo Sync)     │───▶│ (MongoDB Queue) │───▶│ (Pre-computed)  │ │   │
-│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘ │   │
-│  │          │                      │                      │            │   │
-│  │          │              ┌───────▼───────┐              │            │   │
-│  │          │              │ Event Worker  │              │            │   │
-│  │          │              │ (Background)  │              │            │   │
-│  │          │              └───────────────┘              │            │   │
-│  └──────────┼──────────────────────────────────────────────────────────┘   │
-│             │                                                               │
-│  ┌──────────▼──────────────────────────────────────────────────────────┐   │
-│  │                         SHARED LIBS                                  │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │   │
-│  │  │ Database │  │Event Bus │  │  Schemas │  │  Utils   │            │   │
-│  │  │ (Motor)  │  │(Pub/Sub) │  │(Pydantic)│  │ (Helpers)│            │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└───────────────────────────────────┼─────────────────────────────────────────┘
-                                    │
-                          ┌─────────▼─────────┐
-                          │     MongoDB       │
-                          │                   │
-                          │ ┌───────────────┐ │
-                          │ │event_mesh_app │ │ (Users, Config, Cache)
-                          │ └───────────────┘ │
-                          │ ┌───────────────┐ │
-                          │ │event_mesh_    │ │ (Opportunities, Accounts,
-                          │ │  canonical    │ │  Contacts, Invoices, etc.)
-                          │ └───────────────┘ │
-                          └───────────────────┘
-                                    │
-                          ┌─────────▼─────────┐
-                          │    Odoo v17       │
-                          │   (XML-RPC)       │
-                          │                   │
-                          │ • crm.lead        │
-                          │ • res.partner     │
-                          │ • account.move    │
-                          │ • mail.activity   │
-                          └───────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (React 19)                       │
+│  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌───────────────────┐  │
+│  │Dashboard │ │Dashboard  │ │Opportun- │ │AI Analytics /     │  │
+│  │(Read-only│ │Builder    │ │ities/    │ │Performance Hub /  │  │
+│  │View)     │ │(Odoo-style│ │Leads/    │ │Targets / Invoices │  │
+│  │          │ │Editor)    │ │Accounts  │ │/ Activities       │  │
+│  └────┬─────┘ └─────┬─────┘ └────┬─────┘ └────────┬──────────┘  │
+│       └──────────────┴───────────┴─────────────────┘             │
+│                           │ HTTPS (axios)                        │
+├───────────────────────────┼──────────────────────────────────────┤
+│                    BACKEND (FastAPI)                              │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐  │
+│  │Identity &  │ │Card Builder│ │CRM Sales   │ │ETL Runner    │  │
+│  │Auth Service│ │& Query     │ │(Opps,Accts,│ │& Incremental │  │
+│  │(JWT+SSO)  │ │Engine      │ │Leads,Inv)  │ │Sync Worker   │  │
+│  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬───────┘  │
+│        └──────────────┴──────────────┴────────────────┘          │
+│                           │                                      │
+├───────────┬───────────────┼───────────────────┬──────────────────┤
+│  Redis    │               │                   │   Odoo v17       │
+│  (Cache)  │          MongoDB                  │   (XML-RPC)      │
+│  29 keys  │   ┌───────────┴──────────┐        │   5-min polling  │
+│  TTL 60s  │   │event_mesh_app (53)   │        │                  │
+│           │   │event_mesh_canonical  │        │                  │
+│           │   │(12 collections)      │        │                  │
+└───────────┘   └──────────────────────┘        └──────────────────┘
 ```
 
 ---
 
-## Database Schema
+## 2. TECHNOLOGY STACK
 
-### MongoDB Databases
-
-#### `event_mesh_app` (Application Database)
-| Collection | Purpose |
-|------------|---------|
-| `users` | User accounts & authentication |
-| `roles` | RBAC role definitions |
-| `organizations` | Multi-tenant org config |
-| `etl_connections` | Odoo connection configs |
-| `etl_pipelines` | ETL pipeline definitions |
-| `etl_runs` | ETL execution history |
-| `serving_cache` | Pre-computed UI data |
-| `event_queue` | Message queue for async processing |
-| `events` | Event bus audit log |
-
-#### `event_mesh_canonical` (Canonical Data Model)
-| Collection | Purpose |
-|------------|---------|
-| `opportunities` | CRM opportunities (from crm.lead) |
-| `accounts` | Companies (from res.partner) |
-| `contacts` | Individual contacts |
-| `activities` | Tasks, meetings, calls |
-| `invoices` | AR invoices (from account.move) |
-| `users` | Synced Odoo users |
-
-### Key Indexes
-```javascript
-// Deduplication - prevents duplicate records from ETL
-opportunities: { source_record_id: 1, org_id: 1 } // unique
-accounts: { source_record_id: 1, org_id: 1 } // unique
-activities: { source_record_id: 1, org_id: 1 } // unique
-
-// Cache lookup
-serving_cache: { cache_type: 1, org_id: 1, filter_hash: 1 } // unique
-```
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| Frontend | React | 19 | SPA framework |
+| UI Components | shadcn/ui | latest | Card, Dialog, Sheet, Chart, Tabs, Select, Badge |
+| Charts | Recharts | 3.7 | Bar, Pie, Area, Radial via shadcn ChartContainer |
+| Grid Layout | react-grid-layout | 2.2.2 | Drag/drop/resize dashboard cards |
+| CSS | TailwindCSS | 3 | Utility-first styling |
+| Backend | FastAPI | 0.104 | Async Python API framework |
+| Database | MongoDB | 7.0 | Document store (2 databases) |
+| Cache | Redis | 7.0 | Query result caching (TTL-based) |
+| ERP | Odoo | 17 Enterprise | Source of truth for CRM data |
+| Auth | JWT + Azure AD | - | Dual auth (email/password + Microsoft SSO) |
+| PDF | html2canvas + jsPDF | - | Dashboard PDF export |
 
 ---
 
-## Service Architecture
+## 3. BACKEND MICROSERVICES
 
-### 1. Identity Service (`/api/auth/*`)
-- JWT-based authentication
-- User registration & login
-- Password hashing (bcrypt)
-- User invitation system
+### 3.1 Identity & Auth Service
+**Files:** `services/identity/routes.py`, `services/microsoft_auth/routes.py`
+- JWT authentication (HS256, 30min expiry)
+- Microsoft Azure AD SSO (OAuth 2.0 + PKCE for SPA)
+- User registration, login, profile management
+- Token refresh and session management
 
-### 2. CRM Sales Service (`/api/opportunities/*`, `/api/accounts/*`, etc.)
-- CRUD operations for CRM entities
-- Filtering, pagination, search
-- Export to Excel
-- Bluesheet scoring
+### 3.2 Card Builder & Query Engine
+**Files:** `services/target_management/card_builder.py`, `libs/redis_pipeline.py`
+- **923 lines** — Core dashboard configuration service
+- Card CRUD (22 cards across 9 chart types)
+- Template CRUD (7 role-specific templates)
+- Dynamic query execution with Redis caching
+- RBAC hierarchy filter (org tree walk)
+- Drill-down endpoint (returns underlying records)
+- Previous period comparison calculations
+- Seed endpoints for default cards and role templates
 
-### 3. Dashboard Aggregator (`/api/dashboard/*`)
-- Real-time KPI calculations
-- Pipeline stage breakdown
-- Leaderboards (Sales Rep, Product Manager)
-- Activity summaries
+### 3.3 CRM Sales Service
+**Files:** `services/crm_sales/opportunities.py`, `accounts.py`, `activities.py`, `leads.py`, `receivables.py`
+- Opportunities: List + Kanban + Detail (1120 lines)
+- Accounts, Leads, Activities, Invoices CRUD
+- RBAC-scoped queries via access_rules
+- Pagination, sorting, filtering
 
-### 4. ETL Control Service (`/api/etl/*`)
-- Connection management (Odoo)
-- Pipeline configuration
-- Field mapping editor
-- Run history & monitoring
-
-### 5. ETL Runner Service (Background)
-- Scheduled pipeline execution
-- Extract → Transform → Load flow
-- Upsert logic (prevents duplicates)
-- Error handling & DLQ
-
-### 6. Event Queue Service (`/api/admin/data-quality/queue/*`)
-- MongoDB-based message queue
-- Async event processing
-- Retry logic (max 3 retries)
-- Dead letter queue
-
-### 7. Serving Cache Service (`/api/cache/*`)
-- Pre-computed aggregates
-- Single source of truth for UI
-- 5-minute TTL with auto-refresh
-- Test record exclusion
-
-### 8. AI Analytics Service (`/api/analytics/*`)
-- GPT-powered insights
+### 3.4 AI Analytics Service
+**Files:** `services/ai_analytics/routes.py` (987 lines)
+- Sales overview with pipeline metrics
 - Sales funnel analysis
-- Deal recommendations
+- Rep performance rankings (year-filtered)
+- Team performance comparison
+- Account health scoring
 
-### 9. RBAC Sync Service (`/api/rbac/*`)
-- Hybrid RBAC implementation (Odoo metadata + local rules)
-- Syncs users, groups, teams from Odoo
-- Row-level security enforcement
-- Grace period for non-synced orgs
+### 3.5 ETL & Sync Service
+**Files:** `services/etl_runner/incremental_sync.py`, `runner.py`
+- **Incremental polling worker** — 5-minute cycle syncing from Odoo
+- 5 entities: opportunities, accounts, invoices, contacts, activities
+- Change detection via `write_date` comparison
+- UPSERT into MongoDB canonical collections
+- Cache invalidation on sync
 
-#### RBAC Endpoints
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api/rbac/sync` | Trigger user/group/team sync from Odoo |
-| `GET /api/rbac/users` | List synced users with access levels |
-| `GET /api/rbac/groups` | List synced Odoo groups |
-| `GET /api/rbac/teams` | List synced sales teams |
-| `GET /api/rbac/my-access` | Get current user's permissions |
-| `GET /api/rbac/test-filter/{user}` | Test what filter applies to a user |
-| `GET /api/rbac/stats` | RBAC sync statistics |
-
-#### Access Levels
-| Level | Description | Data Access |
-|-------|-------------|-------------|
-| `ADMIN` | Administration / Settings, Sales / Administrator | All records |
-| `MANAGER` | Sales / Manager | Team records + own |
-| `USER` | Sales / User | Own records only |
-| `RESTRICTED` | Default (no RBAC sync yet) | Full access (grace period) or own records |
-
-#### RBAC Collections (in `event_mesh_app`)
-| Collection | Purpose |
-|------------|---------|
-| `users_rbac` | User metadata with groups/teams |
-| `groups_rbac` | Odoo res.groups definitions |
-| `teams_rbac` | Odoo crm.team definitions |
+### 3.6 RBAC & Access Control
+**Files:** `services/rbac_sync/access_rules.py`, `libs/rbac_guards.py`
+- Centralized user identity map (email → Odoo name variants)
+- Org hierarchy walk for subordinate discovery
+- Role priority matching for template assignment
+- Per-request RBAC middleware
 
 ---
 
-## Data Flow
+## 4. FRONTEND UI ARCHITECTURE
 
-### ETL Pipeline Flow
+### 4.1 Page Routing
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│    Odoo      │     │   Extract    │     │  Transform   │     │    Load      │
-│  (XML-RPC)   │────▶│  (Fetch)     │────▶│  (Map Fields)│────▶│  (Upsert)    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-                                                                      │
-                                                                      ▼
-                                                               ┌──────────────┐
-                                                               │  MongoDB     │
-                                                               │ (Canonical)  │
-                                                               └──────────────┘
+/dashboard              → HybridDashboard.js     (READ-ONLY view)
+/dashboard-builder      → ConfigurableDashboard.js (BUILDER with editor)
+/opportunities          → OpportunitiesPage.js    (List + Kanban)
+/leads                  → LeadsPage.js
+/accounts               → AccountsPage.js
+/analytics              → AnalyticsPage.js        (AI + Dashboard View toggle)
+/invoices               → InvoicesPage.js
+/activities             → ActivitiesPage.js
+/performance-hub        → PerformanceHubPage.js
+/targets                → TargetManagementPage.js
+/settings               → SettingsPage.js
+/users                  → UsersPage.js
+/help                   → HelpPage.js
 ```
 
-### Event-Driven Flow (New Architecture)
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  ETL Runner  │────▶│ Event Queue  │────▶│Event Worker  │────▶│Serving Cache │
-│              │     │  (MongoDB)   │     │ (Background) │     │(Pre-computed)│
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-                                                                      │
-                                                                      ▼
-                                                               ┌──────────────┐
-                                                               │   All UI     │
-                                                               │ Components   │
-                                                               └──────────────┘
-```
+### 4.2 Shared Components
+- **PageFilters** — Standard inline filter bar shared across Dashboard, Opportunities, Analytics
+- **EditChartDialog** — Odoo-style card editor (9 chart types, Data/Display/Target tabs, live preview)
+- **DomainBuilderDialog** — Visual filter rule builder (multi-select tags for in/not_in)
+- **shadcn/ui** — 40+ components (Chart, Card, Dialog, Sheet, Tabs, Select, Badge, etc.)
+
+### 4.3 State Management
+- React useState + useCallback for local state
+- Context providers: RBACContext, CurrencyContext, GlobalFilterContext, MicrosoftAuthContext
+- URL search params for cross-page filter passing (dashboard → opportunities)
 
 ---
 
-## API Endpoints Summary
+## 5. DATA FLOW WORKFLOWS
 
-### Authentication
-- `POST /api/auth/login` - Login
-- `POST /api/auth/register` - Register
-- `GET /api/auth/me` - Current user
-- `POST /api/identity/invite` - Invite user
-
-### CRM
-- `GET /api/opportunities` - List opportunities
-- `GET /api/accounts` - List accounts/contacts
-- `GET /api/activities` - List activities
-- `GET /api/receivables` - List invoices
-
-### Dashboard
-- `GET /api/dashboard/stats` - KPIs
-- `GET /api/dashboard/leaderboard` - Sales leaderboard
-- `GET /api/dashboard/product-manager-leaderboard` - PM leaderboard
-- `GET /api/dashboard/category-stats` - Category breakdown
-
-### ETL
-- `GET /api/etl/connections` - List connections
-- `GET /api/etl/pipelines` - List pipelines
-- `POST /api/etl/pipelines/{id}/run` - Trigger run
-- `GET /api/etl/runs` - Execution history
-
-### Cache (Single Source of Truth)
-- `GET /api/cache/dashboard-kpis` - Cached KPIs
-- `GET /api/cache/account-overdue` - Cached overdue data
-- `GET /api/cache/sales-leaderboard` - Cached leaderboard
-- `POST /api/cache/refresh` - Force refresh
-- `POST /api/cache/invalidate` - Clear cache
-
-### Admin
-- `GET /api/admin/data-quality/reconciliation/summary` - Data quality
-- `GET /api/admin/data-quality/queue/stats` - Queue stats
-
----
-
-## Security
-
-### Authentication
-- JWT tokens (HS256)
-- Token expiry: 24 hours
-- Refresh token support
-
-### Authorization
-- Role-based access control (RBAC)
-- Roles: Admin, Manager, Sales Rep
-- Row-level security (org_id filtering)
-
-### Data Protection
-- Password hashing (bcrypt, cost=12)
-- CORS configured for frontend origin
-- Input validation (Pydantic)
-
----
-
-## Deployment
-
-### Services
-| Service | Port | Process Manager |
-|---------|------|-----------------|
-| Backend (FastAPI) | 8001 | Supervisor |
-| Frontend (React) | 3000 | Supervisor |
-
-### Environment Variables
+### 5.1 Dashboard Load
 ```
-MONGO_URL=mongodb://...
-DB_NAME=event_mesh_app
-CORS_ORIGINS=http://localhost:3000
-EMERGENT_LLM_KEY=... (for AI features)
+1. User opens /dashboard
+2. Frontend calls GET /api/card-builder/my-dashboard?year=2026
+3. Backend resolves template by role priority
+4. Backend resolves RBAC hierarchy filter (org tree walk)
+5. For each card in template:
+   a. Check Redis cache
+   b. Build MongoDB aggregation pipeline
+   c. Merge: card filters + global filters + RBAC filter + year filter
+   d. Execute query, sort results
+   e. Cache result (60s TTL)
+   f. For KPI cards: also compute previous year comparison
+6. Return template + rendered blocks
+7. Frontend renders KPI cards + charts
 ```
 
-### Health Check
-- `GET /health` - Basic health
-- `GET /api/health` - Detailed component status
-
----
-
-## File Structure
-
+### 5.2 Card Click → Navigation
 ```
-/app
-├── backend/
-│   ├── server.py              # FastAPI app & lifecycle
-│   ├── requirements.txt       # Python dependencies
-│   ├── libs/
-│   │   ├── database.py        # MongoDB connection
-│   │   ├── event_bus.py       # Pub/sub system
-│   │   ├── schemas.py         # Shared Pydantic models
-│   │   └── utils.py           # Helper functions
-│   └── services/
-│       ├── identity/          # Auth & users
-│       ├── crm_sales/         # CRM entities
-│       ├── dashboard_agg/     # Dashboard aggregations
-│       ├── etl_control/       # ETL management
-│       ├── etl_runner/        # ETL execution
-│       ├── event_queue/       # Message queue
-│       ├── serving_cache/     # Cache layer
-│       ├── ai_analytics/      # AI insights
-│       └── data_integrity/    # Data quality
-├── frontend/
-│   ├── src/
-│   │   ├── App.js             # Root component
-│   │   ├── lib/api.js         # API client
-│   │   ├── components/
-│   │   │   ├── ui/            # Shadcn components
-│   │   │   ├── crm/           # CRM pages
-│   │   │   ├── admin/         # Admin pages
-│   │   │   └── layout/        # Layout components
-│   │   └── hooks/             # Custom React hooks
-│   ├── package.json
-│   └── tailwind.config.js
-├── docs/                       # Documentation
-└── plan.md                     # Active development plan
+1. User clicks KPI card on dashboard
+2. handleCardNavigate builds URL params:
+   - year, stage, salesRep, productDirector, solutionCategory
+3. navigate('/opportunities?stage=Won&year=2026')
+4. Opportunities page reads searchParams
+5. Applies as initial filter state
+```
+
+### 5.3 Odoo Sync Cycle
+```
+Every 5 minutes:
+1. For each entity (opportunities, accounts, invoices, contacts, activities):
+   a. Query Odoo: records with write_date > last_sync_timestamp
+   b. Transform fields to canonical schema
+   c. UPSERT into MongoDB canonical collection
+   d. Update sync_state with new timestamp
+2. Invalidate Redis cache keys matching updated entities
+3. Log sync results (record counts)
 ```
 
 ---
 
-## Recent Architectural Improvements
+## 6. DATABASE SCHEMA
 
-1. **MongoDB Event Queue** - Replaced direct DB writes with async event processing
-2. **Serving Cache Layer** - Single source of truth for all UI components
-3. **Test Record Exclusion** - Automatic filtering of test/demo data
-4. **Deduplication** - Unique indexes + upsert logic prevents duplicates
-5. **Default Year Filter** - Dashboard defaults to current year
+### 6.1 Key Collections (event_mesh_app)
+- **dashboard_cards** (22) — Card configs with query, display, sort, color
+- **dashboard_templates_v2** (7) — Templates with block layouts + role assignments
+- **user_identity_map** (83) — Email → canonical name + variants
+- **users** (6) — App users with roles
+- **system_config** (1) — Microsoft SSO settings
+
+### 6.2 Canonical Data (event_mesh_canonical)
+- **opportunities** (1378) — All Odoo CRM leads/opportunities
+- **accounts** (705) — res.partner (companies)
+- **contacts** (1394) — res.partner (persons)
+- **invoices** (264) — account.move
+- **activities** (737) — mail.activity
+- **employees** (78) — hr.employee (org hierarchy)
 
 ---
 
-## Future Roadmap
+## 7. SECURITY
 
-- [ ] Full migration to cache-based API reads
-- [ ] Real-time WebSocket updates
-- [ ] Modular dashboard with drag-and-drop widgets
-- [ ] Multi-tenant improvements
-- [ ] Audit logging enhancement
+- **JWT** (HS256) for API authentication
+- **Azure AD SSO** (OAuth 2.0 + PKCE) for Microsoft login
+- **RBAC**: 4-layer (app role → Odoo group → org hierarchy → identity map)
+- **Data scoping**: Admin=all, Manager=team, User=own
+- **CORS**: Configured for preview domain only
+
+---
+
+## 8. KEY DESIGN DECISIONS
+
+1. **date_last_stage_update** for ALL year filtering (matches Odoo)
+2. **Separate Dashboard vs Builder** pages (clean separation)
+3. **Standard PageFilters** shared across all pages (consistency)
+4. **Redis + MongoDB fallback** (resilient caching)
+5. **Incremental polling** over webhooks (reliable sync)
+6. **Role priority sorting** for template matching (specific > generic)
+7. **Error logging** on all query failures (observability)
+
+---
+
+*~25K lines backend, ~22K lines frontend, 53 collections, 100+ endpoints, 7 templates, 22 cards*
