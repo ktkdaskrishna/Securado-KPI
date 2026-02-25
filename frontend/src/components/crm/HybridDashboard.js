@@ -155,7 +155,7 @@ function KpiCard({ card, data, prevPeriod, onDrillDown, onNavigate }) {
 
   return (
     <div className="h-full rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:brightness-110 group"
-      style={{ backgroundColor: bg }} onClick={() => onDrillDown?.(card)} data-testid={`kpi-card-${card.id}`}>
+      style={{ backgroundColor: bg }} onClick={() => onNavigate?.(card)} data-testid={`kpi-card-${card.id}`}>
       <div className="p-4 flex flex-col h-full justify-center items-center text-center relative">
         <div className="mb-2 p-2 rounded-lg" style={{ backgroundColor: ci.iconBg }}><Icon className="h-5 w-5" style={{ color: ci.muted }} /></div>
         <p className="text-3xl font-black text-white tracking-tight leading-none">{displayValue()}</p>
