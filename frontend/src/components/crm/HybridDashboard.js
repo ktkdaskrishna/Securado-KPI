@@ -345,7 +345,7 @@ export default function HybridDashboard() {
       setSlideshowIdx(nextIdx);
       const tpl = slideshowTemplates[nextIdx];
       try {
-        const r = await targetAPI.renderTemplate(tpl.id, year);
+        const r = await targetAPI.renderTemplate(tpl.id, filters.year);
         const t = r.data.template;
         const cards = r.data.cards || [];
         const tb = t.blocks || [];
