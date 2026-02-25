@@ -498,7 +498,8 @@ async def get_my_dashboard(
                             rendered["prev_period"] = {"value": prev_val, "change_pct": change_pct, "year": prev_year}
                         except:
                             pass
-                except:
+                except Exception as ex:
+                    logger.error(f"Card query error for {card.get('name')}: {ex}")
                     rendered["data"] = {"error": True}
         rendered_blocks.append(rendered)
     
