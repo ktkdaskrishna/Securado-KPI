@@ -512,7 +512,8 @@ export default function HybridDashboard() {
                 <div key={b.card_id} className="min-h-[280px]">
                   <ChartCard card={b.card} data={b.data}
                     onDrillDown={c => setDrillDown({ open: true, card: c })}
-                    onNavigate={handleCardNavigate} />
+                    onNavigate={handleCardNavigate}
+                    onItemNavigate={handleItemNavigate} />
                 </div>
               ))}
             </div>
