@@ -498,7 +498,7 @@ export default function HybridDashboard() {
         <>
           {/* KPI Cards Row */}
           {kpiBlocks.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className={`grid gap-3 ${kpiBlocks.length <= 4 ? 'grid-cols-2 md:grid-cols-4' : kpiBlocks.length <= 6 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
               {kpiBlocks.map(b => <KpiCard key={b.card_id} card={b.card} data={b.data}
                 prevPeriod={b.prev_period}
                 onDrillDown={c => setDrillDown({ open: true, card: c })}
