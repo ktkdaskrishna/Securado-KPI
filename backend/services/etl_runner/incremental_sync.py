@@ -61,6 +61,23 @@ INCREMENTAL_ENTITIES = {
             "amount_total", "amount_residual", "amount_tax", "amount_untaxed",
             "payment_state", "state", "invoice_user_id", "create_date", "write_date"],
     },
+    "contacts": {
+        "odoo_model": "res.partner",
+        "canonical_collection": "contacts",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_contact",
+        "domain": [["is_company", "=", False], ["parent_id", "!=", False]],
+        "default_fields": ["id", "name", "email", "phone", "mobile", "parent_id",
+            "function", "title", "create_date", "write_date", "active"],
+    },
+    "activities": {
+        "odoo_model": "mail.activity",
+        "canonical_collection": "activities",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_activity",
+        "default_fields": ["id", "res_id", "res_model_id", "activity_type_id", "summary",
+            "date_deadline", "user_id", "state", "create_date", "write_date"],
+    },
 }
 
 # Field cache per model (refreshed every hour)
