@@ -30,7 +30,7 @@ class TestAuthentication:
         })
         assert res.status_code == 200, f"Admin login failed: {res.status_code}"
         data = res.json()
-        assert 'token' in data, "No token in response"
+        assert 'access_token' in data or 'token' in data, "No token in response"
         assert 'user' in data, "No user in response"
         print(f"✅ Admin login: {data['user'].get('name', data['user'].get('email'))}")
     
@@ -42,7 +42,7 @@ class TestAuthentication:
         })
         assert res.status_code == 200, f"Sales Rep login failed: {res.status_code}"
         data = res.json()
-        assert 'token' in data, "No token in response"
+        assert 'access_token' in data or 'token' in data, "No token in response"
         print(f"✅ Sales Rep login: {data['user'].get('name', data['user'].get('email'))}")
     
     def test_product_director_login(self):
@@ -53,7 +53,7 @@ class TestAuthentication:
         })
         assert res.status_code == 200, f"Product Director login failed: {res.status_code}"
         data = res.json()
-        assert 'token' in data, "No token in response"
+        assert 'access_token' in data or 'token' in data, "No token in response"
         print(f"✅ Product Director login: {data['user'].get('name', data['user'].get('email'))}")
 
 
@@ -66,7 +66,8 @@ def admin_headers():
     })
     if res.status_code != 200:
         pytest.skip("Admin login failed")
-    token = res.json().get('token')
+    data = res.json()
+    token = data.get('access_token') or data.get('token')
     return {'Authorization': f'Bearer {token}'}
 
 
@@ -79,7 +80,8 @@ def sales_rep_headers():
     })
     if res.status_code != 200:
         pytest.skip("Sales Rep login failed")
-    token = res.json().get('token')
+    data = res.json()
+    token = data.get('access_token') or data.get('token')
     return {'Authorization': f'Bearer {token}'}
 
 
