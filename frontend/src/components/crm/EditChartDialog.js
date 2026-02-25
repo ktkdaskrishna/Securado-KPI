@@ -99,7 +99,8 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
   const [form, setForm] = useState({
     name: '', collection: 'opportunities', aggregation: 'count', field: '',
     filters: '{}', group_by: '', display_type: 'number', color: '#1e3a5f',
-    icon: 'Target', size: 'small', year_filter: true, cache_ttl: 60, description: ''
+    icon: 'Target', size: 'small', year_filter: true, date_filter_field: '',
+    sort_by: '', sort_order: 'desc', cache_ttl: 60, description: ''
   });
   const [preview, setPreview] = useState(null);
   const [previewing, setPreviewing] = useState(false);
@@ -115,6 +116,8 @@ export default function EditChartDialog({ open, onClose, card, onSave }) {
         group_by: card.group_by || '', display_type: card.display_type || 'number',
         color: card.color || '#1e3a5f', icon: card.icon || 'Target',
         size: card.size || 'small', year_filter: card.year_filter !== false,
+        date_filter_field: card.date_filter_field || '',
+        sort_by: card.sort_by || '', sort_order: card.sort_order || 'desc',
         cache_ttl: card.cache_ttl || 60, description: card.description || ''
       });
       setPreview(null);
