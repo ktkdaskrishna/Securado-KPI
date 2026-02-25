@@ -170,6 +170,7 @@ class CardConfig(BaseModel):
     icon: Optional[str] = "Target"
     size: str = "small"  # small (1x1), medium (2x1), large (2x2)
     year_filter: bool = True  # apply year filter
+    date_filter_field: Optional[str] = None  # which date field to use for year filtering
     cache_ttl: int = 60
 
 
