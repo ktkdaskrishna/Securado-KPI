@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { targetAPI } from '../../lib/api';
+import { targetAPI, analyticsAPI } from '../../lib/api';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
-import { Separator } from '../ui/separator';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, AccountFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
 import {
   Target, TrendingUp, DollarSign, Trophy, AlertTriangle, Building2,
-  Users, BarChart2, Activity, RefreshCw, Layers, Calendar,
-  Search, Eye, Info, ExternalLink, ArrowRight, Filter, X, Play, Pause, Download
+  Users, BarChart2, Activity, RefreshCw, Layers,
+  Search, ExternalLink, ArrowRight, X, Play, Pause, Download
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
 import { toast } from 'sonner';
