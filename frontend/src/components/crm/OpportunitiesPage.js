@@ -1221,16 +1221,19 @@ export function OpportunitiesPage() {
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [], productDirectors: [], solutionCategories: [] });
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
 
-  // Initialize filters from URL params
-  const getInitialFilters = () => ({
-    year: searchParams.get('year') || null,
-    quarter: searchParams.get('quarter') || null,
-    salesRep: searchParams.get('salesRep') || null,
-    account: searchParams.get('account') || null,
-    stage: searchParams.get('stage') || null,
-    productDirector: searchParams.get('productDirector') || null,
-    solutionCategory: searchParams.get('solutionCategory') || null
-  });
+  // Initialize filters from URL params (including dashboard navigation)
+  const getInitialFilters = () => {
+    const stageExclude = searchParams.get('stage_exclude');
+    return {
+      year: searchParams.get('year') || null,
+      quarter: searchParams.get('quarter') || null,
+      salesRep: searchParams.get('salesRep') || null,
+      account: searchParams.get('account') || null,
+      stage: searchParams.get('stage') || (stageExclude ? `exclude:${stageExclude}` : null),
+      productDirector: searchParams.get('productDirector') || null,
+      solutionCategory: searchParams.get('solutionCategory') || null
+    };
+  };
 
   // Contextual filters for Opportunities page
   const [filters, setFilters] = useState(getInitialFilters);
