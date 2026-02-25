@@ -373,6 +373,10 @@ async def get_rep_performance(
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
+    # Apply year filter at DB level (using date_last_stage_update like Odoo)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
+    
     # Get opportunities only (not leads)
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
