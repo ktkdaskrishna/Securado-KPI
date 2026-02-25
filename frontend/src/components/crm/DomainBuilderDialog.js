@@ -271,7 +271,32 @@ export default function DomainBuilderDialog({ open, onClose, collection, current
 
                   {/* Value */}
                   {!isNoValue && (
-                    fieldDef?.type === 'select' ? (
+                    ['in', 'not_in'].includes(rule.operator) && fieldDef?.type === 'select' ? (
+                      /* Multi-select tags for in/not_in with select fields (Odoo-style) */
+                      <div className="flex-1 flex flex-wrap items-center gap-1 min-h-[36px] p-1.5 bg-white border rounded-md">
+                        {(rule.value ? rule.value.split(',').map(v => v.trim()).filter(Boolean) : []).map((tag, ti) => (
+                          <span key={ti} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 border text-xs font-medium text-gray-700">
+                            {tag}
+                            <button type="button" onClick={() => {
+                              const tags = rule.value.split(',').map(v => v.trim()).filter(v => v !== tag);
+                              updateRule(idx, 'value', tags.join(', '));
+                            }} className="hover:text-red-500 ml-0.5">&times;</button>
+                          </span>
+                        ))}
+                        <Select value="_add" onValueChange={v => {
+                          if (v === '_add') return;
+                          const current = rule.value ? rule.value.split(',').map(x => x.trim()).filter(Boolean) : [];
+                          if (!current.includes(v)) updateRule(idx, 'value', [...current, v].join(', '));
+                        }}>
+                          <SelectTrigger className="w-auto h-7 text-xs border-dashed px-2 min-w-[80px]"><SelectValue placeholder="+ Add" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_add" disabled>Select value...</SelectItem>
+                            {(fieldDef.options || []).filter(opt => !(rule.value || '').split(',').map(v => v.trim()).includes(opt))
+                              .map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : fieldDef?.type === 'select' ? (
                       <Select value={rule.value || '_empty'} onValueChange={v => updateRule(idx, 'value', v === '_empty' ? '' : v)}>
                         <SelectTrigger className="flex-1 h-9 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
                         <SelectContent>
