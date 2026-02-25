@@ -268,30 +268,34 @@ class TestAnalytics:
         response = requests.get(f"{BASE_URL}/api/analytics/rep-performance?year=2026", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        print(f"✅ Rep performance: {len(data)} reps")
+        # Response is an object with 'reps' array
+        assert "reps" in data
+        assert isinstance(data["reps"], list)
+        print(f"✅ Rep performance: {len(data['reps'])} reps, top performer: {data.get('top_performer', 'N/A')}")
 
 
-class TestProductManagers:
-    """Test product managers and solution categories endpoints"""
+class TestProductDirectorsAndCategories:
+    """Test product directors and solution categories from filter-options"""
     
-    def test_get_product_managers(self, admin_token):
-        """GET /api/targets/product-managers returns PMs"""
+    def test_get_product_directors_from_filter(self, admin_token):
+        """Product directors are in filter-options endpoint"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        response = requests.get(f"{BASE_URL}/api/targets/product-managers", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/card-builder/filter-options", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        print(f"✅ Product managers: {len(data)}")
+        assert "product_directors" in data
+        assert isinstance(data["product_directors"], list)
+        print(f"✅ Product directors: {len(data['product_directors'])}")
     
-    def test_get_solution_categories(self, admin_token):
-        """GET /api/targets/solution-categories returns categories"""
+    def test_get_solution_categories_from_filter(self, admin_token):
+        """Solution categories are in filter-options endpoint"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        response = requests.get(f"{BASE_URL}/api/targets/solution-categories", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/card-builder/filter-options", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        print(f"✅ Solution categories: {len(data)}")
+        assert "solution_categories" in data
+        assert isinstance(data["solution_categories"], list)
+        print(f"✅ Solution categories: {len(data['solution_categories'])}")
 
 
 if __name__ == "__main__":
