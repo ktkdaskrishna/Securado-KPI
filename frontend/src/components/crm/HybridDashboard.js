@@ -413,18 +413,12 @@ export default function HybridDashboard() {
     <div className="space-y-4" data-testid="dashboard-page">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900" data-testid="dashboard-title">{templateName}</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900" data-testid="dashboard-title">{templateName}</h1>
+          {blocks.length > 0 && <p className="text-sm text-muted-foreground">Showing filtered data ({blocks.filter(b => ['number','win_rate'].includes(b.card?.display_type)).length} KPIs, {blocks.filter(b => !['number','win_rate'].includes(b.card?.display_type)).length} charts)</p>}
+        </div>
         <div className="flex items-center gap-2">
-          <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-32 h-9 text-sm" data-testid="year-select"><Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" /><SelectValue /></SelectTrigger>
-            <SelectContent>{DATE_PRESETS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
-          </Select>
-          <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? "bg-[#800000] hover:bg-[#9a1919] text-white" : ""} data-testid="filter-toggle-btn">
-            <Filter className="h-4 w-4 mr-1" /> Filters
-            {activeFilterCount > 0 && <Badge className="ml-1.5 bg-white/20 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">{activeFilterCount}</Badge>}
-          </Button>
-          <Button variant="outline" size="sm" onClick={loadDashboard} data-testid="refresh-btn"><RefreshCw className="h-4 w-4" /></Button>
+          <Button variant="outline" size="sm" onClick={loadDashboard} data-testid="refresh-btn"><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>
           <Button variant={slideshowActive ? "default" : "outline"} size="sm" data-testid="slideshow-btn"
             className={slideshowActive ? "bg-[#800000] hover:bg-[#9a1919] text-white" : ""}
             onClick={async () => {
@@ -434,74 +428,24 @@ export default function HybridDashboard() {
             {slideshowActive ? <><Pause className="h-4 w-4 mr-1" /> Stop</> : <><Play className="h-4 w-4 mr-1" /> Slideshow</>}
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportPDF} data-testid="export-pdf-btn">
-            <Download className="h-4 w-4 mr-1" /> PDF
+            <Download className="h-4 w-4 mr-1" /> Export Excel
           </Button>
         </div>
       </div>
 
-      {/* Global Filter Panel */}
-      {showFilters && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm" data-testid="global-filter-panel">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-gray-700">Global Filters</span>
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-gray-500 h-7">
-                <X className="h-3 w-3 mr-1" /> Clear all
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Salesperson</label>
-              <Select value={filters.salesperson || '_all'} onValueChange={v => setFilters(f => ({ ...f, salesperson: v === '_all' ? '' : v }))}>
-                <SelectTrigger className="h-9 text-sm" data-testid="filter-salesperson"><SelectValue placeholder="All Salespersons" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All Salespersons</SelectItem>
-                  {filterOptions.salespersons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Product Director</label>
-              <Select value={filters.product_director || '_all'} onValueChange={v => setFilters(f => ({ ...f, product_director: v === '_all' ? '' : v }))}>
-                <SelectTrigger className="h-9 text-sm" data-testid="filter-pd"><SelectValue placeholder="All Product Directors" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All Product Directors</SelectItem>
-                  {filterOptions.product_directors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">Solution Category</label>
-              <Select value={filters.solution_category || '_all'} onValueChange={v => setFilters(f => ({ ...f, solution_category: v === '_all' ? '' : v }))}>
-                <SelectTrigger className="h-9 text-sm" data-testid="filter-category"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All Categories</SelectItem>
-                  {filterOptions.solution_categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {activeFilterCount > 0 && (
-            <div className="flex gap-1.5 mt-3 pt-3 border-t">
-              {filters.salesperson && <Badge className="bg-blue-50 text-blue-700 border-blue-200" variant="outline">{filters.salesperson} <button onClick={() => setFilters(f => ({...f, salesperson: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
-              {filters.product_director && <Badge className="bg-purple-50 text-purple-700 border-purple-200" variant="outline">{filters.product_director} <button onClick={() => setFilters(f => ({...f, product_director: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
-              {filters.solution_category && <Badge className="bg-green-50 text-green-700 border-green-200" variant="outline">{filters.solution_category} <button onClick={() => setFilters(f => ({...f, solution_category: ''}))} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Active Filter Status */}
-      {(year || activeFilterCount > 0) && !showFilters && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border" data-testid="filter-status">
-          <Filter className="h-3.5 w-3.5 text-gray-400" />
-          <span>Showing data for <strong className="text-gray-900">{year}</strong></span>
-          {filters.salesperson && <><span className="text-gray-300">|</span><span>Salesperson: <strong className="text-gray-900">{filters.salesperson}</strong></span></>}
-          {filters.product_director && <><span className="text-gray-300">|</span><span>PD: <strong className="text-gray-900">{filters.product_director}</strong></span></>}
-          {filters.solution_category && <><span className="text-gray-300">|</span><span>Category: <strong className="text-gray-900">{filters.solution_category}</strong></span></>}
-        </div>
-      )}
+      {/* Standard Inline Filter Bar (same as Opportunities page) */}
+      <PageFilters
+        title="Dashboard Filters"
+        onReset={resetFilters}
+        activeFilters={[filters.year, filters.quarter, filters.salesRep, filters.stage, filters.productDirector, filters.solutionCategory]}
+      >
+        <YearFilter value={filters.year} onChange={v => updateFilter('year', v)} years={filterOptions.years} />
+        <QuarterFilter value={filters.quarter} onChange={v => updateFilter('quarter', v)} />
+        <SalesRepFilter value={filters.salesRep} onChange={v => updateFilter('salesRep', v)} salesReps={filterOptions.salesReps} />
+        <StageFilter value={filters.stage} onChange={v => updateFilter('stage', v)} stages={filterOptions.stages} />
+        <ProductDirectorFilter value={filters.productDirector} onChange={v => updateFilter('productDirector', v)} productDirectors={filterOptions.productDirectors} />
+        <SolutionCategoryFilter value={filters.solutionCategory} onChange={v => updateFilter('solutionCategory', v)} categories={filterOptions.solutionCategories} />
+      </PageFilters>
 
       {blocks.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
