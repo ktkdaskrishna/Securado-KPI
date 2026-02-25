@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 const ICONS = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart2, Activity };
 const CHART_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 const AVATAR_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+
+const CARD_COLORS = {
   '#1e3a5f': { muted: '#8bb4e0', iconBg: 'rgba(255,255,255,0.12)' },
   '#8b1a1a': { muted: '#e8a0a0', iconBg: 'rgba(255,255,255,0.12)' },
   '#1a6b4a': { muted: '#8fd4b4', iconBg: 'rgba(255,255,255,0.12)' },
