@@ -289,7 +289,7 @@ async def get_conversion_funnel(
     
     # Add year filter to DB query
     if year:
-        query["create_date"] = {"$regex": f"^{year}"}
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     
     # Get all opportunities (include leads for proper funnel analysis)
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
@@ -466,11 +466,11 @@ async def get_team_performance(
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     if year:
-        query["create_date"] = {"$regex": f"^{year}"}
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     elif not quarter:
         # Default to current year
         from datetime import datetime
-        query["create_date"] = {"$regex": f"^{datetime.now().year}"}
+        query["date_last_stage_update"] = {"$regex": f"^{datetime.now().year}"}
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
@@ -592,10 +592,10 @@ async def get_account_health(
     query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     if year:
-        query["create_date"] = {"$regex": f"^{year}"}
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     elif not quarter:
         from datetime import datetime
-        query["create_date"] = {"$regex": f"^{datetime.now().year}"}
+        query["date_last_stage_update"] = {"$regex": f"^{datetime.now().year}"}
     
     account_query = {"org_id": org_id, "deleted": {"$ne": True}}
     account_query.update(rbac_filter)
