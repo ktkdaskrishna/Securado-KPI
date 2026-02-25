@@ -1278,7 +1278,7 @@ export function OpportunitiesPage() {
       setFilterOptions({
         years: fData.years || [],
         salesReps: fData.sales_reps || fData.salesReps || [],
-        accounts: fData.accounts || [],
+        accounts: (fData.accounts || []).map(a => typeof a === 'object' ? a.name : a).filter(Boolean),
         stages: fData.stages || [],
         productDirectors: pms.map(p => p.name),
         solutionCategories: cats.map(c => c.name),
