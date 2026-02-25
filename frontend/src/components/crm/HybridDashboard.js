@@ -175,9 +175,15 @@ function KpiCard({ card, data, prevPeriod, onDrillDown, onNavigate }) {
 }
 
 // ============ CHART CARD (Read-only, shadcn charts) ============
-function ChartCard({ card, data, onDrillDown, onNavigate }) {
+function ChartCard({ card, data, onDrillDown, onNavigate, onItemNavigate }) {
   const groups = data?.groups || [];
   if (!card) return null;
+
+  // Navigate with specific group filter (e.g., click "Nabisaheb" → opportunities?salesRep=Nabisaheb)
+  const handleItemClick = (groupLabel) => {
+    if (!onItemNavigate || !card || !groupLabel) return;
+    onItemNavigate(card, groupLabel);
+  };
 
   return (
     <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -194,12 +200,13 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
           const cfg = {}; groups.slice(0, 12).forEach((g, i) => { cfg[g.label || `i${i}`] = { label: g.label, color: CHART_COLORS[i % CHART_COLORS.length] }; }); cfg[dk] = { label: card.name };
           return (
             <ChartContainer config={cfg} className="h-full w-full">
-              <BarChart accessibilityLayer data={groups.slice(0, 12)} margin={{ left: -10, bottom: 20, right: 10 }}>
+              <BarChart accessibilityLayer data={groups.slice(0, 12)} margin={{ left: -10, bottom: 20, right: 10 }}
+                onClick={(e) => { if (e?.activeLabel) handleItemClick(e.activeLabel); }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                <Bar dataKey={dk} radius={[6, 6, 0, 0]}>{groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}</Bar>
+                <ChartTooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<ChartTooltipContent />} />
+                <Bar dataKey={dk} radius={[6, 6, 0, 0]} className="cursor-pointer">{groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}</Bar>
               </BarChart>
             </ChartContainer>);
         })()}
@@ -210,11 +217,18 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
             <div className="flex items-center gap-3 h-full">
               <ChartContainer config={cfg} className="h-full w-1/2">
                 <PieChart><ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                  <Pie data={groups.slice(0, 8)} dataKey={dk} nameKey="label" cx="50%" cy="50%" innerRadius="30%" outerRadius="65%" paddingAngle={2}>{groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}</Pie>
+                  <Pie data={groups.slice(0, 8)} dataKey={dk} nameKey="label" cx="50%" cy="50%" innerRadius="30%" outerRadius="65%" paddingAngle={2}
+                    onClick={(_, idx) => handleItemClick(groups[idx]?.label)}>
+                    {groups.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} className="cursor-pointer" />)}
+                  </Pie>
                 </PieChart>
               </ChartContainer>
               <div className="space-y-1 flex-1 overflow-auto">{groups.slice(0, 6).map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-xs"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} /><span className="text-gray-500 truncate flex-1">{g.label || '-'}</span><span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span></div>))}</div>
+                <div key={i} className="flex items-center gap-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5" onClick={() => handleItemClick(g.label)}>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                  <span className="text-gray-500 truncate flex-1">{g.label || '-'}</span>
+                  <span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span>
+                </div>))}</div>
             </div>);
         })()}
         {card.display_type === 'area' && (() => {
@@ -246,12 +260,17 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
                 </RadialBarChart>
               </ChartContainer>
               <div className="space-y-1 flex-1 overflow-auto">{radialData.map((g, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-xs"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: g.fill }} /><span className="text-gray-500 truncate flex-1">{g.label || '-'}</span><span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span></div>))}</div>
+                <div key={i} className="flex items-center gap-1.5 text-xs cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5" onClick={() => handleItemClick(g.label)}>
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: g.fill }} />
+                  <span className="text-gray-500 truncate flex-1">{g.label || '-'}</span>
+                  <span className="font-mono font-semibold text-gray-700">{(g.total || g.count || 0).toLocaleString()}</span>
+                </div>))}</div>
             </div>);
         })()}
         {card.display_type === 'leaderboard' && (
           <div className="px-3 space-y-1 overflow-auto h-full">{groups.slice(0, 10).map((g, idx) => (
-            <div key={idx} className="flex items-center gap-2.5 hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors">
+            <div key={idx} className="flex items-center gap-2.5 hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors cursor-pointer"
+              onClick={() => handleItemClick(g.label)} data-testid={`leaderboard-item-${idx}`}>
               <span className="text-xs font-bold text-gray-400 w-5 text-center shrink-0">{idx + 1}</span>
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
                 {(g.label || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>
@@ -261,13 +280,17 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
         )}
         {card.display_type === 'progress' && (
           <div className="px-2 space-y-2 overflow-auto h-full">{(() => { const mx = Math.max(...groups.map(g => g.total || g.count || 0), 1);
-            return groups.slice(0, 8).map((g, i) => (<div key={i}><div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600 truncate flex-1">{g.label || '-'}</span><span className="font-semibold text-gray-900 ml-2">OMR {(g.total || 0).toLocaleString()}</span></div>
+            return groups.slice(0, 8).map((g, i) => (<div key={i} className="cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5" onClick={() => handleItemClick(g.label)}>
+              <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600 truncate flex-1">{g.label || '-'}</span><span className="font-semibold text-gray-900 ml-2">OMR {(g.total || 0).toLocaleString()}</span></div>
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{ width: `${((g.total || g.count || 0) / mx) * 100}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} /></div></div>));
           })()}</div>
         )}
         {card.display_type === 'table' && (
           <div className="px-2 space-y-0.5 overflow-auto h-full">{(data?.records || groups || []).slice(0, 10).map((r, i) => (
-            <div key={i} className="flex justify-between items-center py-1.5 px-2 rounded hover:bg-gray-50 text-xs"><span className="text-gray-600 truncate flex-1">{r.name || r.label || '-'}</span><span className="font-mono font-semibold text-gray-900 ml-2">OMR {(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</span></div>))}</div>
+            <div key={i} className="flex justify-between items-center py-1.5 px-2 rounded hover:bg-gray-50 text-xs cursor-pointer" onClick={() => handleItemClick(r.name || r.label)}>
+              <span className="text-gray-600 truncate flex-1">{r.name || r.label || '-'}</span>
+              <span className="font-mono font-semibold text-gray-900 ml-2">OMR {(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</span>
+            </div>))}</div>
         )}
       </div>
     </div>
