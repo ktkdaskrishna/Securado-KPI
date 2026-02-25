@@ -285,32 +285,31 @@ export default function HybridDashboard() {
   const [loading, setLoading] = useState(true);
   const [blocks, setBlocks] = useState([]);
   const [templateName, setTemplateName] = useState('');
-  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [drillDown, setDrillDown] = useState({ open: false, card: null });
-  // Global filters
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({ salespersons: [], product_directors: [], solution_categories: [] });
-  const [filters, setFilters] = useState({ salesperson: '', product_director: '', solution_category: '' });
+  // Standard filters (same as Opportunities page)
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [], productDirectors: [], solutionCategories: [] });
+  const [filters, setFilters] = useState({ year: String(new Date().getFullYear()), quarter: null, salesRep: null, stage: null, productDirector: null, solutionCategory: null });
   // Slideshow mode
   const [slideshowActive, setSlideshowActive] = useState(false);
   const [slideshowTemplates, setSlideshowTemplates] = useState([]);
   const [slideshowIdx, setSlideshowIdx] = useState(0);
   const navigate = useNavigate();
 
-  const activeFilterCount = Object.values(filters).filter(v => v).length;
+  const updateFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }));
+  const resetFilters = () => setFilters({ year: String(new Date().getFullYear()), quarter: null, salesRep: null, stage: null, productDirector: null, solutionCategory: null });
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
       const filterParams = {};
-      if (filters.salesperson) filterParams.salesperson = filters.salesperson;
-      if (filters.product_director) filterParams.product_director = filters.product_director;
-      if (filters.solution_category) filterParams.solution_category = filters.solution_category;
-      const r = await targetAPI.getMyDashboard(year, filterParams);
+      if (filters.salesRep) filterParams.salesperson = filters.salesRep;
+      if (filters.productDirector) filterParams.product_director = filters.productDirector;
+      if (filters.solutionCategory) filterParams.solution_category = filters.solutionCategory;
+      const r = await targetAPI.getMyDashboard(filters.year || String(new Date().getFullYear()), filterParams);
       setBlocks(r.data.blocks || []);
       setTemplateName(r.data.template?.name || 'Dashboard');
     } catch {} finally { setLoading(false); }
-  }, [year, filters]);
+  }, [filters]);
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
