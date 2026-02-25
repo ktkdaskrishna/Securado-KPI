@@ -159,11 +159,15 @@ async def execute_query(query_config: dict) -> dict:
             else:
                 query[k] = v
     
-    # Year filter (Odoo-style: Won/Lost by date_last_stage_update, Open by create_date)
+    # Year filter — Odoo uses date_last_stage_update for ALL dashboard filtering
+    # This matches how Odoo's dashboard works: showing records active/updated in that year
     if year:
-        stage_val = filters.get("stage", "")
-        if stage_val in ["Won", "Lost"]:
+        if collection == "opportunities":
             query["date_last_stage_update"] = {"$regex": f"^{year}"}
+        elif collection == "invoices":
+            query["invoice_date"] = {"$regex": f"^{year}"}
+        elif collection == "activities":
+            query["date_deadline"] = {"$regex": f"^{year}"}
         else:
             query["create_date"] = {"$regex": f"^{year}"}
     
