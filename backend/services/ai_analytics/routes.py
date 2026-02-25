@@ -192,7 +192,7 @@ async def get_analytics_overview(
             s = str(o.get("stage", "")).lower()
             return s == "won" or s == "lost" or "closed" in s
         
-        open_filtered = [o for o in all_opps if not is_won_or_lost(o) and str(o.get("create_date", "")).startswith(year)]
+        open_filtered = [o for o in all_opps if not is_won_or_lost(o) and str(o.get("date_last_stage_update", "")).startswith(year)]
         closed_filtered = [o for o in all_opps if is_won_or_lost(o) and str(o.get("date_last_stage_update") or "").startswith(year)]
         all_opps = open_filtered + closed_filtered
     
