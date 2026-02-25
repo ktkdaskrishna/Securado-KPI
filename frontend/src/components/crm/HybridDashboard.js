@@ -313,10 +313,27 @@ export default function HybridDashboard() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  // Load filter options once
+  // Load filter options (same API as Opportunities page for consistency)
   useEffect(() => {
     (async () => {
-      try { const r = await targetAPI.getFilterOptions(); setFilterOptions(r.data); } catch {}
+      try {
+        const [fRes, pmRes, catRes] = await Promise.allSettled([
+          analyticsAPI.getFilters(),
+          targetAPI.getProductManagers(),
+          targetAPI.getSolutionCategories(),
+        ]);
+        const fData = fRes.status === 'fulfilled' ? fRes.value.data : {};
+        const pms = pmRes.status === 'fulfilled' ? pmRes.value.data : [];
+        const cats = catRes.status === 'fulfilled' ? catRes.value.data : [];
+        setFilterOptions({
+          years: fData.years || [],
+          salesReps: fData.sales_reps || fData.salesReps || [],
+          accounts: (fData.accounts || []).map(a => typeof a === 'object' ? a.name : a).filter(Boolean),
+          stages: fData.stages || [],
+          productDirectors: pms.map(p => p.name),
+          solutionCategories: cats.map(c => c.name),
+        });
+      } catch {}
     })();
   }, []);
 
