@@ -380,16 +380,13 @@ export default function HybridDashboard() {
   const handleCardNavigate = (card) => {
     if (!card) return;
     const params = new URLSearchParams();
-    // Pass year filter
     if (filters.year) params.set('year', filters.year);
-    // Pass card-specific stage filters
     if (card.filters) {
       const f = typeof card.filters === 'string' ? JSON.parse(card.filters) : card.filters;
       if (f.stage === 'Won') params.set('stage', 'Won');
       else if (f.stage === 'Lost') params.set('stage', 'Lost');
       else if (f.stage?.$nin) params.set('stage_exclude', f.stage.$nin.join(','));
     }
-    // Pass global filters
     if (filters.salesRep) params.set('salesRep', filters.salesRep);
     if (filters.productDirector) params.set('productDirector', filters.productDirector);
     if (filters.solutionCategory) params.set('solutionCategory', filters.solutionCategory);
@@ -398,6 +395,30 @@ export default function HybridDashboard() {
     else if (card.collection === 'invoices') navigate('/invoices');
     else if (card.collection === 'accounts') navigate('/accounts');
     else if (card.collection === 'activities') navigate('/activities');
+  };
+
+  // Navigate with a specific item filter (e.g., click Nabisaheb → /opportunities?salesRep=Nabisaheb&stage=Won)
+  const handleItemNavigate = (card, groupLabel) => {
+    if (!card || !groupLabel) return;
+    const params = new URLSearchParams();
+    if (filters.year) params.set('year', filters.year);
+    // Map the card's group_by field to the correct URL filter parameter
+    const groupBy = card.group_by;
+    if (groupBy === 'owner_name') params.set('salesRep', groupLabel);
+    else if (groupBy === 'product_manager') params.set('productDirector', groupLabel);
+    else if (groupBy === 'solution_category') params.set('solutionCategory', groupLabel);
+    else if (groupBy === 'stage') params.set('stage', groupLabel);
+    else if (groupBy === 'account_name') params.set('account', groupLabel);
+    else if (groupBy === 'team_name') params.set('team', groupLabel);
+    // Also carry card-level stage filter (e.g., Sales Leaderboard is Won only)
+    if (card.filters) {
+      const f = typeof card.filters === 'string' ? JSON.parse(card.filters) : card.filters;
+      if (f.stage === 'Won' && groupBy !== 'stage') params.set('stage', 'Won');
+      else if (f.stage === 'Lost' && groupBy !== 'stage') params.set('stage', 'Lost');
+    }
+    if (card.collection === 'opportunities') navigate(`/opportunities?${params.toString()}`);
+    else if (card.collection === 'invoices') navigate('/invoices');
+    else if (card.collection === 'accounts') navigate('/accounts');
   };
 
   const isKpi = (b) => ['number', 'win_rate'].includes(b.card?.display_type);
