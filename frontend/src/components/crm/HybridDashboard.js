@@ -477,7 +477,7 @@ export default function HybridDashboard() {
         </>
       )}
 
-      <DrillDownPanel open={drillDown.open} onClose={() => setDrillDown({ open: false, card: null })} card={drillDown.card} year={year} onNavigate={handleCardNavigate} />
+      <DrillDownPanel open={drillDown.open} onClose={() => setDrillDown({ open: false, card: null })} card={drillDown.card} year={filters.year} onNavigate={handleCardNavigate} />
     </div>
   );
 }
