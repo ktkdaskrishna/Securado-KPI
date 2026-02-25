@@ -357,14 +357,19 @@ export default function HybridDashboard() {
   const handleCardNavigate = (card) => {
     if (!card) return;
     const params = new URLSearchParams();
+    // Pass year filter
+    if (filters.year) params.set('year', filters.year);
+    // Pass card-specific stage filters
     if (card.filters) {
       const f = typeof card.filters === 'string' ? JSON.parse(card.filters) : card.filters;
       if (f.stage === 'Won') params.set('stage', 'Won');
       else if (f.stage === 'Lost') params.set('stage', 'Lost');
       else if (f.stage?.$nin) params.set('stage_exclude', f.stage.$nin.join(','));
     }
-    if (filters.salesperson) params.set('salesperson', filters.salesperson);
-    if (filters.product_director) params.set('product_director', filters.product_director);
+    // Pass global filters
+    if (filters.salesRep) params.set('salesRep', filters.salesRep);
+    if (filters.productDirector) params.set('productDirector', filters.productDirector);
+    if (filters.solutionCategory) params.set('solutionCategory', filters.solutionCategory);
 
     if (card.collection === 'opportunities') navigate(`/opportunities?${params.toString()}`);
     else if (card.collection === 'invoices') navigate('/invoices');
