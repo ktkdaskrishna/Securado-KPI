@@ -257,13 +257,13 @@ function ChartCard({ card, data, onDrillDown, onNavigate }) {
             </div>);
         })()}
         {card.display_type === 'leaderboard' && (
-          <div className="px-2 space-y-1.5 overflow-auto h-full">{groups.slice(0, 10).map((g, idx) => (
-            <div key={idx} className="flex items-center gap-2 hover:bg-gray-50 rounded px-2 py-1">
-              <span className="text-xs font-bold text-gray-400 w-4">{idx + 1}</span>
+          <div className="px-3 space-y-1 overflow-auto h-full">{groups.slice(0, 10).map((g, idx) => (
+            <div key={idx} className="flex items-center gap-2.5 hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors">
+              <span className="text-xs font-bold text-gray-400 w-5 text-center shrink-0">{idx + 1}</span>
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>
                 {(g.label || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>
-              <span className="flex-1 text-xs font-medium text-gray-700 truncate">{g.label || '-'}</span>
-              <span className="text-xs font-bold text-[#800000]">OMR {(g.total || 0).toLocaleString()}</span>
+              <span className="flex-1 text-xs font-medium text-gray-700 truncate min-w-0">{g.label || '-'}</span>
+              <span className="text-xs font-bold text-[#800000] whitespace-nowrap shrink-0 tabular-nums">OMR {(g.total || 0).toLocaleString()}</span>
             </div>))}</div>
         )}
         {card.display_type === 'progress' && (
