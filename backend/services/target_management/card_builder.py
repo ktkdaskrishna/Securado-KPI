@@ -658,8 +658,8 @@ async def render_template(
             "group_by": card.get("group_by"),
             "year": year if card.get("year_filter") else None,
             "cache_ttl": card.get("cache_ttl", 60),
-        "sort_by": card.get("sort_by"),
-        "sort_order": card.get("sort_order", "desc"),
+            "sort_by": card.get("sort_by"),
+            "sort_order": card.get("sort_order", "desc"),
         }
         
         try:
