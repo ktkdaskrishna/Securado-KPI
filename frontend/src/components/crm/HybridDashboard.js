@@ -357,7 +357,7 @@ export default function HybridDashboard() {
       } catch {}
     }, 10000); // 10 seconds per template
     return () => clearInterval(interval);
-  }, [slideshowActive, slideshowIdx, slideshowTemplates, year]);
+  }, [slideshowActive, slideshowIdx, slideshowTemplates, filters.year]);
 
 
   const clearFilters = () => setFilters({ salesperson: '', product_director: '', solution_category: '' });
