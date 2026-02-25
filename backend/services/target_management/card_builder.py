@@ -171,6 +171,8 @@ class CardConfig(BaseModel):
     size: str = "small"  # small (1x1), medium (2x1), large (2x2)
     year_filter: bool = True  # apply year filter
     date_filter_field: Optional[str] = None  # which date field to use for year filtering
+    sort_by: Optional[str] = None  # field to sort grouped data by (count, total, avg)
+    sort_order: str = "desc"  # desc or asc
     cache_ttl: int = 60
 
 
