@@ -119,7 +119,7 @@ export function AccountFilter({ value, onChange, accounts }) {
         >
           <Building2 className="h-3 w-3 mr-1 shrink-0" />
           <span className="truncate">
-            {value || "All Accounts"}
+            {value ? (typeof value === 'object' ? value.name || value.id : value) : "All Accounts"}
           </span>
           <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
         </Button>
