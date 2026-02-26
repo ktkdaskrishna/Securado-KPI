@@ -77,7 +77,6 @@ ALL_PERMISSIONS = [
     # Admin - Departments
     "view_departments",
     "manage_departments",
-    "delete_departments",
     
     # Admin - Config
     "view_config",
