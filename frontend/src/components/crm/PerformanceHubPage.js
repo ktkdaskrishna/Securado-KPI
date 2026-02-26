@@ -98,7 +98,9 @@ export default function PerformanceHubPage() {
       const calls = [targetAPI.getMyData(), targetAPI.getAlerts(),
         targetAPI.getSolutionCategories(), targetAPI.getSalespersons(), targetAPI.getActivityTypes()];
       if (canManage) {
-        const planParams = pmFilter && pmFilter !== 'all' ? { product_manager: pmFilter } : {};
+        const planParams = {};
+        if (pmFilter && pmFilter !== 'all') planParams.product_manager = pmFilter;
+        if (yearFilter && yearFilter !== 'all') planParams.year = yearFilter;
         calls.push(
           targetAPI.listRevenuePlans(planParams),
           targetAPI.getActualsByPM(pmFilter && pmFilter !== 'all' ? { product_manager: pmFilter } : {}),
