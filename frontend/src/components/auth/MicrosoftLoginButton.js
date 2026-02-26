@@ -114,8 +114,11 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   useEffect(() => {
     const initMsal = async () => {
       try {
-        // Fetch Microsoft config from backend
-        const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`);
+        // Fetch Microsoft config from backend with timeout
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`, { signal: controller.signal });
+        clearTimeout(timeout);
         const config = await configResponse.json();
         
         if (config.clientId && config.tenantId) {
@@ -127,22 +130,16 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
           setConfigLoaded(true);
           console.log('[MSAL] Initialized successfully');
           
-          // IMPORTANT: Handle redirect response IMMEDIATELY after init
-          // This catches the return from Microsoft redirect
+          // Handle redirect response
           try {
             const response = await pca.handleRedirectPromise();
             if (response && response.accessToken) {
               console.log('[MSAL] Got redirect response with token, completing login...');
               setMsLoading(true);
               await completeMicrosoftLoginStatic(response);
-            } else if (response) {
-              console.log('[MSAL] Got redirect response but no token:', response);
             }
           } catch (redirectErr) {
-            if (redirectErr.errorCode === 'no_token_request_cache_error') {
-              // This is normal on fresh page load
-              console.log('[MSAL] No pending redirect (normal)');
-            } else {
+            if (redirectErr.errorCode !== 'no_token_request_cache_error') {
               console.error('[MSAL] Redirect handling error:', redirectErr);
             }
           }
@@ -151,7 +148,7 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
           setConfigLoaded(false);
         }
       } catch (err) {
-        console.error('[MSAL] Failed to initialize:', err);
+        console.error('[MSAL] Failed to initialize:', err.name === 'AbortError' ? 'Timeout' : err);
         setConfigLoaded(false);
       }
     };
