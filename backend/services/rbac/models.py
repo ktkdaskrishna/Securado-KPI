@@ -147,11 +147,6 @@ DEFAULT_PERMISSIONS = [
     {"name": "view_runs", "resource": "runs", "action": "view", "description": "View run history"},
     {"name": "cancel_runs", "resource": "runs", "action": "cancel", "description": "Cancel running pipelines"},
     
-    # DLQ
-    {"name": "view_dlq", "resource": "dlq", "action": "view", "description": "View dead letter queue"},
-    {"name": "manage_dlq", "resource": "dlq", "action": "manage", "description": "Manage DLQ items"},
-    {"name": "retry_dlq", "resource": "dlq", "action": "retry", "description": "Retry DLQ items"},
-    
     # Opportunities
     {"name": "view_opportunities", "resource": "opportunities", "action": "view", "description": "View opportunities"},
     {"name": "manage_opportunities", "resource": "opportunities", "action": "manage", "description": "Edit opportunities"},
