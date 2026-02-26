@@ -54,22 +54,14 @@ ALL_PERMISSIONS = [
     # CRM - Goals
     "view_goals",
     "manage_goals",
-    "delete_goals",
     
     # CRM - Teams
     "view_teams",
     "manage_teams",
-    "delete_teams",
-    
-    # CRM - Portfolios
-    "view_portfolios",
-    "manage_portfolios",
-    "delete_portfolios",
     
     # CRM - KPIs
     "view_kpis",
     "manage_kpis",
-    "delete_kpis",
     
     # Admin - Users
     "view_users",
