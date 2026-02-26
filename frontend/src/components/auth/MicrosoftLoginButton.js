@@ -77,6 +77,9 @@ const completeMicrosoftLoginStatic = async (msalResponse) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[MSAL] Backend error:', errorText);
+      // Show error to user via URL param so login page can display it
+      const msg = errorText.includes('not authorized') ? 'Database connection error on server. Contact admin.' : 'Microsoft login failed on server.';
+      window.location.href = `/login?error=${encodeURIComponent(msg)}`;
       return;
     }
     
@@ -84,22 +87,16 @@ const completeMicrosoftLoginStatic = async (msalResponse) => {
     
     if (data.access_token) {
       console.log('[MSAL] Login successful, storing token and redirecting...');
-      
-      // Store token in localStorage
       localStorage.setItem('access_token', data.access_token);
-      
-      // Store user info
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-      
-      // Navigate to dashboard
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       window.location.href = '/dashboard';
     } else {
       console.error('[MSAL] No access_token in response:', data);
+      window.location.href = `/login?error=${encodeURIComponent('No token received from server')}`;
     }
   } catch (err) {
     console.error('[MSAL] Login completion error:', err);
+    window.location.href = `/login?error=${encodeURIComponent(err.message || 'Microsoft login failed')}`;
   }
 };
 
