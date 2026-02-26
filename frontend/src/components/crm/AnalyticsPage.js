@@ -211,55 +211,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Dashboard View Mode */}
-      {viewMode === 'dashboard' ? (
-        <div className="space-y-4">
-          {dashLoading ? (
-            <div className="space-y-4"><div className="grid grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}</div></div>
-          ) : dashBlocks.length === 0 ? (
-            <Card><CardContent className="p-12 text-center"><p className="text-gray-400">No dashboard configured. Set up templates in Dashboard Builder.</p></CardContent></Card>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {dashBlocks.filter(b => ['number', 'win_rate'].includes(b.card?.display_type)).map(b => {
-                  const card = b.card; const data = b.data; const groups = data?.groups || [];
-                  const bg = card?.color || '#1e3a5f';
-                  const Icon = ({Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart3: BarChart3, Activity})[card?.icon] || Target;
-                  const val = card?.display_type === 'win_rate'
-                    ? (() => { const w = groups.find(g => g.label === 'Won')?.count || 0; const l = groups.find(g => g.label === 'Lost')?.count || 0; return ((w / Math.max(w+l,1))*100).toFixed(0)+'%'; })()
-                    : (card?.aggregation === 'sum' || card?.aggregation === 'avg') ? ((data?.value||0) >= 1e6 ? ((data?.value||0)/1e6).toFixed(1)+'M' : (data?.value||0) >= 1e3 ? ((data?.value||0)/1e3).toFixed(0)+'K' : (data?.value||0).toLocaleString()) : (data?.value||0).toLocaleString();
-                  return (
-                    <div key={b.card_id} className="rounded-lg overflow-hidden cursor-pointer hover:shadow-xl hover:brightness-110 transition-all" style={{ backgroundColor: bg }}>
-                      <div className="p-4 flex flex-col items-center text-center">
-                        <Icon className="h-4 w-4 text-white/40 mb-1" />
-                        <p className="text-3xl font-black text-white tracking-tight">{val}</p>
-                        <p className="text-xs font-medium mt-1 uppercase tracking-wider text-white/80">{card?.name}</p>
-                      </div>
-                    </div>);
-                })}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {dashBlocks.filter(b => !['number', 'win_rate'].includes(b.card?.display_type)).map(b => (
-                  <Card key={b.card_id} className="min-h-[240px]">
-                    <CardContent className="p-4">
-                      <h4 className="text-sm font-semibold text-gray-800 mb-2">{b.card?.name}</h4>
-                      {b.data?.groups && (
-                        <div className="space-y-1.5">{b.data.groups.slice(0, 8).map((g, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-gray-50 last:border-0">
-                            <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: ['#800000','#3b82f6','#10b981','#f59e0b','#6366f1','#ef4444'][i%6] }} /><span className="text-gray-700">{g.label || '-'}</span></div>
-                            <span className="font-bold text-gray-900">OMR {(g.total || g.count || 0).toLocaleString()}</span>
-                          </div>))}</div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      ) : (
-      <>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
