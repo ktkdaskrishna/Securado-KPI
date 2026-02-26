@@ -1245,8 +1245,19 @@ async def get_ceo_summary(
     # Year filter for opportunities (using date_last_stage_update like Odoo)
     opp_year_filter = {"date_last_stage_update": {"$regex": f"^{year}"}}
     
-    # 1. Revenue vs Plan
-    plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": "revenue"}).to_list(100)
+    # 1. Revenue vs Plan — filter plans by selected year
+    plan_query = {"org_id": org_id, "plan_type": "revenue"}
+    # Match plans whose name contains the year (e.g., "Q1 2026" matches year "2026")
+    plan_query["$or"] = [
+        {"name": {"$regex": year}},
+        {"period": {"$regex": year}},
+        {"year": year},
+        {"year": int(year) if year.isdigit() else 0},
+    ]
+    plans = await app_db.target_plans.find(plan_query).to_list(100)
+    # Fallback: if no year-specific plans found, use all plans
+    if not plans:
+        plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": "revenue"}).to_list(100)
     total_target = sum(p.get("target_amount", 0) for p in plans)
     total_won = 0
     for plan in plans:
