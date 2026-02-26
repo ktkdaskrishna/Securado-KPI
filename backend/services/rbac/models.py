@@ -25,14 +25,9 @@ ALL_PERMISSIONS = [
     "run_pipelines",
     "delete_pipelines",
     
-    # ETL - Runs
+    # Runs
     "view_runs",
     "cancel_runs",
-    
-    # ETL - DLQ
-    "view_dlq",
-    "manage_dlq",
-    "retry_dlq",
     
     # CRM - Opportunities
     "view_opportunities",
