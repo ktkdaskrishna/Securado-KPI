@@ -189,8 +189,7 @@ DEFAULT_PERMISSIONS = [
     
     # Departments
     {"name": "view_departments", "resource": "departments", "action": "view", "description": "View departments"},
-    {"name": "manage_departments", "resource": "departments", "action": "manage", "description": "Create/edit departments"},
-    {"name": "delete_departments", "resource": "departments", "action": "delete", "description": "Delete departments"},
+    {"name": "manage_departments", "resource": "departments", "action": "manage", "description": "Manage departments"},
     
     # Config
     {"name": "view_config", "resource": "config", "action": "view", "description": "View system config"},
