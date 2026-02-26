@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -18,6 +18,16 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Show SSO errors from redirect
+  useEffect(() => {
+    const ssoError = searchParams.get('error');
+    if (ssoError) {
+      setError(ssoError);
+      toast.error(ssoError);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
