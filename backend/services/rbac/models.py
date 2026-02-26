@@ -177,22 +177,14 @@ DEFAULT_PERMISSIONS = [
     # Goals
     {"name": "view_goals", "resource": "goals", "action": "view", "description": "View goals"},
     {"name": "manage_goals", "resource": "goals", "action": "manage", "description": "Create/edit goals"},
-    {"name": "delete_goals", "resource": "goals", "action": "delete", "description": "Delete goals"},
     
     # Teams
     {"name": "view_teams", "resource": "teams", "action": "view", "description": "View teams"},
     {"name": "manage_teams", "resource": "teams", "action": "manage", "description": "Create/edit teams"},
-    {"name": "delete_teams", "resource": "teams", "action": "delete", "description": "Delete teams"},
-    
-    # Portfolios
-    {"name": "view_portfolios", "resource": "portfolios", "action": "view", "description": "View portfolios"},
-    {"name": "manage_portfolios", "resource": "portfolios", "action": "manage", "description": "Create/edit portfolios"},
-    {"name": "delete_portfolios", "resource": "portfolios", "action": "delete", "description": "Delete portfolios"},
     
     # KPIs
     {"name": "view_kpis", "resource": "kpis", "action": "view", "description": "View KPIs"},
     {"name": "manage_kpis", "resource": "kpis", "action": "manage", "description": "Create/edit KPIs"},
-    {"name": "delete_kpis", "resource": "kpis", "action": "delete", "description": "Delete KPIs"},
     
     # Users
     {"name": "view_users", "resource": "users", "action": "view", "description": "View users"},
