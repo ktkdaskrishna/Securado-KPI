@@ -1289,7 +1289,7 @@ async def get_ceo_summary(
     
     # 4. Pipeline Coverage
     pipeline_r = await canonical_db.opportunities.aggregate([
-        {"$match": {"stage": {"$nin": ["Won", "Lost"]}}},
+        {"$match": {"stage": {"$nin": ["Won", "Lost", "Hold"]}, **opp_year_filter}},
         {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
     ]).to_list(1)
     pipeline = pipeline_r[0]["total"] if pipeline_r else 0
