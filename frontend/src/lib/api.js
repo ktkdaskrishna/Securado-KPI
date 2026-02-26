@@ -309,7 +309,7 @@ export const targetAPI = {
   getAlerts: () => api.get('/alerts'),
   getMyData: () => api.get('/target-actuals/my-data'),
   getRevenueCap: (planId) => api.get(`/target-actuals/revenue-cap/${planId}`),
-  getCeoSummary: () => api.get('/target-actuals/ceo-summary'),
+  getCeoSummary: (year) => api.get('/target-actuals/ceo-summary', { params: { year } }),
   getActivitySuggestions: (planId) => api.get(`/target-plans/revenue/${planId}/suggestions`),
   acceptSuggestions: (planId, modifications) => api.post(`/target-plans/revenue/${planId}/suggestions/accept`, modifications),
 
