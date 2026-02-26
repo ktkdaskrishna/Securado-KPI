@@ -35,13 +35,19 @@ class DatabaseManager:
     async def connect(self):
         """Connect to MongoDB"""
         mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-        app_db_name = os.environ.get('APP_DB_NAME', 'event_mesh_app')
-        canonical_db_name = os.environ.get('CANONICAL_DB_NAME', 'event_mesh_canonical')
+        db_name = os.environ.get('DB_NAME', '')
+        
+        # Use DB_NAME as the base if APP_DB_NAME/CANONICAL_DB_NAME not explicitly set
+        # On Emergent production, MongoDB user only has access to the DB_NAME database
+        app_db_name = os.environ.get('APP_DB_NAME', db_name or 'event_mesh_app')
+        canonical_db_name = os.environ.get('CANONICAL_DB_NAME', db_name or 'event_mesh_canonical')
+        
+        logger.info(f"Connecting to MongoDB: app_db={app_db_name}, canonical_db={canonical_db_name}")
         
         try:
             self.client = AsyncIOMotorClient(
                 mongo_url,
-                serverSelectionTimeoutMS=10000,  # 10 second timeout
+                serverSelectionTimeoutMS=10000,
                 connectTimeoutMS=10000,
                 socketTimeoutMS=10000
             )
