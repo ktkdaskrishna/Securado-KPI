@@ -230,6 +230,7 @@ async def get_sales_teams(current_user: dict = Depends(get_current_user)):
 async def list_revenue_plans(
     period: Optional[str] = None,
     product_manager: Optional[str] = None,
+    year: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """List all revenue plans (CEO-level view)"""
@@ -242,17 +243,24 @@ async def list_revenue_plans(
         query["period"] = period
     if product_manager:
         query["product_manager_name"] = {"$regex": f"^{product_manager}$", "$options": "i"}
+    # Filter plans by year if specified
+    if year:
+        query["$or"] = [
+            {"name": {"$regex": year}},
+            {"period": {"$regex": year}},
+            {"year": year},
+            {"year": int(year) if year.isdigit() else 0},
+        ]
 
     plans = await app_db.target_plans.find(query).sort("created_at", -1).to_list(100)
     serialized = serialize_doc(plans)
 
     # Enrich with actual data from canonical
+    filter_year = year or datetime.now().strftime("%Y")
     for plan in serialized:
         pm_name = plan.get("product_manager_name")
         if pm_name:
-            # Current year filter for realistic data
-            current_year = datetime.now().strftime("%Y")
-            year_filter = {"create_date": {"$regex": f"^{current_year}"}}
+            year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
             
             # Get actual revenue from Won opportunities for this PM (current year)
             pipeline = [
