@@ -167,39 +167,16 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     setError(null);
     
     try {
-      console.log('[MSAL] Starting popup login...');
-      
-      // Use popup flow — avoids redirect URI matching issues
-      const response = await msalInstance.loginPopup({
+      console.log('[MSAL] Starting redirect login...');
+      await msalInstance.loginRedirect({
         ...loginRequest,
         prompt: 'select_account',
       });
-      
-      if (response && response.accessToken) {
-        console.log('[MSAL] Popup login successful, completing...');
-        await completeMicrosoftLoginStatic(response);
-      } else {
-        setError('No token received from Microsoft');
-        setMsLoading(false);
-      }
-      
     } catch (err) {
       console.error('[MSAL] Login error:', err);
-      
-      // If popup blocked, fall back to redirect
-      if (err.errorCode === 'popup_window_error' || err.errorCode === 'empty_window_error') {
-        console.log('[MSAL] Popup blocked, trying redirect...');
-        try {
-          await msalInstance.loginRedirect({ ...loginRequest, prompt: 'select_account' });
-        } catch (redirectErr) {
-          setError(redirectErr.message || 'Microsoft login failed');
-          setMsLoading(false);
-        }
-      } else {
-        setError(err.message || 'Microsoft login failed');
-        onError?.(err);
-        setMsLoading(false);
-      }
+      setError(err.message || 'Microsoft login failed');
+      onError?.(err);
+      setMsLoading(false);
     }
   };
 
