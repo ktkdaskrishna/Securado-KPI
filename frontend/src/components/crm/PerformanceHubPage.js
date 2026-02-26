@@ -444,9 +444,9 @@ function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
   );
 }
 
-function CeoSummaryCard() {
+function CeoSummaryCard({ year }) {
   const [data, setData] = useState(null);
-  useEffect(() => { targetAPI.getCeoSummary(yearFilter || new Date().getFullYear().toString()).then(r => setData(r.data)).catch(() => {}); }, [yearFilter]);
+  useEffect(() => { targetAPI.getCeoSummary(year || new Date().getFullYear().toString()).then(r => setData(r.data)).catch(() => {}); }, [year]);
   if (!data) return null;
 
   const signalColors = { green: 'bg-emerald-500', amber: 'bg-yellow-500', red: 'bg-red-500' };
