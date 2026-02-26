@@ -94,6 +94,42 @@ ALL_PERMISSIONS = [
     # Admin - Audit
     "view_audit_logs",
     
+    # CRM - Leads
+    "view_leads",
+    "manage_leads",
+    
+    # CRM - Invoices
+    "view_invoices",
+    "manage_invoices",
+    
+    # AI Analytics
+    "view_analytics",
+    
+    # Dashboard Builder
+    "manage_dashboard_builder",
+    "manage_templates",
+    "manage_cards",
+    
+    # Performance Hub & Targets
+    "view_performance",
+    "manage_targets",
+    "manage_incentives",
+    
+    # Organization
+    "view_org_structure",
+    
+    # Integrations & Sync
+    "view_integrations",
+    "manage_sync",
+    
+    # Settings
+    "view_settings",
+    "manage_sso",
+    
+    # RBAC Management
+    "view_rbac",
+    "manage_rbac",
+    
     # Super admin
     "admin:*"
 ]
