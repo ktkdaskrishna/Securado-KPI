@@ -446,7 +446,7 @@ function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
 
 function CeoSummaryCard() {
   const [data, setData] = useState(null);
-  useEffect(() => { targetAPI.getCeoSummary().then(r => setData(r.data)).catch(() => {}); }, []);
+  useEffect(() => { targetAPI.getCeoSummary(yearFilter || new Date().getFullYear().toString()).then(r => setData(r.data)).catch(() => {}); }, [yearFilter]);
   if (!data) return null;
 
   const signalColors = { green: 'bg-emerald-500', amber: 'bg-yellow-500', red: 'bg-red-500' };
