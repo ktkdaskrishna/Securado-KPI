@@ -56,31 +56,39 @@ _runtime_config: Dict[str, str] = {}
 
 
 async def load_config_from_db():
-    """Load SSO config from database if not set in environment"""
+    """Load SSO config from database if not set in environment. Gracefully handles DB errors."""
     global _runtime_config, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID, MICROSOFT_REDIRECT_URI
     global AUTHORITY, AUTHORIZE_URL, TOKEN_URL
     
-    app_db = get_app_db()
-    config = await app_db.system_config.find_one({"config_type": "microsoft_sso"})
+    # Skip DB lookup if all env vars are already set
+    if os.environ.get("MICROSOFT_CLIENT_ID") and os.environ.get("MICROSOFT_TENANT_ID"):
+        if MICROSOFT_CLIENT_ID and MICROSOFT_TENANT_ID:
+            return
     
-    if config:
-        _runtime_config = config.get("settings", {})
+    try:
+        app_db = get_app_db()
+        config = await app_db.system_config.find_one({"config_type": "microsoft_sso"})
         
-        # Only override if not set in environment
-        if not os.environ.get("MICROSOFT_CLIENT_ID") and _runtime_config.get("client_id"):
-            MICROSOFT_CLIENT_ID = _runtime_config.get("client_id", "")
-        if not os.environ.get("MICROSOFT_CLIENT_SECRET") and _runtime_config.get("client_secret"):
-            MICROSOFT_CLIENT_SECRET = _runtime_config.get("client_secret", "")
-        if not os.environ.get("MICROSOFT_TENANT_ID") and _runtime_config.get("tenant_id"):
-            MICROSOFT_TENANT_ID = _runtime_config.get("tenant_id", "")
-        if not os.environ.get("MICROSOFT_REDIRECT_URI") and _runtime_config.get("redirect_uri"):
-            MICROSOFT_REDIRECT_URI = _runtime_config.get("redirect_uri", "")
-        
-        # Update derived URLs
-        if MICROSOFT_TENANT_ID:
-            AUTHORITY = f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}"
-            AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
-            TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
+        if config:
+            _runtime_config = config.get("settings", {})
+            
+            if not os.environ.get("MICROSOFT_CLIENT_ID") and _runtime_config.get("client_id"):
+                MICROSOFT_CLIENT_ID = _runtime_config.get("client_id", "")
+            if not os.environ.get("MICROSOFT_CLIENT_SECRET") and _runtime_config.get("client_secret"):
+                MICROSOFT_CLIENT_SECRET = _runtime_config.get("client_secret", "")
+            if not os.environ.get("MICROSOFT_TENANT_ID") and _runtime_config.get("tenant_id"):
+                MICROSOFT_TENANT_ID = _runtime_config.get("tenant_id", "")
+            if not os.environ.get("MICROSOFT_REDIRECT_URI") and _runtime_config.get("redirect_uri"):
+                MICROSOFT_REDIRECT_URI = _runtime_config.get("redirect_uri", "")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Could not load SSO config from DB (using env vars): {e}")
+    
+    # Update derived URLs
+    if MICROSOFT_TENANT_ID:
+        AUTHORITY = f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}"
+        AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
+        TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
 
 
 def is_microsoft_auth_configured() -> bool:
