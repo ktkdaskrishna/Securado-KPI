@@ -1228,12 +1228,22 @@ async def get_revenue_cap(plan_id: str, current_user: dict = Depends(get_current
 # ==================== CEO SUMMARY ====================
 
 @actuals_router.get("/ceo-summary")
-async def get_ceo_summary(current_user: dict = Depends(get_current_user)):
+async def get_ceo_summary(
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """CEO single-screen RAG summary with 5 signals + auto-insight"""
     app_db = get_app_db()
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
     from datetime import datetime
+    
+    # Default to current year
+    if not year:
+        year = str(datetime.now().year)
+    
+    # Year filter for opportunities (using date_last_stage_update like Odoo)
+    opp_year_filter = {"date_last_stage_update": {"$regex": f"^{year}"}}
     
     # 1. Revenue vs Plan
     plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": "revenue"}).to_list(100)
@@ -1243,7 +1253,7 @@ async def get_ceo_summary(current_user: dict = Depends(get_current_user)):
         pm = plan.get("product_manager_name", "")
         if pm:
             r = await canonical_db.opportunities.aggregate([
-                {"$match": {"product_manager": {"$regex": f"{pm}", "$options": "i"}, "stage": "Won"}},
+                {"$match": {"product_manager": {"$regex": f"{pm}", "$options": "i"}, "stage": "Won", **opp_year_filter}},
                 {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
             ]).to_list(1)
             total_won += r[0]["total"] if r else 0
