@@ -225,6 +225,42 @@ DEFAULT_PERMISSIONS = [
     
     # Audit
     {"name": "view_audit_logs", "resource": "audit", "action": "view", "description": "View audit logs"},
+    
+    # Leads
+    {"name": "view_leads", "resource": "leads", "action": "view", "description": "View leads"},
+    {"name": "manage_leads", "resource": "leads", "action": "manage", "description": "Create/edit leads"},
+    
+    # Invoices
+    {"name": "view_invoices", "resource": "invoices", "action": "view", "description": "View invoices"},
+    {"name": "manage_invoices", "resource": "invoices", "action": "manage", "description": "Manage invoices"},
+    
+    # AI Analytics
+    {"name": "view_analytics", "resource": "analytics", "action": "view", "description": "View AI analytics"},
+    
+    # Dashboard Builder
+    {"name": "manage_dashboard_builder", "resource": "dashboard_builder", "action": "manage", "description": "Access dashboard builder"},
+    {"name": "manage_templates", "resource": "dashboard_builder", "action": "manage_templates", "description": "Create/edit dashboard templates"},
+    {"name": "manage_cards", "resource": "dashboard_builder", "action": "manage_cards", "description": "Create/edit dashboard cards"},
+    
+    # Performance Hub & Targets
+    {"name": "view_performance", "resource": "performance", "action": "view", "description": "View Performance Hub"},
+    {"name": "manage_targets", "resource": "performance", "action": "manage_targets", "description": "Create/edit sales targets"},
+    {"name": "manage_incentives", "resource": "performance", "action": "manage_incentives", "description": "Manage incentive plans"},
+    
+    # Organization
+    {"name": "view_org_structure", "resource": "organization", "action": "view", "description": "View org structure"},
+    
+    # Integrations & Sync
+    {"name": "view_integrations", "resource": "integrations", "action": "view", "description": "View integrations/sync status"},
+    {"name": "manage_sync", "resource": "integrations", "action": "manage", "description": "Control data sync"},
+    
+    # Settings
+    {"name": "view_settings", "resource": "settings", "action": "view", "description": "View system settings"},
+    {"name": "manage_sso", "resource": "settings", "action": "manage_sso", "description": "Configure Microsoft SSO"},
+    
+    # RBAC Management
+    {"name": "view_rbac", "resource": "rbac", "action": "view", "description": "View RBAC configuration"},
+    {"name": "manage_rbac", "resource": "rbac", "action": "manage", "description": "Manage RBAC rules/overrides"},
 ]
 
 
