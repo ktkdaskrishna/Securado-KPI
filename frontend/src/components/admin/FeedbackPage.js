@@ -34,6 +34,7 @@ const STATUS_CONFIG = {
   approved: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: ThumbsDown },
   planned: { label: 'Planned', color: 'bg-purple-100 text-purple-700', icon: Calendar },
+  completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
 };
 
 // ============ FEEDBACK SUBMIT FORM ============
