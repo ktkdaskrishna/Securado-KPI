@@ -134,7 +134,7 @@ async def review_feedback(
     status = data.get("status")
     admin_note = data.get("admin_note", "")
     
-    if status not in ["pending", "in_review", "approved", "rejected", "planned"]:
+    if status not in ["pending", "in_review", "approved", "rejected", "planned", "completed"]:
         raise HTTPException(status_code=400, detail="Invalid status")
     
     result = await app_db.feedback_items.update_one(
