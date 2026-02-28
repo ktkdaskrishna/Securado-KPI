@@ -675,9 +675,9 @@ async def get_my_data(current_user: dict = Depends(get_current_user)):
         if result["my_opp_summary"].get("_id"):
             del result["my_opp_summary"]["_id"]
 
-        # My activities from Odoo
+        # My value-selling activities from Odoo
         my_acts = await canonical_db.activities.aggregate([
-            {"$match": {"assigned_user": {"$regex": user_name, "$options": "i"}}},
+            {"$match": {"assigned_user": {"$regex": user_name, "$options": "i"}, "activity_type": {"$in": VALUE_SELLING_TYPES}}},
             {"$group": {"_id": "$activity_type", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}}
         ]).to_list(20)
