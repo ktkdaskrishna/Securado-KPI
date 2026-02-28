@@ -152,7 +152,7 @@ export function ActivitiesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Activities</h1>
-          <p className="text-gray-500">Track tasks, calls, emails, and meetings</p>
+          <p className="text-gray-500">Value-selling activities: Demos, POCs, Site Visits, Workshops, RFPs</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
