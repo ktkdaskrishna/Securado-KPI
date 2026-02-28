@@ -532,6 +532,9 @@ async def opportunities_kanban(
     team_id: Optional[str] = Query(None, description="Filter by team ID"),
     account: Optional[str] = Query(None, description="Filter by account name"),
     date_field: Optional[str] = Query('date_last_stage_update', description="Date field to filter on"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get opportunities (type=opportunity) organized by stage for kanban view (RBAC enforced)"""
     canonical_db = get_canonical_db()
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
