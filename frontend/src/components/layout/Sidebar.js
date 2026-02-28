@@ -147,6 +147,7 @@ const defaultNavigation = {
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
     { id: 'system-logs', name: 'System Logs', href: '/admin/logs', icon: 'AlertTriangle', default: true },
     { id: 'help', name: 'Help & Support', href: '/help', icon: 'HelpCircle', default: true },
+    { id: 'feedback', name: 'Feedback', href: '/feedback', icon: 'MessageSquare', default: true },
   ],
 };
 
