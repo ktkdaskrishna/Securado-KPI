@@ -192,6 +192,14 @@ export default function FeedbackAdminPage() {
     } catch { toast.error('Failed'); }
   };
 
+  const handleQuickComplete = async (item) => {
+    try {
+      await feedbackAPI.reviewFeedback(item.id, { status: 'completed', admin_note: item.admin_note || 'Completed' });
+      toast.success('Marked as completed');
+      loadData();
+    } catch { toast.error('Failed'); }
+  };
+
   const FeedbackCard = ({ item, showActions }) => {
     const sc = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
     const StatusIcon = sc.icon;
