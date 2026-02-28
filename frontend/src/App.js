@@ -163,6 +163,7 @@ function AppRoutes() {
         <Route path="/admin/data-quality" element={<RBACGuard permission="system_admin"><DataQualityPage /></RBACGuard>} />
         <Route path="/admin/integrations" element={<RBACGuard permission="system_admin"><IntegrationsPage /></RBACGuard>} />
         <Route path="/help" element={<HelpPage />} />
+        <Route path="/feedback" element={<FeedbackAdminPage />} />
       </Route>
 
       {/* 404 Catch-all */}
