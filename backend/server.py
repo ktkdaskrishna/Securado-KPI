@@ -116,6 +116,7 @@ from services.target_management.filter_presets import filter_presets_router
 from services.target_management.integration_hub import hub_router as integration_hub_router
 from services.target_management.excel_tools import excel_router
 from services.target_management.card_builder import card_builder_router
+from services.feedback.routes import feedback_router
 
 
 @asynccontextmanager
