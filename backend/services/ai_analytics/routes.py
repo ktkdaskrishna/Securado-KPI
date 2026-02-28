@@ -885,27 +885,21 @@ async def get_available_filters(
     # Convert to list of objects for the frontend
     opp_accounts = [{"id": aid, "name": aname} for aid, aname in account_map.items()]
     
-    # Get years from create_date (not close_date since many don't have close dates)
+    # Get years from date_last_stage_update (standard across system)
+    # Cap at current year - no future years
+    from datetime import datetime
+    current_year = int(datetime.now().strftime("%Y"))
     years = set()
     for opp in opps:
-        # Check create_date first
-        create_date = opp.get("create_date")
-        if create_date and create_date != 'False' and isinstance(create_date, str) and len(create_date) >= 4:
-            try:
-                year = create_date[:4]
-                if year.isdigit() and 1900 < int(year) < 2100:
-                    years.add(year)
-            except:
-                pass
-        # Also check close_date
-        close_date = opp.get("close_date")
-        if close_date and close_date != 'False' and isinstance(close_date, str) and len(close_date) >= 4:
-            try:
-                year = close_date[:4]
-                if year.isdigit() and 1900 < int(year) < 2100:
-                    years.add(year)
-            except:
-                pass
+        for date_field in ["date_last_stage_update", "create_date"]:
+            date_val = opp.get(date_field)
+            if date_val and date_val != 'False' and isinstance(date_val, str) and len(date_val) >= 4:
+                try:
+                    year = date_val[:4]
+                    if year.isdigit() and 2018 <= int(year) <= current_year:
+                        years.add(year)
+                except:
+                    pass
     
     # Filter sales_reps to active employees/sales_users
     active_names = set()
