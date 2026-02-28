@@ -180,6 +180,7 @@ function App() {
           <GlobalFilterProvider>
             <RBACProvider>
               <AppRoutes />
+              <FeedbackButton />
               <Toaster position="top-right" richColors closeButton />
             </RBACProvider>
           </GlobalFilterProvider>
