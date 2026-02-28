@@ -1290,7 +1290,7 @@ async def get_ceo_summary(
     for item in all_items:
         atype = item.get("activity_type")
         if atype:
-            c = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id, "create_date": {"$regex": f"^{year}"}})
+            c = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id, "date_deadline": {"$regex": f"^{year}"}})
             act_actual += min(c, item.get("target_count", 0))
     act_pct = round(act_actual / act_target * 100, 1) if act_target > 0 else 0
     act_signal = "green" if act_pct >= 80 else "amber" if act_pct >= 50 else "red"
