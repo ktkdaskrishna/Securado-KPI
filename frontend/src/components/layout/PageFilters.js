@@ -19,6 +19,8 @@ export const quarterOptions = [
 
 // Filter components
 export function YearFilter({ value, onChange, years }) {
+  const currentYear = new Date().getFullYear();
+  const validYears = (years || []).filter(y => parseInt(y) <= currentYear);
   return (
     <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
       <SelectTrigger className="w-[110px] h-9" data-testid="filter-year">
@@ -27,7 +29,7 @@ export function YearFilter({ value, onChange, years }) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Years</SelectItem>
-        {years?.map(year => (
+        {validYears.map(year => (
           <SelectItem key={year} value={year}>{year}</SelectItem>
         ))}
       </SelectContent>
