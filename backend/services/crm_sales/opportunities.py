@@ -270,19 +270,9 @@ async def list_opportunities(
     if solution_category:
         query["solution_category"] = solution_category
     
-    # ODOO-MATCHING DATE FILTER:
-    # Open deals: filter by create_date
-    # Won/Lost deals: filter by date_last_stage_update
-    # This matches Odoo's dashboard behavior
+    # STANDARD DATE FILTER: date_last_stage_update for ALL opportunities (matches Odoo dashboard)
     if year:
-        # Use $or to match EITHER condition
-        year_filter = {"$or": [
-            # Open deals created in the year
-            {"create_date": {"$regex": f"^{year}"}, "stage": {"$nin": ["Won", "Lost"]}},
-            # Won/Lost deals with stage update in the year (Odoo's date_last_stage_update)
-            {"date_last_stage_update": {"$regex": f"^{year}"}, "stage": {"$in": ["Won", "Lost"]}},
-        ]}
-        query.update(year_filter)
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     
     # Get records with proper pagination
     records = await canonical_db.opportunities.find(query).skip(skip).limit(limit).to_list(limit)
