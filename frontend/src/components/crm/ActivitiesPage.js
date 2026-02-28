@@ -71,8 +71,8 @@ export function ActivitiesPage() {
       if (res.data) {
         setFilterOptions({
           years: res.data.years || [],
-          salesReps: res.data.sales_reps || res.data.salesReps || [],  // Handle both naming conventions
-          types: ['call', 'email', 'meeting', 'task']
+          salesReps: res.data.sales_reps || res.data.salesReps || [],
+          types: ['Demo', 'Proof of concept', 'Site Visit', 'Work Shop', 'RFP Submission', 'Product Presentation', 'Vendor Meeting', 'POC']
         });
       }
     } catch (error) {
