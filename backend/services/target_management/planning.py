@@ -776,7 +776,7 @@ async def get_actual_activities(
     """Get actual activity counts from Odoo"""
     canonical_db = get_canonical_db()
 
-    match = {}
+    match = {"activity_type": {"$in": VALUE_SELLING_TYPES}}
     if assigned_user:
         match["assigned_user"] = assigned_user
     if activity_type:
