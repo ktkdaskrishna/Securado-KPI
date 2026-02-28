@@ -157,8 +157,8 @@ async def list_activities(
             continue
         all_activities.append(normalized)
     
-    # Apply date filters
-    all_activities = apply_date_filters(all_activities, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    # Apply date filters (use date_deadline for activities, not create_date)
+    all_activities = apply_date_filters(all_activities, year=year, quarter=quarter, date_field=date_field or 'due_date')
     
     logger.info(f"Activities after filtering: {len(all_activities)}")
     
