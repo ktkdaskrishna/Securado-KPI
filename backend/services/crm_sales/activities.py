@@ -31,7 +31,7 @@ async def list_activities(
     year: Optional[str] = Query(None, description="Filter by year"),
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
-    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
+    date_field: Optional[str] = Query('due_date', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
     """List CRM activities from both canonical (synced) and app (local) databases.
