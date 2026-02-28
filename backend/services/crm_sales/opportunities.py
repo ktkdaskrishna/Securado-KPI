@@ -561,8 +561,8 @@ async def opportunities_kanban(
     # Get all opportunities
     records = await canonical_db.opportunities.find(query).to_list(1000)
     
-    # Apply date filters
-    records = apply_date_filters(records, year=year, quarter=quarter, date_field=date_field or 'create_date')
+    # Apply date filters (standard: date_last_stage_update for opportunities)
+    records = apply_date_filters(records, year=year, quarter=quarter, date_field='date_last_stage_update')
     
     logger.info(f"Kanban after filtering: {len(records)} opportunities")
     
