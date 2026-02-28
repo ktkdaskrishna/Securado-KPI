@@ -224,8 +224,16 @@ export default function FeedbackAdminPage() {
               {item.admin_note && <p className="text-xs text-blue-600 mt-1 bg-blue-50 rounded px-2 py-1">Admin: {item.admin_note}</p>}
             </div>
             {showActions && (
-              <Button variant="outline" size="sm" onClick={() => { setReviewingItem(item); setReviewStatus(item.status); setReviewNote(item.admin_note || ''); }}
-                className="shrink-0 text-xs h-7">Review</Button>
+              <div className="flex gap-1 shrink-0">
+                {item.status !== 'completed' && (
+                  <Button variant="outline" size="sm" onClick={() => handleQuickComplete(item)}
+                    className="text-xs h-7 text-green-600 hover:bg-green-50 hover:text-green-700" title="Mark as completed">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { setReviewingItem(item); setReviewStatus(item.status); setReviewNote(item.admin_note || ''); }}
+                  className="text-xs h-7">Review</Button>
+              </div>
             )}
           </div>
         </CardContent>
