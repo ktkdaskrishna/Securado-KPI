@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
-import { Plus, CheckSquare, Phone, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Filter } from 'lucide-react';
+import { Plus, CheckSquare, Phone, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Filter, Presentation, Eye, MapPin, FileCheck, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, ActivityTypeFilter, ActivityStatusFilter } from '../layout/PageFilters';
 
