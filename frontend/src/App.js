@@ -53,6 +53,8 @@ import { CustomFieldsPage } from './components/admin/CustomFieldsPage';
 import { DataQualityPage } from './components/admin/DataQualityPage';
 import RBACManagementPage from './components/admin/RBACManagementPage';
 import HelpPage from './components/admin/HelpPage';
+import FeedbackAdminPage from './components/admin/FeedbackPage';
+import { FeedbackButton } from './components/admin/FeedbackPage';
 
 import './App.css';
 
