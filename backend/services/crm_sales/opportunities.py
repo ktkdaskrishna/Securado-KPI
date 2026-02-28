@@ -558,11 +558,16 @@ async def opportunities_kanban(
     if account:
         query["account_name"] = account
     
+    # Apply year filter at MongoDB level (standard: date_last_stage_update)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
+    
     # Get all opportunities
     records = await canonical_db.opportunities.find(query).to_list(1000)
     
-    # Apply date filters (standard: date_last_stage_update for opportunities)
-    records = apply_date_filters(records, year=year, quarter=quarter, date_field='date_last_stage_update')
+    # Apply quarter filter in Python if needed
+    if quarter:
+        records = apply_date_filters(records, quarter=quarter, date_field='date_last_stage_update')
     
     logger.info(f"Kanban after filtering: {len(records)} opportunities")
     
