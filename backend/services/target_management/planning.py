@@ -873,7 +873,7 @@ async def get_team_comparison(current_user: dict = Depends(get_current_user)):
         total_actual_act = 0
         for item in items:
             atype = item.get("activity_type")
-            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id}) if atype else 0
+            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id, "activity_type": {"$in": VALUE_SELLING_TYPES}}) if atype else 0
             total_actual_act += min(actual, item.get("target_count", 0))
         act_pct = min(round((total_actual_act / total_target_act * 100) if total_target_act > 0 else 0, 1), 100)
 
