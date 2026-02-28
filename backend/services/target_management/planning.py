@@ -209,9 +209,10 @@ async def get_teams_with_members(current_user: dict = Depends(get_current_user))
 
 @lookups_router.get("/activity-types")
 async def get_activity_types(current_user: dict = Depends(get_current_user)):
-    """Get activity types from Odoo"""
+    """Get value-selling activity types from Odoo"""
     canonical_db = get_canonical_db()
     pipeline = [
+        {"$match": {"activity_type": {"$in": VALUE_SELLING_TYPES}}},
         {"$group": {"_id": "$activity_type", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}}
     ]
