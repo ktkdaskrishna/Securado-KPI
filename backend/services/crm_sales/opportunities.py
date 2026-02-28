@@ -220,7 +220,7 @@ async def list_opportunities(
     account: Optional[str] = Query(None, description="Filter by account"),
     product_manager: Optional[str] = Query(None, description="Filter by product director"),
     solution_category: Optional[str] = Query(None, description="Filter by solution category"),
-    date_field: Optional[str] = Query('create_date', description="Date field to filter on"),
+    date_field: Optional[str] = Query('date_last_stage_update', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
     """List opportunities (type=opportunity) with overrides applied, optional filters, and RBAC"""
