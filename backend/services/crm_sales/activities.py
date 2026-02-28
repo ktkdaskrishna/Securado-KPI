@@ -52,9 +52,13 @@ async def list_activities(
     if has_no_access:
         return []
     
+    # Value-selling activity types ONLY (exclude internal/admin activities)
+    VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Meeting", "Site Visit", "Work Shop", "RFP Submission", "Product Presentation", "Vendor Meeting", "POC"]
+    
     # Build query for canonical CRM activities ONLY with RBAC
     canonical_query = {
         "org_id": org_id,
+        "activity_type": {"$in": VALUE_SELLING_TYPES},
         "$or": [
             {"res_model": "crm.lead"},
             {"opportunity_id": {"$exists": True, "$ne": None}}
