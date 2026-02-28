@@ -275,7 +275,6 @@ export function ActivitiesPage() {
           </div>
         );
       })()}
-      )}
 
       {/* Activities List */}
       <Card>
