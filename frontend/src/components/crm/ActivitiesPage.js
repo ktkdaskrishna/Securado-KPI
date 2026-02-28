@@ -244,44 +244,37 @@ export function ActivitiesPage() {
         />
       </PageFilters>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        {[
-          { label: 'Calls', value: stats?.by_type?.calls || 0, icon: Phone, color: 'blue' },
-          { label: 'Emails', value: stats?.by_type?.emails || 0, icon: Mail, color: 'cyan' },
-          { label: 'Meetings', value: stats?.by_type?.meetings || 0, icon: Calendar, color: 'emerald' },
-          { label: 'Tasks', value: stats?.by_type?.tasks || 0, icon: FileText, color: 'amber' },
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">{item.label}</p>
-                  <p className="text-2xl font-bold">{item.value}</p>
-                </div>
-                <item.icon className={`h-8 w-8 text-${item.color}-500`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Detailed Activity Types */}
-      {stats?.detailed_types && Object.keys(stats.detailed_types).length > 0 && (
-        <Card className="mb-4">
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Activity Types Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(stats.detailed_types).map(([type, count]) => (
-                <Badge key={type} variant="outline" className="text-xs py-1 px-2">
-                  {type}: <span className="font-bold ml-1">{count}</span>
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Value-Selling Activity Summary */}
+      {activities.length > 0 && (() => {
+        const typeCounts = {};
+        activities.forEach(a => { const t = a.type || '?'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+        const summaryCards = [
+          { label: 'Demos', key: 'demo', icon: Presentation, color: '#3b82f6' },
+          { label: 'Site Visits', key: 'site_visit', icon: MapPin, color: '#10b981' },
+          { label: 'POC', key: 'proof_of_concept', icon: Wrench, color: '#f59e0b' },
+          { label: 'Workshops', key: 'work_shop', icon: Eye, color: '#8b5cf6' },
+          { label: 'RFP', key: 'rfp_submission', icon: FileCheck, color: '#ef4444' },
+        ];
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {summaryCards.map(s => (
+              <Card key={s.key}>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">{s.label}</p>
+                      <p className="text-2xl font-bold text-gray-900">{typeCounts[s.key] || 0}</p>
+                    </div>
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: s.color + '15' }}>
+                      <s.icon className="h-5 w-5" style={{ color: s.color }} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
       )}
 
       {/* Activities List */}
