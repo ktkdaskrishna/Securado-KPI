@@ -15,10 +15,14 @@ import { toast } from 'sonner';
 import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, ActivityTypeFilter, ActivityStatusFilter } from '../layout/PageFilters';
 
 const typeIcons = {
-  call: Phone,
-  email: Mail,
-  meeting: Calendar,
-  task: FileText,
+  demo: Presentation,
+  'proof of concept': Wrench,
+  'site visit': MapPin,
+  'work shop': Eye,
+  'rfp submission': FileCheck,
+  'product presentation': Presentation,
+  'vendor meeting': Calendar,
+  poc: Wrench,
 };
 
 const statusColors = {
