@@ -448,3 +448,12 @@ export const microsoftAuthAPI = {
   getAdminConfig: () => api.get('/auth/microsoft/admin/config'),
   saveAdminConfig: (config) => api.post('/auth/microsoft/admin/config', config),
 };
+
+// Feedback APIs
+export const feedbackAPI = {
+  submitFeedback: (formData) => api.post('/feedback/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyFeedback: () => api.get('/feedback/my'),
+  getAdminFeedback: (params) => api.get('/feedback/admin', { params }),
+  reviewFeedback: (id, data) => api.post(`/feedback/${id}/review`, data),
+};
+
