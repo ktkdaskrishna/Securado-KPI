@@ -1,43 +1,58 @@
 """Redis Data Pipeline - Central message bus and cache for all CRM data.
 
-Architecture:
-1. Incremental sync publishes changes to Redis Streams
-2. Stream consumers update Redis cache (hashes) for instant reads
-3. Query Engine reads from Redis cache with MongoDB fallback
-4. Dashboard cards use Query Engine for all data
-5. All pages read from same cache = guaranteed consistency
-
-Redis Streams: stream:opportunities, stream:accounts, stream:invoices
-Redis Cache: cache:dashboard:{year}, cache:analytics:{year}
+Redis is OPTIONAL. When unavailable, all operations are silently skipped
+and the query engine falls back to direct MongoDB queries.
 """
-import redis.asyncio as aioredis
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
-# Redis connection
-_redis: Optional[aioredis.Redis] = None
+# Redis connection - completely optional
+_redis = None
+_redis_available = None  # None=untested, True=connected, False=unavailable
+_redis_error_logged = False  # Log connection failure only once
 
-REDIS_URL = "redis://localhost:6379"
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
 
 
-async def get_redis() -> aioredis.Redis:
-    """Get async Redis connection"""
-    global _redis
+async def get_redis():
+    """Get async Redis connection. Returns None if Redis unavailable."""
+    global _redis, _redis_available, _redis_error_logged
+    
+    if _redis_available is False:
+        return None  # Already know Redis is down — skip silently
+    
     if _redis is None:
-        _redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+        try:
+            import redis.asyncio as aioredis
+            _redis = aioredis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=2)
+            await _redis.ping()
+            _redis_available = True
+            logger.info("Redis connected successfully")
+        except Exception:
+            _redis_available = False
+            _redis = None
+            if not _redis_error_logged:
+                logger.warning("Redis unavailable — running without cache (MongoDB fallback)")
+                _redis_error_logged = True
+            return None
     return _redis
 
 
 async def close_redis():
     """Close Redis connection"""
-    global _redis
+    global _redis, _redis_available
     if _redis:
-        await _redis.close()
+        try:
+            await _redis.close()
+        except Exception:
+            pass
         _redis = None
+    _redis_available = None
 
 
 # ==================== STREAM PUBLISHING ====================
