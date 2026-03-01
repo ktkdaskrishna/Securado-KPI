@@ -32,7 +32,7 @@ from services.identity.routes import get_current_user
 logger = logging.getLogger(__name__)
 
 # Value-selling activity types ONLY (used across all activity queries)
-VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Site Visit", "Work Shop", "RFP Submission", "Product Presentation", "Vendor Meeting", "POC"]
+VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Site Visit", "Work Shop", "Product Presentation", "Vendor Meeting", "POC"]
 
 # Routers
 lookups_router = APIRouter(prefix="/target-lookups", tags=["target-lookups"])
