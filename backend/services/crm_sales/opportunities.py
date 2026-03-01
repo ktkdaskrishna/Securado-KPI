@@ -536,6 +536,7 @@ async def opportunities_kanban(
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
     team_id: Optional[str] = Query(None, description="Filter by team ID"),
     account: Optional[str] = Query(None, description="Filter by account name"),
+    stage: Optional[str] = Query(None, description="Filter by stage"),
     date_field: Optional[str] = Query('date_last_stage_update', description="Date field to filter on"),
     current_user: dict = Depends(get_current_user)
 ):
