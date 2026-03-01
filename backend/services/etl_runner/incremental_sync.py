@@ -402,6 +402,16 @@ class IncrementalSyncWorker:
             doc["invoice_date"] = record.get("invoice_date")
             doc["due_date"] = record.get("invoice_date_due")
         
+        elif entity_id == "employees":
+            doc["name"] = record.get("name", "")
+            doc["email"] = record.get("work_email") or ""
+            doc["job_title"] = record.get("job_title") or ""
+            doc["department_name"] = doc.get("department_id", "")
+            doc["department_id_num"] = doc.get("department_id_id")
+            doc["manager_id"] = doc.get("parent_id_id")  # parent_id = manager in Odoo
+            doc["manager_name"] = doc.get("parent_id", "")
+            doc["coach_name"] = doc.get("coach_id", "")
+        
         return doc
 
     async def _get_valid_fields(self, models, db_name, uid, api_key, odoo_model) -> set:
