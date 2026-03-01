@@ -175,7 +175,7 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     initMsal();
   }, []);
 
-  // Handle Microsoft login — try popup first (more reliable), fall back to redirect
+  // Handle Microsoft login — redirect flow only
   const handleMicrosoftLogin = async () => {
     if (!msalInstance) {
       setError('Microsoft SSO not configured. Please contact your administrator.');
@@ -186,37 +186,16 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     setError(null);
     
     try {
-      // Try popup first — doesn't depend on redirect URI hash handling
-      console.log('[MSAL] Starting popup login...');
-      const response = await msalInstance.loginPopup({
+      console.log('[MSAL] Starting redirect login...');
+      await msalInstance.loginRedirect({
         ...loginRequest,
         prompt: 'select_account',
       });
-      if (response && response.accessToken) {
-        await completeMicrosoftLoginStatic(response);
-      } else if (response && response.account) {
-        // Got account but no token — acquire silently
-        const silentResp = await msalInstance.acquireTokenSilent({ scopes: loginRequest.scopes, account: response.account });
-        if (silentResp.accessToken) {
-          await completeMicrosoftLoginStatic(silentResp);
-        }
-      }
-    } catch (popupErr) {
-      // Popup blocked or failed — fall back to redirect
-      if (popupErr.errorCode === 'popup_window_error' || popupErr.errorCode === 'empty_window_error' || popupErr.errorCode === 'user_cancelled') {
-        console.log('[MSAL] Popup failed, trying redirect...', popupErr.errorCode);
-        try {
-          await msalInstance.loginRedirect({ ...loginRequest, prompt: 'select_account' });
-        } catch (redirectErr) {
-          setError(redirectErr.message || 'Microsoft login failed');
-          setMsLoading(false);
-        }
-      } else {
-        console.error('[MSAL] Login error:', popupErr);
-        setError(popupErr.message || 'Microsoft login failed');
-        onError?.(popupErr);
-        setMsLoading(false);
-      }
+    } catch (err) {
+      console.error('[MSAL] Login error:', err);
+      setError(err.message || 'Microsoft login failed');
+      onError?.(err);
+      setMsLoading(false);
     }
   };
 
