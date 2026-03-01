@@ -254,11 +254,16 @@ async def list_opportunities(
     
     # Apply non-date filters
     if stage:
-        aliases = STAGE_ALIASES.get(stage.lower())
-        if aliases:
-            query["stage"] = {"$in": aliases}
+        # Handle exclude: prefix from dashboard navigation (e.g., "exclude:Won,Lost,Hold")
+        if stage.startswith("exclude:"):
+            exclude_stages = [s.strip() for s in stage[8:].split(",")]
+            query["stage"] = {"$nin": exclude_stages}
         else:
-            query["stage"] = stage
+            aliases = STAGE_ALIASES.get(stage.lower())
+            if aliases:
+                query["stage"] = {"$in": aliases}
+            else:
+                query["stage"] = stage
     if sales_rep:
         query["owner_name"] = sales_rep
     if team_id:
