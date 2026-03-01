@@ -23,7 +23,7 @@ import {
   Users, BarChart2, Pencil, RefreshCw, Layers, Activity, Save,
   Settings, Plus, Trash2, GripVertical, Lock, Unlock,
   LayoutGrid, ChevronRight, X, ExternalLink, Calendar,
-  Eye, Info, Copy, PanelLeft
+  Eye, Info, Copy, PanelLeft, Download, Upload
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
 import { toast } from 'sonner';
