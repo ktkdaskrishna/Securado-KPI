@@ -149,6 +149,19 @@ function BuilderChartCard({ card, data, onEdit, onRemove, onClone }) {
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: AVATAR_COLORS[idx % AVATAR_COLORS.length] }}>{(g.label || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</div>
             <span className="flex-1 text-xs font-medium text-gray-700 truncate">{g.label || '-'}</span><span className="text-xs font-bold text-[#800000]">OMR {(g.total || 0).toLocaleString()}</span></div>))}</div>)}
         {card.display_type === 'progress' && (<div className="px-2 space-y-2 overflow-auto h-full">{(() => { const mx = Math.max(...groups.map(g => g.total || g.count || 0), 1); return groups.slice(0, 8).map((g, i) => (<div key={i}><div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600 truncate flex-1">{g.label || '-'}</span><span className="font-semibold text-gray-900 ml-2">OMR {(g.total || 0).toLocaleString()}</span></div><div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{ width: `${((g.total || g.count || 0) / mx) * 100}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} /></div></div>)); })()}</div>)}
+        {card.display_type === 'table' && (
+          <div className="overflow-auto h-full">
+            <table className="w-full text-xs">
+              <thead><tr className="bg-[#3db5a4] text-white">
+                <th className="px-3 py-2 text-left font-semibold">Customer</th><th className="px-3 py-2 text-left font-semibold">Deal Name</th><th className="px-3 py-2 text-right font-semibold">Value</th><th className="px-3 py-2 text-left font-semibold">Salesperson</th>
+              </tr></thead>
+              <tbody className="divide-y divide-gray-100">{(data?.records || groups || []).slice(0, 15).map((r, i) => (
+                <tr key={i} className="hover:bg-gray-50"><td className="px-3 py-2 text-gray-700">{r.account_name || '-'}</td><td className="px-3 py-2 text-gray-900 font-medium">{r.name || r.label || '-'}</td><td className="px-3 py-2 text-right font-mono font-semibold">{(r.sale_value || r.total || 0).toLocaleString()}</td><td className="px-3 py-2 text-gray-600">{r.owner_name || '-'}</td></tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+
       </div>
     </div>
   );
