@@ -58,17 +58,18 @@ async def close_redis():
 # ==================== STREAM PUBLISHING ====================
 
 async def publish_event(stream: str, data: dict):
-    """Publish an event to a Redis stream"""
+    """Publish an event to a Redis stream. Silently skips if Redis unavailable."""
     r = await get_redis()
-    # Flatten data for Redis (only string values)
+    if not r:
+        return
     flat = {}
     for k, v in data.items():
         if v is not None:
             flat[k] = json.dumps(v) if isinstance(v, (dict, list)) else str(v)
     try:
-        await r.xadd(stream, flat, maxlen=10000)  # Keep last 10K events
-    except Exception as e:
-        logger.error(f"Redis publish error: {e}")
+        await r.xadd(stream, flat, maxlen=10000)
+    except Exception:
+        pass
 
 
 async def publish_sync_event(entity: str, action: str, record_id: str, data: dict = None):
