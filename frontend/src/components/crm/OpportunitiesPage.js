@@ -1561,6 +1561,13 @@ export function OpportunitiesPage() {
                             <span className="text-sm">{opp.user_probability || opp.probability || 0}%</span>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          {opp.days_since_update != null ? (
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opp.days_since_update <= 7 ? 'bg-green-100 text-green-700' : opp.days_since_update <= 30 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                              {opp.days_since_update}d ago
+                            </span>
+                          ) : <span className="text-xs text-gray-400">-</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button 
                             variant="ghost" 
