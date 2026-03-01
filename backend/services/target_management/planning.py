@@ -57,7 +57,7 @@ class RevenuePlanCreate(BaseModel):
 
 class ActivityPlanItemCreate(BaseModel):
     """PM creates activity plan item (e.g. 10 demos for NDR)"""
-    activity_type: str  # Call, Demo, Meeting, Proof of concept, Site Visit, Work Shop
+    activity_type: str  # Demo, Proof of concept, Site Visit, Work Shop, Product Presentation, Vendor Meeting, POC
     solution_category: Optional[str] = None
     target_count: int = 0
     notes: Optional[str] = None
