@@ -313,7 +313,7 @@ async def create_revenue_plan(
     doc = {
         "id": generate_id(),
         "org_id": org_id,
-        "plan_type": "revenue",
+        "plan_type": data.plan_type,  # "booking" or "invoiced_revenue"
         "status": "active",
         "actual_revenue": 0,
         "created_by": current_user["id"],
