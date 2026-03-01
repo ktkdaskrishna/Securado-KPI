@@ -1379,7 +1379,7 @@ async def get_ceo_summary(
     insight = f"Risk driven by {' and '.join(issues)}." if issues else "All signals healthy."
     
     signals = [
-        {"name": "Revenue vs Plan", "value": f"{rev_pct}%", "detail": f"OMR {total_won:,.0f} / {total_target:,.0f}", "signal": rev_signal},
+        {"name": "Revenue vs Plan", "value": f"{rev_pct}%", "detail": rev_detail, "signal": rev_signal},
         {"name": "Activity Coverage", "value": f"{act_pct}%", "detail": f"{act_actual} / {act_target} activities", "signal": act_signal},
         {"name": "Collections Health", "value": f"{100 - overdue_pct:.0f}%", "detail": f"{overdue} overdue (OMR {overdue_amt:,.0f})", "signal": coll_signal},
         {"name": "Pipeline Coverage", "value": f"{coverage}x", "detail": f"OMR {pipeline:,.0f} pipeline", "signal": pipe_signal},
