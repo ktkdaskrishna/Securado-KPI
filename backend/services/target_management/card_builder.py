@@ -921,3 +921,102 @@ async def seed_role_templates(current_user: dict = Depends(get_current_user)):
     
     return {"success": True, "templates_created": len(created_templates), "templates": created_templates, "total_cards": len(cards)}
 
+
+
+@card_builder_router.get("/templates/{template_id}/export")
+async def export_template(template_id: str, current_user: dict = Depends(get_current_user)):
+    """Export a template with all its cards as a portable JSON bundle.
+    Can be imported into another environment (e.g., preview → production)."""
+    app_db = get_app_db()
+    
+    template = await app_db.dashboard_templates_v2.find_one({"id": template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Collect all cards referenced by this template
+    card_ids = set()
+    for b in template.get("blocks", []):
+        if b.get("card_id"):
+            card_ids.add(b["card_id"])
+    for cid in template.get("cards", []):
+        card_ids.add(cid)
+    
+    cards = []
+    for cid in card_ids:
+        card = await app_db.dashboard_cards.find_one({"id": cid})
+        if card:
+            cards.append(serialize_doc(card))
+    
+    export_data = {
+        "export_version": "1.0",
+        "exported_at": now_utc(),
+        "template": serialize_doc(template),
+        "cards": cards,
+    }
+    
+    return export_data
+
+
+@card_builder_router.post("/templates/import")
+async def import_template(data: dict, current_user: dict = Depends(get_current_user)):
+    """Import a template bundle (from export). Creates cards + template with new IDs."""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    tpl_data = data.get("template", {})
+    cards_data = data.get("cards", [])
+    
+    if not tpl_data or not tpl_data.get("name"):
+        raise HTTPException(status_code=400, detail="Invalid import data — no template found")
+    
+    # Map old card IDs to new IDs
+    id_map = {}
+    created_cards = 0
+    for card in cards_data:
+        old_id = card.get("id")
+        # Check if card with same name already exists
+        existing = await app_db.dashboard_cards.find_one({"org_id": org_id, "name": card.get("name")})
+        if existing:
+            id_map[old_id] = existing["id"]
+        else:
+            new_id = generate_id()
+            id_map[old_id] = new_id
+            new_card = {k: v for k, v in card.items() if k not in ["_id", "id", "org_id"]}
+            new_card["id"] = new_id
+            new_card["org_id"] = org_id
+            new_card["created_at"] = now_utc()
+            await app_db.dashboard_cards.insert_one(new_card)
+            created_cards += 1
+    
+    # Create template with mapped card IDs
+    new_tpl_id = generate_id()
+    new_blocks = []
+    for b in tpl_data.get("blocks", []):
+        old_card_id = b.get("card_id")
+        new_card_id = id_map.get(old_card_id, old_card_id)
+        new_blocks.append({**b, "i": new_card_id, "card_id": new_card_id})
+    
+    new_cards = [id_map.get(cid, cid) for cid in tpl_data.get("cards", [])]
+    
+    new_template = {
+        "id": new_tpl_id,
+        "org_id": org_id,
+        "name": tpl_data.get("name"),
+        "description": tpl_data.get("description", ""),
+        "cards": new_cards,
+        "blocks": new_blocks,
+        "assigned_roles": tpl_data.get("assigned_roles", []),
+        "is_default": False,
+        "created_by": current_user.get("email", "import"),
+        "created_at": now_utc(),
+    }
+    await app_db.dashboard_templates_v2.insert_one(new_template)
+    
+    return {
+        "success": True,
+        "template_id": new_tpl_id,
+        "template_name": new_template["name"],
+        "cards_created": created_cards,
+        "cards_reused": len(id_map) - created_cards,
+        "total_blocks": len(new_blocks),
+    }
