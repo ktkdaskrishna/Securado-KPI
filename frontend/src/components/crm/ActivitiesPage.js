@@ -253,7 +253,6 @@ export function ActivitiesPage() {
           { label: 'Site Visits', key: 'site_visit', icon: MapPin, color: '#10b981' },
           { label: 'POC', key: 'proof_of_concept', icon: Wrench, color: '#f59e0b' },
           { label: 'Workshops', key: 'work_shop', icon: Eye, color: '#8b5cf6' },
-          { label: 'RFP', key: 'rfp_submission', icon: FileCheck, color: '#ef4444' },
         ];
         return (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
