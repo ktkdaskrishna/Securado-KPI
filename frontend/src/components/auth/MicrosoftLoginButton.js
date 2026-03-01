@@ -28,7 +28,7 @@ const getMsalConfig = (clientId, tenantId) => ({
     authority: `https://login.microsoftonline.com/${tenantId}`,
     redirectUri: `${window.location.origin}/login`,
     postLogoutRedirectUri: `${window.location.origin}/login`,
-    navigateToLoginRequestUrl: false, // Changed to false to prevent redirect issues
+    navigateToLoginRequestUrl: true, // Let MSAL handle the full redirect cycle
   },
   cache: {
     cacheLocation: 'localStorage', // Changed from sessionStorage to localStorage for better persistence
