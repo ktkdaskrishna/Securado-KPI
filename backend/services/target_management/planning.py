@@ -328,14 +328,19 @@ async def create_revenue_plan(
     doc = {
         "id": generate_id(),
         "org_id": org_id,
-        "plan_type": data.plan_type,  # "booking" or "invoiced_revenue"
+        "plan_type": "revenue",
         "status": "active",
+        "booking_target": data.booking_target or data.target_amount,  # Backward compatible
+        "invoiced_target": data.invoiced_target,
+        "target_amount": data.booking_target or data.target_amount,  # Legacy: keep for backward compat
+        "actual_booking": 0,
+        "actual_invoiced": 0,
         "actual_revenue": 0,
         "created_by": current_user["id"],
         "created_by_name": current_user.get("name", "Unknown"),
         "created_at": now_utc(),
         "updated_at": now_utc(),
-        **data.model_dump()
+        **{k: v for k, v in data.model_dump().items() if k not in ["booking_target", "invoiced_target", "target_amount"]}
     }
 
     await app_db.target_plans.insert_one(doc)
