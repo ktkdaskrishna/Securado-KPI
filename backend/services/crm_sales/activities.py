@@ -53,7 +53,7 @@ async def list_activities(
         return []
     
     # Value-selling activity types ONLY (exclude internal/admin activities)
-    VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Site Visit", "Work Shop", "RFP Submission", "Product Presentation", "Vendor Meeting", "POC"]
+    VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Site Visit", "Work Shop", "Product Presentation", "Vendor Meeting", "POC"]
     
     # Build query for canonical CRM activities ONLY with RBAC
     canonical_query = {
