@@ -111,63 +111,49 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   useEffect(() => {
     const initMsal = async () => {
       try {
-        // Detect if we're returning from a Microsoft redirect
-        const isRedirectReturn = window.location.hash?.includes('code=') || 
-                                 window.location.href?.includes('code=') ||
-                                 window.location.search?.includes('code=');
-        
-        // Fetch Microsoft config — longer timeout on redirect return
+        // Fetch Microsoft config
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), isRedirectReturn ? 15000 : 8000);
+        const timeout = setTimeout(() => controller.abort(), 12000);
         const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`, { signal: controller.signal });
         clearTimeout(timeout);
         const config = await configResponse.json();
         
         if (config.clientId && config.tenantId) {
-          console.log('[MSAL] Initializing...', isRedirectReturn ? '(REDIRECT RETURN)' : '');
           const msalConfig = getMsalConfig(config.clientId, config.tenantId);
           const pca = new PublicClientApplication(msalConfig);
           await pca.initialize();
+          
+          // CRITICAL: Handle redirect IMMEDIATELY after init, before setting any state
+          const response = await pca.handleRedirectPromise();
+          
           setMsalInstance(pca);
           setConfigLoaded(true);
           
-          // Handle redirect response
-          try {
-            const response = await pca.handleRedirectPromise();
-            if (response) {
-              console.log('[MSAL] Redirect response: token=' + !!response.accessToken + ' account=' + response.account?.username);
-              setMsLoading(true);
-              if (response.accessToken) {
-                await completeMicrosoftLoginStatic(response);
-              } else if (response.account) {
-                // Try silent token acquire first
-                try {
-                  const silentResp = await pca.acquireTokenSilent({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
-                  if (silentResp.accessToken) { await completeMicrosoftLoginStatic(silentResp); return; }
-                } catch {}
-                // Fallback: try popup
-                try {
-                  const popupResp = await pca.acquireTokenPopup({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
-                  if (popupResp.accessToken) { await completeMicrosoftLoginStatic(popupResp); return; }
-                } catch (popupErr) {
-                  window.location.href = '/login?error=' + encodeURIComponent('Token failed: ' + (popupErr.errorCode || popupErr.message || 'Check Azure AD permissions'));
-                }
+          if (response && response.accessToken) {
+            console.log('[MSAL] Redirect login successful');
+            setMsLoading(true);
+            await completeMicrosoftLoginStatic(response);
+          } else if (response && response.account) {
+            // Got account but no access token — acquire silently
+            console.log('[MSAL] Got account, acquiring token silently...');
+            setMsLoading(true);
+            try {
+              const silentResp = await pca.acquireTokenSilent({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
+              if (silentResp.accessToken) {
+                await completeMicrosoftLoginStatic(silentResp);
               }
-            } else if (isRedirectReturn) {
-              // handleRedirectPromise returned null but URL had code= 
-              // This can happen when React Router processes the URL first
-              // Don't show error — just let user retry manually
-              console.log('[MSAL] Redirect detected but no response — URL may have been processed already');
-            }
-          } catch (redirectErr) {
-            if (redirectErr.errorCode !== 'no_token_request_cache_error') {
-              window.location.href = '/login?error=' + encodeURIComponent('SSO error: ' + (redirectErr.errorCode || redirectErr.message));
+            } catch (silentErr) {
+              console.error('[MSAL] Silent acquire failed:', silentErr.errorCode);
+              setMsLoading(false);
+              setError('Could not complete login. Please try again.');
             }
           }
+          // If response is null — no pending redirect, normal page load. Do nothing.
         } else {
           setConfigLoaded(false);
         }
       } catch (err) {
+        console.error('[MSAL] Init error:', err.name === 'AbortError' ? 'Config timeout' : err);
         setConfigLoaded(false);
       }
     };
