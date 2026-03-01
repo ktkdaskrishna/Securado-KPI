@@ -152,6 +152,76 @@ async def review_feedback(
     return {"success": True}
 
 
+
+@feedback_router.get("/export/all")
+async def export_feedback(
+    api_key: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    """Export feedback for external consumption (API key protected).
+    Used by the development feedback agent to pull production feedback.
+    API key = FEEDBACK_EXPORT_KEY env var (or any admin JWT token via header).
+    """
+    import os
+    expected_key = os.environ.get("FEEDBACK_EXPORT_KEY", "")
+    
+    # Validate API key
+    if not api_key or (expected_key and api_key != expected_key):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    app_db = get_app_db()
+    query = {}
+    if status:
+        query["status"] = status
+    else:
+        # Default: only actionable items (not completed/rejected)
+        query["status"] = {"$in": ["pending", "in_review", "approved", "planned"]}
+    
+    items = await app_db.feedback_items.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    return {
+        "count": len(items),
+        "items": serialize_doc(items),
+        "exported_at": now_utc()
+    }
+
+
+@feedback_router.post("/export/mark-completed")
+async def mark_completed_external(
+    data: dict,
+    api_key: Optional[str] = None,
+):
+    """Mark feedback as completed from external (dev agent).
+    Used after a fix is deployed to production.
+    """
+    import os
+    expected_key = os.environ.get("FEEDBACK_EXPORT_KEY", "")
+    if not api_key or (expected_key and api_key != expected_key):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    app_db = get_app_db()
+    feedback_id = data.get("feedback_id")
+    resolution_note = data.get("resolution_note", "Fixed by development agent")
+    
+    if not feedback_id:
+        raise HTTPException(status_code=400, detail="feedback_id required")
+    
+    result = await app_db.feedback_items.update_one(
+        {"id": feedback_id},
+        {"$set": {
+            "status": "completed",
+            "admin_note": resolution_note,
+            "reviewed_by": "dev_agent",
+            "reviewed_at": now_utc(),
+            "updated_at": now_utc(),
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return {"success": True}
+
+
+
 @feedback_router.get("/{feedback_id}/attachments/{attachment_id}")
 async def get_attachment(
     feedback_id: str,
