@@ -243,7 +243,7 @@ async def list_revenue_plans(
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
 
-    query = {"org_id": org_id, "plan_type": "revenue"}
+    query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}
     if period:
         query["period"] = period
     if product_manager:
