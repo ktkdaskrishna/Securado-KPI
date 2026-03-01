@@ -110,3 +110,28 @@ Odoo → Incremental sync (5min) → MongoDB canonical → Redis cache invalidat
 8. **Leaderboard sort by total (not count)** — for sum aggregation cards
 9. **`load_config_from_db()` must have try/catch** — DB may be unreachable on production
 10. **Emergent badge** — Hidden via CSS `#emergent-badge { display: none !important; }`
+
+
+---
+
+## RULE 8: FEEDBACK AGENT WORKFLOW
+
+### Before ANY fix:
+1. Read `/app/memory/FEEDBACK_TRACKER.md` — check if the file you're about to edit has caused issues before
+2. Pull production feedback: `curl https://bi.securado.net/api/feedback/export/all?api_key=sk-feedback-securado-2026-export`
+3. Cross-reference new issue with past fixes — is this a regression?
+
+### During fix:
+4. Make the minimal change needed (RULE 1)
+5. Test the specific fix with curl
+6. Verify NO OTHER cards/pages broke (check dashboard has 9 working cards)
+
+### After fix:
+7. Update FEEDBACK_TRACKER.md with: date, root cause, files changed, regression risk
+8. Mark production feedback as completed: `POST /api/feedback/export/mark-completed?api_key=...`
+9. If regression risk exists, add to "High-Risk Files" table
+
+### Production Feedback Export API:
+- `GET /api/feedback/export/all?api_key=sk-feedback-securado-2026-export` — pull all pending feedback
+- `POST /api/feedback/export/mark-completed?api_key=...` — mark as completed after fix deployed
+- Feedback statuses: pending → in_review → approved → planned → completed
