@@ -72,7 +72,7 @@ export function ActivitiesPage() {
         setFilterOptions({
           years: res.data.years || [],
           salesReps: res.data.sales_reps || res.data.salesReps || [],
-          types: ['Demo', 'Proof of concept', 'Site Visit', 'Work Shop', 'RFP Submission', 'Product Presentation', 'Vendor Meeting', 'POC']
+          types: ['Demo', 'Proof of concept', 'Site Visit', 'Work Shop', 'Product Presentation', 'Vendor Meeting', 'POC']
         });
       }
     } catch (error) {
