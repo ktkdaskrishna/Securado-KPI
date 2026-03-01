@@ -154,7 +154,10 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
                 }
               }
             } else if (isRedirectReturn) {
-              window.location.href = '/login?error=' + encodeURIComponent('Microsoft login incomplete. Please try again.');
+              // handleRedirectPromise returned null but URL had code= 
+              // This can happen when React Router processes the URL first
+              // Don't show error — just let user retry manually
+              console.log('[MSAL] Redirect detected but no response — URL may have been processed already');
             }
           } catch (redirectErr) {
             if (redirectErr.errorCode !== 'no_token_request_cache_error') {
