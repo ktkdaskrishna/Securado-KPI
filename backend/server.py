@@ -183,6 +183,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Incremental sync worker start failed: {e}")
     
+    # Start Redis server if available (production packaging)
+    import subprocess, shutil
+    redis_process = None
+    if shutil.which("redis-server"):
+        try:
+            redis_process = subprocess.Popen(
+                ["redis-server", "--daemonize", "no", "--protected-mode", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            logger.info("Redis server started (bundled)")
+        except Exception as e:
+            logger.warning(f"Redis server start failed: {e}")
+    else:
+        logger.info("Redis server not found — running without cache")
+    
     logger.info("Event Mesh CRM Platform started successfully")
     
     yield
