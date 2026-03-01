@@ -258,6 +258,10 @@ async def list_opportunities(
         if stage.startswith("exclude:"):
             exclude_stages = [s.strip() for s in stage[8:].split(",")]
             query["stage"] = {"$nin": exclude_stages}
+        elif "," in stage:
+            # Multi-select: "Won,Lost" → {"$in": ["Won", "Lost"]}
+            multi_stages = [s.strip() for s in stage.split(",")]
+            query["stage"] = {"$in": multi_stages}
         else:
             aliases = STAGE_ALIASES.get(stage.lower())
             if aliases:
