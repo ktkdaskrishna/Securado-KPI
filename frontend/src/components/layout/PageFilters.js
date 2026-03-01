@@ -166,22 +166,51 @@ export function AccountFilter({ value, onChange, accounts }) {
 }
 
 export function StageFilter({ value, onChange, stages }) {
-  // Filter out empty/null stage values
   const validStages = stages?.filter(stage => stage && stage.trim() !== '') || [];
+  const [open, setOpen] = useState(false);
+  
+  // value can be: null (all), "Won" (single), "Won,Lost" (multi-select comma-separated)
+  const selected = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+  
+  const toggleStage = (stage) => {
+    let next;
+    if (selected.includes(stage)) {
+      next = selected.filter(s => s !== stage);
+    } else {
+      next = [...selected, stage];
+    }
+    onChange(next.length === 0 ? null : next.join(','));
+  };
+  
+  const label = selected.length === 0 ? 'All Stages' : selected.length === 1 ? selected[0] : `${selected.length} Stages`;
   
   return (
-    <Select value={value || 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
-      <SelectTrigger className="w-[150px] h-9" data-testid="filter-stage">
-        <Target className="h-3 w-3 mr-1" />
-        <SelectValue placeholder="Stage" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Stages</SelectItem>
-        {validStages.map(stage => (
-          <SelectItem key={stage} value={stage}>{stage}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-[160px] h-9 justify-between text-xs font-normal" data-testid="filter-stage">
+          <Target className="h-3 w-3 mr-1 shrink-0" />
+          <span className="truncate">{label}</span>
+          <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-2">
+        <div className="space-y-1">
+          <button onClick={() => { onChange(null); setOpen(false); }}
+            className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 ${selected.length === 0 ? 'bg-gray-100 font-medium' : ''}`}>
+            All Stages
+          </button>
+          {validStages.map(stage => (
+            <button key={stage} onClick={() => toggleStage(stage)}
+              className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 flex items-center gap-2 ${selected.includes(stage) ? 'bg-[#800000]/5 text-[#800000] font-medium' : ''}`}>
+              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${selected.includes(stage) ? 'bg-[#800000] border-[#800000] text-white' : 'border-gray-300'}`}>
+                {selected.includes(stage) ? '✓' : ''}
+              </span>
+              {stage}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
