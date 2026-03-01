@@ -268,28 +268,33 @@ async def list_revenue_plans(
         pm_name = plan.get("product_manager_name")
         if pm_name:
             year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
-            pt = plan.get("plan_type", "revenue")
             
-            if pt == "invoiced_revenue":
-                # Invoiced Revenue: compare against PAID invoices
-                inv_pipeline = [
-                    {"$match": {"salesperson_name": {"$regex": pm_name, "$options": "i"}, "payment_state": "paid", "invoice_date": {"$regex": f"^{filter_year}"}}},
-                    {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$amount_total", 0]}}, "inv_count": {"$sum": 1}}}
-                ]
-                inv_result = await canonical_db.invoices.aggregate(inv_pipeline).to_list(1)
-                plan["actual_revenue"] = inv_result[0].get("actual_revenue", 0) if inv_result else 0
-                plan["won_deals"] = inv_result[0].get("inv_count", 0) if inv_result else 0
-                plan["data_basis"] = "INVOICED"
-            else:
-                # Booking: compare against Won opportunities (CRM)
-                pipeline = [
-                    {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
-                    {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "won_count": {"$sum": 1}}}
-                ]
-                result = await canonical_db.opportunities.aggregate(pipeline).to_list(1)
-                plan["actual_revenue"] = result[0].get("actual_revenue", 0) if result else 0
-                plan["won_deals"] = result[0].get("won_count", 0) if result else 0
-                plan["data_basis"] = "BOOKED"
+            # Booking actual: Won opportunities (CRM)
+            booking_pipeline = [
+                {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
+            ]
+            booking_result = await canonical_db.opportunities.aggregate(booking_pipeline).to_list(1)
+            plan["actual_booking"] = booking_result[0].get("total", 0) if booking_result else 0
+            plan["won_deals"] = booking_result[0].get("count", 0) if booking_result else 0
+            
+            # Invoiced actual: Paid invoices
+            inv_pipeline = [
+                {"$match": {"salesperson_name": {"$regex": pm_name, "$options": "i"}, "payment_state": "paid", "invoice_date": {"$regex": f"^{filter_year}"}}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$amount_total", 0]}}, "count": {"$sum": 1}}}
+            ]
+            inv_result = await canonical_db.invoices.aggregate(inv_pipeline).to_list(1)
+            plan["actual_invoiced"] = inv_result[0].get("total", 0) if inv_result else 0
+            plan["invoiced_count"] = inv_result[0].get("count", 0) if inv_result else 0
+            
+            # Legacy field
+            plan["actual_revenue"] = plan["actual_booking"]
+            
+            # Compute achievement percentages
+            bt = plan.get("booking_target", plan.get("target_amount", 0))
+            it = plan.get("invoiced_target", 0)
+            plan["booking_pct"] = round(plan["actual_booking"] / bt * 100, 1) if bt > 0 else 0
+            plan["invoiced_pct"] = round(plan["actual_invoiced"] / it * 100, 1) if it > 0 else 0
 
             # Get total pipeline (current year, exclude deleted)
             pipeline2 = [
