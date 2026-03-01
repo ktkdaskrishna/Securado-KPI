@@ -85,38 +85,43 @@ async def publish_sync_event(entity: str, action: str, record_id: str, data: dic
 # ==================== CACHE ====================
 
 async def cache_set(key: str, data: dict, ttl: int = 300):
-    """Set cache with TTL (default 5 min)"""
+    """Set cache with TTL. Silently skips if Redis unavailable."""
     r = await get_redis()
+    if not r:
+        return
     try:
         await r.setex(key, ttl, json.dumps(data, default=str))
-    except Exception as e:
-        logger.error(f"Redis cache set error: {e}")
+    except Exception:
+        pass
 
 
 async def cache_get(key: str) -> Optional[dict]:
-    """Get from cache"""
+    """Get from cache. Returns None if Redis unavailable."""
     r = await get_redis()
+    if not r:
+        return None
     try:
         val = await r.get(key)
         if val:
             return json.loads(val)
-    except Exception as e:
-        logger.error(f"Redis cache get error: {e}")
+    except Exception:
+        pass
     return None
 
 
 async def cache_delete(pattern: str):
-    """Delete cache keys matching pattern"""
+    """Delete cache keys matching pattern. Silently skips if Redis unavailable."""
     r = await get_redis()
+    if not r:
+        return
     try:
         keys = []
         async for key in r.scan_iter(pattern):
             keys.append(key)
         if keys:
             await r.delete(*keys)
-            logger.info(f"Deleted {len(keys)} cache keys matching {pattern}")
-    except Exception as e:
-        logger.error(f"Redis cache delete error: {e}")
+    except Exception:
+        pass
 
 
 async def invalidate_dashboard_cache():
