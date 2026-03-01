@@ -261,6 +261,23 @@ export default function ConfigurableDashboard() {
 
   const handleDeleteCard = async (id) => { try { await targetAPI.deleteCard(id); toast.success('Deleted'); const cRes = await targetAPI.listCards(); setAllCards(cRes.data); } catch {} };
 
+  const handleCloneCard = async (card) => {
+    try {
+      const cloneData = {
+        name: `${card.name} (Copy)`,
+        collection: card.collection, aggregation: card.aggregation, field: card.field,
+        filters: card.filters, group_by: card.group_by, display_type: card.display_type,
+        color: card.color, icon: card.icon, size: card.size, year_filter: card.year_filter,
+        date_filter_field: card.date_filter_field, sort_by: card.sort_by, sort_order: card.sort_order,
+        cache_ttl: card.cache_ttl, description: card.description,
+      };
+      const res = await targetAPI.createCard(cloneData);
+      toast.success(`Cloned: ${cloneData.name}`);
+      const cRes = await targetAPI.listCards(); setAllCards(cRes.data);
+      if (activeTemplate) handleAddCard(res.data);
+    } catch { toast.error('Clone failed'); }
+  };
+
   const isKpi = (b) => ['number', 'win_rate'].includes(b.card?.display_type);
   const existingIds = blocks.map(b => b.card_id).filter(Boolean);
 
