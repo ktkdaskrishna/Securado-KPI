@@ -38,6 +38,11 @@ API Routes:
 import os
 import logging
 from contextlib import asynccontextmanager
+
+# Load .env FIRST before any other imports read env vars
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
