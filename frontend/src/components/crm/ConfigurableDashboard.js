@@ -308,6 +308,25 @@ export default function ConfigurableDashboard() {
     try { await targetAPI.deleteTemplate(id); toast.success('Deleted'); if (activeTemplate?.id === id) { setActiveTemplate(null); setBlocks([]); } loadAll(); } catch {}
   };
 
+  const handleCloneTemplate = async (tpl) => {
+    try {
+      const res = await targetAPI.createTemplate({
+        name: `${tpl.name} (Copy)`,
+        cards: tpl.cards || [],
+        assigned_roles: [],
+        is_default: false,
+        description: tpl.description || '',
+      });
+      // Copy blocks with layout positions
+      if (tpl.blocks && tpl.blocks.length > 0) {
+        const clonedBlocks = tpl.blocks.map(b => ({ i: b.card_id, x: b.x, y: b.y, w: b.w, h: b.h, type: b.type || 'query_card', card_id: b.card_id }));
+        await targetAPI.saveTemplateLayout(res.data.id, clonedBlocks);
+      }
+      toast.success(`Cloned: ${tpl.name} (Copy)`);
+      loadAll();
+    } catch { toast.error('Clone failed'); }
+  };
+
   const handleRemoveCard = (blockI) => { setBlocks(prev => prev.filter(b => (b.i || b.card_id) !== blockI)); setHasChanges(true); toast.success('Card removed'); };
 
   const handleAddCard = (card) => {
