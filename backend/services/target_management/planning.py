@@ -266,15 +266,28 @@ async def list_revenue_plans(
         pm_name = plan.get("product_manager_name")
         if pm_name:
             year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
+            pt = plan.get("plan_type", "revenue")
             
-            # Get actual revenue from Won opportunities for this PM (current year)
-            pipeline = [
-                {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
-                {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "won_count": {"$sum": 1}}}
-            ]
-            result = await canonical_db.opportunities.aggregate(pipeline).to_list(1)
-            plan["actual_revenue"] = result[0].get("actual_revenue", 0) if result else 0
-            plan["won_deals"] = result[0].get("won_count", 0) if result else 0
+            if pt == "invoiced_revenue":
+                # Invoiced Revenue: compare against PAID invoices
+                inv_pipeline = [
+                    {"$match": {"salesperson_name": {"$regex": pm_name, "$options": "i"}, "payment_state": "paid", "invoice_date": {"$regex": f"^{filter_year}"}}},
+                    {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$amount_total", 0]}}, "inv_count": {"$sum": 1}}}
+                ]
+                inv_result = await canonical_db.invoices.aggregate(inv_pipeline).to_list(1)
+                plan["actual_revenue"] = inv_result[0].get("actual_revenue", 0) if inv_result else 0
+                plan["won_deals"] = inv_result[0].get("inv_count", 0) if inv_result else 0
+                plan["data_basis"] = "INVOICED"
+            else:
+                # Booking: compare against Won opportunities (CRM)
+                pipeline = [
+                    {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
+                    {"$group": {"_id": None, "actual_revenue": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "won_count": {"$sum": 1}}}
+                ]
+                result = await canonical_db.opportunities.aggregate(pipeline).to_list(1)
+                plan["actual_revenue"] = result[0].get("actual_revenue", 0) if result else 0
+                plan["won_deals"] = result[0].get("won_count", 0) if result else 0
+                plan["data_basis"] = "BOOKED"
 
             # Get total pipeline (current year, exclude deleted)
             pipeline2 = [
