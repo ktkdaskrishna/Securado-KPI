@@ -111,67 +111,60 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   useEffect(() => {
     const initMsal = async () => {
       try {
-        // Fetch Microsoft config from backend with timeout
+        // Detect if we're returning from a Microsoft redirect
+        const isRedirectReturn = window.location.hash?.includes('code=') || 
+                                 window.location.href?.includes('code=') ||
+                                 window.location.search?.includes('code=');
+        
+        // Fetch Microsoft config — longer timeout on redirect return
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), isRedirectReturn ? 15000 : 8000);
         const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`, { signal: controller.signal });
         clearTimeout(timeout);
         const config = await configResponse.json();
         
         if (config.clientId && config.tenantId) {
-          console.log('[MSAL] Initializing with clientId:', config.clientId.substring(0, 8) + '...');
+          console.log('[MSAL] Initializing...', isRedirectReturn ? '(REDIRECT RETURN)' : '');
           const msalConfig = getMsalConfig(config.clientId, config.tenantId);
           const pca = new PublicClientApplication(msalConfig);
           await pca.initialize();
           setMsalInstance(pca);
           setConfigLoaded(true);
-          console.log('[MSAL] Initialized successfully');
           
           // Handle redirect response
           try {
             const response = await pca.handleRedirectPromise();
             if (response) {
-              console.log('[MSAL] Got redirect response:', {
-                hasAccessToken: !!response.accessToken,
-                hasIdToken: !!response.idToken,
-                account: response.account?.username,
-                scopes: response.scopes
-              });
+              console.log('[MSAL] Redirect response: token=' + !!response.accessToken + ' account=' + response.account?.username);
+              setMsLoading(true);
               if (response.accessToken) {
-                setMsLoading(true);
                 await completeMicrosoftLoginStatic(response);
-              } else if (response.idToken) {
-                // Some configs return idToken but not accessToken — try to acquire token silently
-                console.log('[MSAL] No access token, trying silent acquire...');
-                setMsLoading(true);
+              } else if (response.account) {
+                // Try silent token acquire first
                 try {
-                  const silentResponse = await pca.acquireTokenSilent({
-                    scopes: ['openid', 'profile', 'email', 'User.Read'],
-                    account: response.account
-                  });
-                  if (silentResponse.accessToken) {
-                    await completeMicrosoftLoginStatic(silentResponse);
-                  } else {
-                    window.location.href = '/login?error=' + encodeURIComponent('No access token from Microsoft. Check Azure AD API permissions.');
-                  }
-                } catch (silentErr) {
-                  console.error('[MSAL] Silent acquire failed:', silentErr);
-                  window.location.href = '/login?error=' + encodeURIComponent('Token acquisition failed: ' + (silentErr.message || silentErr.errorCode || 'Unknown'));
+                  const silentResp = await pca.acquireTokenSilent({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
+                  if (silentResp.accessToken) { await completeMicrosoftLoginStatic(silentResp); return; }
+                } catch {}
+                // Fallback: try popup
+                try {
+                  const popupResp = await pca.acquireTokenPopup({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
+                  if (popupResp.accessToken) { await completeMicrosoftLoginStatic(popupResp); return; }
+                } catch (popupErr) {
+                  window.location.href = '/login?error=' + encodeURIComponent('Token failed: ' + (popupErr.errorCode || popupErr.message || 'Check Azure AD permissions'));
                 }
               }
+            } else if (isRedirectReturn) {
+              window.location.href = '/login?error=' + encodeURIComponent('Microsoft login incomplete. Please try again.');
             }
           } catch (redirectErr) {
-            console.error('[MSAL] Redirect handling error:', redirectErr);
             if (redirectErr.errorCode !== 'no_token_request_cache_error') {
-              window.location.href = '/login?error=' + encodeURIComponent('Microsoft login error: ' + (redirectErr.message || redirectErr.errorCode || 'Unknown'));
+              window.location.href = '/login?error=' + encodeURIComponent('SSO error: ' + (redirectErr.errorCode || redirectErr.message));
             }
           }
         } else {
-          console.warn('[MSAL] Microsoft SSO not configured');
           setConfigLoaded(false);
         }
       } catch (err) {
-        console.error('[MSAL] Failed to initialize:', err.name === 'AbortError' ? 'Timeout' : err);
         setConfigLoaded(false);
       }
     };
