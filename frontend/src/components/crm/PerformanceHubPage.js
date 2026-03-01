@@ -263,7 +263,10 @@ export default function PerformanceHubPage() {
                   <TableBody>{plans.map(p => (
                     <TableRow key={p.id} className={`cursor-pointer hover:bg-gray-50 ${selectedPlan?.id === p.id ? 'bg-blue-50' : ''}`} onClick={() => { setSelectedPlan(p); setTab('pm'); }}>
                       <TableCell className="font-medium text-sm">{p.name}</TableCell><TableCell className="text-sm text-gray-600">{p.product_manager_name}</TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold">OMR {(p.target_amount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold">
+                        <div>OMR {(p.booking_target || p.target_amount || 0).toLocaleString()} <span className="text-[10px] text-gray-400 font-normal">BOOKED</span></div>
+                        {(p.invoiced_target > 0) && <div className="text-xs text-gray-500">OMR {(p.invoiced_target || 0).toLocaleString()} <span className="text-[10px] text-gray-400 font-normal">INVOICED</span></div>}
+                      </TableCell>
                       <TableCell className="text-right text-sm text-gray-500 font-mono">{(p.total_pipeline || 0).toLocaleString()}</TableCell>
                       <TableCell><Badge variant="secondary" className="text-xs">{p.activity_items_count || 0}</Badge></TableCell>
                       <TableCell><Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500" onClick={e => { e.stopPropagation(); targetAPI.deleteRevenuePlan(p.id).then(() => { toast.success('Deleted'); loadData(); }); }}><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
