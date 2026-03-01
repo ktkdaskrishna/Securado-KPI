@@ -130,14 +130,40 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
           // Handle redirect response
           try {
             const response = await pca.handleRedirectPromise();
-            if (response && response.accessToken) {
-              console.log('[MSAL] Got redirect response with token, completing login...');
-              setMsLoading(true);
-              await completeMicrosoftLoginStatic(response);
+            if (response) {
+              console.log('[MSAL] Got redirect response:', {
+                hasAccessToken: !!response.accessToken,
+                hasIdToken: !!response.idToken,
+                account: response.account?.username,
+                scopes: response.scopes
+              });
+              if (response.accessToken) {
+                setMsLoading(true);
+                await completeMicrosoftLoginStatic(response);
+              } else if (response.idToken) {
+                // Some configs return idToken but not accessToken — try to acquire token silently
+                console.log('[MSAL] No access token, trying silent acquire...');
+                setMsLoading(true);
+                try {
+                  const silentResponse = await pca.acquireTokenSilent({
+                    scopes: ['openid', 'profile', 'email', 'User.Read'],
+                    account: response.account
+                  });
+                  if (silentResponse.accessToken) {
+                    await completeMicrosoftLoginStatic(silentResponse);
+                  } else {
+                    window.location.href = '/login?error=' + encodeURIComponent('No access token from Microsoft. Check Azure AD API permissions.');
+                  }
+                } catch (silentErr) {
+                  console.error('[MSAL] Silent acquire failed:', silentErr);
+                  window.location.href = '/login?error=' + encodeURIComponent('Token acquisition failed: ' + (silentErr.message || silentErr.errorCode || 'Unknown'));
+                }
+              }
             }
           } catch (redirectErr) {
+            console.error('[MSAL] Redirect handling error:', redirectErr);
             if (redirectErr.errorCode !== 'no_token_request_cache_error') {
-              console.error('[MSAL] Redirect handling error:', redirectErr);
+              window.location.href = '/login?error=' + encodeURIComponent('Microsoft login error: ' + (redirectErr.message || redirectErr.errorCode || 'Unknown'));
             }
           }
         } else {
