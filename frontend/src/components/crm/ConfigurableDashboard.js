@@ -100,6 +100,7 @@ function BuilderChartCard({ card, data, onEdit, onRemove, onClone }) {
           <div className="flex gap-0.5">
             <button onMouseDown={e => e.stopPropagation()} className="p-1 rounded hover:bg-gray-100"><GripVertical className="h-3.5 w-3.5 text-gray-400" /></button>
             {onEdit && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onEdit(card); }} className="p-1 rounded hover:bg-gray-100"><Pencil className="h-3.5 w-3.5 text-gray-400" /></button>}
+            {onClone && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onClone(card); }} className="p-1 rounded hover:bg-gray-100" title="Clone"><Copy className="h-3.5 w-3.5 text-gray-400" /></button>}
             {onRemove && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onRemove(); }} className="p-1 rounded hover:bg-red-50"><X className="h-3.5 w-3.5 text-red-400" /></button>}
           </div>
         </div>
