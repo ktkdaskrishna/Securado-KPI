@@ -310,21 +310,36 @@ export default function ConfigurableDashboard() {
 
   const handleCloneTemplate = async (tpl) => {
     try {
-      const res = await targetAPI.createTemplate({
-        name: `${tpl.name} (Copy)`,
-        cards: tpl.cards || [],
-        assigned_roles: [],
-        is_default: false,
-        description: tpl.description || '',
-      });
-      // Copy blocks with layout positions
+      const res = await targetAPI.createTemplate({ name: `${tpl.name} (Copy)`, cards: tpl.cards || [], assigned_roles: [], is_default: false, description: tpl.description || '' });
       if (tpl.blocks && tpl.blocks.length > 0) {
-        const clonedBlocks = tpl.blocks.map(b => ({ i: b.card_id, x: b.x, y: b.y, w: b.w, h: b.h, type: b.type || 'query_card', card_id: b.card_id }));
-        await targetAPI.saveTemplateLayout(res.data.id, clonedBlocks);
+        await targetAPI.saveTemplateLayout(res.data.id, tpl.blocks.map(b => ({ i: b.card_id, x: b.x, y: b.y, w: b.w, h: b.h, type: b.type || 'query_card', card_id: b.card_id })));
       }
-      toast.success(`Cloned: ${tpl.name} (Copy)`);
-      loadAll();
+      toast.success(`Cloned: ${tpl.name} (Copy)`); loadAll();
     } catch { toast.error('Clone failed'); }
+  };
+
+  const handleExportTemplate = async (tpl) => {
+    try {
+      const res = await targetAPI.exportTemplate(tpl.id);
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${tpl.name.replace(/\s+/g, '_')}_template.json`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported: ${tpl.name}`);
+    } catch { toast.error('Export failed'); }
+  };
+
+  const handleImportTemplate = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const res = await targetAPI.importTemplate(data);
+      toast.success(`Imported: ${res.data.template_name} (${res.data.cards_created} new cards, ${res.data.cards_reused} reused)`);
+      loadAll();
+    } catch (err) { toast.error('Import failed: ' + (err.message || 'Invalid file')); }
+    e.target.value = '';
   };
 
   const handleRemoveCard = (blockI) => { setBlocks(prev => prev.filter(b => (b.i || b.card_id) !== blockI)); setHasChanges(true); toast.success('Card removed'); };
