@@ -42,7 +42,7 @@ const CARD_COLORS_INFO = {
 const getCI = c => CARD_COLORS_INFO[c] || { muted: 'rgba(255,255,255,0.7)', iconBg: 'rgba(255,255,255,0.12)' };
 
 // ============ KPI PREVIEW CARD (with hover controls) ============
-function BuilderKpiCard({ card, data, onEdit, onRemove }) {
+function BuilderKpiCard({ card, data, onEdit, onRemove, onClone }) {
   const Icon = ICONS[card?.icon] || Target;
   const groups = data?.groups || [];
   const bg = card?.color || '#1e3a5f';
