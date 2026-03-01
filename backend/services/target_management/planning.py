@@ -1358,7 +1358,7 @@ async def get_ceo_summary(
         {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
     ]).to_list(1)
     pipeline = pipeline_r[0]["total"] if pipeline_r else 0
-    coverage = round(pipeline / total_target, 1) if total_target > 0 else 0
+    coverage = round(pipeline / total_booking_target, 1) if total_booking_target > 0 else 0
     pipe_signal = "green" if coverage >= 3 else "amber" if coverage >= 2 else "red"
     
     # 5. Team Execution (based on plan items redistribution)
