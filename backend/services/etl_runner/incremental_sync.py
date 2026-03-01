@@ -78,6 +78,14 @@ INCREMENTAL_ENTITIES = {
         "default_fields": ["id", "res_id", "res_model_id", "activity_type_id", "summary",
             "date_deadline", "user_id", "state", "create_date", "write_date"],
     },
+    "employees": {
+        "odoo_model": "hr.employee",
+        "canonical_collection": "employees",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_employee",
+        "default_fields": ["id", "name", "job_title", "department_id", "parent_id",
+            "coach_id", "work_email", "work_phone", "active", "create_date", "write_date"],
+    },
 }
 
 # Field cache per model (refreshed every hour)
