@@ -286,11 +286,45 @@ function ChartCard({ card, data, onDrillDown, onNavigate, onItemNavigate }) {
           })()}</div>
         )}
         {card.display_type === 'table' && (
-          <div className="px-2 space-y-0.5 overflow-auto h-full">{(data?.records || groups || []).slice(0, 10).map((r, i) => (
-            <div key={i} className="flex justify-between items-center py-1.5 px-2 rounded hover:bg-gray-50 text-xs cursor-pointer" onClick={() => handleItemClick(r.name || r.label)}>
-              <span className="text-gray-600 truncate flex-1">{r.name || r.label || '-'}</span>
-              <span className="font-mono font-semibold text-gray-900 ml-2">OMR {(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</span>
-            </div>))}</div>
+          <div className="overflow-auto h-full">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-[#3db5a4] text-white">
+                  {card.collection === 'opportunities' && <><th className="px-3 py-2 text-left font-semibold">Customer</th><th className="px-3 py-2 text-left font-semibold">Deal Name</th><th className="px-3 py-2 text-right font-semibold">Sale Value</th><th className="px-3 py-2 text-left font-semibold">Salesperson</th></>}
+                  {card.collection === 'invoices' && <><th className="px-3 py-2 text-left font-semibold">Customer</th><th className="px-3 py-2 text-left font-semibold">Invoice</th><th className="px-3 py-2 text-right font-semibold">Amount</th><th className="px-3 py-2 text-left font-semibold">Status</th></>}
+                  {card.collection === 'accounts' && <><th className="px-3 py-2 text-left font-semibold">Name</th><th className="px-3 py-2 text-left font-semibold">City</th><th className="px-3 py-2 text-left font-semibold">Country</th></>}
+                  {!['opportunities','invoices','accounts'].includes(card.collection) && <><th className="px-3 py-2 text-left font-semibold">Name</th><th className="px-3 py-2 text-right font-semibold">Value</th></>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {(data?.records || groups || []).slice(0, 15).map((r, i) => (
+                  <tr key={i} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleItemClick(r.name || r.label)}>
+                    {card.collection === 'opportunities' && <>
+                      <td className="px-3 py-2 text-gray-700">{r.account_name || '-'}</td>
+                      <td className="px-3 py-2 text-gray-900 font-medium">{r.name || '-'}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-gray-900">{(r.sale_value || 0).toLocaleString()}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.owner_name || '-'}</td>
+                    </>}
+                    {card.collection === 'invoices' && <>
+                      <td className="px-3 py-2 text-gray-700">{r.partner_name || '-'}</td>
+                      <td className="px-3 py-2 text-gray-900 font-medium">{r.invoice_number || r.name || '-'}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-gray-900">{(r.amount_total || 0).toLocaleString()}</td>
+                      <td className="px-3 py-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${r.payment_state === 'paid' ? 'bg-green-100 text-green-700' : r.payment_state === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{r.payment_state || '-'}</span></td>
+                    </>}
+                    {card.collection === 'accounts' && <>
+                      <td className="px-3 py-2 text-gray-900 font-medium">{r.name || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.city || '-'}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.country || '-'}</td>
+                    </>}
+                    {!['opportunities','invoices','accounts'].includes(card.collection) && <>
+                      <td className="px-3 py-2 text-gray-900">{r.name || r.label || '-'}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold">{(r.sale_value || r.total || r.amount_total || 0).toLocaleString()}</td>
+                    </>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
