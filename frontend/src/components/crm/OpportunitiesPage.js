@@ -1520,6 +1520,7 @@ export function OpportunitiesPage() {
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Probability</TableHead>
+                  <TableHead>Last Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
