@@ -154,6 +154,64 @@ function BuilderChartCard({ card, data, onEdit, onRemove, onClone }) {
   );
 }
 
+
+// ============ MULTI-SELECT ADD CARD DIALOG ============
+function MultiAddCardDialog({ open, onClose, allCards, existingIds, onAdd }) {
+  const [selected, setSelected] = useState(new Set());
+  const available = allCards.filter(c => !existingIds.includes(c.id));
+  
+  useEffect(() => { if (open) setSelected(new Set()); }, [open]);
+  
+  const toggle = (id) => setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const selectAll = () => setSelected(new Set(available.map(c => c.id)));
+  
+  const handleAddSelected = () => {
+    const cards = available.filter(c => selected.has(c.id));
+    cards.forEach(c => onAdd(c));
+    toast.success(`Added ${cards.length} cards to layout`);
+    onClose();
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg" data-testid="add-card-dialog">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Add Cards to Layout</span>
+            {selected.size > 0 && <Badge className="bg-[#800000] text-white">{selected.size} selected</Badge>}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-500">{available.length} cards available</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs h-7">Select All</Button>
+            {selected.size > 0 && <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} className="text-xs h-7">Clear</Button>}
+          </div>
+        </div>
+        <ScrollArea className="max-h-[350px]">
+          <div className="space-y-1.5">{available.map(c => (
+            <div key={c.id} onClick={() => toggle(c.id)}
+              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selected.has(c.id) ? 'border-[#800000] bg-[#800000]/5' : 'border-gray-200 hover:bg-gray-50'}`}
+              data-testid={`add-card-${c.id}`}>
+              <Checkbox checked={selected.has(c.id)} className="shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                <p className="text-xs text-gray-400">{c.display_type} · {c.collection}</p>
+              </div>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: c.color || '#800000' }} />
+            </div>))}</div>
+        </ScrollArea>
+        <div className="flex justify-end gap-2 pt-2 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleAddSelected} disabled={selected.size === 0} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="add-selected-btn">
+            <Plus className="h-4 w-4 mr-1" /> Add {selected.size > 0 ? `${selected.size} Cards` : 'Selected'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ============ MAIN DASHBOARD BUILDER ============
 export default function ConfigurableDashboard() {
   const [loading, setLoading] = useState(true);
