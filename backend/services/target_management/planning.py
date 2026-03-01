@@ -1283,7 +1283,7 @@ async def get_ceo_summary(
     # Year filter for opportunities (using date_last_stage_update like Odoo)
     opp_year_filter = {"date_last_stage_update": {"$regex": f"^{year}"}}
     
-    # 1. Revenue vs Plan — split Booking vs Invoiced
+    # 1. Revenue vs Plan — dual target (Booking + Invoiced)
     plan_query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}
     plan_query["$or"] = [
         {"name": {"$regex": year}},
@@ -1296,9 +1296,11 @@ async def get_ceo_summary(
         plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}).to_list(100)
     
     # Booking actuals (Won opportunities)
-    booking_target = sum(p.get("target_amount", 0) for p in plans if p.get("plan_type") in ["revenue", "booking"])
+    total_booking_target = sum(p.get("booking_target", p.get("target_amount", 0)) for p in plans)
+    total_invoiced_target = sum(p.get("invoiced_target", 0) for p in plans)
     total_won = 0
-    for plan in [p for p in plans if p.get("plan_type") in ["revenue", "booking"]]:
+    total_invoiced = 0
+    for plan in plans:
         pm = plan.get("product_manager_name", "")
         if pm:
             r = await canonical_db.opportunities.aggregate([
@@ -1307,26 +1309,21 @@ async def get_ceo_summary(
             ]).to_list(1)
             total_won += r[0]["total"] if r else 0
     
-    # Invoiced revenue actuals (paid invoices)
-    inv_target = sum(p.get("target_amount", 0) for p in plans if p.get("plan_type") == "invoiced_revenue")
-    total_invoiced = 0
-    if inv_target > 0:
+    # Invoiced actuals (paid invoices) — only if invoiced targets set
+    if total_invoiced_target > 0:
         inv_r = await canonical_db.invoices.aggregate([
             {"$match": {"payment_state": "paid", "invoice_date": {"$regex": f"^{year}"}}},
             {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$amount_total", 0]}}}}
         ]).to_list(1)
         total_invoiced = inv_r[0]["total"] if inv_r else 0
     
-    # Use booking as primary if no invoiced plans exist
-    total_target = booking_target + inv_target
-    total_actual = total_won + total_invoiced
-    rev_pct = round(total_actual / total_target * 100, 1) if total_target > 0 else 0
+    # Combined view
+    rev_pct = round(total_won / total_booking_target * 100, 1) if total_booking_target > 0 else 0
     rev_signal = "green" if rev_pct >= 80 else "amber" if rev_pct >= 50 else "red"
-    rev_detail = f"Booked: OMR {total_won:,.0f}"
-    if inv_target > 0:
-        inv_pct = round(total_invoiced / inv_target * 100, 1) if inv_target > 0 else 0
-        rev_detail += f" | Invoiced: OMR {total_invoiced:,.0f} ({inv_pct}%)"
-    rev_detail += f" / {total_target:,.0f}"
+    rev_detail = f"Booked: OMR {total_won:,.0f} / {total_booking_target:,.0f}"
+    if total_invoiced_target > 0:
+        inv_pct = round(total_invoiced / total_invoiced_target * 100, 1)
+        rev_detail += f" | Invoiced: OMR {total_invoiced:,.0f} / {total_invoiced_target:,.0f} ({inv_pct}%)"
     
     # 2. Activity Coverage
     all_items = await app_db.target_plan_items.find({"org_id": org_id}).to_list(500)
