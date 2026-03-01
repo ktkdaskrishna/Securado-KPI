@@ -494,6 +494,7 @@ export default function ConfigurableDashboard() {
                         </div>
                         <p className="text-[11px] text-gray-500 mt-0.5">{(t.assigned_roles || []).join(', ') || 'No roles'} · {(t.blocks || t.cards || []).length} cards</p>
                       </div>
+                      <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleCloneTemplate(t); }} title="Clone"><Copy className="h-3.5 w-3.5 text-gray-400" /></Button>
                       <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleDeleteTemplate(t.id); }}><Trash2 className="h-3.5 w-3.5 text-red-400" /></Button>
                     </div>
                   </div>
