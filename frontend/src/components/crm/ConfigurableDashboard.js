@@ -493,19 +493,8 @@ export default function ConfigurableDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Card Dialog */}
-      <Dialog open={showAddCard} onOpenChange={() => setShowAddCard(false)}>
-        <DialogContent className="max-w-lg" data-testid="add-card-dialog">
-          <DialogHeader><DialogTitle>Add Card to Layout</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[400px]">
-            <div className="space-y-2">{allCards.filter(c => !existingIds.includes(c.id)).map(c => (
-              <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border hover:border-[#800000]/30 hover:bg-gray-50 cursor-pointer" onClick={() => handleAddCard(c)} data-testid={`add-card-${c.id}`}>
-                <div><span className="text-sm font-medium text-gray-900">{c.name}</span><p className="text-xs text-gray-400">{c.display_type} · {c.collection}</p></div>
-                <Plus className="h-4 w-4 text-[#800000]" />
-              </div>))}</div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      {/* Multi-Select Add Card Dialog */}
+      <MultiAddCardDialog open={showAddCard} onClose={() => setShowAddCard(false)} allCards={allCards} existingIds={existingIds} onAdd={handleAddCard} />
 
       {/* Edit Chart Dialog (Odoo-style) */}
       <EditChartDialog open={showEditor} onClose={() => { setShowEditor(false); setEditCard(null); }} card={editCard} onSave={handleSaveCard} />
