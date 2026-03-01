@@ -366,9 +366,9 @@ export default function ConfigurableDashboard() {
                 {blocks.map(block => (
                   <div key={block.i || block.card_id} data-testid={`builder-block-${block.card_id}`}>
                     {isKpi(block) ? (
-                      <BuilderKpiCard card={block.card} data={block.data} onEdit={handleEditCard} onRemove={() => handleRemoveCard(block.i || block.card_id)} />
+                      <BuilderKpiCard card={block.card} data={block.data} onEdit={handleEditCard} onRemove={() => handleRemoveCard(block.i || block.card_id)} onClone={handleCloneCard} />
                     ) : (
-                      <BuilderChartCard card={block.card} data={block.data} onEdit={handleEditCard} onRemove={() => handleRemoveCard(block.i || block.card_id)} />
+                      <BuilderChartCard card={block.card} data={block.data} onEdit={handleEditCard} onRemove={() => handleRemoveCard(block.i || block.card_id)} onClone={handleCloneCard} />
                     )}
                   </div>
                 ))}
