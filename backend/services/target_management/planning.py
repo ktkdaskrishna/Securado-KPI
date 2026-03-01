@@ -43,12 +43,13 @@ actuals_router = APIRouter(prefix="/target-actuals", tags=["target-actuals"])
 # ==================== MODELS ====================
 
 class RevenuePlanCreate(BaseModel):
-    """CEO/Director creates revenue target for a Product Manager"""
+    """CEO/Director creates target for a Product Manager"""
     name: str
     product_manager_id: Optional[str] = None
     product_manager_name: Optional[str] = None
     target_amount: float = 0
     period: str = "2026-Q1"
+    plan_type: str = "booking"  # "booking" (CRM Won) or "invoiced_revenue" (paid invoices)
     notes: Optional[str] = None
 
 
