@@ -563,6 +563,12 @@ async def opportunities_kanban(
         query["team_id"] = team_id
     if account:
         query["account_name"] = account
+    if stage:
+        if stage.startswith("exclude:"):
+            exclude_stages = [s.strip() for s in stage[8:].split(",")]
+            query["stage"] = {"$nin": exclude_stages}
+        else:
+            query["stage"] = stage
     
     # Apply year filter at MongoDB level (standard: date_last_stage_update)
     if year:
