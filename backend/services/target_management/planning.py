@@ -43,13 +43,15 @@ actuals_router = APIRouter(prefix="/target-actuals", tags=["target-actuals"])
 # ==================== MODELS ====================
 
 class RevenuePlanCreate(BaseModel):
-    """CEO/Director creates target for a Product Manager"""
+    """CEO/Director creates target for a Product Manager — single plan with dual targets"""
     name: str
     product_manager_id: Optional[str] = None
     product_manager_name: Optional[str] = None
-    target_amount: float = 0
+    booking_target: float = 0  # Order booking target (Won CRM deals)
+    invoiced_target: float = 0  # Invoiced revenue target (paid invoices)
+    target_amount: float = 0  # Legacy field — will be sum of booking + invoiced if set directly
     period: str = "2026-Q1"
-    plan_type: str = "booking"  # "booking" (CRM Won) or "invoiced_revenue" (paid invoices)
+    plan_type: str = "revenue"  # Keep as "revenue" — the dual targets handle the split
     notes: Optional[str] = None
 
 
