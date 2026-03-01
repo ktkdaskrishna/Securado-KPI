@@ -71,6 +71,7 @@ function BuilderKpiCard({ card, data, onEdit, onRemove, onClone }) {
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end gap-0.5 px-2 py-1.5 bg-black/20 backdrop-blur-sm">
           <button onMouseDown={e => e.stopPropagation()} className="p-1 rounded hover:bg-white/20"><GripVertical className="h-3.5 w-3.5 text-white/80" /></button>
           {onEdit && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onEdit(card); }} className="p-1 rounded hover:bg-white/20" title="Edit"><Pencil className="h-3.5 w-3.5 text-white/80" /></button>}
+          {onClone && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onClone(card); }} className="p-1 rounded hover:bg-white/20" title="Clone"><Copy className="h-3.5 w-3.5 text-white/80" /></button>}
           <button onMouseDown={e => e.stopPropagation()} className="p-1 rounded hover:bg-white/20" title="Info"><Info className="h-3.5 w-3.5 text-white/80" /></button>
           {onRemove && <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onRemove(); }} className="p-1 rounded hover:bg-red-500/40" title="Remove"><X className="h-3.5 w-3.5 text-white/80" /></button>}
         </div>
