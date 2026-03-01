@@ -86,7 +86,7 @@ function BuilderKpiCard({ card, data, onEdit, onRemove, onClone }) {
 }
 
 // ============ CHART PREVIEW CARD (with hover controls) ============
-function BuilderChartCard({ card, data, onEdit, onRemove }) {
+function BuilderChartCard({ card, data, onEdit, onRemove, onClone }) {
   const groups = data?.groups || [];
   const [hovered, setHovered] = useState(false);
   if (!card) return null;
