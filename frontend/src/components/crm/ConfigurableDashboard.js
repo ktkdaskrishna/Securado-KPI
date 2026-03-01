@@ -491,6 +491,12 @@ export default function ConfigurableDashboard() {
                 <Input value={newTplName} onChange={e => setNewTplName(e.target.value)} placeholder="New template..." className="flex-1" data-testid="new-template-name" />
                 <Button onClick={handleCreateTemplate} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="create-template-btn"><Plus className="h-4 w-4" /></Button>
               </div>
+              <div className="flex gap-2">
+                <label className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full text-xs" asChild><span><Upload className="h-3.5 w-3.5 mr-1" /> Import Template</span></Button>
+                  <input type="file" accept=".json" onChange={handleImportTemplate} className="hidden" />
+                </label>
+              </div>
               {templates.length === 0 && (
                 <Button variant="outline" className="w-full" onClick={async () => { try { const r = await targetAPI.seedRoleTemplates(); toast.success(`${r.data.templates_created} templates created`); loadAll(); } catch {} }}>
                   <LayoutGrid className="h-4 w-4 mr-1" /> Auto-Create Role Templates
