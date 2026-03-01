@@ -205,6 +205,14 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down Event Mesh CRM Platform...")
     
+    if redis_process:
+        try:
+            redis_process.terminate()
+            redis_process.wait(timeout=5)
+            logger.info("Redis server stopped")
+        except Exception:
+            pass
+    
     try:
         await dashboard_aggregator.stop()
     except Exception as e:
