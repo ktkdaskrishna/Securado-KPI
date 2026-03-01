@@ -362,6 +362,8 @@ export const targetAPI = {
   saveTemplateLayout: (id, blocks) => api.post(`/card-builder/templates/${id}/layout`, { blocks }),
   seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
   seedRoleTemplates: () => api.post('/card-builder/seed-role-templates'),
+  exportTemplate: (id) => api.get(`/card-builder/templates/${id}/export`),
+  importTemplate: (data) => api.post('/card-builder/templates/import', data),
   getAvailableRoles: () => api.get('/card-builder/available-roles'),
 };
 
