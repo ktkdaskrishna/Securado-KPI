@@ -290,6 +290,20 @@ async def list_opportunities(
     # Merge with overrides
     merged = await merge_with_overrides(records, current_user.get("org_id", "default"), app_db)
     
+    # Add days_since_update to each opportunity
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    for opp in merged:
+        last_update = opp.get("date_last_stage_update") or opp.get("write_date") or ""
+        if last_update and isinstance(last_update, str) and len(last_update) >= 10:
+            try:
+                update_dt = datetime.fromisoformat(last_update.replace(" ", "T").split(".")[0]).replace(tzinfo=timezone.utc)
+                opp["days_since_update"] = (now - update_dt).days
+            except Exception:
+                opp["days_since_update"] = None
+        else:
+            opp["days_since_update"] = None
+    
     return {
         "items": merged,
         "total": total_count,
