@@ -42,7 +42,7 @@ export function ActivitiesPage() {
     description: '',
     due_date: '',
   });
-  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], types: ['Demo', 'Proof of concept', 'Site Visit', 'Work Shop', 'RFP Submission', 'Product Presentation', 'Vendor Meeting', 'POC'] });
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], types: ['Demo', 'Proof of concept', 'Site Visit', 'Work Shop', 'Product Presentation', 'Vendor Meeting', 'POC'] });
   
   // Contextual filters for Activities page
   const [filters, setFilters] = useState({
