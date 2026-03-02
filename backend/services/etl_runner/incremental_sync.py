@@ -390,6 +390,15 @@ class IncrementalSyncWorker:
             doc["custom_stage"] = raw_custom or raw_stage or ""
             doc["lead_stage"] = raw_stage or ""
             doc["stage"] = doc["custom_stage"] or doc["lead_stage"]
+            # Pre-sales and Marketing fields (new Odoo custom fields)
+            presales_eng = record.get("x_presales_engineer")
+            doc["presales_engineer"] = presales_eng[1] if isinstance(presales_eng, (list, tuple)) and len(presales_eng) == 2 else (presales_eng or "")
+            doc["presales_engineer_id"] = presales_eng[0] if isinstance(presales_eng, (list, tuple)) and len(presales_eng) == 2 else None
+            doc["presales_contribution"] = record.get("x_presales_contribution") or ""
+            doc["lead_source"] = record.get("x_lead_source") or ""
+            campaign = record.get("campaign_id")
+            doc["campaign_name"] = campaign[1] if isinstance(campaign, (list, tuple)) and len(campaign) == 2 else (campaign or "")
+            doc["campaign_id_num"] = campaign[0] if isinstance(campaign, (list, tuple)) and len(campaign) == 2 else None
         
         elif entity_id == "accounts":
             doc["name"] = record.get("name", "")
