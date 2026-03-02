@@ -1587,13 +1587,19 @@ export function OpportunitiesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Probability</TableHead>
-                  <TableHead>Last Updated</TableHead>
+                  {visibleColumns.includes('name') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('name')}>Name {sortField === 'name' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('account') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('account_name')}>Account {sortField === 'account_name' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('stage') && <TableHead>Stage</TableHead>}
+                  {visibleColumns.includes('amount') && <TableHead className="cursor-pointer hover:bg-gray-50 text-right" onClick={() => toggleSort('sale_value')}>Amount {sortField === 'sale_value' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('owner') && <TableHead>Owner</TableHead>}
+                  {visibleColumns.includes('probability') && <TableHead>Probability</TableHead>}
+                  {visibleColumns.includes('product_manager') && <TableHead>Product Director</TableHead>}
+                  {visibleColumns.includes('solution_category') && <TableHead>Solution Category</TableHead>}
+                  {visibleColumns.includes('presales') && <TableHead>Pre-sales</TableHead>}
+                  {visibleColumns.includes('lead_source') && <TableHead>Lead Source</TableHead>}
+                  {visibleColumns.includes('campaign') && <TableHead>Campaign</TableHead>}
+                  {visibleColumns.includes('create_date') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('create_date')}>Created {sortField === 'create_date' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('days') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('days_since_update')}>Last Updated {sortField === 'days_since_update' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
