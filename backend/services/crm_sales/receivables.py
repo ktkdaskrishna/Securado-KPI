@@ -144,7 +144,7 @@ async def list_receivables(
         opp_id = so.get("opportunity_id_num")
         if so_num and opp_id:
             opp = await canonical_db.opportunities.find_one(
-                {"source_record_id": opp_id},
+                {"source_record_id": str(opp_id)},
                 {"_id": 0, "solution_category": 1, "name": 1}
             )
             if opp:
