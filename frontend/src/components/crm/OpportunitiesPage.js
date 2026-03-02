@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { crmAPI, analyticsAPI, targetAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
