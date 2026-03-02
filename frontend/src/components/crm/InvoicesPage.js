@@ -38,6 +38,8 @@ export function InvoicesPage() {
   const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [agingFilter, setAgingFilter] = useState(null);
+  const [statusDrill, setStatusDrill] = useState(null); // null=all, 'paid', 'overdue', 'pending' // null=all, '0_30', '30_60', '60_90', '90_plus'
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -158,7 +160,24 @@ export function InvoicesPage() {
   const filteredInvoices = invoices.filter(inv => {
     const matchesSearch = !searchQuery ||
       inv.account?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase());
+      inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.so_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.salesperson?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.product_manager?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status drill-down
+    if (statusDrill && inv.status !== statusDrill) return false;
+    
+    // Aging drill-down filter
+    if (agingFilter && inv.status === 'overdue') {
+      const days = inv.aging_days || 0;
+      if (agingFilter === '0_30' && (days < 0 || days > 30)) return false;
+      if (agingFilter === '30_60' && (days <= 30 || days > 60)) return false;
+      if (agingFilter === '60_90' && (days <= 60 || days > 90)) return false;
+      if (agingFilter === '90_plus' && days <= 90) return false;
+    } else if (agingFilter) {
+      return false; // Only show overdue when aging filter active
+    }
     
     return matchesSearch;
   });
@@ -337,73 +356,39 @@ export function InvoicesPage() {
         )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards — Clickable Drill-Down */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Invoiced</p>
-                <p className="text-2xl font-bold text-foreground" data-testid="stat-total">
-                  {formatCurrency(stats?.total_invoiced || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_total || 0} invoices</p>
+        {[
+          { label: 'Total Invoiced', value: stats?.total_invoiced, count: stats?.count_total, icon: FileText, color: 'text-foreground', bgIcon: 'bg-primary/10', iconColor: 'text-primary', status: null },
+          { label: 'Pending', value: stats?.total_pending, count: stats?.count_pending, icon: Clock, color: 'text-amber-600', bgIcon: 'bg-amber-100', iconColor: 'text-amber-600', status: 'pending' },
+          { label: 'Overdue', value: stats?.total_overdue, count: stats?.count_overdue, icon: AlertTriangle, color: 'text-red-600', bgIcon: 'bg-red-100', iconColor: 'text-red-600', status: 'overdue' },
+          { label: 'Collected', value: stats?.total_paid, count: stats?.count_paid, icon: CheckCircle, color: 'text-emerald-600', bgIcon: 'bg-emerald-100', iconColor: 'text-emerald-600', status: 'paid' },
+        ].map(kpi => { const KI = kpi.icon; return (
+          <Card key={kpi.label} className={`cursor-pointer transition-all hover:shadow-md ${statusDrill === kpi.status && kpi.status ? 'ring-2 ring-[#800000] ring-offset-1' : ''}`}
+            onClick={() => { setStatusDrill(statusDrill === kpi.status ? null : kpi.status); setAgingFilter(null); }}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                    {statusDrill === kpi.status && kpi.status && <Badge className="bg-[#800000] text-white text-[9px]">Filtered</Badge>}
+                  </div>
+                  <p className={`text-2xl font-bold ${kpi.color}`}>{formatCurrency(kpi.value || 0, selectedCurrency)}</p>
+                  <p className="text-xs text-muted-foreground">{kpi.count || 0} invoices</p>
+                </div>
+                <div className={`h-12 w-12 rounded-full ${kpi.bgIcon} flex items-center justify-center`}><KI className={`h-6 w-6 ${kpi.iconColor}`} /></div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-amber-600" data-testid="stat-pending">
-                  {formatCurrency(stats?.total_pending || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_pending || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-600" data-testid="stat-overdue">
-                  {formatCurrency(stats?.total_overdue || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_overdue || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Collected</p>
-                <p className="text-2xl font-bold text-emerald-600" data-testid="stat-paid">
-                  {formatCurrency(stats?.total_paid || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_paid || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>); })}
       </div>
+
+      {(statusDrill || agingFilter) && (
+        <div className="flex items-center gap-2 bg-[#800000]/5 border border-[#800000]/20 rounded-lg px-4 py-2">
+          <span className="text-sm text-[#800000] font-medium">Drill-down: {statusDrill ? statusDrill + ' invoices' : ''} {agingFilter ? 'aging ' + agingFilter.replace('_','-') + ' days' : ''}</span>
+          <Button variant="ghost" size="sm" onClick={() => { setStatusDrill(null); setAgingFilter(null); }} className="h-6 text-xs text-[#800000]">Clear filter</Button>
+          <span className="text-xs text-gray-500 ml-auto">{filteredInvoices.length} results</span>
+        </div>
+      )}
 
       {/* Collection Progress */}
       <Card>
@@ -431,14 +416,18 @@ export function InvoicesPage() {
       {stats?.aging_breakdown && (stats.aging_breakdown['0_30'] > 0 || stats.aging_breakdown['30_60'] > 0 || stats.aging_breakdown['60_90'] > 0 || stats.aging_breakdown['90_plus'] > 0) && (
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: '0-30 Days', key: '0_30', color: 'text-amber-600 bg-amber-50' },
-            { label: '30-60 Days', key: '30_60', color: 'text-orange-600 bg-orange-50' },
-            { label: '60-90 Days', key: '60_90', color: 'text-red-500 bg-red-50' },
-            { label: '90+ Days', key: '90_plus', color: 'text-red-700 bg-red-100' },
+            { label: '0-30 Days', key: '0_30', color: 'text-amber-600 bg-amber-50', min: 0, max: 30 },
+            { label: '30-60 Days', key: '30_60', color: 'text-orange-600 bg-orange-50', min: 30, max: 60 },
+            { label: '60-90 Days', key: '60_90', color: 'text-red-500 bg-red-50', min: 60, max: 90 },
+            { label: '90+ Days', key: '90_plus', color: 'text-red-700 bg-red-100', min: 90, max: 9999 },
           ].map(bucket => (
-            <Card key={bucket.key}>
+            <Card key={bucket.key} className={`cursor-pointer transition-all hover:shadow-md ${agingFilter === bucket.key ? 'ring-2 ring-[#800000] ring-offset-1' : ''}`}
+              onClick={() => setAgingFilter(agingFilter === bucket.key ? null : bucket.key)}>
               <CardContent className="pt-4 pb-3">
-                <p className="text-xs text-gray-500">{bucket.label}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500">{bucket.label}</p>
+                  {agingFilter === bucket.key && <Badge className="bg-[#800000] text-white text-[9px]">Filtered</Badge>}
+                </div>
                 <p className={`text-lg font-bold ${bucket.color.split(' ')[0]}`}>{formatCurrency(stats.aging_breakdown[bucket.key] || 0, selectedCurrency)}</p>
               </CardContent>
             </Card>
