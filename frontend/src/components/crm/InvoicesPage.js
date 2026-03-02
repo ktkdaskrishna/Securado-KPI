@@ -18,7 +18,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { 
   FileText, Search, Eye, DollarSign, Calendar, Clock, AlertTriangle,
   CheckCircle, TrendingUp, Building2, Download, Send, Plus, Filter, 
-  RotateCcw, ChevronDown, RefreshCw, Users, Award
+  RotateCcw, ChevronDown, RefreshCw, Users, Award, Maximize2, Minimize2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,6 +45,7 @@ export function InvoicesPage() {
   const [noteType, setNoteType] = useState('note'); // null=all, 'paid', 'overdue', 'pending' // null=all, '0_30', '30_60', '60_90', '90_plus'
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [accountOpen, setAccountOpen] = useState(false);
   const { currency: globalCurrency, formatCurrency, updateCurrency } = useCurrency();
@@ -744,11 +745,14 @@ export function InvoicesPage() {
 
       {/* Invoice Detail Sheet — Enhanced */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-[500px] sm:w-[650px] overflow-y-auto">
+        <SheetContent className={`${sheetExpanded ? 'w-[90vw] sm:w-[85vw] sm:max-w-[1200px]' : 'w-[500px] sm:w-[650px]'} overflow-y-auto transition-all duration-300`}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               {selectedInvoice?.invoice_number}
+              <button onClick={() => setSheetExpanded(!sheetExpanded)} className="ml-auto p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Double-click or click to expand/collapse">
+                {sheetExpanded ? <Minimize2 className="h-4 w-4 text-gray-500" /> : <Maximize2 className="h-4 w-4 text-gray-500" />}
+              </button>
             </SheetTitle>
           </SheetHeader>
           
