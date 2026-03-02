@@ -275,6 +275,53 @@ export function ActivitiesPage() {
         );
       })()}
 
+      {/* Overdue & Member Performance */}
+      {activities.length > 0 && (() => {
+        const now = new Date();
+        const overdue = activities.filter(a => a.due_date && new Date(a.due_date) < now && a.status !== 'done');
+        const memberStats = {};
+        activities.forEach(a => {
+          const owner = a.owner_name || 'Unassigned';
+          if (!memberStats[owner]) memberStats[owner] = { total: 0, overdue: 0, done: 0 };
+          memberStats[owner].total++;
+          if (a.status === 'done') memberStats[owner].done++;
+          if (a.due_date && new Date(a.due_date) < now && a.status !== 'done') memberStats[owner].overdue++;
+        });
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-700">Overdue Activities</p>
+                  <span className={`text-lg font-bold ${overdue.length > 0 ? 'text-red-600' : 'text-green-600'}`}>{overdue.length}</span>
+                </div>
+                {overdue.length > 0 ? (
+                  <div className="space-y-1.5 max-h-[120px] overflow-auto">{overdue.slice(0, 5).map((a, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
+                      <span className="text-gray-700 truncate flex-1">{a.subject || a.type_display || a.type}</span>
+                      <span className="text-red-500 font-medium ml-2">{a.due_date?.split(' ')[0]}</span>
+                    </div>
+                  ))}</div>
+                ) : <p className="text-xs text-green-600">All activities are on track!</p>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Member Performance</p>
+                <div className="space-y-2 max-h-[120px] overflow-auto">{Object.entries(memberStats).sort((a,b) => b[1].total - a[1].total).slice(0, 5).map(([name, s]) => (
+                  <div key={name} className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-700 truncate flex-1 font-medium">{name}</span>
+                    <span className="text-gray-500">{s.total} tasks</span>
+                    {s.done > 0 && <span className="text-green-600">{s.done} done</span>}
+                    {s.overdue > 0 && <span className="text-red-600 font-bold">{s.overdue} overdue</span>}
+                  </div>
+                ))}</div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
+
       {/* Activities List */}
       <Card>
         <Table>
