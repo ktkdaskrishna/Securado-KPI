@@ -282,8 +282,9 @@ export function ActivitiesPage() {
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Subject</TableHead>
+              <TableHead>Opportunity</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Owner</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -291,43 +292,48 @@ export function ActivitiesPage() {
           <TableBody>
             {activities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  No activities yet. Create one to get started.
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  No value-selling activities found.
                 </TableCell>
               </TableRow>
             ) : (
               activities.map((activity) => {
                 const Icon = typeIcons[activity.type] || FileText;
+                const isOverdue = activity.due_date && new Date(activity.due_date) < new Date() && activity.status !== 'done';
+                const daysUntilDue = activity.due_date ? Math.ceil((new Date(activity.due_date) - new Date()) / (1000*60*60*24)) : null;
                 return (
-                  <TableRow key={activity.id}>
+                  <TableRow key={activity.id} className="hover:bg-gray-50">
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-gray-400" />
-                        <span className="capitalize">{activity.type_display || activity.type}</span>
+                        <span className="capitalize text-sm">{activity.type_display || activity.type}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <div>
-                        {activity.subject}
-                        {activity.opportunity_name && (
-                          <p className="text-xs text-gray-500">Opp: {activity.opportunity_name}</p>
-                        )}
-                      </div>
+                    <TableCell className="font-medium text-sm">{activity.subject}</TableCell>
+                    <TableCell>
+                      {activity.opportunity_name ? (
+                        <button onClick={() => window.location.href = `/opportunities?search=${encodeURIComponent(activity.opportunity_name)}`}
+                          className="text-xs text-[#800000] hover:underline font-medium">
+                          {activity.opportunity_name}
+                        </button>
+                      ) : <span className="text-xs text-gray-300">-</span>}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[activity.status] || statusColors.pending}>
                         {activity.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{activity.owner_name || '-'}</TableCell>
-                    <TableCell>{activity.due_date || '-'}</TableCell>
+                    <TableCell className="text-sm">{activity.owner_name || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{activity.due_date || '-'}</span>
+                        {isOverdue && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">OVERDUE</span>}
+                        {!isOverdue && daysUntilDue != null && daysUntilDue <= 3 && daysUntilDue >= 0 && <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{daysUntilDue}d left</span>}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       {activity.status !== 'completed' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleComplete(activity.id)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleComplete(activity.id)}>Complete</Button>
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Complete
                         </Button>
