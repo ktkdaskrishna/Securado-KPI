@@ -1238,6 +1238,40 @@ export function OpportunitiesPage() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const { formatCurrency } = useCurrency();
   const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [], productDirectors: [], solutionCategories: [] });
+  
+  // Column selection (saved to localStorage)
+  const ALL_COLUMNS = [
+    { key: 'name', label: 'Name', default: true },
+    { key: 'account', label: 'Account', default: true },
+    { key: 'stage', label: 'Stage', default: true },
+    { key: 'amount', label: 'Amount', default: true },
+    { key: 'owner', label: 'Owner', default: true },
+    { key: 'probability', label: 'Probability', default: true },
+    { key: 'days', label: 'Last Updated', default: true },
+    { key: 'product_manager', label: 'Product Director', default: false },
+    { key: 'solution_category', label: 'Solution Category', default: false },
+    { key: 'presales', label: 'Pre-sales', default: false },
+    { key: 'lead_source', label: 'Lead Source', default: false },
+    { key: 'campaign', label: 'Campaign', default: false },
+    { key: 'create_date', label: 'Created Date', default: false },
+  ];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { const saved = localStorage.getItem('opp_columns'); return saved ? JSON.parse(saved) : ALL_COLUMNS.filter(c => c.default).map(c => c.key); }
+    catch { return ALL_COLUMNS.filter(c => c.default).map(c => c.key); }
+  });
+  const toggleColumn = (key) => {
+    const next = visibleColumns.includes(key) ? visibleColumns.filter(k => k !== key) : [...visibleColumns, key];
+    setVisibleColumns(next); localStorage.setItem('opp_columns', JSON.stringify(next));
+  };
+  
+  // Sorting
+  const [sortField, setSortField] = useState('days_since_update');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const toggleSort = (field) => {
+    if (sortField === field) { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); }
+    else { setSortField(field); setSortOrder('asc'); }
+  };
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
 
   // Initialize filters from URL params (including dashboard navigation)
