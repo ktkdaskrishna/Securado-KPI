@@ -439,15 +439,16 @@ class IncrementalSyncWorker:
             doc["coach_name"] = doc.get("coach_id", "")
         
         elif entity_id == "sales_orders":
-            doc["so_number"] = record.get("name", "")
-            doc["customer"] = doc.get("partner_id", "")
-            doc["salesperson"] = doc.get("user_id", "")
-            doc["order_date"] = record.get("date_order", "")
-            doc["amount"] = record.get("amount_untaxed", 0)
-            doc["amount_total"] = record.get("amount_total", 0)
-            doc["margin"] = record.get("margin", 0)
-            doc["margin_percent"] = record.get("margin_percent", 0)
-            doc["invoice_status"] = record.get("invoice_status", "")
+            doc["so_number"] = record.get("name") or doc.get("name", "") or ""
+            doc["customer"] = doc.get("partner_id", "") or ""
+            doc["salesperson"] = doc.get("user_id", "") or ""
+            doc["order_date"] = record.get("date_order") or ""
+            doc["amount"] = record.get("amount_untaxed") or 0
+            doc["amount_total"] = record.get("amount_total") or 0
+            doc["margin"] = record.get("margin") or 0
+            doc["margin_percent"] = record.get("margin_percent") or 0
+            doc["invoice_status"] = record.get("invoice_status") or ""
+            doc["team_name"] = doc.get("team_id", "") or ""
         
         return doc
 

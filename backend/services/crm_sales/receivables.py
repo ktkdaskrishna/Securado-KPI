@@ -96,6 +96,29 @@ async def list_receivables(
             filtered.append(inv)
         invoices = filtered
     
+    # Build SO lookup for margin data (from Odoo-synced sales_orders)
+    so_by_customer = {}
+    so_cursor = canonical_db.sales_orders.find(
+        {"active": True, "customer": {"$ne": None, "$ne": ""}},
+        {"_id": 0, "so_number": 1, "customer": 1, "salesperson": 1, "margin": 1, "margin_percent": 1, "amount": 1}
+    )
+    async for so in so_cursor:
+        cust = so.get("customer", "")
+        if cust:
+            # Keep the SO with highest margin for each customer
+            existing = so_by_customer.get(cust)
+            if not existing or (so.get("margin", 0) or 0) > (existing.get("margin", 0) or 0):
+                so_by_customer[cust] = so
+    
+    # Also build SO lookup by SO number for direct matching
+    so_by_number = {}
+    so_num_cursor = canonical_db.sales_orders.find(
+        {"so_number": {"$ne": "", "$exists": True}},
+        {"_id": 0, "so_number": 1, "customer": 1, "salesperson": 1, "margin": 1, "margin_percent": 1, "amount": 1}
+    )
+    async for so in so_num_cursor:
+        so_by_number[so.get("so_number", "")] = so
+    
     # Build a product manager lookup from opportunities (by account name)
     acct_pm_map = {}
     opp_cursor = canonical_db.opportunities.find(
@@ -142,14 +165,16 @@ async def list_receivables(
         if status and status != "all" and computed_status != status:
             continue
         
-        # Enrich with linked opportunity data
+        # Enrich with linked opportunity data + SO margin
         acct_name = inv.get("account_name") or ""
         linked = acct_pm_map.get(acct_name, {})
+        inv_so_num = inv.get("so_number") or inv.get("invoice_origin") or ""
+        so_data = so_by_number.get(inv_so_num, {}) or so_by_customer.get(acct_name, {})
         
         result.append({
             "id": inv.get("canonical_id") or str(inv.get("_id")),
             "invoice_number": inv.get("invoice_number"),
-            "so_number": inv.get("so_number") or inv.get("invoice_origin") or "",
+            "so_number": inv.get("so_number") or inv.get("invoice_origin") or so_data.get("so_number") or "",
             "account": acct_name or "Unknown",
             "account_id": inv.get("account_id"),
             "amount": amount,
@@ -159,10 +184,12 @@ async def list_receivables(
             "invoice_date": inv.get("invoice_date"),
             "status": computed_status,
             "payment_state": payment_state,
-            "salesperson": inv.get("invoice_user_id") or inv.get("salesperson_name") or "",
+            "salesperson": inv.get("invoice_user_id") or inv.get("salesperson_name") or so_data.get("salesperson") or "",
             "product_manager": linked.get("product_manager", ""),
             "solution_category": linked.get("solution_category", ""),
             "opportunity_name": linked.get("opportunity_name", ""),
+            "margin": so_data.get("margin", 0),
+            "margin_percent": so_data.get("margin_percent", 0),
             "aging_days": aging_days,
             "source_system": inv.get("source_system", "odoo")
         })
