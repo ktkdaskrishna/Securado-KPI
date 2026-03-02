@@ -445,7 +445,10 @@ async def remove_role_from_user(
     role_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Remove a role from user"""
+    """Remove a role from user — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        raise HTTPException(status_code=403, detail="Only administrators can remove roles")
     db = get_app_db()
     
     result = await db.users.update_one(
