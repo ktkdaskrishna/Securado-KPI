@@ -46,9 +46,16 @@ async def list_receivables(
     if has_no_access:
         return {"invoices": [], "summary": {"total": 0, "paid": 0, "pending": 0, "overdue": 0}}
     
-    # Build query with RBAC
+    # Build query — use hierarchy RBAC for proper org tree filtering
+    from services.target_management.card_builder import resolve_hierarchy_filter
     query = {"org_id": org_id}
-    query.update(rbac_filter)
+    hierarchy_filter = await resolve_hierarchy_filter(current_user, "invoices")
+    if hierarchy_filter:
+        for k, v in hierarchy_filter.items():
+            if k == "$or":
+                query.setdefault("$and", []).append({"$or": v})
+            else:
+                query[k] = v
     
     # Filter by account if provided
     if account:
@@ -85,9 +92,20 @@ async def list_receivables(
             filtered.append(inv)
         invoices = filtered
     
+    # Build a product manager lookup from opportunities (by account name)
+    acct_pm_map = {}
+    opp_cursor = canonical_db.opportunities.find(
+        {"active": True, "account_name": {"$ne": None}},
+        {"_id": 0, "account_name": 1, "product_manager": 1, "solution_category": 1, "name": 1, "owner_name": 1}
+    )
+    async for opp in opp_cursor:
+        acct = opp.get("account_name", "")
+        if acct and acct not in acct_pm_map:
+            acct_pm_map[acct] = {"product_manager": opp.get("product_manager", ""), "solution_category": opp.get("solution_category", ""), "opportunity_name": opp.get("name", "")}
+    
     # Format for frontend and apply status filter
     result = []
-    stats = {"total": 0, "pending": 0, "overdue": 0, "paid": 0}
+    stats = {"total": 0, "pending": 0, "overdue": 0, "paid": 0, "total_count": 0, "paid_count": 0, "overdue_count": 0, "pending_count": 0}
     
     for inv in invoices:
         payment_state = inv.get("payment_state", "not_paid")
@@ -105,33 +123,67 @@ async def list_receivables(
         # Update stats
         stats["total"] += amount
         stats[computed_status] += amount
+        stats[f"{computed_status}_count"] = stats.get(f"{computed_status}_count", 0) + 1
+        stats["total_count"] = stats.get("total_count", 0) + 1
+        
+        # Compute aging days for overdue
+        aging_days = 0
+        if computed_status == "overdue" and due_date:
+            try:
+                from datetime import datetime as dt
+                aging_days = (dt.now() - dt.strptime(str(due_date)[:10], "%Y-%m-%d")).days
+            except: pass
         
         # Apply status filter
         if status and status != "all" and computed_status != status:
             continue
         
+        # Enrich with linked opportunity data
+        acct_name = inv.get("account_name") or ""
+        linked = acct_pm_map.get(acct_name, {})
+        
         result.append({
             "id": inv.get("canonical_id") or str(inv.get("_id")),
             "invoice_number": inv.get("invoice_number"),
-            "account": inv.get("account_name") or "Unknown",
+            "so_number": inv.get("so_number") or inv.get("invoice_origin") or "",
+            "account": acct_name or "Unknown",
             "account_id": inv.get("account_id"),
             "amount": amount,
+            "amount_residual": inv.get("amount_residual", 0),
             "currency": inv.get("currency", "OMR"),
             "due_date": due_date,
             "invoice_date": inv.get("invoice_date"),
             "status": computed_status,
             "payment_state": payment_state,
+            "salesperson": inv.get("invoice_user_id") or inv.get("salesperson_name") or "",
+            "product_manager": linked.get("product_manager", ""),
+            "solution_category": linked.get("solution_category", ""),
+            "opportunity_name": linked.get("opportunity_name", ""),
+            "aging_days": aging_days,
             "source_system": inv.get("source_system", "odoo")
         })
     
     # Limit results
     result = result[:limit]
     
+    # Compute aging breakdown and collection rate
+    collection_rate = round(stats["paid"] / stats["total"] * 100, 1) if stats["total"] > 0 else 0
+    aging_breakdown = {"0_30": 0, "30_60": 0, "60_90": 0, "90_plus": 0}
+    for inv in result:
+        if inv["status"] == "overdue":
+            d = inv["aging_days"]
+            if d <= 30: aging_breakdown["0_30"] += inv["amount"]
+            elif d <= 60: aging_breakdown["30_60"] += inv["amount"]
+            elif d <= 90: aging_breakdown["60_90"] += inv["amount"]
+            else: aging_breakdown["90_plus"] += inv["amount"]
+    
     logger.info(f"Receivables: returning {len(result)} invoices. Stats: {stats}")
     
     return {
         "invoices": serialize_doc(result),
         "stats": stats,
+        "collection_rate": collection_rate,
+        "aging_breakdown": aging_breakdown,
         "filters_applied": {
             "status": status,
             "account": account,

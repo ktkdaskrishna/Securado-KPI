@@ -60,7 +60,8 @@ INCREMENTAL_ENTITIES = {
         "domain": [["move_type", "in", ["out_invoice", "out_refund"]]],
         "default_fields": ["id", "name", "partner_id", "invoice_date", "invoice_date_due",
             "amount_total", "amount_residual", "amount_tax", "amount_untaxed",
-            "payment_state", "state", "invoice_user_id", "create_date", "write_date"],
+            "payment_state", "state", "invoice_user_id", "create_date", "write_date",
+            "invoice_origin", "ref", "narration", "currency_id"],
     },
     "contacts": {
         "odoo_model": "res.partner",
@@ -411,6 +412,10 @@ class IncrementalSyncWorker:
             doc["payment_state"] = record.get("payment_state", "")
             doc["invoice_date"] = record.get("invoice_date")
             doc["due_date"] = record.get("invoice_date_due")
+            # SO number from invoice_origin (e.g., "SO250630079")
+            doc["so_number"] = record.get("invoice_origin") or ""
+            doc["customer_ref"] = record.get("ref") or ""
+            doc["salesperson_name"] = doc.get("invoice_user_id", "")
         
         elif entity_id == "employees":
             doc["name"] = record.get("name", "")

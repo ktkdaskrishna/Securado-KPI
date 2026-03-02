@@ -102,12 +102,28 @@ export function InvoicesPage() {
       
       // Handle new API response format
       const invoiceData = invoicesRes.data?.invoices || invoicesRes.data || [];
-      const statsData = statsRes.data?.stats || invoicesRes.data?.stats || {};
+      const mainStats = invoicesRes.data?.stats || {};
+      const statsData = statsRes.data?.stats || statsRes.data || {};
       const options = statsRes.data?.filter_options || { accounts: [], years: [] };
       const spData = salespersonRes.data?.data || [];
       
+      // Merge stats — prefer main response (has collection_rate + aging)
+      const mergedStats = {
+        ...statsData,
+        total_invoiced: mainStats.total || statsData.total_invoiced || 0,
+        total_paid: mainStats.paid || statsData.total_paid || 0,
+        total_overdue: mainStats.overdue || statsData.total_overdue || 0,
+        total_pending: mainStats.pending || statsData.total_pending || 0,
+        count_total: mainStats.total_count || statsData.count_total || 0,
+        count_paid: mainStats.paid_count || statsData.count_paid || 0,
+        count_overdue: mainStats.overdue_count || statsData.count_overdue || 0,
+        count_pending: mainStats.pending_count || statsData.count_pending || 0,
+        collection_rate: invoicesRes.data?.collection_rate,
+        aging_breakdown: invoicesRes.data?.aging_breakdown,
+      };
+      
       setInvoices(invoiceData);
-      setStats(statsData);
+      setStats(mergedStats);
       setFilterOptions(options);
       setSalespersonData(spData);
       
@@ -411,6 +427,25 @@ export function InvoicesPage() {
         </CardContent>
       </Card>
 
+      {/* Aging Breakdown */}
+      {stats?.aging_breakdown && (stats.aging_breakdown['0_30'] > 0 || stats.aging_breakdown['30_60'] > 0 || stats.aging_breakdown['60_90'] > 0 || stats.aging_breakdown['90_plus'] > 0) && (
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: '0-30 Days', key: '0_30', color: 'text-amber-600 bg-amber-50' },
+            { label: '30-60 Days', key: '30_60', color: 'text-orange-600 bg-orange-50' },
+            { label: '60-90 Days', key: '60_90', color: 'text-red-500 bg-red-50' },
+            { label: '90+ Days', key: '90_plus', color: 'text-red-700 bg-red-100' },
+          ].map(bucket => (
+            <Card key={bucket.key}>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-gray-500">{bucket.label}</p>
+                <p className={`text-lg font-bold ${bucket.color.split(' ')[0]}`}>{formatCurrency(stats.aging_breakdown[bucket.key] || 0, selectedCurrency)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Invoices Table */}
       <Card>
         <CardHeader>
@@ -571,8 +606,11 @@ export function InvoicesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Invoice #</TableHead>
+                  <TableHead>SO #</TableHead>
                   <TableHead>Account</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Salesperson</TableHead>
+                  <TableHead>Product Mgr</TableHead>
                   <TableHead>Invoice Date</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -595,15 +633,18 @@ export function InvoicesPage() {
                           {invoice.invoice_number}
                         </div>
                       </TableCell>
+                      <TableCell className="text-xs text-gray-600">{invoice.so_number || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           {invoice.account}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono font-medium">
+                      <TableCell className="text-right font-mono font-medium">
                         {formatCurrency(invoice.amount, selectedCurrency)}
                       </TableCell>
+                      <TableCell className="text-sm">{invoice.salesperson || '-'}</TableCell>
+                      <TableCell className="text-sm">{invoice.product_manager || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
