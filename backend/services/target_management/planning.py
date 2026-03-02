@@ -49,7 +49,8 @@ class RevenuePlanCreate(BaseModel):
     product_manager_name: Optional[str] = None
     booking_target: float = 0  # Order booking target (Won CRM deals)
     invoiced_target: float = 0  # Invoiced revenue target (paid invoices)
-    target_amount: float = 0  # Legacy field — will be sum of booking + invoiced if set directly
+    margin_target: float = 0  # Gross profit / margin target
+    target_amount: float = 0  # Legacy field
     period: str = "2026-Q1"
     plan_type: str = "revenue"  # Keep as "revenue" — the dual targets handle the split
     notes: Optional[str] = None
@@ -287,6 +288,16 @@ async def list_revenue_plans(
             plan["actual_invoiced"] = inv_result[0].get("total", 0) if inv_result else 0
             plan["invoiced_count"] = inv_result[0].get("count", 0) if inv_result else 0
             
+            # Margin actual: from sales_orders margin field
+            margin_pipeline = [
+                {"$match": {"salesperson": {"$regex": pm_name, "$options": "i"}, "order_date": {"$regex": f"^{filter_year}"}}},
+                {"$group": {"_id": None, "total_margin": {"$sum": {"$ifNull": ["$margin", 0]}}, "total_revenue": {"$sum": {"$ifNull": ["$amount", 0]}}}}
+            ]
+            margin_result = await canonical_db.sales_orders.aggregate(margin_pipeline).to_list(1)
+            plan["actual_margin"] = margin_result[0].get("total_margin", 0) if margin_result else 0
+            plan["so_revenue"] = margin_result[0].get("total_revenue", 0) if margin_result else 0
+            plan["margin_pct_actual"] = round(plan["actual_margin"] / plan["so_revenue"] * 100, 1) if plan["so_revenue"] > 0 else 0
+            
             # Legacy field
             plan["actual_revenue"] = plan["actual_booking"]
             
@@ -295,6 +306,8 @@ async def list_revenue_plans(
             it = plan.get("invoiced_target", 0)
             plan["booking_pct"] = round(plan["actual_booking"] / bt * 100, 1) if bt > 0 else 0
             plan["invoiced_pct"] = round(plan["actual_invoiced"] / it * 100, 1) if it > 0 else 0
+            mt = plan.get("margin_target", 0)
+            plan["margin_pct"] = round(plan["actual_margin"] / mt * 100, 1) if mt > 0 else 0
 
             # Get total pipeline (current year, exclude deleted)
             pipeline2 = [
@@ -337,7 +350,8 @@ async def create_revenue_plan(
         "status": "active",
         "booking_target": data.booking_target or data.target_amount,  # Backward compatible
         "invoiced_target": data.invoiced_target,
-        "target_amount": data.booking_target or data.target_amount,  # Legacy: keep for backward compat
+        "margin_target": data.margin_target,
+        "target_amount": data.booking_target or data.target_amount,
         "actual_booking": 0,
         "actual_invoiced": 0,
         "actual_revenue": 0,

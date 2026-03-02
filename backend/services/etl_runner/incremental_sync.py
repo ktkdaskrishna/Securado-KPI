@@ -88,6 +88,17 @@ INCREMENTAL_ENTITIES = {
         "default_fields": ["id", "name", "job_title", "department_id", "parent_id",
             "coach_id", "work_email", "work_phone", "active", "create_date", "write_date"],
     },
+    "sales_orders": {
+        "odoo_model": "sale.order",
+        "canonical_collection": "sales_orders",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_so",
+        "domain": [["state", "in", ["sale", "done"]]],
+        "default_fields": ["id", "name", "partner_id", "user_id", "date_order",
+            "amount_untaxed", "amount_total", "amount_tax", "margin", "margin_percent",
+            "invoice_status", "state", "origin", "note",
+            "create_date", "write_date", "currency_id", "team_id"],
+    },
 }
 
 # Field cache per model (refreshed every hour)
@@ -426,6 +437,17 @@ class IncrementalSyncWorker:
             doc["manager_id"] = doc.get("parent_id_id")  # parent_id = manager in Odoo
             doc["manager_name"] = doc.get("parent_id", "")
             doc["coach_name"] = doc.get("coach_id", "")
+        
+        elif entity_id == "sales_orders":
+            doc["so_number"] = record.get("name", "")
+            doc["customer"] = doc.get("partner_id", "")
+            doc["salesperson"] = doc.get("user_id", "")
+            doc["order_date"] = record.get("date_order", "")
+            doc["amount"] = record.get("amount_untaxed", 0)
+            doc["amount_total"] = record.get("amount_total", 0)
+            doc["margin"] = record.get("margin", 0)
+            doc["margin_percent"] = record.get("margin_percent", 0)
+            doc["invoice_status"] = record.get("invoice_status", "")
         
         return doc
 
