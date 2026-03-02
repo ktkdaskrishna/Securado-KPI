@@ -309,9 +309,9 @@ async def list_revenue_plans(
             mt = plan.get("margin_target", 0)
             plan["margin_pct"] = round(plan["actual_margin"] / mt * 100, 1) if mt > 0 else 0
 
-            # Get total pipeline (current year, exclude deleted)
+            # Get total pipeline (current year, open opportunities only, exclude Won/Lost/Hold)
             pipeline2 = [
-                {"$match": {"product_manager": pm_name, "deleted": {"$ne": True}, **year_filter}},
+                {"$match": {"product_manager": pm_name, "deleted": {"$ne": True}, "active": True, "stage": {"$nin": ["Won", "Lost", "Hold"]}, **year_filter}},
                 {"$group": {"_id": None, "pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "total_opps": {"$sum": 1}}}
             ]
             result2 = await canonical_db.opportunities.aggregate(pipeline2).to_list(1)
