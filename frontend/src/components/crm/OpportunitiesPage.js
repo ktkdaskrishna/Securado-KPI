@@ -1605,60 +1605,27 @@ export function OpportunitiesPage() {
               </TableHeader>
               <TableBody>
                 {opportunities.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No opportunities found. Run an ETL pipeline to import data.
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={visibleColumns.length + 1} className="text-center py-8 text-gray-500">No opportunities found.</TableCell></TableRow>
                 ) : (
-                  opportunities
-                    .filter(opp => 
-                      !searchQuery ||
-                      opp.name?.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
+                  [...opportunities]
+                    .filter(opp => !searchQuery || opp.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .sort((a, b) => { let va = a[sortField] ?? (typeof b[sortField] === 'number' ? 9999 : ''); let vb = b[sortField] ?? (typeof a[sortField] === 'number' ? 9999 : ''); if (typeof va === 'number' && typeof vb === 'number') return sortOrder === 'asc' ? va - vb : vb - va; return sortOrder === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va)); })
                     .map((opp) => (
-                      <TableRow 
-                        key={opp.canonical_id} 
-                        data-testid={`opp-row-${opp.canonical_id}`}
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleOpenDetail(opp)}
-                      >
-                        <TableCell className="font-medium">{opp.name}</TableCell>
-                        <TableCell>{opp.account_name || '-'}</TableCell>
-                        <TableCell>
-                          <Badge className={stageColors[opp.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opp.stage] || 'bg-gray-100 text-gray-700'}>
-                            {opp.custom_stage || formatStage(opp.stage)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(opp.sale_value || opp.amount || 0)}
-                        </TableCell>
-                        <TableCell>{opp.owner_name || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={opp.user_probability || opp.probability || 0} className="w-16 h-2" />
-                            <span className="text-sm">{opp.user_probability || opp.probability || 0}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {opp.days_since_update != null ? (
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opp.days_since_update <= 7 ? 'bg-green-100 text-green-700' : opp.days_since_update <= 30 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                              {opp.days_since_update}d ago
-                            </span>
-                          ) : <span className="text-xs text-gray-400">-</span>}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDetail(opp);
-                            }}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
+                      <TableRow key={opp.canonical_id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleOpenDetail(opp)}>
+                        {visibleColumns.includes('name') && <TableCell className="font-medium">{opp.name}</TableCell>}
+                        {visibleColumns.includes('account') && <TableCell>{opp.account_name || '-'}</TableCell>}
+                        {visibleColumns.includes('stage') && <TableCell><Badge className={stageColors[opp.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opp.stage] || 'bg-gray-100 text-gray-700'}>{opp.custom_stage || formatStage(opp.stage)}</Badge></TableCell>}
+                        {visibleColumns.includes('amount') && <TableCell className="text-right font-mono">{formatCurrency(opp.sale_value || opp.amount || 0)}</TableCell>}
+                        {visibleColumns.includes('owner') && <TableCell>{opp.owner_name || '-'}</TableCell>}
+                        {visibleColumns.includes('probability') && <TableCell><div className="flex items-center gap-2"><Progress value={opp.user_probability || opp.probability || 0} className="w-16 h-2" /><span className="text-sm">{opp.user_probability || opp.probability || 0}%</span></div></TableCell>}
+                        {visibleColumns.includes('product_manager') && <TableCell className="text-xs">{opp.product_manager || '-'}</TableCell>}
+                        {visibleColumns.includes('solution_category') && <TableCell className="text-xs">{opp.solution_category || '-'}</TableCell>}
+                        {visibleColumns.includes('presales') && <TableCell>{opp.presales_engineer ? <span className="text-xs text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">{opp.presales_engineer}</span> : <span className="text-xs text-gray-300">-</span>}</TableCell>}
+                        {visibleColumns.includes('lead_source') && <TableCell>{opp.lead_source ? <span className="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{opp.lead_source}</span> : <span className="text-xs text-gray-300">-</span>}</TableCell>}
+                        {visibleColumns.includes('campaign') && <TableCell className="text-xs">{opp.campaign_name || '-'}</TableCell>}
+                        {visibleColumns.includes('create_date') && <TableCell className="text-xs text-gray-500">{(opp.create_date || '').split(' ')[0]}</TableCell>}
+                        {visibleColumns.includes('days') && <TableCell>{opp.days_since_update != null ? (<span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opp.days_since_update <= 7 ? 'bg-green-100 text-green-700' : opp.days_since_update <= 30 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{opp.days_since_update}d ago</span>) : <span className="text-xs text-gray-400">-</span>}</TableCell>}
+                        <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(opp); }}>View</Button></TableCell>
                       </TableRow>
                     ))
                 )}
