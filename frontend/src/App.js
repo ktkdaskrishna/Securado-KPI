@@ -152,8 +152,8 @@ function AppRoutes() {
         <Route path="/etl/model-browser" element={<RBACGuard permission="system_admin"><OdooModelBrowserPage /></RBACGuard>} />
 
         {/* Admin - manage_users or system_admin */}
-        <Route path="/admin/users" element={<RBACGuard permission="manage_users"><UsersPage /></RBACGuard>} />
-        <Route path="/admin/roles" element={<RBACGuard permission="manage_users"><RolesPage /></RBACGuard>} />
+        <Route path="/admin/users" element={<RBACGuard permission="admin:*"><UsersPage /></RBACGuard>} />
+        <Route path="/admin/roles" element={<RBACGuard permission="admin:*"><RolesPage /></RBACGuard>} />
         <Route path="/admin/rbac" element={<RBACGuard permission="system_admin"><RBACManagementPage /></RBACGuard>} />
         <Route path="/admin/departments" element={<RBACGuard permission="manage_users"><DepartmentsPage /></RBACGuard>} />
         <Route path="/admin/settings" element={<RBACGuard permission="system_admin"><SettingsPage /></RBACGuard>} />
