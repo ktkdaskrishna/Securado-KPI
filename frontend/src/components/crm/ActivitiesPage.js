@@ -381,9 +381,6 @@ export function ActivitiesPage() {
                     <TableCell className="text-right">
                       {activity.status !== 'completed' && (
                         <Button variant="ghost" size="sm" onClick={() => handleComplete(activity.id)}>Complete</Button>
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Complete
-                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
