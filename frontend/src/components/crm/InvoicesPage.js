@@ -39,7 +39,10 @@ export function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [agingFilter, setAgingFilter] = useState(null);
-  const [statusDrill, setStatusDrill] = useState(null); // null=all, 'paid', 'overdue', 'pending' // null=all, '0_30', '30_60', '60_90', '90_plus'
+  const [statusDrill, setStatusDrill] = useState(null);
+  const [invoiceNotes, setInvoiceNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [noteType, setNoteType] = useState('note'); // null=all, 'paid', 'overdue', 'pending' // null=all, '0_30', '30_60', '60_90', '90_plus'
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -194,7 +197,25 @@ export function InvoicesPage() {
   const viewInvoice = (invoice) => {
     setSelectedInvoice(invoice);
     setSheetOpen(true);
+    // Load notes for this invoice
+    setInvoiceNotes([]);
+    setNewNote('');
+    setNoteType('note');
+    if (invoice?.id) {
+      crmAPI.getInvoiceNotes(invoice.id).then(r => setInvoiceNotes(r.data || [])).catch(() => {});
+    }
   };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !selectedInvoice?.id) return;
+    try {
+      const res = await crmAPI.addInvoiceNote(selectedInvoice.id, { text: newNote, type: noteType });
+      setInvoiceNotes(prev => [res.data, ...prev]);
+      setNewNote('');
+      toast.success('Note added');
+    } catch { toast.error('Failed to add note'); }
+  };
+
 
   // Calculate collection rate
   const collectionRate = stats?.total_invoiced > 0 
@@ -845,6 +866,45 @@ export function InvoicesPage() {
                       <p className="text-[10px] text-red-600">Outstanding</p>
                       <p className="font-bold text-red-700">{formatCurrency(selectedInvoice.amount_residual || 0, selectedCurrency)}</p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Collection Notes & Follow-up Logs */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collection Notes</p>
+                    <Badge variant="outline" className="text-[10px]">{invoiceNotes.length} notes</Badge>
+                  </div>
+                  {/* Add Note Form */}
+                  <div className="flex gap-2">
+                    <Input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." className="flex-1 h-8 text-sm" onKeyDown={e => { if (e.key === 'Enter' && newNote.trim()) handleAddNote(); }} />
+                    <Select value={noteType} onValueChange={setNoteType}>
+                      <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="note">Note</SelectItem>
+                        <SelectItem value="followup">Follow-up</SelectItem>
+                        <SelectItem value="reminder">Reminder</SelectItem>
+                        <SelectItem value="payment">Payment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="h-8 bg-[#800000] hover:bg-[#9a1919] text-white" disabled={!newNote.trim()} onClick={handleAddNote}>Add</Button>
+                  </div>
+                  {/* Notes List */}
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {invoiceNotes.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-3">No collection notes yet</p>
+                    ) : invoiceNotes.map(note => (
+                      <div key={note.id} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={`text-[9px] ${note.type === 'payment' ? 'bg-green-100 text-green-700' : note.type === 'followup' ? 'bg-blue-100 text-blue-700' : note.type === 'reminder' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{note.type}</Badge>
+                          <span className="text-[10px] text-gray-500">{note.author}</span>
+                          <span className="text-[10px] text-gray-400 ml-auto">{new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+                        </div>
+                        <p className="text-xs text-gray-700">{note.text}</p>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

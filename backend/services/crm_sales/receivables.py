@@ -534,6 +534,32 @@ async def get_receivables_by_salesperson(
 
 
 
+@receivables_router.get("/{invoice_id}/notes")
+async def get_invoice_notes(invoice_id: str, current_user: dict = Depends(get_current_user)):
+    """Get collection notes for an invoice"""
+    app_db = get_app_db()
+    notes = await app_db.invoice_notes.find({"invoice_id": invoice_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return serialize_doc(notes)
+
+
+@receivables_router.post("/{invoice_id}/notes")
+async def add_invoice_note(invoice_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Add a collection note to an invoice"""
+    app_db = get_app_db()
+    note = {
+        "id": generate_id(),
+        "invoice_id": invoice_id,
+        "text": data.get("text", ""),
+        "type": data.get("type", "note"),  # note, followup, reminder, payment
+        "author": current_user.get("name", current_user.get("email", "")),
+        "author_email": current_user.get("email", ""),
+        "created_at": now_utc(),
+    }
+    await app_db.invoice_notes.insert_one(note)
+    return serialize_doc(note)
+
+
+
 @receivables_router.post("/export-excel")
 async def export_invoices_excel(
     data: dict,
