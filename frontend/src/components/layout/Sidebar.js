@@ -235,9 +235,13 @@ export function Sidebar() {
 
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
-    if (section === 'crm') return true; // CRM always visible
-    if (section === 'etl') return false; // Moved to Settings → Integrations
-    if (section === 'admin') return hasPermission('manage_users') || hasPermission('system_admin');
+    if (section === 'crm') return true;
+    if (section === 'etl') return false;
+    if (section === 'admin') {
+      // Only actual admin roles can see admin section — not just permission checks
+      const userRoles = JSON.parse(localStorage.getItem('user') || '{}').roles || [];
+      return userRoles.some(r => ['admin', 'system_admin', 'sales_admin'].includes(r));
+    }
     return true;
   };
 
