@@ -331,7 +331,7 @@ async def drill_down_card(
     
     # Define display fields per collection
     field_configs = {
-        "opportunities": {"fields": {"_id": 0, "name": 1, "owner_name": 1, "stage": 1, "sale_value": 1, "product_manager": 1, "account_name": 1, "create_date": 1, "probability": 1, "solution_category": 1}},
+        "opportunities": {"fields": {"_id": 0, "name": 1, "owner_name": 1, "stage": 1, "sale_value": 1, "product_manager": 1, "account_name": 1, "create_date": 1, "probability": 1, "solution_category": 1, "presales_engineer": 1, "presales_contribution": 1, "lead_source": 1, "campaign_name": 1}},
         "accounts": {"fields": {"_id": 0, "name": 1, "city": 1, "country": 1, "phone": 1, "email": 1, "is_company": 1}},
         "invoices": {"fields": {"_id": 0, "invoice_number": 1, "partner_name": 1, "amount_total": 1, "payment_state": 1, "invoice_date": 1, "salesperson_name": 1}},
         "activities": {"fields": {"_id": 0, "summary": 1, "activity_type": 1, "assigned_user": 1, "date_deadline": 1, "state": 1, "opportunity_name": 1}},
