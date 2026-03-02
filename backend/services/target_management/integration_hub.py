@@ -28,11 +28,11 @@ SYNC_ENTITIES = {
     "contacts": {"label": "Contacts", "canonical_collection": "contacts", "odoo_model": "res.partner", "default_schedule": "daily"},
     "activities": {"label": "Activities", "canonical_collection": "activities", "odoo_model": "mail.activity", "default_schedule": "daily"},
     "invoices": {"label": "Invoices", "canonical_collection": "invoices", "odoo_model": "account.move", "default_schedule": "daily"},
-    "employees": {"label": "Employees", "canonical_collection": "employees", "odoo_model": "hr.employee", "default_schedule": "weekly"},
-    "sales_users": {"label": "Sales Users", "canonical_collection": "sales_users", "odoo_model": "res.users", "default_schedule": "weekly"},
-    "sales_teams": {"label": "Sales Teams", "canonical_collection": "sales_teams", "odoo_model": "crm.team", "default_schedule": "weekly"},
-    "tasks": {"label": "Tasks", "canonical_collection": "tasks", "odoo_model": "project.task", "default_schedule": "daily"},
-    "rbac": {"label": "RBAC / Permissions", "canonical_collection": "users_rbac", "odoo_model": "res.groups", "default_schedule": "daily", "use_app_db": True},
+    "employees": {"label": "Employees", "canonical_collection": "employees", "odoo_model": "hr.employee", "default_schedule": "daily"},
+    "sales_users": {"label": "Sales Users", "canonical_collection": "sales_users", "odoo_model": "res.users", "default_schedule": "manual"},
+    "sales_teams": {"label": "Sales Teams", "canonical_collection": "sales_teams", "odoo_model": "crm.team", "default_schedule": "manual"},
+    "tasks": {"label": "Tasks", "canonical_collection": "tasks", "odoo_model": "project.task", "default_schedule": "manual"},
+    "rbac": {"label": "RBAC / Permissions", "canonical_collection": "users_rbac", "odoo_model": "res.groups", "default_schedule": "manual", "use_app_db": True},
 }
 
 

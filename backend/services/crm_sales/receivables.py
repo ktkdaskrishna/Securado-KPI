@@ -61,7 +61,11 @@ async def list_receivables(
     if account:
         query["account_name"] = account
     
-    # Fetch all invoices first (we'll filter by status and date in Python for more flexibility)
+    # Only show posted/confirmed invoices (exclude draft and cancelled)
+    query["state"] = {"$in": ["posted"]}
+    query["invoice_number"] = {"$ne": "/"}
+    
+    # Fetch invoices
     invoices = await canonical_db.invoices.find(query).sort("due_date", -1).limit(500).to_list(500)
     
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
