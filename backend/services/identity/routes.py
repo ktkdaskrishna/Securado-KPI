@@ -422,7 +422,10 @@ async def assign_role_to_user(
     role_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Assign a role to user"""
+    """Assign a role to user — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        raise HTTPException(status_code=403, detail="Only administrators can assign roles")
     db = get_app_db()
     
     result = await db.users.update_one(
