@@ -119,41 +119,15 @@ async def list_receivables(
     async for so in so_num_cursor:
         so_by_number[so.get("so_number", "")] = so
     
-    # Build PM lookup from SO LINES via salesperson→manager hierarchy (most accurate)
-    # Step 1: Build salesperson → Product Director map from employee hierarchy
-    sp_to_pm = {}
-    emp_cursor = canonical_db.employees.find(
-        {"active": True, "manager_id": {"$exists": True, "$ne": None}},
-        {"_id": 0, "name": 1, "manager_id": 1, "email": 1}
-    )
-    emp_map = {}
-    async for emp in emp_cursor:
-        emp_map[emp.get("name", "")] = emp
-    
-    # For each employee, find their manager's name
-    mgr_lookup = {}
-    all_emps_cursor = canonical_db.employees.find({"active": True}, {"_id": 0, "source_record_id": 1, "name": 1})
-    async for e in all_emps_cursor:
-        mgr_lookup[str(e.get("source_record_id", ""))] = e.get("name", "")
-    
-    for emp_name, emp_data in emp_map.items():
-        mgr_id = str(emp_data.get("manager_id", ""))
-        mgr_name = mgr_lookup.get(mgr_id, "")
-        if mgr_name:
-            sp_to_pm[emp_name] = mgr_name
-    
-    # Step 2: Build SO → PM from SO lines salesperson → hierarchy PM
+    # Build PM lookup from SO LINES (product_director_id from Odoo — most accurate)
     pm_by_so = {}
     sol_cursor = canonical_db.so_lines.find(
-        {"salesperson": {"$ne": "", "$exists": True}},
-        {"_id": 0, "so_name": 1, "salesperson": 1, "subtotal": 1, "line_margin": 1, "product_category": 1}
+        {"product_manager": {"$ne": "", "$exists": True}},
+        {"_id": 0, "so_name": 1, "product_manager": 1, "product_category": 1, "subtotal": 1, "line_margin": 1}
     )
     async for sol in sol_cursor:
         so_name = sol.get("so_name", "")
-        sp_name = sol.get("salesperson", "")
-        pm_name = sp_to_pm.get(sp_name, "")
-        if so_name and pm_name:
-            sol["product_manager"] = pm_name
+        if so_name and sol.get("product_manager"):
             existing = pm_by_so.get(so_name)
             if not existing or (sol.get("subtotal", 0) or 0) > (existing.get("subtotal", 0) or 0):
                 pm_by_so[so_name] = sol

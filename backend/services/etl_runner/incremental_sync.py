@@ -106,7 +106,7 @@ INCREMENTAL_ENTITIES = {
         "canonical_id_prefix": "odoo_sol",
         "default_fields": ["id", "order_id", "product_id", "name", "product_uom_qty",
             "price_unit", "price_subtotal", "price_total", "margin", "margin_percent",
-            "salesman_id", "productmanager_id", "productcategory_id",
+            "salesman_id", "product_director_id", "productcategory_id",
             "create_date", "write_date"],
     },
 }
@@ -472,13 +472,17 @@ class IncrementalSyncWorker:
             doc["total"] = record.get("price_total") or 0
             doc["line_margin"] = record.get("margin") or 0
             doc["line_margin_percent"] = record.get("margin_percent") or 0
-            # Product Manager per line item (the key field!)
-            pm = record.get("productmanager_id")
-            doc["product_manager"] = pm[1] if isinstance(pm, (list, tuple)) and len(pm) == 2 else (pm or "")
+            # Product Director per line item (the key field!)
+            pm = record.get("product_director_id")
+            doc["product_manager"] = pm[1] if isinstance(pm, (list, tuple)) and len(pm) == 2 else (str(pm) if pm and pm != False else "")
             doc["product_manager_id"] = pm[0] if isinstance(pm, (list, tuple)) and len(pm) == 2 else None
+            # Also try the generic transform result
+            if not doc["product_manager"]:
+                doc["product_manager"] = doc.get("product_director_id", "") or ""
+                doc["product_manager_id"] = doc.get("product_director_id_id")
             # Product Category per line
             cat = record.get("productcategory_id")
-            doc["product_category"] = cat[1] if isinstance(cat, (list, tuple)) and len(cat) == 2 else (cat or "")
+            doc["product_category"] = cat[1] if isinstance(cat, (list, tuple)) and len(cat) == 2 else (doc.get("productcategory_id", "") or "")
             # Salesperson per line
             sp = record.get("salesman_id")
             doc["salesperson"] = sp[1] if isinstance(sp, (list, tuple)) and len(sp) == 2 else (sp or "")
