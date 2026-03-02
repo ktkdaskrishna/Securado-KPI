@@ -1564,6 +1564,12 @@ export function OpportunitiesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          {opp.presales_engineer ? <span className="text-xs text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">{opp.presales_engineer}</span> : <span className="text-xs text-gray-300">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          {opp.lead_source ? <span className="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{opp.lead_source}</span> : <span className="text-xs text-gray-300">-</span>}
+                        </TableCell>
+                        <TableCell>
                           {opp.days_since_update != null ? (
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opp.days_since_update <= 7 ? 'bg-green-100 text-green-700' : opp.days_since_update <= 30 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                               {opp.days_since_update}d ago
