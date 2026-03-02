@@ -19,7 +19,7 @@ import HybridDashboard from './components/crm/HybridDashboard';
 import { OpportunitiesPage } from './components/crm/OpportunitiesPage';
 import LeadsPage from './components/crm/LeadsPage';
 import { AccountsPage } from './components/crm/AccountsPage';
-import { ActivitiesPage } from './components/crm/ActivitiesPage';
+import ActivitiesPage from './components/crm/ActivitiesPage';
 import { ProfilePage } from './components/crm/ProfilePage';
 import { InvoicesPage } from './components/crm/InvoicesPage';
 import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
