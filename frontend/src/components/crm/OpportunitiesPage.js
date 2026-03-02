@@ -1547,8 +1547,27 @@ export function OpportunitiesPage() {
               data-testid="export-excel-btn"
             >
               <Download className="h-4 w-4" />
-              Export Excel
+              Export
             </Button>
+            <Popover open={showColumnPicker} onOpenChange={setShowColumnPicker}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="column-picker-btn">
+                  <Settings2 className="h-4 w-4 mr-1" /> Columns
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">Show/Hide Columns</p>
+                {ALL_COLUMNS.map(col => (
+                  <button key={col.key} onClick={() => toggleColumn(col.key)}
+                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 flex items-center gap-2 ${visibleColumns.includes(col.key) ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleColumns.includes(col.key) ? 'bg-[#800000] border-[#800000] text-white' : 'border-gray-300'}`}>
+                      {visibleColumns.includes(col.key) ? '✓' : ''}
+                    </span>
+                    {col.label}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
