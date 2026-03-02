@@ -39,6 +39,7 @@ INCREMENTAL_ENTITIES = {
             "x_studio_sale_value", "x_studio_opportunity_stages_1", "x_studio_opportunity_number",
             "x_studio_budget_status", "x_studio_pledge", "x_studio_poc_demo_done",
             "x_studio_is_tender", "x_studio_rfp_invited",
+            "x_presales_engineer", "x_presales_contribution", "x_lead_source", "campaign_id",
         ],
     },
     "accounts": {
