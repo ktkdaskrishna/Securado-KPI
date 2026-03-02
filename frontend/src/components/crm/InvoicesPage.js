@@ -381,6 +381,20 @@ export function InvoicesPage() {
             Reset
           </Button>
         )}
+        
+        {/* Export Excel */}
+        <Button variant="outline" size="sm" className="h-9 ml-auto"
+          onClick={async () => {
+            try {
+              const res = await crmAPI.exportInvoicesExcel(filteredInvoices);
+              const url = URL.createObjectURL(new Blob([res.data]));
+              const a = document.createElement('a'); a.href = url; a.download = 'invoices_export.xlsx'; a.click();
+              URL.revokeObjectURL(url);
+              toast.success(`Exported ${filteredInvoices.length} invoices`);
+            } catch { toast.error('Export failed'); }
+          }} data-testid="export-excel-btn">
+          <Download className="h-4 w-4 mr-1" /> Export Excel
+        </Button>
 
         {/* Active Filter Summary */}
         {hasActiveFilters() && (

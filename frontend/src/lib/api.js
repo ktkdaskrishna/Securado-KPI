@@ -229,6 +229,7 @@ export const crmAPI = {
   listReceivables: (params) => api.get('/receivables', { params }),
   getReceivablesStats: (params) => api.get('/receivables/stats', { params }),
   getReceivablesBySalesperson: (params) => api.get('/receivables/by-salesperson', { params }),
+  exportInvoicesExcel: (invoices) => api.post('/receivables/export-excel', { invoices }, { responseType: 'blob' }),
 };
 
 // Target Management APIs

@@ -294,7 +294,12 @@ async def get_receivables_stats(
         "stats": stats,
         "filter_options": {
             "accounts": sorted(accounts),
-            "years": sorted(list(set(str(inv.get("invoice_date", ""))[:4] for inv in invoices if inv.get("invoice_date"))), reverse=True)
+            "years": sorted(list(set(
+                y for inv in invoices 
+                for f in ["invoice_date", "due_date"]
+                for y in [str(inv.get(f, ""))[:4]]
+                if y.isdigit() and int(y) <= datetime.now().year
+            )), reverse=True)
         }
     }
 
@@ -461,3 +466,61 @@ async def get_receivables_by_salesperson(
         "data": result,
         "filters": {"year": year, "quarter": quarter}
     }
+
+
+
+@receivables_router.post("/export-excel")
+async def export_invoices_excel(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export filtered invoices to Excel"""
+    import io
+    try:
+        import openpyxl
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl not installed")
+    
+    invoices = data.get("invoices", [])
+    if not invoices:
+        raise HTTPException(status_code=400, detail="No invoices to export")
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Invoices"
+    
+    # Headers
+    headers = ["Invoice #", "SO #", "Account", "Amount", "Salesperson", "Product Manager", "Solution Category", "Invoice Date", "Due Date", "Status", "Aging Days"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = openpyxl.styles.Font(bold=True)
+    
+    # Data rows
+    for row, inv in enumerate(invoices, 2):
+        ws.cell(row=row, column=1, value=inv.get("invoice_number", ""))
+        ws.cell(row=row, column=2, value=inv.get("so_number", ""))
+        ws.cell(row=row, column=3, value=inv.get("account", ""))
+        ws.cell(row=row, column=4, value=inv.get("amount", 0))
+        ws.cell(row=row, column=5, value=inv.get("salesperson", ""))
+        ws.cell(row=row, column=6, value=inv.get("product_manager", ""))
+        ws.cell(row=row, column=7, value=inv.get("solution_category", ""))
+        ws.cell(row=row, column=8, value=inv.get("invoice_date", ""))
+        ws.cell(row=row, column=9, value=inv.get("due_date", ""))
+        ws.cell(row=row, column=10, value=inv.get("status", ""))
+        ws.cell(row=row, column=11, value=inv.get("aging_days", 0))
+    
+    # Auto-width
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
+    
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=invoices_export.xlsx"}
+    )
