@@ -133,6 +133,24 @@ async def list_receivables(
                 pm_by_so[so_name] = sol
     
 
+    # Build SO → opportunity link for solution category (SO.opportunity_id → crm.lead)
+    so_opp_map = {}
+    so_with_opp = canonical_db.sales_orders.find(
+        {"opportunity_id_num": {"$ne": None, "$exists": True}},
+        {"_id": 0, "so_number": 1, "opportunity_name": 1, "opportunity_id_num": 1}
+    )
+    async for so in so_with_opp:
+        so_num = so.get("so_number", "")
+        opp_id = so.get("opportunity_id_num")
+        if so_num and opp_id:
+            opp = await canonical_db.opportunities.find_one(
+                {"source_record_id": opp_id},
+                {"_id": 0, "solution_category": 1, "name": 1}
+            )
+            if opp:
+                so_opp_map[so_num] = {"opportunity_name": opp.get("name", ""), "solution_category": opp.get("solution_category", "")}
+    
+
     # Build a product manager lookup from opportunities (by account name)
     acct_pm_map = {}
     opp_cursor = canonical_db.opportunities.find(
@@ -186,8 +204,10 @@ async def list_receivables(
         so_data = so_by_number.get(inv_so_num, {}) or so_by_customer.get(acct_name, {})
         # PM priority: SO line (most accurate) → opportunity (fallback)
         so_line_data = pm_by_so.get(inv_so_num, {}) or pm_by_so.get(so_data.get("so_number", ""), {})
+        so_opp_data = so_opp_map.get(inv_so_num, {}) or so_opp_map.get(so_data.get("so_number", ""), {})
         best_pm = so_line_data.get("product_manager") or linked.get("product_manager", "")
-        best_category = so_line_data.get("product_category") or linked.get("solution_category", "")
+        best_category = so_opp_data.get("solution_category") or so_line_data.get("product_category") or linked.get("solution_category", "")
+        best_opp = so_opp_data.get("opportunity_name") or linked.get("opportunity_name", "")
         
         result.append({
             "id": inv.get("canonical_id") or str(inv.get("_id")),
@@ -205,7 +225,7 @@ async def list_receivables(
             "salesperson": inv.get("invoice_user_id") or inv.get("salesperson_name") or so_data.get("salesperson") or "",
             "product_manager": best_pm,
             "solution_category": best_category,
-            "opportunity_name": linked.get("opportunity_name", ""),
+            "opportunity_name": best_opp,
             "margin": so_data.get("margin", 0),
             "margin_percent": so_data.get("margin_percent", 0),
             "aging_days": aging_days,

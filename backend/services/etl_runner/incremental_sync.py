@@ -96,7 +96,7 @@ INCREMENTAL_ENTITIES = {
         "domain": [["state", "in", ["sale", "done"]]],
         "default_fields": ["id", "name", "partner_id", "user_id", "date_order",
             "amount_untaxed", "amount_total", "amount_tax", "margin", "margin_percent",
-            "invoice_status", "state", "origin", "note",
+            "invoice_status", "state", "origin", "note", "opportunity_id",
             "create_date", "write_date", "currency_id", "team_id"],
     },
     "so_lines": {
@@ -459,6 +459,10 @@ class IncrementalSyncWorker:
             doc["margin_percent"] = record.get("margin_percent") or 0
             doc["invoice_status"] = record.get("invoice_status") or ""
             doc["team_name"] = doc.get("team_id", "") or ""
+            # Opportunity link (Many2one → crm.lead)
+            opp = record.get("opportunity_id")
+            doc["opportunity_name"] = opp[1] if isinstance(opp, (list, tuple)) and len(opp) == 2 else (doc.get("opportunity_id", "") or "")
+            doc["opportunity_id_num"] = opp[0] if isinstance(opp, (list, tuple)) and len(opp) == 2 else None
         
         elif entity_id == "so_lines":
             doc["so_name"] = doc.get("order_id", "") or ""
