@@ -140,15 +140,8 @@ async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optio
             {"owner_name": {"$regex": name_pattern, "$options": "i"}}
         ]}
     elif collection == "invoices":
-        # For invoices, filter by accounts owned by visible users
-        acct_names = await canonical_db.opportunities.distinct(
-            "account_name",
-            {"owner_name": {"$regex": name_pattern, "$options": "i"}, "active": True}
-        )
-        acct_names = [a for a in acct_names if a]
-        if acct_names:
-            return {"account_name": {"$in": acct_names}}
-        return {"owner_name": {"$regex": name_pattern, "$options": "i"}}
+        # For invoices, filter by invoice_user_id (salesperson) matching visible names
+        return {"invoice_user_id": {"$regex": name_pattern, "$options": "i"}}
     elif collection == "accounts":
         return None  # Accounts are shared, no ownership filter
     elif collection == "employees":
