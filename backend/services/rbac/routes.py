@@ -197,7 +197,11 @@ async def update_role(
     role_data: RoleUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update a role - creates it in DB if it only existed as a default"""
+    """Update a role — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Only administrators can modify roles")
     db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
