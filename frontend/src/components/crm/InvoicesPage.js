@@ -682,9 +682,9 @@ export function InvoicesPage() {
         </CardContent>
       </Card>
 
-      {/* Invoice Detail Sheet */}
+      {/* Invoice Detail Sheet — Enhanced */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-[500px] sm:w-[600px]">
+        <SheetContent className="w-[500px] sm:w-[650px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -693,24 +693,14 @@ export function InvoicesPage() {
           </SheetHeader>
           
           {selectedInvoice && (
-            <div className="mt-6 space-y-6">
+            <div className="mt-4 space-y-5">
+              {/* Status + Amount Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-muted-foreground">Bill To</p>
-                  <p className="font-medium text-lg">{selectedInvoice.account}</p>
+                  <p className="text-xs text-muted-foreground">Bill To</p>
+                  <p className="font-semibold text-lg">{selectedInvoice.account}</p>
                 </div>
                 {getStatusBadge(selectedInvoice.status)}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Invoice Date</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.invoice_date)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Due Date</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.due_date)}</p>
-                </div>
               </div>
 
               <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
@@ -718,15 +708,116 @@ export function InvoicesPage() {
                 <span className="text-2xl font-bold">{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
               </div>
 
-              <div className="flex gap-2">
+              {/* Key Dates */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Invoice Date</p>
+                  <p className="text-sm font-medium mt-0.5">{formatDate(selectedInvoice.invoice_date) || '-'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Due Date</p>
+                  <p className="text-sm font-medium mt-0.5">{formatDate(selectedInvoice.due_date) || '-'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Aging</p>
+                  <p className={`text-sm font-bold mt-0.5 ${selectedInvoice.aging_days > 60 ? 'text-red-600' : selectedInvoice.aging_days > 30 ? 'text-amber-600' : 'text-green-600'}`}>
+                    {selectedInvoice.status === 'overdue' ? `${selectedInvoice.aging_days || 0} days overdue` : selectedInvoice.status === 'paid' ? 'Paid' : 'Current'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sales & Product Info */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sales Information</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">SO Number</p>
+                      <p className="font-medium">{selectedInvoice.so_number || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Salesperson</p>
+                      <p className="font-medium">{selectedInvoice.salesperson || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Product Manager</p>
+                      <p className="font-medium">{selectedInvoice.product_manager ? <span className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded text-xs">{selectedInvoice.product_manager}</span> : '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Solution Category</p>
+                      <p className="font-medium">{selectedInvoice.solution_category ? <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-xs">{selectedInvoice.solution_category}</span> : '-'}</p>
+                    </div>
+                  </div>
+                  {selectedInvoice.opportunity_name && (
+                    <div>
+                      <p className="text-xs text-gray-400">Linked Opportunity</p>
+                      <p className="text-sm font-medium text-[#800000]">{selectedInvoice.opportunity_name}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Financial Details */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Financial Details</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Subtotal (excl. tax)</span>
+                      <span className="font-mono">{formatCurrency(selectedInvoice.amount - (selectedInvoice.amount * 0.05), selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Tax (est. 5%)</span>
+                      <span className="font-mono">{formatCurrency(selectedInvoice.amount * 0.05, selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Total</span>
+                      <span className="font-mono font-bold">{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5">
+                      <span className="text-gray-500">Amount Remaining</span>
+                      <span className={`font-mono font-bold ${selectedInvoice.amount_residual > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(selectedInvoice.amount_residual || 0, selectedCurrency)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Payment & Collection */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment Status</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Collection Progress</span>
+                        <span>{selectedInvoice.amount > 0 ? Math.round(((selectedInvoice.amount - (selectedInvoice.amount_residual || 0)) / selectedInvoice.amount) * 100) : 0}%</span>
+                      </div>
+                      <Progress value={selectedInvoice.amount > 0 ? ((selectedInvoice.amount - (selectedInvoice.amount_residual || 0)) / selectedInvoice.amount) * 100 : 0} className="h-2" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-2">
+                    <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                      <p className="text-[10px] text-green-600">Collected</p>
+                      <p className="font-bold text-green-700">{formatCurrency(selectedInvoice.amount - (selectedInvoice.amount_residual || 0), selectedCurrency)}</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-2 border border-red-100">
+                      <p className="text-[10px] text-red-600">Outstanding</p>
+                      <p className="font-bold text-red-700">{formatCurrency(selectedInvoice.amount_residual || 0, selectedCurrency)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                  <Download className="h-4 w-4 mr-2" /> Download PDF
                 </Button>
                 {selectedInvoice.status !== 'paid' && (
-                  <Button className="flex-1 bg-primary hover:bg-primary/90">
-                    <Send className="h-4 w-4 mr-2" />
-                    Send Reminder
+                  <Button className="flex-1 bg-[#800000] hover:bg-[#9a1919] text-white">
+                    <Send className="h-4 w-4 mr-2" /> Send Reminder
                   </Button>
                 )}
               </div>
