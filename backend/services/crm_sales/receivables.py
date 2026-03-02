@@ -119,6 +119,46 @@ async def list_receivables(
     async for so in so_num_cursor:
         so_by_number[so.get("so_number", "")] = so
     
+    # Build PM lookup from SO LINES via salesperson→manager hierarchy (most accurate)
+    # Step 1: Build salesperson → Product Director map from employee hierarchy
+    sp_to_pm = {}
+    emp_cursor = canonical_db.employees.find(
+        {"active": True, "manager_id": {"$exists": True, "$ne": None}},
+        {"_id": 0, "name": 1, "manager_id": 1, "email": 1}
+    )
+    emp_map = {}
+    async for emp in emp_cursor:
+        emp_map[emp.get("name", "")] = emp
+    
+    # For each employee, find their manager's name
+    mgr_lookup = {}
+    all_emps_cursor = canonical_db.employees.find({"active": True}, {"_id": 0, "source_record_id": 1, "name": 1})
+    async for e in all_emps_cursor:
+        mgr_lookup[str(e.get("source_record_id", ""))] = e.get("name", "")
+    
+    for emp_name, emp_data in emp_map.items():
+        mgr_id = str(emp_data.get("manager_id", ""))
+        mgr_name = mgr_lookup.get(mgr_id, "")
+        if mgr_name:
+            sp_to_pm[emp_name] = mgr_name
+    
+    # Step 2: Build SO → PM from SO lines salesperson → hierarchy PM
+    pm_by_so = {}
+    sol_cursor = canonical_db.so_lines.find(
+        {"salesperson": {"$ne": "", "$exists": True}},
+        {"_id": 0, "so_name": 1, "salesperson": 1, "subtotal": 1, "line_margin": 1, "product_category": 1}
+    )
+    async for sol in sol_cursor:
+        so_name = sol.get("so_name", "")
+        sp_name = sol.get("salesperson", "")
+        pm_name = sp_to_pm.get(sp_name, "")
+        if so_name and pm_name:
+            sol["product_manager"] = pm_name
+            existing = pm_by_so.get(so_name)
+            if not existing or (sol.get("subtotal", 0) or 0) > (existing.get("subtotal", 0) or 0):
+                pm_by_so[so_name] = sol
+    
+
     # Build a product manager lookup from opportunities (by account name)
     acct_pm_map = {}
     opp_cursor = canonical_db.opportunities.find(
@@ -170,6 +210,10 @@ async def list_receivables(
         linked = acct_pm_map.get(acct_name, {})
         inv_so_num = inv.get("so_number") or inv.get("invoice_origin") or ""
         so_data = so_by_number.get(inv_so_num, {}) or so_by_customer.get(acct_name, {})
+        # PM priority: SO line (most accurate) → opportunity (fallback)
+        so_line_data = pm_by_so.get(inv_so_num, {}) or pm_by_so.get(so_data.get("so_number", ""), {})
+        best_pm = so_line_data.get("product_manager") or linked.get("product_manager", "")
+        best_category = so_line_data.get("product_category") or linked.get("solution_category", "")
         
         result.append({
             "id": inv.get("canonical_id") or str(inv.get("_id")),
@@ -185,8 +229,8 @@ async def list_receivables(
             "status": computed_status,
             "payment_state": payment_state,
             "salesperson": inv.get("invoice_user_id") or inv.get("salesperson_name") or so_data.get("salesperson") or "",
-            "product_manager": linked.get("product_manager", ""),
-            "solution_category": linked.get("solution_category", ""),
+            "product_manager": best_pm,
+            "solution_category": best_category,
             "opportunity_name": linked.get("opportunity_name", ""),
             "margin": so_data.get("margin", 0),
             "margin_percent": so_data.get("margin_percent", 0),

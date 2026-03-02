@@ -99,6 +99,16 @@ INCREMENTAL_ENTITIES = {
             "invoice_status", "state", "origin", "note",
             "create_date", "write_date", "currency_id", "team_id"],
     },
+    "so_lines": {
+        "odoo_model": "sale.order.line",
+        "canonical_collection": "so_lines",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_sol",
+        "default_fields": ["id", "order_id", "product_id", "name", "product_uom_qty",
+            "price_unit", "price_subtotal", "price_total", "margin", "margin_percent",
+            "salesman_id", "productmanager_id", "productcategory_id",
+            "create_date", "write_date"],
+    },
 }
 
 # Field cache per model (refreshed every hour)
@@ -449,6 +459,29 @@ class IncrementalSyncWorker:
             doc["margin_percent"] = record.get("margin_percent") or 0
             doc["invoice_status"] = record.get("invoice_status") or ""
             doc["team_name"] = doc.get("team_id", "") or ""
+        
+        elif entity_id == "so_lines":
+            doc["so_name"] = doc.get("order_id", "") or ""
+            doc["so_id"] = doc.get("order_id_id")
+            doc["product_name"] = doc.get("product_id", "") or ""
+            doc["product_id_num"] = doc.get("product_id_id")
+            doc["description"] = record.get("name") or ""
+            doc["quantity"] = record.get("product_uom_qty") or 0
+            doc["unit_price"] = record.get("price_unit") or 0
+            doc["subtotal"] = record.get("price_subtotal") or 0
+            doc["total"] = record.get("price_total") or 0
+            doc["line_margin"] = record.get("margin") or 0
+            doc["line_margin_percent"] = record.get("margin_percent") or 0
+            # Product Manager per line item (the key field!)
+            pm = record.get("productmanager_id")
+            doc["product_manager"] = pm[1] if isinstance(pm, (list, tuple)) and len(pm) == 2 else (pm or "")
+            doc["product_manager_id"] = pm[0] if isinstance(pm, (list, tuple)) and len(pm) == 2 else None
+            # Product Category per line
+            cat = record.get("productcategory_id")
+            doc["product_category"] = cat[1] if isinstance(cat, (list, tuple)) and len(cat) == 2 else (cat or "")
+            # Salesperson per line
+            sp = record.get("salesman_id")
+            doc["salesperson"] = sp[1] if isinstance(sp, (list, tuple)) and len(sp) == 2 else (sp or "")
         
         return doc
 
