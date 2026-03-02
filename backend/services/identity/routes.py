@@ -371,8 +371,14 @@ async def update_user(
     user_data: UserUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update user details"""
+    """Update user details — ADMIN ONLY"""
     db = get_app_db()
+    
+    # Security: Only admins can update users
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Only administrators can modify user accounts")
     
     update_data = {k: v for k, v in user_data.model_dump().items() if v is not None}
     update_data["updated_at"] = now_utc()
