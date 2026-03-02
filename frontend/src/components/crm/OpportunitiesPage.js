@@ -479,6 +479,25 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                         </div>
                       </div>
                     )}
+                    {opportunity.presales_engineer && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Pre-sales:</span>
+                        <span className="text-sm font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{opportunity.presales_engineer}</span>
+                        {opportunity.presales_contribution && <Badge variant="outline" className="text-[10px]">{opportunity.presales_contribution}</Badge>}
+                      </div>
+                    )}
+                    {opportunity.lead_source && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Lead Source:</span>
+                        <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{opportunity.lead_source}</span>
+                      </div>
+                    )}
+                    {opportunity.campaign_name && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Campaign:</span>
+                        <span className="text-sm font-medium">{opportunity.campaign_name}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 
