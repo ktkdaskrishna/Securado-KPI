@@ -152,7 +152,7 @@ export function RolesPage() {
 
               <div className="space-y-2">
                 <Label>Permissions</Label>
-                <div className="border rounded-lg p-4 space-y-4 max-h-80 overflow-y-auto">
+                <div className="border rounded-lg p-4 space-y-4 max-h-[40vh] overflow-y-auto">
                   {Object.entries(permissionGroups).map(([resource, perms]) => (
                     <div key={resource}>
                       <h4 className="font-medium text-sm text-gray-700 capitalize mb-2">{resource}</h4>
@@ -179,9 +179,9 @@ export function RolesPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="border-t pt-3 mt-2 sticky bottom-0 bg-white">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
-              <Button onClick={handleCreate}>{editingRole ? 'Update' : 'Create'}</Button>
+              <Button onClick={handleCreate} className="bg-[#800000] hover:bg-[#9a1919] text-white">{editingRole ? 'Update Role' : 'Create Role'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
