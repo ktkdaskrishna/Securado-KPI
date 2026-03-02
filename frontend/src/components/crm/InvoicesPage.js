@@ -35,7 +35,7 @@ export function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState(null);
   const [salespersonData, setSalespersonData] = useState([]);
-  const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [] });
+  const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [], salespersons: [], product_managers: [], solution_categories: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [agingFilter, setAgingFilter] = useState(null);
@@ -49,9 +49,8 @@ export function InvoicesPage() {
 
   // Contextual filters for Invoices page
   const [filters, setFilters] = useState({
-    year: null,
-    quarter: null,
-    account: null
+    year: null, quarter: null, account: null,
+    salesperson: null, product_manager: null, solution_category: null
   });
 
   // Sync with global currency setting
@@ -70,12 +69,12 @@ export function InvoicesPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, account: null });
+    setFilters({ year: null, quarter: null, account: null, salesperson: null, product_manager: null, solution_category: null });
     setActiveTab('all');
   };
 
   const hasActiveFilters = () => {
-    return filters.year || filters.quarter || filters.account;
+    return filters.year || filters.quarter || filters.account || filters.salesperson || filters.product_manager || filters.solution_category;
   };
 
   const loadInvoices = useCallback(async () => {
@@ -127,6 +126,11 @@ export function InvoicesPage() {
       setInvoices(invoiceData);
       setStats(mergedStats);
       setFilterOptions(options);
+      // Also extract salesperson, PM, category from invoice data
+      const salespersons = [...new Set(invoiceData.map(i => i.salesperson).filter(Boolean))].sort();
+      const pms = [...new Set(invoiceData.map(i => i.product_manager).filter(Boolean))].sort();
+      const cats = [...new Set(invoiceData.map(i => i.solution_category).filter(Boolean))].sort();
+      setFilterOptions(prev => ({ ...prev, ...options, salespersons, product_managers: pms, solution_categories: cats }));
       setSalespersonData(spData);
       
     } catch (error) {
@@ -167,6 +171,11 @@ export function InvoicesPage() {
     
     // Status drill-down
     if (statusDrill && inv.status !== statusDrill) return false;
+    
+    // Salesperson / PM / Category filters
+    if (filters.salesperson && inv.salesperson !== filters.salesperson) return false;
+    if (filters.product_manager && inv.product_manager !== filters.product_manager) return false;
+    if (filters.solution_category && inv.solution_category !== filters.solution_category) return false;
     
     // Aging drill-down filter
     if (agingFilter && inv.status === 'overdue') {
@@ -331,6 +340,33 @@ export function InvoicesPage() {
             </Command>
           </PopoverContent>
         </Popover>
+
+        {/* Salesperson Filter */}
+        <Select value={filters.salesperson || 'all'} onValueChange={v => updateFilter('salesperson', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="All Sales Reps" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sales Reps</SelectItem>
+            {filterOptions.salespersons?.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Product Manager Filter */}
+        <Select value={filters.product_manager || 'all'} onValueChange={v => updateFilter('product_manager', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="All Product Mgrs" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Product Mgrs</SelectItem>
+            {filterOptions.product_managers?.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Solution Category Filter */}
+        <Select value={filters.solution_category || 'all'} onValueChange={v => updateFilter('solution_category', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="All Categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {filterOptions.solution_categories?.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
         {/* Reset Button */}
         {hasActiveFilters() && (
