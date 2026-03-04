@@ -511,7 +511,7 @@ async def export_opportunities(...):
 ---
 
 ## Preview URL
-https://layout-manager-1.preview.emergentagent.com
+https://odoo-sync-portal.preview.emergentagent.com
 
 ---
 

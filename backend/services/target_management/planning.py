@@ -75,6 +75,20 @@ class PlanRedistributionCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class CategorySegmentCreate(BaseModel):
+    """PD breaks down their target by solution category"""
+    solution_category: str
+    booking_target: float = 0
+    invoiced_target: float = 0
+    margin_target: float = 0
+    notes: Optional[str] = None
+
+
+class CategorySegmentBulk(BaseModel):
+    """Bulk create/update segments — validates sum = total"""
+    segments: List[CategorySegmentCreate]
+
+
 # ==================== LOOKUPS (from Odoo data) ====================
 
 @lookups_router.get("/product-managers")
@@ -1206,6 +1220,161 @@ async def accept_suggestions(
     )
     
     return {"success": True, "items_created": len(created)}
+
+
+# ==================== CATEGORY SEGMENTATION (PD breaks down target) ====================
+
+@plans_router.get("/revenue/{plan_id}/segments")
+async def list_segments(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Get category segments for a revenue plan"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    segments = await app_db.target_plan_segments.find(
+        {"revenue_plan_id": plan_id, "org_id": org_id}, {"_id": 0}
+    ).sort("booking_target", -1).to_list(50)
+    
+    # Enrich with actuals per category
+    pm_name = plan.get("product_manager_name", "")
+    filter_year = plan.get("period", "2026")[:4]
+    year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
+    
+    for seg in segments:
+        cat = seg.get("solution_category", "")
+        if cat and pm_name:
+            # Booking actual (Won opportunities in this category)
+            won_r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"},
+                             "solution_category": cat, "stage": "Won", **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
+            ]).to_list(1)
+            seg["actual_booking"] = won_r[0]["total"] if won_r else 0
+            seg["won_deals"] = won_r[0]["count"] if won_r else 0
+            
+            # Pipeline (open opps in this category)
+            pipe_r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"},
+                             "solution_category": cat, "stage": {"$nin": ["Won", "Lost", "Hold"]}, **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
+            ]).to_list(1)
+            seg["pipeline"] = pipe_r[0]["total"] if pipe_r else 0
+            seg["pipeline_count"] = pipe_r[0]["count"] if pipe_r else 0
+            
+            # Achievement %
+            bt = seg.get("booking_target", 0)
+            seg["booking_pct"] = round(seg["actual_booking"] / bt * 100, 1) if bt > 0 else 0
+            
+            # Coverage ratio
+            seg["coverage_ratio"] = round(seg["pipeline"] / bt, 1) if bt > 0 else 0
+    
+    # Compute totals
+    totals = {
+        "booking_target": sum(s.get("booking_target", 0) for s in segments),
+        "invoiced_target": sum(s.get("invoiced_target", 0) for s in segments),
+        "margin_target": sum(s.get("margin_target", 0) for s in segments),
+        "actual_booking": sum(s.get("actual_booking", 0) for s in segments),
+        "pipeline": sum(s.get("pipeline", 0) for s in segments),
+    }
+    
+    plan_targets = {
+        "booking_target": plan.get("booking_target", plan.get("target_amount", 0)),
+        "invoiced_target": plan.get("invoiced_target", 0),
+        "margin_target": plan.get("margin_target", 0),
+    }
+    
+    return {
+        "segments": serialize_doc(segments),
+        "totals": totals,
+        "plan_targets": plan_targets,
+        "is_balanced": (
+            abs(totals["booking_target"] - plan_targets["booking_target"]) < 1 and
+            abs(totals["invoiced_target"] - plan_targets["invoiced_target"]) < 1 and
+            abs(totals["margin_target"] - plan_targets["margin_target"]) < 1
+        ),
+    }
+
+
+@plans_router.post("/revenue/{plan_id}/segments")
+async def save_segments(
+    plan_id: str,
+    data: CategorySegmentBulk,
+    current_user: dict = Depends(get_current_user)
+):
+    """PD saves category breakdown — validates sum equals plan target"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    plan_booking = plan.get("booking_target", plan.get("target_amount", 0))
+    plan_invoiced = plan.get("invoiced_target", 0)
+    plan_margin = plan.get("margin_target", 0)
+    
+    seg_booking = sum(s.booking_target for s in data.segments)
+    seg_invoiced = sum(s.invoiced_target for s in data.segments)
+    seg_margin = sum(s.margin_target for s in data.segments)
+    
+    # Validate sums (allow small rounding tolerance)
+    errors = []
+    if abs(seg_booking - plan_booking) > 1:
+        errors.append(f"Booking total {seg_booking:,.0f} != plan target {plan_booking:,.0f}")
+    if plan_invoiced > 0 and abs(seg_invoiced - plan_invoiced) > 1:
+        errors.append(f"Invoiced total {seg_invoiced:,.0f} != plan target {plan_invoiced:,.0f}")
+    if plan_margin > 0 and abs(seg_margin - plan_margin) > 1:
+        errors.append(f"Margin total {seg_margin:,.0f} != plan target {plan_margin:,.0f}")
+    
+    if errors:
+        raise HTTPException(status_code=400, detail=f"Validation failed: {'; '.join(errors)}")
+    
+    # Delete existing segments and recreate
+    await app_db.target_plan_segments.delete_many({"revenue_plan_id": plan_id, "org_id": org_id})
+    
+    created = []
+    for seg in data.segments:
+        if seg.booking_target <= 0 and seg.invoiced_target <= 0:
+            continue
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "revenue_plan_id": plan_id,
+            "product_manager_name": plan.get("product_manager_name"),
+            "solution_category": seg.solution_category,
+            "booking_target": seg.booking_target,
+            "invoiced_target": seg.invoiced_target,
+            "margin_target": seg.margin_target,
+            "notes": seg.notes or "",
+            "created_by": current_user["id"],
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
+        }
+        await app_db.target_plan_segments.insert_one(doc)
+        created.append(doc)
+    
+    # Update plan status
+    await app_db.target_plans.update_one(
+        {"id": plan_id}, {"$set": {"segmented": True, "segment_count": len(created), "updated_at": now_utc()}}
+    )
+    
+    logger.info(f"Segments saved for plan {plan_id}: {len(created)} categories by {current_user.get('email')}")
+    return {"success": True, "segments_created": len(created)}
+
+
+@plans_router.delete("/revenue/{plan_id}/segments/{segment_id}")
+async def delete_segment(plan_id: str, segment_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a single segment"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    result = await app_db.target_plan_segments.delete_one({"id": segment_id, "revenue_plan_id": plan_id, "org_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Segment not found")
+    return {"success": True}
 
 
 # ==================== REVENUE CAP ====================

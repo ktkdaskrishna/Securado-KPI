@@ -155,7 +155,7 @@ Pipeline config can include `"use_event_queue": true` to enable queue-based data
 ---
 
 ## Preview URL
-https://layout-manager-1.preview.emergentagent.com
+https://odoo-sync-portal.preview.emergentagent.com
 
 ## Test Credentials
 - Email: `test@securado.com`

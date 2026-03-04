@@ -1,4 +1,4 @@
-"""AI CRM Assistant — RAG-powered chat over CRM data.
+"""AI CRM Assistant — RAG-powered chat over CRM data + Feedback collection.
 
 Uses emergentintegrations LLM to answer questions about:
 - Dashboard KPIs, pipeline, win rate
@@ -6,8 +6,14 @@ Uses emergentintegrations LLM to answer questions about:
 - Invoices, overdue, collections
 - Activities, performance
 - Targets and achievements
+
+Also handles conversational feedback submission:
+- Detects feedback intent from user messages
+- Extracts structured feedback (title, description, module, priority)
+- Saves via the feedback system
 """
 import os
+import re
 import logging
 from fastapi import APIRouter, Depends
 from libs.database import get_app_db, get_canonical_db
@@ -16,6 +22,80 @@ from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
 ai_assistant_router = APIRouter(prefix="/ai-assistant", tags=["ai-assistant"])
+
+# Feedback intent detection keywords
+FEEDBACK_KEYWORDS = [
+    "feedback", "bug", "issue", "report", "suggestion", "feature request",
+    "problem", "broken", "not working", "wrong", "error", "improve",
+    "wish", "would be nice", "could you add", "please fix", "complain",
+    "missing", "incorrect", "submit feedback", "give feedback", "send feedback",
+]
+
+MODULES = ["dashboard", "opportunities", "invoices", "activities", "performance",
+           "accounts", "analytics", "settings", "general", "leads", "sync"]
+
+PRIORITIES = {"critical": "critical", "high": "high", "medium": "medium", "low": "low",
+              "urgent": "critical", "important": "high", "minor": "low", "small": "low"}
+
+
+def detect_feedback_intent(question: str) -> bool:
+    """Check if user wants to submit feedback."""
+    q = question.lower()
+    return any(kw in q for kw in FEEDBACK_KEYWORDS)
+
+
+async def extract_feedback_with_llm(api_key: str, question: str, session_id: str) -> dict:
+    """Use LLM to extract structured feedback from a natural language message."""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    extraction_prompt = f"""Extract structured feedback from this user message. Return ONLY a JSON object with these fields:
+- title: A short summary (max 80 chars)
+- description: The full feedback description
+- module: One of: {', '.join(MODULES)}
+- priority: One of: critical, high, medium, low
+
+User message: "{question}"
+
+Return ONLY valid JSON, no markdown, no explanation."""
+    
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"feedback-extract-{session_id}",
+            system_message="You extract structured feedback from user messages. Return only valid JSON."
+        ).with_model("openai", "gpt-4.1-mini")
+        
+        response = await chat.send_message(UserMessage(text=extraction_prompt))
+        
+        # Parse JSON from response
+        import json
+        # Clean up response - remove markdown code blocks if present
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+        
+        return json.loads(cleaned)
+    except Exception as e:
+        logger.error(f"Feedback extraction failed: {e}")
+        # Fallback: simple extraction
+        q = question.lower()
+        module = "general"
+        for m in MODULES:
+            if m in q:
+                module = m
+                break
+        priority = "medium"
+        for kw, p in PRIORITIES.items():
+            if kw in q:
+                priority = p
+                break
+        return {
+            "title": question[:80],
+            "description": question,
+            "module": module,
+            "priority": priority,
+        }
 
 
 async def gather_crm_context(user_email: str, question: str) -> str:
@@ -127,23 +207,30 @@ async def chat_with_assistant(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Chat with AI CRM Assistant — RAG over CRM data"""
+    """Chat with AI CRM Assistant — RAG over CRM data + conversational feedback"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
     question = data.get("question", "")
     session_id = data.get("session_id", f"crm-{current_user.get('email', 'anon')}")
+    mode = data.get("mode", "auto")  # "auto", "feedback", "crm"
     
     if not question:
-        return {"answer": "Please ask a question about your CRM data."}
+        return {"answer": "Please ask a question about your CRM data, or share feedback."}
     
     api_key = os.environ.get("EMERGENT_LLM_KEY", "")
     if not api_key:
         return {"answer": "AI assistant not configured. Please set EMERGENT_LLM_KEY."}
     
-    # Gather CRM context
+    # Detect if this is a feedback submission
+    is_feedback = mode == "feedback" or (mode == "auto" and detect_feedback_intent(question))
+    
+    if is_feedback:
+        return await _handle_feedback(api_key, question, session_id, current_user)
+    
+    # Normal CRM RAG flow
     context = await gather_crm_context(current_user.get("email", ""), question)
     
-    system_message = f"""You are the Securado CRM AI Assistant. You help users understand their sales data, pipeline, invoices, activities, and performance.
+    system_message = f"""You are the Securado CRM AI Assistant. You help users understand their sales data, pipeline, invoices, activities, and performance. You can also collect feedback — if a user wants to report a bug or suggest a feature, ask them to describe it and you'll submit it.
 
 You have access to the following LIVE CRM data:
 
@@ -184,6 +271,65 @@ Rules:
     except Exception as e:
         logger.error(f"AI Assistant error: {e}")
         return {"answer": f"Sorry, I encountered an error: {str(e)[:100]}. Please try again."}
+
+
+async def _handle_feedback(api_key: str, question: str, session_id: str, current_user: dict):
+    """Handle feedback submission through the AI assistant."""
+    app_db = get_app_db()
+    
+    # Extract structured feedback using LLM
+    feedback_data = await extract_feedback_with_llm(api_key, question, session_id)
+    
+    org_id = current_user.get("org_id", "default")
+    feedback_id = generate_id()
+    
+    feedback = {
+        "id": feedback_id,
+        "org_id": org_id,
+        "title": feedback_data.get("title", question[:80]),
+        "description": feedback_data.get("description", question),
+        "module": feedback_data.get("module", "general"),
+        "priority": feedback_data.get("priority", "medium"),
+        "page_url": "",
+        "status": "pending",
+        "source": "ai_assistant",
+        "reporter": {
+            "email": current_user.get("email"),
+            "name": current_user.get("name", current_user.get("email", "")),
+        },
+        "attachments": [],
+        "admin_note": "",
+        "reviewed_by": None,
+        "reviewed_at": None,
+        "created_at": now_utc(),
+        "updated_at": now_utc(),
+    }
+    
+    await app_db.feedback_items.insert_one(feedback)
+    logger.info(f"Feedback via AI assistant: '{feedback['title']}' by {current_user.get('email')}")
+    
+    # Save to chat history
+    answer = f"Thanks for your feedback! I've submitted it:\n\n" \
+             f"**{feedback['title']}**\n" \
+             f"Module: {feedback['module']} | Priority: {feedback['priority']}\n\n" \
+             f"Your feedback ID is `{feedback_id[:8]}`. The team will review it shortly."
+    
+    await app_db.ai_chat_history.insert_one({
+        "id": generate_id(),
+        "session_id": session_id,
+        "user_email": current_user.get("email"),
+        "question": question,
+        "answer": answer,
+        "feedback_id": feedback_id,
+        "created_at": now_utc(),
+    })
+    
+    return {
+        "answer": answer,
+        "session_id": session_id,
+        "feedback_submitted": True,
+        "feedback_id": feedback_id,
+    }
 
 
 @ai_assistant_router.get("/history")

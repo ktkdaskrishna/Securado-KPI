@@ -316,6 +316,11 @@ export const targetAPI = {
   getActivitySuggestions: (planId) => api.get(`/target-plans/revenue/${planId}/suggestions`),
   acceptSuggestions: (planId, modifications) => api.post(`/target-plans/revenue/${planId}/suggestions/accept`, modifications),
 
+  // Category Segments (PD breaks down target by solution category)
+  listSegments: (planId) => api.get(`/target-plans/revenue/${planId}/segments`),
+  saveSegments: (planId, segments) => api.post(`/target-plans/revenue/${planId}/segments`, { segments }),
+  deleteSegment: (planId, segmentId) => api.delete(`/target-plans/revenue/${planId}/segments/${segmentId}`),
+
   // Org Structure
   getOrgTree: () => api.get('/org-structure/tree'),
   getDepartments: () => api.get('/org-structure/departments'),
@@ -464,7 +469,7 @@ export const feedbackAPI = {
 
 // AI Assistant API
 export const aiAssistantAPI = {
-  chat: (question, sessionId) => api.post('/ai-assistant/chat', { question, session_id: sessionId }),
+  chat: (question, sessionId, mode = 'auto') => api.post('/ai-assistant/chat', { question, session_id: sessionId, mode }),
   getHistory: (sessionId) => api.get('/ai-assistant/history', { params: { session_id: sessionId } }),
 };
 

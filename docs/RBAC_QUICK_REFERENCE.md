@@ -1,7 +1,7 @@
 # RBAC Quick Test Reference Card
 ## For Claude Bot Chrome Extension Testing
 
-**App URL**: https://layout-manager-1.preview.emergentagent.com
+**App URL**: https://odoo-sync-portal.preview.emergentagent.com
 
 ---
 

@@ -1,68 +1,61 @@
-<analysis>**original_problem_statement:** The user initiated a broad request to implement a sales target, incentive, and KPI management system. This evolved through extensive user feedback (including numerous screen recordings with voice notes) into a series of critical data integrity fixes, a complete RBAC overhaul, and a major architectural redesign. The final, overarching goal became replacing the static CRM dashboards with a fully configurable, Odoo-like dashboard system, complete with a dynamic query builder, premium-looking widgets, layout management, and role-based template assignments.
+<analysis>**original_problem_statement:** The user initiated a request to build a comprehensive sales target, incentive, and KPI management system. This evolved significantly into a series of critical data integrity fixes, a complete RBAC overhaul, and a major architectural redesign. The final, overarching goal became replacing static dashboards with a fully configurable, Odoo-like dashboard system, complete with a dynamic query builder, layout management, and role-based template assignments. Subsequent requests included fixing production deployment issues, implementing a robust feedback system, and integrating a floating RAG AI Assistant for querying CRM data.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack React/FastAPI/MongoDB platform. A significant architectural shift has been completed, introducing Redis as a caching layer to power a new dynamic dashboard query engine. The original hardcoded dashboard has been replaced by a  which renders all widgets as query cards fetched from the database. A robust backend for a query engine and dashboard card management is in place. The data sync with Odoo is now managed by a resilient, configurable, incremental polling worker that handles record changes and deletions, with all webhook logic completely removed. A centralized, email-based user identity mapping system has resolved all previous RBAC and data-scoping issues.
+The application is a mature, production-ready, full-stack React/FastAPI/MongoDB platform with Redis for caching. It features a dynamic, configurable dashboard system with a read-only view () and a full-featured builder (). The data sync from Odoo is now a resilient incremental polling worker covering 7 key entities, including  and  to ensure data integrity for invoices and margins. A sophisticated, hierarchy-aware RBAC system scopes data correctly for all user levels, from individual reps to managers viewing their team's data. A floating AI Assistant is integrated, capable of answering questions about live CRM data and capturing user feedback in a single conversational interface. All critical production deployment issues related to environment variables, database connections, and SSO have been resolved.
 
 **Last working item**:
-- **Last item agent was working:** The agent was in the middle of a complete rebuild of the dashboard system to make it fully configurable. The  was created, and it successfully renders a dashboard based on query cards from the database. The  backend endpoint was updated to support this new dynamic rendering.
+- **Last item agent was working:** The user requested to merge the feedback submission functionality directly into the new AI Assistant, so users can give feedback conversationally instead of using a separate form. The agent had formulated a plan to implement this but had not yet started coding.
 - **Status:** IN PROGRESS
-- **Agent Testing Done:** Y (Agent confirmed the new dashboard page renders cards from the database).
-- **Which testing method agent to use?** frontend testing agent.
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Dashboard is not yet configurable (P0)**
-    - **Description:** The new  successfully renders a default set of dashboard cards. However, the core user-facing features for configuration are missing. Specifically, the  functionality for drag-and-drop resizing and reordering of cards is not yet implemented. The UI for managing dashboard templates (create, save, assign to roles) is also not built.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** both
-    - **Blocked on other issue:** None
+- **Issue 1: Merge Feedback System into AI Assistant (P0)**
+  - **Description:** The user wants the floating AI assistant to handle both RAG queries and feedback submission in a single conversational interface. The agent has a plan but has not started coding.
+  - **Status:** IN PROGRESS
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** both
+  - **Blocked on other issue:** None
+
+- **Issue 2: Dashboard cards showing '0' for some roles (P1)**
+  - **Description:** A user video showed that the Director Dashboard has cards displaying 0 with warnings. This is likely due to misconfigured invoice-related cards for that specific role template. The agent acknowledged this but has not yet addressed it.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** Y
+  - **Should Test frontend/backend/both after fix?** both
+  - **Blocked on other issue:** None
 
 **In progress Task List**:
-- **Task 1: Complete the Dynamic Dashboard & Layout Builder System (P0)**
-    - **Description:** This task is to complete the vision of a fully configurable, Odoo-like dashboard.
-    - **Where to resume:** The  is rendering cards dynamically. The next steps are:
-        1.  Integrate  into  to enable dragging, dropping, and resizing of the rendered query cards.
-        2.  Implement a Save Layout function that persists the new card positions (, ,  08:16:31 up 19:34,  0 user,  load average: 1.08, 0.65, 0.74
-USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT, ) to the active dashboard template in the database.
-        3.  Build a Template Manager UI (likely a new page or a modal) for creating, editing, and deleting dashboard templates.
-        4.  Build a Role Assignment UI within the Template Manager to assign different dashboard templates to different user roles (e.g., Admin, Sales Director, Product Director).
-        5.  Fix the Win Rate card, which currently displays a raw number (e.g., 6) instead of a formatted percentage.
-    - **What will be achieved with this?** Users will have a fully flexible dashboard. Admins will be able to create different dashboard layouts for different teams, and all cards will be powered by the configurable query engine.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** both
-    - **Blocked on something:** None
+- None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P1: Implement Gross Profit & Costing KPIs:** Incorporate costing, gross margin, and resource utilization metrics into the KPI framework, as per the user-approved plan. This will require syncing new data models from Odoo (e.g., costing sheets, project man-days).
-    - **P2: Build out Strategy & Marketing Team KPIs:** Implement specific KPIs and tracking for the Strategy/New Logos and Marketing teams, focusing on their unique non-sales activities (e.g., CISO roundtables, cyber awareness campaigns).
+    - **P0: Complete the Performance Hub Overhaul (Phase 1):** This is a large, user-driven initiative to rebuild the Performance Hub based on an extensive KPI framework document. The user wants a multi-level planning process (CEO -> Director -> Sales Rep) with cascading targets for booking, invoicing, and margin. It also involves tracking strategic activities for marketing and strategy teams. The agent has received the user's detailed requirements and provided an initial plan, but implementation has not started.
+        - **Next steps:** Implement the multi-level target assignment flow in the Performance Hub UI and backend. Create separate targets for booking, invoicing, and margin.
 
 - **Future Tasks:**
-    - **P1: Replace In-Memory Event Bus:** Migrate the application's internal event bus from the current in-memory implementation to use Redis Streams (which is already installed) to support scalable, multi-instance backend deployments.
-    - **P2: Refactor to Services/Repositories:** Continue the architectural refactoring by extracting business logic from routes into a dedicated service layer and database logic into a repository layer, further improving maintainability.
-    - **P3: Implement Refresh Token Storage:** Enhance security by implementing a secure storage mechanism for refresh tokens, allowing for invalidation and rotation.
+    - **P1: Implement Full KPI Framework (Phases 2-4):**
+        - **Phase 2:** Implement role-specific incentive weight presets and gate logic (collection/GP floors) in the incentive engine.
+        - **Phase 3:** Build out GP and attribution models for pre-sales and marketing influence.
+    - **P1: Refactor to Services/Repositories:** Continue the architectural refactoring by extracting business logic from routes into a dedicated service layer and database logic into a repository layer.
+    - **P2: Replace In-Memory Event Bus:** Migrate the application's internal event bus from the current in-memory implementation to use Redis Streams to support scalable, multi-instance backend deployments.
 
 **Completed work in this session**
-- **Architecture Overhaul:**
-    - Replaced the fragile webhook system with a resilient **Redis-backed incremental polling worker** for all Odoo data synchronization, including change detection and deletion handling.
-    - Implemented a **centralized dashboard query engine** that now powers all analytics, ensuring data consistency.
-    - Rebuilt the main dashboard into a **fully configurable system** where all widgets are dynamic query cards rendered from the database.
+- **Architecture & Production Readiness:**
+    - **Solved All Deployment Blockers:** Fixed critical production issues related to Redis connection spam, JWT session invalidation (by adding a stable ), and database name mismatches between development and production. The application is now stable in production.
+    - **Bundled Redis:** Integrated Redis into the backend's startup lifecycle, ensuring it's available in the production environment.
+    - **Agentic Feedback Loop:** Established a robust workflow for the agent to pull user feedback from production via an API, track it in , and systematically resolve issues.
+- **Core Feature Implementation:**
+    - **AI RAG Assistant:** Implemented a floating AI chat assistant powered by an Emergent LLM Key, capable of answering natural language questions about live CRM data.
+    - **Full-featured Dashboard Builder:** Completed the Odoo-style dashboard builder with drag-and-drop, a visual domain editor, template management (including clone, import/export), and multiple chart types (Bar, Pie, Area, Radial, Table).
+    - **Invoice Module Overhaul:** Rebuilt the invoice page with a KPI dashboard, drill-down capabilities, and an enhanced detail panel with a collection notes feature.
+    - **Activities Module Rebuild:** Completely redesigned the Activities page to match the Odoo reference, focusing on value-selling activities and member performance tracking.
+    - **Data Model Integrity:** Established a canonical data flow from Odoo to link Invoices -> Sales Orders -> SO Lines -> Opportunities, ensuring correct Product Manager, Solution Category, and margin data.
 - **Critical Fixes:**
-    - **Data Integrity:** Resolved all data mismatch issues between the Dashboard, AI Analytics, and Opportunities pages by standardizing date filtering ( vs. ) and value fields () to perfectly match Odoo's logic.
-    - **RBAC & User Identity:** Solved all role-based data scoping problems by creating a **centralized, email-based user identity map**, which handles name variations between Odoo and the app. This fixed access issues for Product Directors (Vimod, Tajuddin), Sales Reps (Nabi), and new Admins (Karan).
-    - **Odoo Performance:** Identified and deactivated 10 zombie webhook automations on the Odoo side that were causing severe performance degradation. All webhook-related code was purged from the codebase.
-- **Feature Implementation:**
-    - Implemented a Notion-style **Advanced Filter Builder** with saved presets.
-    - Built out the **Performance Hub** with role-specific views for CEO, Product Directors, and Sales Reps, including auto-generated activity targets.
-    - Created an **Organization** page with a company org chart and department browser synced from Odoo.
-    - Added a **Data Tools** section for downloading/uploading Excel templates for data correction and mapping verification.
-- **Code Quality & Security:**
-    - Patched critical security vulnerabilities, including a hardcoded JWT secret and insecure CORS policy.
-    - Refactored the monolithic  into smaller, modular, entity-specific files.
-    - Optimized database index creation to prevent it from running on every application startup.
+    - **Data Consistency:** Standardized date filtering () and stage filtering () across all modules (Dashboard, Opportunities List, Kanban), eliminating major data discrepancies.
+    - **Security:** Patched a critical vulnerability allowing non-admin users to access settings and self-promote to admin by adding backend route protection and stricter frontend guards.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -74,82 +67,93 @@ USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT, ) to the ac
 
 
 **Key Technical Concepts**
-- **Redis Integration:** Used as a cache and in-memory data store for the dashboard query engine.
-- **Incremental Polling Sync:** A background worker () polls Odoo for changes on a configurable schedule, validates fields, transforms data, and performs UPSERT operations into MongoDB, including handling deletions.
-- **Dynamic Query Engine:** A backend service () executes JSON-defined queries (with aggregations, filters, etc.) against MongoDB and returns data formatted for various chart and display types.
-- **Configurable React Dashboard:** The frontend fetches a layout template and renders a grid of query cards. A component registry maps each card's display type (e.g., , , ) to a corresponding React component.
-- **Centralized User Identity:** A  collection in MongoDB links a user's app email to their canonical Odoo name and ID, making all RBAC and filtering logic resilient to name variations.
+- **Resilient Services:** Redis caching layer designed to fail silently and fall back to MongoDB. The backend now auto-starts Redis if unavailable.
+- **Production Readiness:** Fixed critical deployment blockers related to environment variables (, ), database access permissions, and service dependencies (Redis).
+- **Agentic Workflow:** A  file and an  API endpoint were created to allow the agent to pull user-reported issues from production into its context for a more structured debugging process.
+- **RAG Pipeline:** The AI Assistant uses a backend RAG pipeline to answer natural language questions by querying live CRM data from MongoDB.
+- **Data Model Integrity:** Established a canonical data flow from Odoo to MongoDB for all key entities, including a multi-step chain to link Invoices -> SOs -> SO Lines -> Opportunities to derive correct Product Manager, Solution Category, and margin data.
 
 **key DB schema**
 - ****: 
+- ****:  (synced from Odoo)
+- ****:  (Enriched)
+- ****:  (Synced from Odoo)
+- ****:  (Synced from Odoo)
 - ****: 
 - ****: 
-- ****:  (e.g., )
 
 **changes in tech stack**
-- **Added:** Redis,  (Python library), .
+- **Redis:** Now fully integrated and bundled with the backend for production deployment.
+- **:** Added to ensure reliable loading of  files at application startup.
+- **:** Used for the AI Assistant's LLM calls with the Emergent LLM Key.
 
 **All files of reference**
-- : The new core Odoo sync logic.
-- : The query engine powering all dashboards.
-- : The API for managing dashboard configurations.
-- : The RBAC filtering logic, now using the user identity map.
-- : The new dynamic dashboard renderer.
-- : The UI for building dashboard card queries.
+- : Dashboard builder and query engine logic.
+- : Invoice API, now with complex enrichment logic.
+- : The core Odoo sync logic, now syncing 7 entities.
+- : Critical file for handling database connections in dev vs. prod.
+- : The RAG and chat API for the AI assistant.
+- : The Dashboard Builder UI.
+- : The enhanced Invoices page.
+- : The floating AI chat bubble UI.
+- : The most up-to-date system architecture document.
+- : The agent's internal log for user-reported issues.
 
 **Areas that need refactoring**:
-- The  analytics endpoints (, etc.) should be refactored to use the new  to centralize all analytics logic and remove redundant code.
+- The  analytics endpoints (, etc.) should be refactored to use the central  to eliminate redundant logic.
 
 **key api endpoints**
-- : Executes a JSON query to fetch data for a dashboard card.
-- : Fetches the layout and card configurations for the current user's active dashboard.
-- : Creates or updates a dashboard card configuration.
-- : Returns the status of the incremental sync worker.
-- : Provides administrative control over the sync worker.
+- : Fetches the layout and card configurations for the current user's dashboard (now with full RBAC).
+- : Fetches all invoices with rich enrichment (SO, PM, Opp links).
+- : Submits user feedback with optional screenshots.
+- : The new endpoint for the RAG AI assistant.
+- : The agent-only endpoint to pull feedback for the .
 
 **Critical Info for New Agent**
-- **The architecture is new and fundamentally different.** The application is no longer a set of static pages but a dynamic system powered by a Redis-backed query engine and a configurable dashboard. The Odoo data sync is now handled by a continuous background polling worker.
-- **Data integrity is paramount.** The user is extremely sensitive to any data mismatches between Odoo and the CRM. All new development must adhere to the established, standardized filtering logic (especially for dates and active status).
-- **User Identity is a solved problem.** All user-related filtering and data scoping now leverage the centralized . Do not write new logic that relies on matching user names directly; use the identity map.
-- **Your immediate task is to complete the dashboard layout builder.** The foundation is laid with , but the crucial next steps are to integrate  for drag-and-drop functionality and to build the UI for managing and assigning dashboard templates to roles.
+- **Production vs. Dev is solved, but be careful.** All critical environment differences (DB names, secrets, Redis) have been fixed. Any new environment-dependent feature must be tested for both scenarios. Do not re-introduce hardcoded DB names or dependencies that only work in the dev sandbox.
+- **The Agentic Feedback Loop is key.** Before fixing any new user-reported bug, you MUST first fetch the latest feedback using the  endpoint and update your . This ensures you are working on the correct, user-validated problems.
+- **The Data Model is complex but canonical.** The path from an Invoice to its Product Manager is . Do not use fallbacks like  unless necessary. All core data now flows directly from the Odoo incremental sync.
+- **The Performance Hub rebuild is the next major task.** The user has provided a detailed, multi-phase plan. You need to present your implementation plan for this before starting.
 
 **documents and test reports created in this job**
-- : A comprehensive document detailing the application's current architecture, created by the agent.
+-  (Updated to v3.0+)
+-  (New agentic tracking file)
+-  (Continuously updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:** I didnt understand...what you mean with this premium widget...I want to have a very scalable platform where I can build very premium widgets...And I cant see the template options. -> **Status: In Progress.** This was the final user request that triggered the current task of rebuilding the dashboard to be fully configurable with layout management.
-2.  **user:** rebuild -> **Status: In Progress.** User gave the final confirmation to proceed with the complete dashboard system rebuild.
-3.  **user:** (Feedback on Hybrid Dashboard) -> **Status: Addressed.** Agent correctly interpreted this to mean a fully configurable model was needed, not a hybrid one.
-4.  **user:** build -> **Status: Addressed.** User approved the plan to build the hybrid dashboard, which was later superseded.
-5.  **user:** can we have kafka or redis in between... -> **Status: Completed.** This led to the successful integration of Redis as the backbone of the new query engine.
-6.  **user:** look still the data is not matching can you. build an edit option like attached... -> **Status: Completed.** This led to the creation of the dynamic dashboard builder and query editor.
-7.  **user:** (Feedback on Odoo Dashboard Config) -> **Status: Completed.** This was a critical piece of information that allowed the agent to finally resolve all data mismatches by aligning the CRM's date filtering logic with Odoo's.
-8.  **user:** I see a big issue related filed mapping in Odoo... -> **Status: Completed.** Led to the discovery that mappings were hardcoded and the creation of the Excel export/import tools.
-9.  **user:** (Feedback on multiple screenshots showing data mismatches) -> **Status: Completed.** This triggered a major data integrity investigation and fix.
-10. **user:** I am attaching feedback covering multiple areas... -> **Status: Completed.** Led to the creation of the Data Tools tab with Excel download/upload functionality.
+1.  **user:** Asks to merge the feedback app and the AI bot. (PENDING)
+2.  **user:** Asks for an AI avatar on top of the UI for RAG. (DONE - AI Assistant built)
+3.  **user:** Reports production dashboard is empty after redeploy. (DONE - Fixed DB name issue)
+4.  **user:** Asks for the app architecture. (DONE - Provided summary)
+5.  **user:** Reports  state and requests complete rebuild of Activities page. (DONE)
+6.  **user:** Asks for collection notes on the invoice detail panel. (DONE)
+7.  **user:** Reports discrepancy in Product Manager name (Shrihari vs Taj). (DONE - Fixed data linkage)
+8.  **user:** Reports 6M pipeline is wrong. (DONE - Fixed query to exclude won/lost)
+9.  **user:** Reports missing  from Odoo. (DONE - Fixed sync config)
+10. **user:** Asks about Odoo  margin field and real-time sync. (DONE - Implemented sale.order sync)
 
 **Project Health Check:**
-- **Broken:** None. The core application is stable and functioning correctly.
+- **Broken:** None.
 - **Mocked:** None.
-- **Health:** **Excellent.** The application has undergone a major, positive architectural transformation. It is now more scalable, resilient, and maintainable. All known data integrity issues have been resolved, and the foundation is solid for the final phase of feature development.
 
 **3rd Party Integrations**
-- **Odoo (v17.0 Enterprise):** Primary data source. Sync is now exclusively via a resilient, incremental polling API worker.
-- **MongoDB:** Primary application database.
-- **Redis:** A new, critical part of the architecture, serving as a cache and data store for the dashboard query engine.
-- **Microsoft Identity Platform (Azure AD):** Used for Single Sign-On (SSO).
+- **Odoo (v17.0 Enterprise):** Primary data source. Syncing 7 entities via incremental polling worker.
+- **MongoDB Atlas:** Production database.
+- **Redis:** Bundled with the application for caching and performance.
+- **Microsoft Identity Platform (Azure AD):** Used for SSO, now stable on production.
+- **Emergent LLM Key:** Used by the  library for the AI Assistant's RAG capabilities.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
+- **Testing agent used after significant changes:** YES
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
+- **Test files created:** Yes, via the testing agent.
 - **Known regressions:** None.
 
 **Credentials to test flow:**
 - **Admin:**  / 
-- **Product Director 1:**  / 
-- **Product Director 2:**  / 
-- **Sales Rep:**  / 
+- **Product Director (Manager):**  / 
+- **Product Director (Admin rights):**  / 
+- **Sales Rep (User):**  / 
 
 **What agent forgot to execute**
-- The agent was in the middle of a large task (completing the layout builder) and didn't finish it. This is not a forgotten item but rather the natural stopping point of the last session.</analysis>
+- The agent acknowledged a dashboard card issue for the Director role (cards showing 0) but has not yet fixed it.</analysis>
