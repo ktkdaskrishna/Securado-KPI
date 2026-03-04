@@ -165,7 +165,12 @@ async def login(credentials: UserLogin):
         roles = await db.roles.find({"id": {"$in": role_ids}}).to_list(100)
         for role in roles:
             permissions.extend(role.get("permissions", []))
-        permissions = list(set(permissions))  # Remove duplicates
+        permissions = list(set(permissions))
+    
+    # Admin roles always get full access wildcard
+    if any(r in role_ids for r in ["admin", "system_admin", "sales_admin"]):
+        if "admin:*" not in permissions:
+            permissions.append("admin:*")
     
     # Create tokens
     token_data = {
