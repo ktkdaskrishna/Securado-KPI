@@ -37,10 +37,13 @@ class DatabaseManager:
         mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
         db_name = os.environ.get('DB_NAME', '')
         
-        # Use DB_NAME as the base if APP_DB_NAME/CANONICAL_DB_NAME not explicitly set
-        # On Emergent production, MongoDB user only has access to the DB_NAME database
-        app_db_name = os.environ.get('APP_DB_NAME', db_name or 'event_mesh_app')
-        canonical_db_name = os.environ.get('CANONICAL_DB_NAME', db_name or 'event_mesh_canonical')
+        # Use DB_NAME as the base for BOTH databases
+        # On Emergent production: DB_NAME is set by the platform
+        # On dev: DB_NAME=event_mesh_app
+        # CRITICAL: Both must use the SAME database on production
+        default_db = db_name or 'event_mesh_app'
+        app_db_name = os.environ.get('APP_DB_NAME', default_db)
+        canonical_db_name = os.environ.get('CANONICAL_DB_NAME', default_db)
         
         logger.info(f"Connecting to MongoDB: app_db={app_db_name}, canonical_db={canonical_db_name}")
         
