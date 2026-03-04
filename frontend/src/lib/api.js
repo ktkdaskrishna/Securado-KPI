@@ -462,3 +462,9 @@ export const feedbackAPI = {
   reviewFeedback: (id, data) => api.post(`/feedback/${id}/review`, data),
 };
 
+// AI Assistant API
+export const aiAssistantAPI = {
+  chat: (question, sessionId) => api.post('/ai-assistant/chat', { question, session_id: sessionId }),
+  getHistory: (sessionId) => api.get('/ai-assistant/history', { params: { session_id: sessionId } }),
+};
+

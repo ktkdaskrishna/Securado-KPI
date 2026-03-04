@@ -55,6 +55,7 @@ import RBACManagementPage from './components/admin/RBACManagementPage';
 import HelpPage from './components/admin/HelpPage';
 import FeedbackAdminPage from './components/admin/FeedbackPage';
 import { FeedbackButton } from './components/admin/FeedbackPage';
+import AiAssistantBubble from './components/ai/AiAssistantBubble';
 
 import './App.css';
 
@@ -181,6 +182,7 @@ function App() {
             <RBACProvider>
               <AppRoutes />
               <FeedbackButton />
+              <AiAssistantBubble />
               <Toaster position="top-right" richColors closeButton />
             </RBACProvider>
           </GlobalFilterProvider>

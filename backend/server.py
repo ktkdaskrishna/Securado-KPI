@@ -122,6 +122,7 @@ from services.target_management.integration_hub import hub_router as integration
 from services.target_management.excel_tools import excel_router
 from services.target_management.card_builder import card_builder_router
 from services.feedback.routes import feedback_router
+from services.ai_assistant.routes import ai_assistant_router
 
 
 @asynccontextmanager
@@ -411,6 +412,7 @@ app.include_router(integration_hub_router, prefix="/api")
 app.include_router(excel_router, prefix="/api")
 app.include_router(card_builder_router, prefix="/api")
 app.include_router(feedback_router, prefix="/api")
+app.include_router(ai_assistant_router, prefix="/api")
 
 
 # Root endpoint
