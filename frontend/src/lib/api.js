@@ -471,5 +471,17 @@ export const feedbackAPI = {
 export const aiAssistantAPI = {
   chat: (question, sessionId, mode = 'auto') => api.post('/ai-assistant/chat', { question, session_id: sessionId, mode }),
   getHistory: (sessionId) => api.get('/ai-assistant/history', { params: { session_id: sessionId } }),
+  transcribeVoice: (audioBlob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    return api.post('/ai-assistant/voice', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  submitFeedbackWithAttachment: (question, sessionId, files) => {
+    const formData = new FormData();
+    formData.append('question', question);
+    formData.append('session_id', sessionId);
+    if (files) files.forEach(f => formData.append('screenshots', f));
+    return api.post('/ai-assistant/feedback-with-attachment', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 

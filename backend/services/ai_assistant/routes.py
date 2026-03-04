@@ -15,7 +15,8 @@ Also handles conversational feedback submission:
 import os
 import re
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from typing import List
 from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, now_utc
 from services.identity.routes import get_current_user
@@ -243,7 +244,12 @@ Rules:
 - If data is not available, say so
 - Format numbers with commas
 - Use bullet points for lists
-- Be professional but friendly"""
+- Be professional but friendly
+- When showing tabular data or comparisons, format as a markdown table
+- When the user asks for charts, graphs, or visual data, include a JSON block with chart data in this format:
+  ```chart
+  {{"type":"bar|pie|line","title":"Chart Title","data":[{{"name":"Label","value":123}}]}}
+  ```"""
 
     try:
         chat = LlmChat(
@@ -344,3 +350,121 @@ async def get_chat_history(
         query["session_id"] = session_id
     history = await app_db.ai_chat_history.find(query, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     return serialize_doc(history)
+
+
+
+@ai_assistant_router.post("/voice")
+async def transcribe_voice(
+    audio: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Transcribe voice input using OpenAI Whisper via Emergent LLM Key"""
+    from fastapi import UploadFile, File
+    
+    api_key = os.environ.get("EMERGENT_LLM_KEY", "")
+    if not api_key:
+        return {"text": "", "error": "Voice input not configured"}
+    
+    allowed_types = ["audio/webm", "audio/wav", "audio/mp3", "audio/mpeg", "audio/mp4", "audio/m4a", "audio/ogg"]
+    if audio.content_type and audio.content_type not in allowed_types:
+        return {"text": "", "error": f"Unsupported audio format: {audio.content_type}"}
+    
+    content = await audio.read()
+    if len(content) > 25 * 1024 * 1024:
+        return {"text": "", "error": "Audio file too large (max 25MB)"}
+    
+    try:
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+        import tempfile
+        
+        # Write to temp file (Whisper needs a file)
+        ext = "webm"
+        if audio.filename:
+            ext = audio.filename.split(".")[-1] if "." in audio.filename else "webm"
+        
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        
+        stt = OpenAISpeechToText(api_key=api_key)
+        with open(tmp_path, "rb") as audio_file:
+            response = await stt.transcribe(
+                file=audio_file,
+                model="whisper-1",
+                response_format="json",
+                language="en"
+            )
+        
+        # Cleanup
+        os.unlink(tmp_path)
+        
+        text = response.text if hasattr(response, 'text') else str(response)
+        logger.info(f"Voice transcribed: {len(text)} chars for {current_user.get('email')}")
+        return {"text": text}
+    except Exception as e:
+        logger.error(f"Voice transcription error: {e}")
+        return {"text": "", "error": str(e)[:200]}
+
+
+@ai_assistant_router.post("/feedback-with-attachment")
+async def submit_feedback_with_attachment(
+    question: str = Form(...),
+    session_id: str = Form(""),
+    screenshots: List[UploadFile] = File(default=[]),
+    current_user: dict = Depends(get_current_user)
+):
+    """Submit feedback via AI assistant with optional screenshot attachments"""
+    import base64
+    from fastapi import Form, UploadFile, File
+    from typing import List
+    
+    api_key = os.environ.get("EMERGENT_LLM_KEY", "")
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Extract structured feedback using LLM
+    feedback_data = await extract_feedback_with_llm(api_key, question, session_id) if api_key else {
+        "title": question[:80], "description": question, "module": "general", "priority": "medium"
+    }
+    
+    feedback_id = generate_id()
+    
+    # Process attachments
+    attachments_meta = []
+    for f in screenshots[:5]:
+        if f.content_type and f.content_type not in ["image/png", "image/jpeg", "image/webp"]:
+            continue
+        content = await f.read()
+        if len(content) > 5 * 1024 * 1024:
+            continue
+        att_id = generate_id()
+        attachments_meta.append({"id": att_id, "filename": f.filename, "content_type": f.content_type, "size": len(content)})
+        await app_db.feedback_attachments.insert_one({
+            "id": att_id, "feedback_id": feedback_id,
+            "data": base64.b64encode(content).decode("utf-8"),
+            "content_type": f.content_type, "filename": f.filename,
+        })
+    
+    feedback = {
+        "id": feedback_id, "org_id": org_id,
+        "title": feedback_data.get("title", question[:80]),
+        "description": feedback_data.get("description", question),
+        "module": feedback_data.get("module", "general"),
+        "priority": feedback_data.get("priority", "medium"),
+        "page_url": "", "status": "pending", "source": "ai_assistant",
+        "reporter": {"email": current_user.get("email"), "name": current_user.get("name", "")},
+        "attachments": attachments_meta,
+        "admin_note": "", "reviewed_by": None, "reviewed_at": None,
+        "created_at": now_utc(), "updated_at": now_utc(),
+    }
+    
+    await app_db.feedback_items.insert_one(feedback)
+    
+    att_count = len(attachments_meta)
+    answer = f"Thanks for your feedback! I've submitted it:\n\n" \
+             f"**{feedback['title']}**\n" \
+             f"Module: {feedback['module']} | Priority: {feedback['priority']}\n" \
+             f"{f'{att_count} screenshot(s) attached' if att_count else ''}\n\n" \
+             f"Your feedback ID is `{feedback_id[:8]}`. The team will review it shortly."
+    
+    return {"answer": answer, "session_id": session_id, "feedback_submitted": True, "feedback_id": feedback_id, "attachments": att_count}
