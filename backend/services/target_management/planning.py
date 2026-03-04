@@ -43,7 +43,7 @@ actuals_router = APIRouter(prefix="/target-actuals", tags=["target-actuals"])
 # ==================== MODELS ====================
 
 class RevenuePlanCreate(BaseModel):
-    """CEO/Director creates target for a Product Manager — single plan with dual targets"""
+    """CEO/Director creates target for a Product Manager or Strategy GM — single plan with dual targets"""
     name: str
     product_manager_id: Optional[str] = None
     product_manager_name: Optional[str] = None
@@ -52,16 +52,18 @@ class RevenuePlanCreate(BaseModel):
     margin_target: float = 0  # Gross profit / margin target
     target_amount: float = 0  # Legacy field
     period: str = "2026-Q1"
-    plan_type: str = "revenue"  # Keep as "revenue" — the dual targets handle the split
+    plan_type: str = "revenue"  # "revenue" (PD), "strategy" (GM Strategy), "marketing" (Marketing)
     notes: Optional[str] = None
 
 
 class ActivityPlanItemCreate(BaseModel):
-    """PM creates activity plan item (e.g. 10 demos for NDR)"""
-    activity_type: str  # Demo, Proof of concept, Site Visit, Work Shop, Product Presentation, Vendor Meeting, POC
+    """PM creates activity plan item — can assign to marketing or strategy team"""
+    activity_type: str  # Demo, POC, Site Visit, Workshop, Awareness Camp, Assessment, CEO Presentation, Digital Campaign, Event
     solution_category: Optional[str] = None
     target_count: int = 0
     notes: Optional[str] = None
+    assign_team: Optional[str] = None  # "marketing", "strategy", or None (sales)
+    sponsor_pd: Optional[str] = None  # PD who sponsors the activity (for marketing/strategy)
 
 
 class PlanRedistributionCreate(BaseModel):
@@ -260,7 +262,7 @@ async def list_revenue_plans(
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
 
-    query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}
+    query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue", "strategy", "marketing"]}}
     if period:
         query["period"] = period
     if product_manager:
@@ -379,88 +381,197 @@ async def create_revenue_plan(
     await app_db.target_plans.insert_one(doc)
     
     # Auto-generate activity suggestions based on PD's historical data + solution categories
+    # Also generate Marketing & Strategy activity recommendations
     pm_name = data.product_manager_name
-    if pm_name and data.target_amount > 0:
+    is_strategy = data.plan_type == "strategy"
+    is_marketing = data.plan_type == "marketing"
+    
+    if pm_name and (data.target_amount > 0 or data.booking_target > 0):
         try:
-            # Get PD's historical metrics
-            hist = await canonical_db.opportunities.aggregate([
-                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}}},
-                {"$group": {
-                    "_id": None,
-                    "total_opps": {"$sum": 1},
-                    "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
-                    "won_value": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", 0]}, 0]}}
-                }}
-            ]).to_list(1)
+            target_val = data.booking_target or data.target_amount
             
-            h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0}
-            avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else data.target_amount / 10
-            win_rate = h["won_count"] / h["total_opps"] if h["total_opps"] > 0 else 0.25
-            required_deals = max(1, round(data.target_amount / avg_deal)) if avg_deal > 0 else 10
-            
-            # Get PM's solution categories with revenue weight
-            current_year = datetime.now().strftime("%Y")
-            cat_pipeline = [
-                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
-                {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
-                {"$sort": {"value": -1}}
-            ]
-            categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(20)
-            total_cat_value = sum(c["value"] for c in categories) or 1
-            
-            suggestions = []
-            activity_types = [
-                ("Demo", 0.5, "product demos"),
-                ("Proof of concept", 0.15, "POC/pilot"),
-                ("Call", 2.5, "outbound calls"),
-                ("Meeting", 1.0, "client meetings"),
-            ]
-            
-            if categories:
-                # Generate suggestions PER solution category, weighted by revenue
-                for cat in categories:
-                    cat_name = cat["_id"]
-                    weight = cat["value"] / total_cat_value
-                    cat_deals = max(1, round(required_deals * weight))
-                    
-                    for act_type, multiplier, desc in activity_types:
-                        count = max(1, round(cat_deals / max(win_rate, 0.1) * multiplier))
+            if is_strategy:
+                # Strategy GM: assessment services, workshops, CEO presentations, awareness camps
+                suggestions = []
+                # Get solution categories for context
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}, {"$limit": 8}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(8)
+                
+                strategy_activities = [
+                    ("Assessment Services", "Security/compliance assessments per category"),
+                    ("CEO Presentation", "Executive-level presentations to key accounts"),
+                    ("Awareness Camp", "Customer awareness roundtables per category"),
+                    ("Work Shop", "Technical workshops with ministries/enterprises"),
+                    ("Vendor Meeting", "Strategic vendor alignment meetings"),
+                ]
+                
+                for cat in (categories or [{"_id": "General"}]):
+                    cat_name = cat["_id"] if isinstance(cat, dict) else cat
+                    for act_type, desc in strategy_activities:
+                        count = 2 if act_type in ("CEO Presentation", "Awareness Camp") else 4
                         suggestions.append({
                             "activity_type": act_type,
                             "solution_category": cat_name,
                             "count": count,
-                            "formula": f"{cat_deals} deals × {multiplier} ({desc}) [{cat_name}]",
+                            "formula": f"{desc} [{cat_name}]",
+                            "assign_team": "strategy",
                             "accepted": False
                         })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": 0, "win_rate": 0, "required_deals": 0,
+                    "pipeline_coverage": 0,
+                    "categories": [c["_id"] for c in categories] if categories else [],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
+                
+            elif is_marketing:
+                # Marketing: digital campaigns, events, content per category
+                suggestions = []
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}, {"$limit": 8}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(8)
+                
+                marketing_activities = [
+                    ("Digital Campaign", "Targeted digital campaigns per category"),
+                    ("Event", "Industry events and tradeshows"),
+                    ("Awareness Camp", "Customer awareness roundtables (quarterly)"),
+                    ("Product Presentation", "Webinars and product showcases"),
+                ]
+                
+                for cat in (categories or [{"_id": "General"}]):
+                    cat_name = cat["_id"] if isinstance(cat, dict) else cat
+                    for act_type, desc in marketing_activities:
+                        count = 2 if act_type == "Event" else 4
+                        suggestions.append({
+                            "activity_type": act_type,
+                            "solution_category": cat_name,
+                            "count": count,
+                            "formula": f"{desc} [{cat_name}]",
+                            "assign_team": "marketing",
+                            "accepted": False
+                        })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": 0, "win_rate": 0, "required_deals": 0,
+                    "pipeline_coverage": 0,
+                    "categories": [c["_id"] for c in categories] if categories else [],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
+                
             else:
-                # No categories found - generate generic suggestions
-                demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
-                for act_type, multiplier, desc in activity_types:
-                    count = max(2, round(demos * multiplier / 0.5))
-                    suggestions.append({
-                        "activity_type": act_type,
-                        "solution_category": "",
-                        "count": count,
-                        "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × {multiplier}",
-                        "accepted": False
-                    })
-            
-            suggestion_doc = {
-                "id": generate_id(),
-                "org_id": org_id,
-                "revenue_plan_id": doc["id"],
-                "product_director_name": pm_name,
-                "revenue_target": data.target_amount,
-                "avg_deal_size": round(avg_deal, 2),
-                "win_rate": round(win_rate * 100, 1),
-                "required_deals": required_deals,
-                "pipeline_coverage": round(data.target_amount * 3, 2),
-                "categories": [c["_id"] for c in categories],
-                "suggestions": suggestions,
-                "status": "pending_review",
-                "created_at": now_utc()
-            }
-            await app_db.activity_suggestions.insert_one(suggestion_doc)
+                # Standard PD revenue plan — existing logic
+                # Get PD's historical metrics
+                hist = await canonical_db.opportunities.aggregate([
+                    {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}}},
+                    {"$group": {
+                        "_id": None,
+                        "total_opps": {"$sum": 1},
+                        "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                        "won_value": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", 0]}, 0]}}
+                    }}
+                ]).to_list(1)
+                
+                h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0}
+                avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else target_val / 10
+                win_rate = h["won_count"] / h["total_opps"] if h["total_opps"] > 0 else 0.25
+                required_deals = max(1, round(target_val / avg_deal)) if avg_deal > 0 else 10
+                
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(20)
+                total_cat_value = sum(c["value"] for c in categories) or 1
+                
+                suggestions = []
+                # Sales activities
+                sales_activities = [
+                    ("Demo", 0.5, "product demos"),
+                    ("Proof of concept", 0.15, "POC/pilot"),
+                    ("Call", 2.5, "outbound calls"),
+                    ("Meeting", 1.0, "client meetings"),
+                ]
+                # Marketing activities (PD sponsors, marketing executes)
+                marketing_activities = [
+                    ("Awareness Camp", 0.05, "customer awareness roundtable (quarterly)"),
+                    ("Digital Campaign", 0.1, "targeted digital campaigns"),
+                ]
+                # Strategy activities (PD sponsors, strategy GM executes)
+                strategy_activities = [
+                    ("Work Shop", 0.08, "technical workshops with key accounts"),
+                    ("Assessment Services", 0.05, "security/compliance assessments"),
+                ]
+                
+                if categories:
+                    for cat in categories:
+                        cat_name = cat["_id"]
+                        weight = cat["value"] / total_cat_value
+                        cat_deals = max(1, round(required_deals * weight))
+                        
+                        # Sales activities
+                        for act_type, multiplier, desc in sales_activities:
+                            count = max(1, round(cat_deals / max(win_rate, 0.1) * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"{cat_deals} deals × {multiplier} ({desc}) [{cat_name}]",
+                                "assign_team": None, "accepted": False
+                            })
+                        
+                        # Marketing activities (PD-sponsored)
+                        for act_type, multiplier, desc in marketing_activities:
+                            count = max(1, round(cat_deals * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"PD sponsors, Marketing executes: {desc} [{cat_name}]",
+                                "assign_team": "marketing", "sponsor_pd": pm_name, "accepted": False
+                            })
+                        
+                        # Strategy activities (PD-sponsored)
+                        for act_type, multiplier, desc in strategy_activities:
+                            count = max(1, round(cat_deals * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"PD sponsors, Strategy executes: {desc} [{cat_name}]",
+                                "assign_team": "strategy", "sponsor_pd": pm_name, "accepted": False
+                            })
+                else:
+                    demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
+                    for act_type, multiplier, desc in sales_activities:
+                        count = max(2, round(demos * multiplier / 0.5))
+                        suggestions.append({
+                            "activity_type": act_type, "solution_category": "",
+                            "count": count, "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × {multiplier}",
+                            "assign_team": None, "accepted": False
+                        })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": round(avg_deal, 2), "win_rate": round(win_rate * 100, 1),
+                    "required_deals": required_deals,
+                    "pipeline_coverage": round(target_val * 3, 2),
+                    "categories": [c["_id"] for c in categories],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
         except Exception as e:
             logger.error(f"Failed to generate activity suggestions: {e}")
     
@@ -1205,6 +1316,8 @@ async def accept_suggestions(
             "activity_type": item.get("activity_type"),
             "solution_category": item.get("solution_category", ""),
             "target_count": item.get("count", 0),
+            "assign_team": item.get("assign_team"),
+            "sponsor_pd": item.get("sponsor_pd"),
             "notes": item.get("formula", "Auto-generated from revenue target"),
             "status": "active",
             "created_by": current_user["id"],

@@ -68,7 +68,7 @@ export default function AiAssistantBubble() {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} data-testid="ai-assistant-fab"
-        className="fixed bottom-6 left-6 z-50 p-3.5 rounded-full bg-gradient-to-br from-[#800000] to-[#5a0000] text-white shadow-xl hover:shadow-2xl transition-all hover:scale-110 group"
+        className="fixed bottom-6 right-6 z-50 p-3.5 rounded-full bg-gradient-to-br from-[#800000] to-[#5a0000] text-white shadow-xl hover:shadow-2xl transition-all hover:scale-110 group"
         title="AI CRM Assistant & Feedback">
         <Bot className="h-6 w-6 group-hover:animate-pulse" />
         <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
@@ -77,7 +77,7 @@ export default function AiAssistantBubble() {
   }
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 w-[400px] h-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+    <div className="fixed bottom-6 right-6 z-50 w-[400px] h-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
       data-testid="ai-assistant-panel">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#800000] to-[#5a0000] px-4 py-3 flex items-center gap-3">

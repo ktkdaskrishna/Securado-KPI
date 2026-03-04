@@ -262,21 +262,57 @@ export default function PerformanceHubPage() {
         </TabsList>
 
         {/* CASCADE VIEW (CEO) — The main new view */}
-        {showExecutiveTabs && <TabsContent value="cascade" className="mt-4 space-y-4" data-testid="cascade-view">
-          {/* Plans with cascade flow */}
-          {plans.map(plan => (
-            <CascadePlanCard key={plan.id} plan={plan} selected={selectedPlan?.id === plan.id}
-              onSelect={() => { setSelectedPlan(plan); }}
-              onSegment={() => { setSelectedPlan(plan); setShowSegmentEditor(true); }}
-              onViewPlan={() => { setSelectedPlan(plan); setTab('pm'); }}
-              onDelete={() => { targetAPI.deleteRevenuePlan(plan.id).then(() => { toast.success('Deleted'); loadData(); }); }}
-            />
-          ))}
+        {showExecutiveTabs && <TabsContent value="cascade" className="mt-4 space-y-6" data-testid="cascade-view">
+          {/* PD Revenue Plans */}
+          {plans.filter(p => !p.plan_type || p.plan_type === 'revenue').length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Target className="h-4 w-4 text-[#800000]" /> Product Director Targets</h3>
+              {plans.filter(p => !p.plan_type || p.plan_type === 'revenue').map(plan => (
+                <CascadePlanCard key={plan.id} plan={plan} selected={selectedPlan?.id === plan.id}
+                  onSelect={() => { setSelectedPlan(plan); }}
+                  onSegment={() => { setSelectedPlan(plan); setShowSegmentEditor(true); }}
+                  onViewPlan={() => { setSelectedPlan(plan); setTab('pm'); }}
+                  onDelete={() => { targetAPI.deleteRevenuePlan(plan.id).then(() => { toast.success('Deleted'); loadData(); }); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Strategy GM Plans */}
+          {plans.filter(p => p.plan_type === 'strategy').length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Presentation className="h-4 w-4 text-purple-600" /> GM Strategy Targets</h3>
+              {plans.filter(p => p.plan_type === 'strategy').map(plan => (
+                <CascadePlanCard key={plan.id} plan={plan} selected={selectedPlan?.id === plan.id} planTypeLabel="Strategy"
+                  onSelect={() => { setSelectedPlan(plan); }}
+                  onSegment={() => { setSelectedPlan(plan); setShowSegmentEditor(true); }}
+                  onViewPlan={() => { setSelectedPlan(plan); setTab('pm'); }}
+                  onDelete={() => { targetAPI.deleteRevenuePlan(plan.id).then(() => { toast.success('Deleted'); loadData(); }); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Marketing Plans */}
+          {plans.filter(p => p.plan_type === 'marketing').length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><BarChart2 className="h-4 w-4 text-blue-600" /> Marketing Team Targets</h3>
+              {plans.filter(p => p.plan_type === 'marketing').map(plan => (
+                <CascadePlanCard key={plan.id} plan={plan} selected={selectedPlan?.id === plan.id} planTypeLabel="Marketing"
+                  onSelect={() => { setSelectedPlan(plan); }}
+                  onSegment={() => { setSelectedPlan(plan); setShowSegmentEditor(true); }}
+                  onViewPlan={() => { setSelectedPlan(plan); setTab('pm'); }}
+                  onDelete={() => { targetAPI.deleteRevenuePlan(plan.id).then(() => { toast.success('Deleted'); loadData(); }); }}
+                />
+              ))}
+            </div>
+          )}
+
           {plans.length === 0 && (
             <Card><CardContent className="p-12 text-center">
               <GitBranch className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-500 mb-1">No Target Plans Yet</h3>
-              <p className="text-sm text-gray-400 mb-4">Start by assigning a revenue target to a Product Director</p>
+              <p className="text-sm text-gray-400 mb-4">Start by assigning a revenue target to a Product Director, Strategy GM, or Marketing Team</p>
               <Button onClick={() => setShowCreatePlan(true)} className="bg-[#800000] hover:bg-[#9a1919] text-white">
                 <Plus className="h-4 w-4 mr-1" /> Assign First Target
               </Button>
@@ -301,15 +337,18 @@ export default function PerformanceHubPage() {
               </div>
             </CardContent></Card>
             
-            <Card><CardHeader className="pb-2"><CardTitle className="text-base">Activity Plan Items <Badge variant="secondary" className="ml-2">{planItems.length}</Badge></CardTitle></CardHeader>
-              <CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Target</TableHead><TableHead className="text-right">Actual</TableHead><TableHead>Assigned</TableHead><TableHead>Match</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader>
-                <TableBody>{planItems.map(item => { const Icon = actIcons[item.activity_type] || Activity; const assigned = item.redistributed_total || 0; const matched = assigned >= (item.target_count || 0) && item.target_count > 0; const remaining = (item.target_count || 0) - assigned; return (
+            <Card><CardHeader className="pb-2"><CardTitle className="text-base">Activity Plan Items <Badge variant="secondary" className="ml-2">{planItems.length}</Badge>
+              {planItems.filter(i => i.assign_team === 'marketing').length > 0 && <Badge variant="outline" className="ml-1 text-[10px] border-blue-200 bg-blue-50 text-blue-700">{planItems.filter(i => i.assign_team === 'marketing').length} Marketing</Badge>}
+              {planItems.filter(i => i.assign_team === 'strategy').length > 0 && <Badge variant="outline" className="ml-1 text-[10px] border-purple-200 bg-purple-50 text-purple-700">{planItems.filter(i => i.assign_team === 'strategy').length} Strategy</Badge>}
+            </CardTitle></CardHeader>
+              <CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead>Team</TableHead><TableHead className="text-right">Target</TableHead><TableHead className="text-right">Actual</TableHead><TableHead>Assigned</TableHead><TableHead className="w-24">Actions</TableHead></TableRow></TableHeader>
+                <TableBody>{planItems.map(item => { const Icon = actIcons[item.activity_type] || Activity; const assigned = item.redistributed_total || 0; const matched = assigned >= (item.target_count || 0) && item.target_count > 0; const remaining = (item.target_count || 0) - assigned; const teamLabel = item.assign_team === 'marketing' ? 'Marketing' : item.assign_team === 'strategy' ? 'Strategy' : 'Sales'; const teamColor = item.assign_team === 'marketing' ? 'bg-blue-100 text-blue-700' : item.assign_team === 'strategy' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'; return (
                   <TableRow key={item.id}><TableCell><div className="flex items-center gap-2"><Icon className="h-4 w-4" style={{ color: actColors[item.activity_type] }} /><span className="text-sm font-medium">{item.activity_type}</span></div></TableCell>
                     <TableCell className="text-sm text-gray-500">{item.solution_category || '-'}</TableCell>
+                    <TableCell><Badge variant="secondary" className={`text-[10px] ${teamColor}`}>{teamLabel}</Badge>{item.sponsor_pd && <p className="text-[9px] text-gray-400 mt-0.5">Sponsor: {item.sponsor_pd}</p>}</TableCell>
                     <TableCell className="text-right font-semibold">{item.target_count}</TableCell>
                     <TableCell className="text-right"><span className={(item.actual_count || 0) >= (item.target_count || 0) ? 'text-emerald-600 font-semibold' : ''}>{item.actual_count || 0}</span></TableCell>
                     <TableCell><span className={matched ? 'text-emerald-600' : 'text-orange-600'}>{assigned}/{item.target_count}</span> {remaining > 0 && <span className="text-xs text-red-500 ml-1">({remaining} left)</span>}</TableCell>
-                    <TableCell>{matched ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <AlertTriangle className="h-4 w-4 text-orange-400" />}</TableCell>
                     <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowRedistribute(item)}>Assign</Button><Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500" onClick={() => targetAPI.deletePlanItem(item.id).then(() => { toast.success('Deleted'); loadPlanDetails(selectedPlan.id); })}><Trash2 className="h-3 w-3" /></Button></div></TableCell>
                   </TableRow>); })}{planItems.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-400">No activity items. Add items or accept system suggestions.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
             {redistributions.length > 0 && <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Assignments ({redistributions.length})</CardTitle></CardHeader><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Assigned To</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Count</TableHead><TableHead>Notes</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
@@ -413,12 +452,14 @@ export default function PerformanceHubPage() {
 }
 
 // ===== CASCADE PLAN CARD (shows the visual flow: CEO → PD → Categories → Activities) =====
-function CascadePlanCard({ plan, selected, onSelect, onSegment, onViewPlan, onDelete }) {
+function CascadePlanCard({ plan, selected, onSelect, onSegment, onViewPlan, onDelete, planTypeLabel }) {
   const bookingTarget = plan.booking_target || plan.target_amount || 0;
   const bookingPct = plan.booking_pct || 0;
   const invoicedPct = plan.invoiced_pct || 0;
   const marginPct = plan.margin_pct || 0;
   const isSegmented = plan.segmented || plan.segment_count > 0;
+  const pType = plan.plan_type || 'revenue';
+  const typeColor = pType === 'strategy' ? 'purple' : pType === 'marketing' ? 'blue' : 'gray';
 
   return (
     <Card className={`transition-all ${selected ? 'border-[#800000] shadow-md' : 'hover:border-gray-300'}`} data-testid={`cascade-card-${plan.id}`}>
@@ -426,7 +467,10 @@ function CascadePlanCard({ plan, selected, onSelect, onSegment, onViewPlan, onDe
         {/* Plan Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="cursor-pointer" onClick={onSelect}>
-            <h3 className="font-semibold text-base text-gray-900">{plan.name}</h3>
+            <h3 className="font-semibold text-base text-gray-900 flex items-center gap-2">
+              {plan.name}
+              {planTypeLabel && <Badge variant="outline" className={`text-[10px] border-${typeColor}-200 bg-${typeColor}-50 text-${typeColor}-700`}>{planTypeLabel}</Badge>}
+            </h3>
             <p className="text-sm text-gray-500 flex items-center gap-1">
               <User className="h-3 w-3" /> {plan.product_manager_name}
               <span className="text-gray-300 mx-1">|</span>
@@ -784,16 +828,50 @@ function IncentiveSection({ plans }) {
 }
 
 function CreatePlanDialog({ open, onClose, onCreated, productManagers }) {
-  const [form, setForm] = useState({ name: '', product_manager_name: '', product_manager_id: '', booking_target: 0, invoiced_target: 0, margin_target: 0, target_amount: 0, period: '2026-Q1' }); const [sub, setSub] = useState(false);
+  const [form, setForm] = useState({ name: '', product_manager_name: '', product_manager_id: '', booking_target: 0, invoiced_target: 0, margin_target: 0, target_amount: 0, period: '2026-Q1', plan_type: 'revenue' }); const [sub, setSub] = useState(false);
   const handlePM = (n) => { const pm = productManagers.find(p => p.name === n); setForm(f => ({ ...f, product_manager_name: n, product_manager_id: String(pm?.id || ''), name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${n}` })); };
-  const submit = async () => { if (!form.product_manager_name || !form.booking_target) { toast.error('Select PD and booking target'); return; } setSub(true); try { const res = await targetAPI.createRevenuePlan({...form, target_amount: form.booking_target}); toast.success('Plan created!'); onCreated(res.data); } catch (err) { const detail = err.response?.data?.detail; const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (typeof detail === 'string' ? detail : 'Failed'); toast.error(msg); } finally { setSub(false); } };
-  return <Dialog open={open} onOpenChange={onClose}><DialogContent className="max-w-lg" data-testid="create-plan-dialog"><DialogHeader><DialogTitle>Assign Revenue Target</DialogTitle></DialogHeader><div className="space-y-3"><div><Label className="text-xs text-gray-500">Product Director</Label><Select value={form.product_manager_name} onValueChange={handlePM}><SelectTrigger data-testid="select-pd"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{productManagers.map(pm => <SelectItem key={pm.name} value={pm.name}>{pm.name} ({pm.opp_count} opps)</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 gap-3"><div><Label className="text-xs text-gray-500">Booking Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Won CRM deals</p><Input type="number" value={form.booking_target} onChange={e => setForm(f => ({ ...f, booking_target: parseFloat(e.target.value) || 0 }))} data-testid="booking-target-input" /></div><div><Label className="text-xs text-gray-500">Invoiced Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Paid invoices</p><Input type="number" value={form.invoiced_target} onChange={e => setForm(f => ({ ...f, invoiced_target: parseFloat(e.target.value) || 0 }))} data-testid="invoiced-target-input" /></div><div><Label className="text-xs text-gray-500">Margin Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Gross profit</p><Input type="number" value={form.margin_target} onChange={e => setForm(f => ({ ...f, margin_target: parseFloat(e.target.value) || 0 }))} data-testid="margin-target-input" /></div></div><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">Period</Label><Select value={form.period} onValueChange={v => setForm(f => ({...f, period: v, name: `${v.split('-')[1]} ${v.split('-')[0]} - ${f.product_manager_name || ''}`}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2026-Q1">Q1 2026</SelectItem><SelectItem value="2026-Q2">Q2 2026</SelectItem><SelectItem value="2026-Q3">Q3 2026</SelectItem><SelectItem value="2026-Q4">Q4 2026</SelectItem></SelectContent></Select></div><div><Label className="text-xs text-gray-500">Plan Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div></div></div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={sub} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="submit-plan-btn">{sub ? '...' : 'Assign Target'}</Button></DialogFooter></DialogContent></Dialog>;
+  const planTypeLabels = { revenue: 'Product Director', strategy: 'GM Strategy', marketing: 'Marketing Team' };
+  const submit = async () => { if (!form.product_manager_name || !form.booking_target) { toast.error('Select assignee and booking target'); return; } setSub(true); try { const res = await targetAPI.createRevenuePlan({...form, target_amount: form.booking_target}); toast.success('Plan created!'); onCreated(res.data); } catch (err) { const detail = err.response?.data?.detail; const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (typeof detail === 'string' ? detail : 'Failed'); toast.error(msg); } finally { setSub(false); } };
+  return <Dialog open={open} onOpenChange={onClose}><DialogContent className="max-w-lg" data-testid="create-plan-dialog"><DialogHeader><DialogTitle>Assign Revenue Target</DialogTitle></DialogHeader><div className="space-y-3">
+    <div><Label className="text-xs text-gray-500">Target Type</Label>
+      <Select value={form.plan_type} onValueChange={v => setForm(f => ({ ...f, plan_type: v }))}>
+        <SelectTrigger data-testid="select-plan-type"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="revenue">Product Director (Revenue)</SelectItem>
+          <SelectItem value="strategy">GM Strategy (Revenue + Activities)</SelectItem>
+          <SelectItem value="marketing">Marketing Team (Campaign Activities)</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+    <div><Label className="text-xs text-gray-500">{planTypeLabels[form.plan_type] || 'Assignee'}</Label><Select value={form.product_manager_name} onValueChange={handlePM}><SelectTrigger data-testid="select-pd"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{productManagers.map(pm => <SelectItem key={pm.name} value={pm.name}>{pm.name} ({pm.opp_count} opps)</SelectItem>)}</SelectContent></Select>
+      {form.plan_type === 'strategy' && <p className="text-[10px] text-purple-600 mt-1">GM Strategy gets a parallel revenue target from CEO + assessment/workshop activities</p>}
+      {form.plan_type === 'marketing' && <p className="text-[10px] text-blue-600 mt-1">Marketing gets campaign activities; PDs sponsor, marketing executes</p>}
+    </div>
+    <div className="grid grid-cols-3 gap-3"><div><Label className="text-xs text-gray-500">Booking Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">{form.plan_type === 'strategy' ? 'Revenue from services' : form.plan_type === 'marketing' ? 'Lead pipeline value' : 'Won CRM deals'}</p><Input type="number" value={form.booking_target} onChange={e => setForm(f => ({ ...f, booking_target: parseFloat(e.target.value) || 0 }))} data-testid="booking-target-input" /></div><div><Label className="text-xs text-gray-500">Invoiced Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Paid invoices</p><Input type="number" value={form.invoiced_target} onChange={e => setForm(f => ({ ...f, invoiced_target: parseFloat(e.target.value) || 0 }))} data-testid="invoiced-target-input" /></div><div><Label className="text-xs text-gray-500">Margin Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Gross profit</p><Input type="number" value={form.margin_target} onChange={e => setForm(f => ({ ...f, margin_target: parseFloat(e.target.value) || 0 }))} data-testid="margin-target-input" /></div></div><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">Period</Label><Select value={form.period} onValueChange={v => setForm(f => ({...f, period: v, name: `${v.split('-')[1]} ${v.split('-')[0]} - ${f.product_manager_name || ''}`}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2026-Q1">Q1 2026</SelectItem><SelectItem value="2026-Q2">Q2 2026</SelectItem><SelectItem value="2026-Q3">Q3 2026</SelectItem><SelectItem value="2026-Q4">Q4 2026</SelectItem></SelectContent></Select></div><div><Label className="text-xs text-gray-500">Plan Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div></div></div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={sub} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="submit-plan-btn">{sub ? '...' : 'Assign Target'}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function AddItemDialog({ open, onClose, onCreated, planId, solutionCats, activityTypes }) {
-  const [form, setForm] = useState({ activity_type: '', solution_category: '', target_count: 10, notes: '' }); const [sub, setSub] = useState(false);
-  const submit = async () => { if (!form.activity_type) { toast.error('Select type'); return; } setSub(true); try { await targetAPI.createPlanItem(planId, form); toast.success('Added'); onCreated(); } catch { toast.error('Failed'); } finally { setSub(false); } };
-  return <Dialog open={open} onOpenChange={onClose}><DialogContent><DialogHeader><DialogTitle>Add Activity Plan Item</DialogTitle></DialogHeader><div className="space-y-3"><div><Label className="text-xs">Activity Type</Label><Select value={form.activity_type} onValueChange={v => setForm(f => ({ ...f, activity_type: v }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{activityTypes.map(at => <SelectItem key={at.type} value={at.type}>{at.type} ({at.count})</SelectItem>)}</SelectContent></Select></div><div><Label className="text-xs">Solution Category</Label><Select value={form.solution_category || '_none'} onValueChange={v => setForm(f => ({ ...f, solution_category: v === '_none' ? '' : v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="_none">Any</SelectItem>{solutionCats.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}</SelectContent></Select></div><div><Label className="text-xs">Target Count</Label><Input type="number" value={form.target_count} onChange={e => setForm(f => ({ ...f, target_count: parseInt(e.target.value) || 0 }))} /></div><div><Label className="text-xs">Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div></div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={sub} className="bg-[#800000] hover:bg-[#9a1919] text-white">{sub ? '...' : 'Add'}</Button></DialogFooter></DialogContent></Dialog>;
+  const [form, setForm] = useState({ activity_type: '', solution_category: '', target_count: 10, notes: '', assign_team: '', sponsor_pd: '' }); const [sub, setSub] = useState(false);
+  const allActivityTypes = [
+    ...activityTypes,
+    ...[
+      { type: 'Awareness Camp', count: 0 },
+      { type: 'Assessment Services', count: 0 },
+      { type: 'CEO Presentation', count: 0 },
+      { type: 'Digital Campaign', count: 0 },
+      { type: 'Event', count: 0 },
+    ].filter(at => !activityTypes.find(a => a.type === at.type))
+  ];
+  const submit = async () => { if (!form.activity_type) { toast.error('Select type'); return; } setSub(true); try { await targetAPI.createPlanItem(planId, { ...form, assign_team: form.assign_team || null, sponsor_pd: form.sponsor_pd || null }); toast.success('Added'); onCreated(); } catch { toast.error('Failed'); } finally { setSub(false); } };
+  return <Dialog open={open} onOpenChange={onClose}><DialogContent><DialogHeader><DialogTitle>Add Activity Plan Item</DialogTitle></DialogHeader><div className="space-y-3">
+    <div><Label className="text-xs">Activity Type</Label><Select value={form.activity_type} onValueChange={v => setForm(f => ({ ...f, activity_type: v }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{allActivityTypes.map(at => <SelectItem key={at.type} value={at.type}>{at.type} {at.count > 0 ? `(${at.count})` : ''}</SelectItem>)}</SelectContent></Select></div>
+    <div><Label className="text-xs">Solution Category</Label><Select value={form.solution_category || '_none'} onValueChange={v => setForm(f => ({ ...f, solution_category: v === '_none' ? '' : v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="_none">Any</SelectItem>{solutionCats.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+    <div><Label className="text-xs">Executing Team</Label><Select value={form.assign_team || '_sales'} onValueChange={v => setForm(f => ({ ...f, assign_team: v === '_sales' ? '' : v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="_sales">Sales Team</SelectItem><SelectItem value="marketing">Marketing Team (PD sponsors)</SelectItem><SelectItem value="strategy">Strategy GM Team (PD sponsors)</SelectItem></SelectContent></Select>
+      {(form.assign_team === 'marketing' || form.assign_team === 'strategy') && <p className="text-[10px] text-gray-500 mt-1">PD sponsors this activity; {form.assign_team} team executes</p>}
+    </div>
+    <div><Label className="text-xs">Target Count</Label><Input type="number" value={form.target_count} onChange={e => setForm(f => ({ ...f, target_count: parseInt(e.target.value) || 0 }))} /></div>
+    <div><Label className="text-xs">Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Thales DAM customer awareness roundtable Q2" /></div>
+  </div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={sub} className="bg-[#800000] hover:bg-[#9a1919] text-white">{sub ? '...' : 'Add'}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function RedistributeDialog({ open, onClose, onCreated, item, salespersons }) {
@@ -898,17 +976,24 @@ function SuggestionsCard({ planId, onAccepted }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-xs text-gray-600">
+        {data.avg_deal_size > 0 && <p className="text-xs text-gray-600">
           Based on your historical data: Avg deal OMR {data.avg_deal_size?.toLocaleString()}, Win rate {data.win_rate}%, {data.required_deals} deals needed.
           Pipeline coverage: OMR {data.pipeline_coverage?.toLocaleString()} (3x target).
-        </p>
+        </p>}
+        {data.avg_deal_size === 0 && <p className="text-xs text-gray-600">
+          AI-recommended activities based on solution categories and team type.
+        </p>}
         <Table>
-          <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Solution Category</TableHead><TableHead>Formula</TableHead><TableHead className="text-right w-24">Count</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Category</TableHead><TableHead>Team</TableHead><TableHead>Formula</TableHead><TableHead className="text-right w-24">Count</TableHead></TableRow></TableHeader>
           <TableBody>
-            {mods.map((s, idx) => (
+            {mods.map((s, idx) => {
+              const teamLabel = s.assign_team === 'marketing' ? 'Marketing' : s.assign_team === 'strategy' ? 'Strategy' : 'Sales';
+              const teamColor = s.assign_team === 'marketing' ? 'bg-blue-100 text-blue-700' : s.assign_team === 'strategy' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600';
+              return (
               <TableRow key={idx}>
                 <TableCell className="font-medium text-sm">{s.activity_type}</TableCell>
                 <TableCell className="text-xs text-gray-500">{s.solution_category || '-'}</TableCell>
+                <TableCell><Badge variant="secondary" className={`text-[9px] ${teamColor}`}>{teamLabel}</Badge></TableCell>
                 <TableCell className="text-xs text-gray-500">{s.formula}</TableCell>
                 <TableCell className="text-right">
                   <Input type="number" value={s.count} onChange={e => {
@@ -917,8 +1002,8 @@ function SuggestionsCard({ planId, onAccepted }) {
                     setMods(newMods);
                   }} className="w-20 h-7 text-xs text-right" />
                 </TableCell>
-              </TableRow>
-            ))}
+              </TableRow>);
+            })}
           </TableBody>
         </Table>
         <div className="flex justify-end gap-2">
