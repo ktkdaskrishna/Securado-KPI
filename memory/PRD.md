@@ -1,7 +1,7 @@
 # Securado CRM — PRD
 
 ## Original Problem Statement
-Build a sales target, incentive, and KPI management system integrated with Odoo. Evolved into a fully configurable Odoo-style dashboard platform with dynamic query engine, RBAC hierarchy scoping, and real-time data sync. Extended with cascading target management, AI-powered CRM assistant with integrated feedback, and multi-level performance tracking.
+Build a sales target, incentive, and KPI management system integrated with Odoo. Evolved into a fully configurable Odoo-style dashboard platform with dynamic query engine, RBAC hierarchy scoping, and real-time data sync. Extended with cascading target management, AI-powered CRM assistant with integrated feedback, and multi-level performance tracking for PD, Strategy GM, and Marketing teams.
 
 ## Production URL: https://bi.securado.net
 
@@ -28,22 +28,32 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 12. Enhancements (Previous period comparison, PDF export)
 13. Production Deployment (bi.securado.net, Azure AD SSO, MongoDB fix)
 14. AI RAG Assistant (Floating chat bubble, CRM data Q&A, Emergent LLM Key)
-15. **Merged Feedback System into AI Assistant** (Feb 2026) — Conversational feedback submission via AI chat, separate FAB removed
-16. **Performance Hub v2 — Cascading Targets** (Feb 2026) — CEO → PD → Solution Category segmentation, triple targets (Booking/Invoiced/Margin), validation engine, category breakdown with pie chart
+15. Merged Feedback System into AI Assistant (Feb 2026)
+16. Performance Hub v2 — Cascading Targets (Feb 2026)
+17. **Performance Hub v2.1 — Strategy & Marketing Teams** (Mar 2026):
+    - AI Assistant moved to right side
+    - Plan types: `revenue` (PD), `strategy` (GM Strategy), `marketing` (Marketing Team)
+    - CEO assigns parallel revenue targets to Strategy GM
+    - AI-recommended activities: strategy (Assessment, Workshops, CEO Presentations, Awareness Camps) + marketing (Digital Campaigns, Events, Webinars)
+    - PD sponsors activities; marketing/strategy teams execute
+    - Team badges (Sales/Marketing/Strategy) on all activity plan items
+    - Cascade View groups plans by type with section headers
 
 ## Key Design Decisions
 - date_last_stage_update for ALL year filtering (matches Odoo)
-- DB_NAME env var drives database name (Emergent overrides on production)
-- SSO credentials in env vars (not DB-dependent)
-- Separate Dashboard (read-only) vs Builder (full editor)
-- Standard PageFilters shared across all pages
-- Modular updates only — see DEVELOPMENT_RULES.md
-- AI Assistant is the single entry point for both CRM queries AND feedback
+- DB_NAME env var drives database name
+- AI Assistant is the single entry point for CRM queries AND feedback (right side)
 - Category segmentation validates sum = total target (hard rule)
+- PD sponsors marketing/strategy activities — execution by respective teams
+- GM Strategy gets parallel revenue target from CEO (same as PD)
+- plan_type field: `revenue` | `strategy` | `marketing`
 
-## Key DB Collections (new)
-- `target_plan_segments`: `{ id, org_id, revenue_plan_id, solution_category, booking_target, invoiced_target, margin_target, notes }`
-- `feedback_items.source`: Now includes `"ai_assistant"` for feedback submitted via chat
+## Key DB Collections
+- `target_plans.plan_type`: "revenue" | "strategy" | "marketing"
+- `target_plan_items.assign_team`: "marketing" | "strategy" | null (sales)
+- `target_plan_items.sponsor_pd`: PD name who sponsors the activity
+- `target_plan_segments`: Category breakdown with validation
+- `feedback_items.source`: "ai_assistant" for chat-submitted feedback
 
 ## Test Credentials
 - Admin: krishna@securado.net / test123456
@@ -54,19 +64,13 @@ Build a sales target, incentive, and KPI management system integrated with Odoo.
 ## Prioritized Backlog
 
 ### P0 (Next)
-- **Complete Performance Hub Phase 2**: Activity Recommendation Engine per solution category
-  - After segmentation, auto-generate value-selling activities per category (Demos, POCs, Site Visits)
-  - Activity-to-revenue mapping and KPI alignment
-  - Strategy activities: Awareness camps, assessment services, CEO presentations
-  - Marketing activities: Digital campaigns, events per category
+- **MS SSO Fix**: User reported AADSTS900023 error — needs real Azure AD Tenant ID and Client ID from user
 
 ### P1
-- **Performance Hub Phase 3**: Cascade Assignment (PD → Sales Director → Sales Rep per category)
-- **Performance Hub Phase 4**: Dashboard Views per role (CEO side-by-side, PD category drill-down)
-- **Full KPI Framework** (Phases 2-4): Role-specific incentive weight presets, gate logic (collection/GP floors)
-- **Dashboard cards showing '0' for Director role**: Investigate misconfigured invoice-related cards
-- **Fix 2026 Invoice data showing zero**: Reported user issue
-- **Fix Account Alert on paid invoices showing as overdue**: Reported user issue
+- **Performance Hub Phase 3**: Cascade assignment flow (PD → Sales Director → Rep per category)
+- **Performance Hub Phase 4**: Role-specific dashboard views (CEO side-by-side, PD category drill-down)
+- **Dashboard cards showing '0' for Director role**: Investigate misconfigured templates
+- **Full KPI Framework**: Incentive weight presets, gate logic (collection/GP floors)
 
 ### P2
 - Refactor to Services/Repositories architecture
