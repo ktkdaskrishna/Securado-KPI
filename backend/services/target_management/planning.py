@@ -47,12 +47,14 @@ class RevenuePlanCreate(BaseModel):
     name: str
     product_manager_id: Optional[str] = None
     product_manager_name: Optional[str] = None
-    booking_target: float = 0  # Order booking target (Won CRM deals)
-    invoiced_target: float = 0  # Invoiced revenue target (paid invoices)
-    margin_target: float = 0  # Gross profit / margin target
-    target_amount: float = 0  # Legacy field
+    booking_target: float = 0
+    invoiced_target: float = 0
+    margin_target: float = 0
+    target_amount: float = 0
     period: str = "2026-Q1"
-    plan_type: str = "revenue"  # "revenue" (PD), "strategy" (GM Strategy), "marketing" (Marketing)
+    plan_type: str = "revenue"  # "revenue" (PD), "strategy" (Strategy Team), "marketing" (Marketing)
+    assign_mode: Optional[str] = "individual"  # "individual" or "team"
+    team_members: Optional[List[str]] = None  # list of team member names when assign_mode=team
     notes: Optional[str] = None
 
 

@@ -818,16 +818,29 @@ function SegmentEditorDialog({ open, onClose, plan, solutionCats, onSaved }) {
   );
 }
 
-// ===== ASSIGNEE INPUT (autocomplete from active users) =====
+// ===== ASSIGNEE INPUT (autocomplete with HOD/Team detection) =====
 function AssigneeInput({ value, onChange, teamType }) {
   const [allUsers, setAllUsers] = useState([]);
   const [inputVal, setInputVal] = useState(value || '');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [assignMode, setAssignMode] = useState(null); // null, 'team', 'individual'
 
   useEffect(() => {
-    // Load all active employees for autocomplete
     targetAPI.getEmployees({ active_only: true })
-      .then(r => setAllUsers(r.data || []))
+      .then(r => {
+        const emps = r.data || [];
+        // Build manager lookup: who has direct reports?
+        const managerIds = new Set();
+        emps.forEach(e => { if (e.manager_id) managerIds.add(String(e.manager_id)); });
+        // Annotate each employee
+        const enriched = emps.map(e => ({
+          ...e,
+          isManager: managerIds.has(String(e.source_record_id)),
+          directReports: emps.filter(r => String(r.manager_id) === String(e.source_record_id)),
+        }));
+        setAllUsers(enriched);
+      })
       .catch(() => {});
   }, []);
 
@@ -835,34 +848,92 @@ function AssigneeInput({ value, onChange, teamType }) {
     ? allUsers.filter(u => u.name && u.name.toLowerCase().includes(inputVal.toLowerCase())).slice(0, 8)
     : allUsers.slice(0, 8);
 
-  const selectUser = (name) => {
-    setInputVal(name);
-    onChange(name);
+  const selectUser = (emp) => {
+    setInputVal(emp.name);
+    setSelectedUser(emp);
     setShowDropdown(false);
+    if (emp.isManager && emp.directReports.length > 0) {
+      // HOD detected — show team vs individual choice
+      setAssignMode(null); // reset choice
+    } else {
+      // Not a manager — assign individually
+      setAssignMode('individual');
+      onChange(emp.name, 'individual', null);
+    }
+  };
+
+  const chooseMode = (mode) => {
+    setAssignMode(mode);
+    if (mode === 'team') {
+      onChange(selectedUser.name, 'team', selectedUser.directReports.map(r => r.name));
+    } else {
+      onChange(selectedUser.name, 'individual', null);
+    }
   };
 
   return (
-    <div className="relative">
+    <div className="relative space-y-2">
       <Input value={inputVal}
-        onChange={e => { setInputVal(e.target.value); onChange(e.target.value); setShowDropdown(true); }}
+        onChange={e => { setInputVal(e.target.value); setSelectedUser(null); setAssignMode(null); setShowDropdown(true); }}
         onFocus={() => setShowDropdown(true)}
         placeholder="Start typing a name..."
         className="h-9 text-sm" data-testid="assignee-input"
         autoComplete="off" />
+      
+      {/* Autocomplete dropdown */}
       {showDropdown && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-50 top-10 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {filtered.map(emp => (
             <button key={emp.name || emp.canonical_id} type="button"
-              onClick={() => selectUser(emp.name)}
+              onClick={() => selectUser(emp)}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 ${inputVal === emp.name ? 'bg-[#800000]/5 text-[#800000]' : 'text-gray-700'}`}>
-              <span className="font-medium">{emp.name}</span>
-              <span className="text-[10px] text-gray-400">{emp.job_title || emp.department_name || ''}</span>
+              <div className="flex items-center gap-2">
+                {emp.isManager && <Users className="h-3 w-3 text-purple-500 shrink-0" />}
+                <span className="font-medium">{emp.name}</span>
+              </div>
+              <span className="text-[10px] text-gray-400 ml-2 shrink-0">
+                {emp.job_title || emp.department_name || ''}
+                {emp.isManager ? ` · ${emp.directReports.length} reports` : ''}
+              </span>
             </button>
           ))}
         </div>
       )}
-      {inputVal && !showDropdown && (
-        <button type="button" onClick={() => setInputVal('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+
+      {/* HOD detected — Team vs Individual choice */}
+      {selectedUser && selectedUser.isManager && selectedUser.directReports.length > 0 && (
+        <div className="p-3 rounded-lg border border-purple-200 bg-purple-50/50 space-y-2">
+          <p className="text-xs font-medium text-purple-800">
+            {selectedUser.name} is a department head with {selectedUser.directReports.length} team member(s)
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => chooseMode('team')}
+              className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${assignMode === 'team' ? 'bg-purple-600 text-white border-purple-600' : 'border-purple-200 text-purple-700 hover:bg-purple-100'}`}
+              data-testid="assign-team-btn">
+              <Users className="h-3.5 w-3.5 inline mr-1" />
+              Assign to {selectedUser.name.split(' ')[0]}'s Team
+            </button>
+            <button type="button" onClick={() => chooseMode('individual')}
+              className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${assignMode === 'individual' ? 'bg-[#800000] text-white border-[#800000]' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+              data-testid="assign-individual-btn">
+              <User className="h-3.5 w-3.5 inline mr-1" />
+              Assign to {selectedUser.name.split(' ')[0]} individually
+            </button>
+          </div>
+          {assignMode === 'team' && (
+            <div className="mt-1 text-[10px] text-purple-600">
+              <p className="font-medium mb-0.5">Team members who will receive cascaded targets:</p>
+              {selectedUser.directReports.map(r => (
+                <p key={r.name} className="text-purple-500">• {r.name} — {r.job_title || 'Member'}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Clear button */}
+      {inputVal && !showDropdown && !selectedUser?.isManager && (
+        <button type="button" onClick={() => { setInputVal(''); setSelectedUser(null); setAssignMode(null); }} className="absolute right-2 top-[18px] -translate-y-1/2 text-gray-400 hover:text-gray-600">
           <X className="h-3.5 w-3.5" />
         </button>
       )}
@@ -880,9 +951,10 @@ function IncentiveSection({ plans }) {
 }
 
 function CreatePlanDialog({ open, onClose, onCreated, productManagers }) {
-  const [form, setForm] = useState({ name: '', product_manager_name: '', product_manager_id: '', booking_target: 0, invoiced_target: 0, margin_target: 0, target_amount: 0, period: '2026-Q1', plan_type: 'revenue' }); const [sub, setSub] = useState(false);
+  const [form, setForm] = useState({ name: '', product_manager_name: '', product_manager_id: '', booking_target: 0, invoiced_target: 0, margin_target: 0, target_amount: 0, period: '2026-Q1', plan_type: 'revenue', assign_mode: 'individual', team_members: [] }); const [sub, setSub] = useState(false);
   const handlePM = (n) => { const pm = productManagers.find(p => p.name === n); setForm(f => ({ ...f, product_manager_name: n, product_manager_id: String(pm?.id || ''), name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${n}` })); };
-  const planTypeLabels = { revenue: 'Product Director', strategy: 'Strategy Team Member', marketing: 'Marketing Team Member' };
+  const handleAssignee = (name, mode, members) => { setForm(f => ({ ...f, product_manager_name: name, assign_mode: mode || 'individual', team_members: members || [], name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${name}${mode === 'team' ? ' (Team)' : ''}` })); };
+  const planTypeLabels = { revenue: 'Product Director', strategy: 'Assignee (HOD or Individual)', marketing: 'Assignee (HOD or Individual)' };
   const submit = async () => { if (!form.product_manager_name || !form.booking_target) { toast.error('Select assignee and booking target'); return; } setSub(true); try { const res = await targetAPI.createRevenuePlan({...form, target_amount: form.booking_target}); toast.success('Plan created!'); onCreated(res.data); } catch (err) { const detail = err.response?.data?.detail; const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (typeof detail === 'string' ? detail : 'Failed'); toast.error(msg); } finally { setSub(false); } };
   return <Dialog open={open} onOpenChange={onClose}><DialogContent className="max-w-lg" data-testid="create-plan-dialog"><DialogHeader><DialogTitle>Assign Revenue Target</DialogTitle></DialogHeader><div className="space-y-3">
     <div><Label className="text-xs text-gray-500">Target Type</Label>
@@ -899,7 +971,7 @@ function CreatePlanDialog({ open, onClose, onCreated, productManagers }) {
       {form.plan_type === 'revenue' ? (
         <Select value={form.product_manager_name} onValueChange={handlePM}><SelectTrigger data-testid="select-pd"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{productManagers.map(pm => <SelectItem key={pm.name} value={pm.name}>{pm.name} ({pm.opp_count} opps)</SelectItem>)}</SelectContent></Select>
       ) : (
-        <AssigneeInput value={form.product_manager_name} onChange={(name) => setForm(f => ({ ...f, product_manager_name: name, name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${name}` }))} teamType={form.plan_type} />
+        <AssigneeInput value={form.product_manager_name} onChange={handleAssignee} teamType={form.plan_type} />
       )}
       {form.plan_type === 'strategy' && <p className="text-[10px] text-purple-600 mt-1">Strategy Team gets a parallel revenue target from CEO + assessment/workshop activities</p>}
       {form.plan_type === 'marketing' && <p className="text-[10px] text-blue-600 mt-1">Marketing gets campaign activities; PDs sponsor, marketing executes</p>}
