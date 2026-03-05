@@ -8,6 +8,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for SSO token from cookie (server redirect flow)
+    const ssoToken = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('sso_token='));
+    if (ssoToken) {
+      const token = ssoToken.split('=')[1];
+      if (token) {
+        localStorage.setItem('access_token', token);
+        // Clear the cookie
+        document.cookie = 'sso_token=; max-age=0; path=/';
+        document.cookie = 'sso_user=; max-age=0; path=/';
+      }
+    }
+
     const token = localStorage.getItem('access_token');
     if (token) {
       authAPI.me()
