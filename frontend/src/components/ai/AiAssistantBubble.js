@@ -43,6 +43,12 @@ function parseChartFromText(text) {
   } catch { return { cleanText: text, chart: null }; }
 }
 
+const FEEDBACK_KEYWORDS = ['feedback', 'bug', 'issue', 'report', 'suggestion', 'broken', 'not working', 'wrong', 'error', 'fix', 'problem'];
+function detect_feedback_intent_client(text) {
+  const q = (text || '').toLowerCase();
+  return FEEDBACK_KEYWORDS.some(kw => q.includes(kw));
+}
+
 export default function AiAssistantBubble() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -51,7 +57,14 @@ export default function AiAssistantBubble() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('auto');
-  const [sessionId] = useState(() => `crm-${Date.now()}`);
+  // Stable session per browser — persists across page reloads for conversation memory
+  const [sessionId] = useState(() => {
+    const stored = localStorage.getItem('ai_session_id');
+    if (stored) return stored;
+    const newId = `crm-${Date.now()}`;
+    localStorage.setItem('ai_session_id', newId);
+    return newId;
+  });
   const [recording, setRecording] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const scrollRef = useRef(null);
@@ -72,7 +85,8 @@ export default function AiAssistantBubble() {
 
     try {
       let data;
-      if (mode === 'feedback' && attachments.length > 0) {
+      if (attachments.length > 0 && (mode === 'feedback' || detect_feedback_intent_client(question))) {
+        // Has attachments — submit as feedback with attachments
         const res = await aiAssistantAPI.submitFeedbackWithAttachment(question, sessionId, attachments);
         data = res.data;
       } else {
@@ -138,6 +152,9 @@ export default function AiAssistantBubble() {
   const resetChat = () => {
     setMessages([{ role: 'assistant', text: "Hi! I'm your CRM AI Assistant. Ask me anything about your pipeline, invoices, activities, or performance.\n\nYou can also share feedback (with screenshots) or use voice input." }]);
     setMode('auto'); setAttachments([]);
+    // New session for fresh conversation
+    const newId = `crm-${Date.now()}`;
+    localStorage.setItem('ai_session_id', newId);
   };
 
   const handleFileSelect = (e) => {
@@ -290,12 +307,10 @@ export default function AiAssistantBubble() {
       {/* Input */}
       <div className="p-3 border-t bg-gray-50">
         <div className="flex gap-1.5">
-          {/* Attach button (feedback mode) */}
-          {mode === 'feedback' && (
-            <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 flex items-center justify-center rounded-xl border bg-white hover:bg-gray-50 shrink-0" title="Attach screenshot" data-testid="ai-attach-btn">
-              <Paperclip className="h-4 w-4 text-gray-500" />
-            </button>
-          )}
+          {/* Attach button (always available) */}
+          <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 flex items-center justify-center rounded-xl border bg-white hover:bg-gray-50 shrink-0" title="Attach file" data-testid="ai-attach-btn">
+            <Paperclip className="h-4 w-4 text-gray-500" />
+          </button>
           <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
           
           <Input value={input} onChange={e => setInput(e.target.value)}

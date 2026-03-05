@@ -212,6 +212,7 @@ async def chat_with_assistant(
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     
     question = data.get("question", "")
+    # Stable session per user email — preserves conversation history
     session_id = data.get("session_id", f"crm-{current_user.get('email', 'anon')}")
     mode = data.get("mode", "auto")  # "auto", "feedback", "crm"
     
@@ -228,10 +229,17 @@ async def chat_with_assistant(
     if is_feedback:
         return await _handle_feedback(api_key, question, session_id, current_user)
     
+    # Check if user is asking for charts/visual data — generate server-side
+    q = question.lower()
+    chart_data = None
+    wants_chart = any(w in q for w in ['chart', 'graph', 'visual', 'pie', 'bar chart', 'show me', 'plot'])
+    if wants_chart:
+        chart_data = await _generate_chart_data(question, current_user)
+    
     # Normal CRM RAG flow
     context = await gather_crm_context(current_user.get("email", ""), question)
     
-    system_message = f"""You are the Securado CRM AI Assistant. You help users understand their sales data, pipeline, invoices, activities, and performance. You can also collect feedback — if a user wants to report a bug or suggest a feature, ask them to describe it and you'll submit it.
+    system_message = f"""You are the Securado CRM AI Assistant. You help users understand their sales data, pipeline, invoices, activities, and performance.
 
 You have access to the following LIVE CRM data:
 
@@ -245,11 +253,8 @@ Rules:
 - Format numbers with commas
 - Use bullet points for lists
 - Be professional but friendly
-- When showing tabular data or comparisons, format as a markdown table
-- When the user asks for charts, graphs, or visual data, include a JSON block with chart data in this format:
-  ```chart
-  {{"type":"bar|pie|line","title":"Chart Title","data":[{{"name":"Label","value":123}}]}}
-  ```"""
+- When showing tabular data, format as a markdown table
+- Remember our conversation context — the user may ask follow-up questions"""
 
     try:
         chat = LlmChat(
@@ -260,6 +265,12 @@ Rules:
         
         user_msg = UserMessage(text=question)
         response = await chat.send_message(user_msg)
+        
+        # If chart data was generated, append it to the response
+        if chart_data:
+            import json
+            chart_json = json.dumps(chart_data)
+            response += f"\n\n```chart\n{chart_json}\n```"
         
         # Save chat history
         app_db = get_app_db()
@@ -277,6 +288,69 @@ Rules:
     except Exception as e:
         logger.error(f"AI Assistant error: {e}")
         return {"answer": f"Sorry, I encountered an error: {str(e)[:100]}. Please try again."}
+
+
+async def _generate_chart_data(question: str, current_user: dict) -> dict:
+    """Generate chart data server-side from CRM queries"""
+    canonical_db = get_canonical_db()
+    q = question.lower()
+    
+    try:
+        if any(w in q for w in ['pipeline', 'stage']):
+            # Pipeline by stage
+            stages = await canonical_db.opportunities.aggregate([
+                {"$match": {"active": True, "date_last_stage_update": {"$regex": "^2026"}, "stage": {"$nin": ["Won", "Lost", "Hold"]}}},
+                {"$group": {"_id": "$stage", "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                {"$sort": {"value": -1}}
+            ]).to_list(10)
+            return {"type": "bar", "title": "Pipeline by Stage (2026)", "data": [{"name": s["_id"] or "Unknown", "value": round(s["value"])} for s in stages]}
+        
+        elif any(w in q for w in ['invoice', 'payment', 'collection']):
+            # Invoices by payment state
+            inv = await canonical_db.invoices.aggregate([
+                {"$match": {"state": "posted"}},
+                {"$group": {"_id": "$payment_state", "value": {"$sum": {"$ifNull": ["$amount_total", 0]}}}},
+                {"$sort": {"value": -1}}
+            ]).to_list(10)
+            return {"type": "pie", "title": "Invoices by Payment Status", "data": [{"name": s["_id"] or "Unknown", "value": round(s["value"])} for s in inv]}
+        
+        elif any(w in q for w in ['team', 'salesperson', 'rep', 'performance', 'leaderboard']):
+            # Top salespersons
+            reps = await canonical_db.opportunities.aggregate([
+                {"$match": {"active": True, "stage": "Won", "date_last_stage_update": {"$regex": "^2026"}}},
+                {"$group": {"_id": "$owner_name", "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                {"$sort": {"value": -1}}, {"$limit": 8}
+            ]).to_list(8)
+            return {"type": "bar", "title": "Top Sales Won (2026)", "data": [{"name": (r["_id"] or "Unknown").split()[-1], "value": round(r["value"])} for r in reps]}
+        
+        elif any(w in q for w in ['category', 'solution', 'product']):
+            # By solution category
+            cats = await canonical_db.opportunities.aggregate([
+                {"$match": {"active": True, "date_last_stage_update": {"$regex": "^2026"}, "solution_category": {"$ne": None}}},
+                {"$group": {"_id": "$solution_category", "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                {"$sort": {"value": -1}}, {"$limit": 8}
+            ]).to_list(8)
+            return {"type": "pie", "title": "Pipeline by Solution Category", "data": [{"name": (c["_id"] or "Other")[:15], "value": round(c["value"])} for c in cats]}
+        
+        elif any(w in q for w in ['activity', 'demo', 'poc']):
+            # Activities by type
+            acts = await canonical_db.activities.aggregate([
+                {"$group": {"_id": "$activity_type", "value": {"$sum": 1}}},
+                {"$sort": {"value": -1}}, {"$limit": 8}
+            ]).to_list(8)
+            return {"type": "bar", "title": "Activities by Type", "data": [{"name": a["_id"] or "Other", "value": a["value"]} for a in acts]}
+        
+        else:
+            # Default: pipeline by stage
+            stages = await canonical_db.opportunities.aggregate([
+                {"$match": {"active": True, "date_last_stage_update": {"$regex": "^2026"}}},
+                {"$group": {"_id": "$stage", "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                {"$sort": {"value": -1}}
+            ]).to_list(10)
+            return {"type": "bar", "title": "Opportunities by Stage (2026)", "data": [{"name": s["_id"] or "Unknown", "value": round(s["value"])} for s in stages]}
+    except Exception as e:
+        logger.error(f"Chart generation error: {e}")
+        return None
 
 
 async def _handle_feedback(api_key: str, question: str, session_id: str, current_user: dict):

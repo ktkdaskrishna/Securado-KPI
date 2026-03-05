@@ -281,7 +281,7 @@ export default function PerformanceHubPage() {
           {/* Strategy GM Plans */}
           {plans.filter(p => p.plan_type === 'strategy').length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Presentation className="h-4 w-4 text-purple-600" /> GM Strategy Targets</h3>
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Presentation className="h-4 w-4 text-purple-600" /> Strategy Team Targets</h3>
               {plans.filter(p => p.plan_type === 'strategy').map(plan => (
                 <CascadePlanCard key={plan.id} plan={plan} selected={selectedPlan?.id === plan.id} planTypeLabel="Strategy"
                   onSelect={() => { setSelectedPlan(plan); }}
@@ -818,6 +818,38 @@ function SegmentEditorDialog({ open, onClose, plan, solutionCats, onSaved }) {
   );
 }
 
+// ===== ASSIGNEE INPUT (for strategy/marketing — loads employees) =====
+function AssigneeInput({ value, onChange, teamType }) {
+  const [employees, setEmployees] = useState([]);
+  const [inputVal, setInputVal] = useState(value || '');
+  useEffect(() => {
+    targetAPI.getEmployees({ department: teamType === 'strategy' ? 'Strategy' : 'Marketing' })
+      .then(r => setEmployees(r.data || []))
+      .catch(() => {
+        // Fallback: load all employees
+        targetAPI.getEmployees({}).then(r => setEmployees(r.data || [])).catch(() => {});
+      });
+  }, [teamType]);
+
+  return (
+    <div>
+      <Input value={inputVal} onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
+        placeholder={`Type ${teamType === 'strategy' ? 'Strategy' : 'Marketing'} team member name`}
+        className="h-9 text-sm" data-testid="assignee-input" />
+      {employees.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {employees.slice(0, 10).map(emp => (
+            <button key={emp.name || emp.canonical_id} onClick={() => { setInputVal(emp.name); onChange(emp.name); }}
+              className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${inputVal === emp.name ? 'bg-[#800000] text-white border-[#800000]' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
+              {emp.name} {emp.job_title ? `(${emp.job_title})` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== DIALOGS =====
 function IncentiveSection({ plans }) {
   const [sel, setSel] = useState(''); const [result, setResult] = useState(null); const [calc, setCalc] = useState(false);
@@ -830,7 +862,7 @@ function IncentiveSection({ plans }) {
 function CreatePlanDialog({ open, onClose, onCreated, productManagers }) {
   const [form, setForm] = useState({ name: '', product_manager_name: '', product_manager_id: '', booking_target: 0, invoiced_target: 0, margin_target: 0, target_amount: 0, period: '2026-Q1', plan_type: 'revenue' }); const [sub, setSub] = useState(false);
   const handlePM = (n) => { const pm = productManagers.find(p => p.name === n); setForm(f => ({ ...f, product_manager_name: n, product_manager_id: String(pm?.id || ''), name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${n}` })); };
-  const planTypeLabels = { revenue: 'Product Director', strategy: 'GM Strategy', marketing: 'Marketing Team' };
+  const planTypeLabels = { revenue: 'Product Director', strategy: 'Strategy Team Member', marketing: 'Marketing Team Member' };
   const submit = async () => { if (!form.product_manager_name || !form.booking_target) { toast.error('Select assignee and booking target'); return; } setSub(true); try { const res = await targetAPI.createRevenuePlan({...form, target_amount: form.booking_target}); toast.success('Plan created!'); onCreated(res.data); } catch (err) { const detail = err.response?.data?.detail; const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (typeof detail === 'string' ? detail : 'Failed'); toast.error(msg); } finally { setSub(false); } };
   return <Dialog open={open} onOpenChange={onClose}><DialogContent className="max-w-lg" data-testid="create-plan-dialog"><DialogHeader><DialogTitle>Assign Revenue Target</DialogTitle></DialogHeader><div className="space-y-3">
     <div><Label className="text-xs text-gray-500">Target Type</Label>
@@ -838,13 +870,18 @@ function CreatePlanDialog({ open, onClose, onCreated, productManagers }) {
         <SelectTrigger data-testid="select-plan-type"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="revenue">Product Director (Revenue)</SelectItem>
-          <SelectItem value="strategy">GM Strategy (Revenue + Activities)</SelectItem>
+          <SelectItem value="strategy">Strategy Team (Revenue + Activities)</SelectItem>
           <SelectItem value="marketing">Marketing Team (Campaign Activities)</SelectItem>
         </SelectContent>
       </Select>
     </div>
-    <div><Label className="text-xs text-gray-500">{planTypeLabels[form.plan_type] || 'Assignee'}</Label><Select value={form.product_manager_name} onValueChange={handlePM}><SelectTrigger data-testid="select-pd"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{productManagers.map(pm => <SelectItem key={pm.name} value={pm.name}>{pm.name} ({pm.opp_count} opps)</SelectItem>)}</SelectContent></Select>
-      {form.plan_type === 'strategy' && <p className="text-[10px] text-purple-600 mt-1">GM Strategy gets a parallel revenue target from CEO + assessment/workshop activities</p>}
+    <div><Label className="text-xs text-gray-500">{planTypeLabels[form.plan_type] || 'Assignee'}</Label>
+      {form.plan_type === 'revenue' ? (
+        <Select value={form.product_manager_name} onValueChange={handlePM}><SelectTrigger data-testid="select-pd"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{productManagers.map(pm => <SelectItem key={pm.name} value={pm.name}>{pm.name} ({pm.opp_count} opps)</SelectItem>)}</SelectContent></Select>
+      ) : (
+        <AssigneeInput value={form.product_manager_name} onChange={(name) => setForm(f => ({ ...f, product_manager_name: name, name: `${f.period.split('-')[1]} ${f.period.split('-')[0]} - ${name}` }))} teamType={form.plan_type} />
+      )}
+      {form.plan_type === 'strategy' && <p className="text-[10px] text-purple-600 mt-1">Strategy Team gets a parallel revenue target from CEO + assessment/workshop activities</p>}
       {form.plan_type === 'marketing' && <p className="text-[10px] text-blue-600 mt-1">Marketing gets campaign activities; PDs sponsor, marketing executes</p>}
     </div>
     <div className="grid grid-cols-3 gap-3"><div><Label className="text-xs text-gray-500">Booking Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">{form.plan_type === 'strategy' ? 'Revenue from services' : form.plan_type === 'marketing' ? 'Lead pipeline value' : 'Won CRM deals'}</p><Input type="number" value={form.booking_target} onChange={e => setForm(f => ({ ...f, booking_target: parseFloat(e.target.value) || 0 }))} data-testid="booking-target-input" /></div><div><Label className="text-xs text-gray-500">Invoiced Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Paid invoices</p><Input type="number" value={form.invoiced_target} onChange={e => setForm(f => ({ ...f, invoiced_target: parseFloat(e.target.value) || 0 }))} data-testid="invoiced-target-input" /></div><div><Label className="text-xs text-gray-500">Margin Target (OMR)</Label><p className="text-[10px] text-gray-400 mb-1">Gross profit</p><Input type="number" value={form.margin_target} onChange={e => setForm(f => ({ ...f, margin_target: parseFloat(e.target.value) || 0 }))} data-testid="margin-target-input" /></div></div><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-gray-500">Period</Label><Select value={form.period} onValueChange={v => setForm(f => ({...f, period: v, name: `${v.split('-')[1]} ${v.split('-')[0]} - ${f.product_manager_name || ''}`}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2026-Q1">Q1 2026</SelectItem><SelectItem value="2026-Q2">Q2 2026</SelectItem><SelectItem value="2026-Q3">Q3 2026</SelectItem><SelectItem value="2026-Q4">Q4 2026</SelectItem></SelectContent></Select></div><div><Label className="text-xs text-gray-500">Plan Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div></div></div><DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={sub} className="bg-[#800000] hover:bg-[#9a1919] text-white" data-testid="submit-plan-btn">{sub ? '...' : 'Assign Target'}</Button></DialogFooter></DialogContent></Dialog>;
