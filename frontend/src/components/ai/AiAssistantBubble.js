@@ -8,6 +8,81 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 const CHART_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
+// Renders markdown text with proper tables, bold, code
+function MessageContent({ text, isUser }) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    // Detect markdown table (lines starting with |)
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      if (tableLines.length >= 2) {
+        elements.push(<MarkdownTable key={`tbl-${i}`} lines={tableLines} isUser={isUser} />);
+        continue;
+      }
+    }
+    // Bullet points
+    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      const bulletText = line.trim().substring(2);
+      elements.push(<div key={i} className="flex gap-1.5 mt-0.5"><span className="text-[#800000] mt-0.5 shrink-0">&#8226;</span><span>{renderInline(bulletText)}</span></div>);
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-1" />);
+    } else {
+      elements.push(<p key={i} className={i > 0 ? 'mt-1' : ''}>{renderInline(line)}</p>);
+    }
+    i++;
+  }
+  return <>{elements}</>;
+}
+
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, k) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={k}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`')) return <code key={k} className="bg-gray-200/50 px-1 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+function MarkdownTable({ lines, isUser }) {
+  // Parse header row
+  const headerCells = lines[0].split('|').filter(c => c.trim()).map(c => c.trim());
+  // Skip separator row (line with dashes)
+  const dataStartIdx = lines[1]?.includes('---') ? 2 : 1;
+  const rows = lines.slice(dataStartIdx).map(l => l.split('|').filter(c => c.trim()).map(c => c.trim()));
+
+  return (
+    <div className="mt-2 mb-1 overflow-x-auto rounded-lg border border-gray-200/50">
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr className={isUser ? 'bg-white/10' : 'bg-white'}>
+            {headerCells.map((h, i) => (
+              <th key={i} className={`px-2 py-1.5 font-semibold text-left border-b ${isUser ? 'border-white/20 text-white/90' : 'border-gray-200 text-gray-700'}`}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className={isUser ? 'hover:bg-white/5' : `${ri % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'} hover:bg-gray-100/50`}>
+              {row.map((cell, ci) => (
+                <td key={ci} className={`px-2 py-1 ${isUser ? 'border-b border-white/10 text-white/80' : 'border-b border-gray-100 text-gray-600'} ${ci > 0 && /^[\d,.\s]+$/.test(cell.replace(/OMR\s?/g, '')) ? 'text-right font-mono' : ''}`}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function InlineChart({ chartData }) {
   if (!chartData) return null;
   const { type, title, data } = chartData;
@@ -230,25 +305,11 @@ export default function AiAssistantBubble() {
                 <Sparkles className="h-3.5 w-3.5 text-[#800000]" />
               </div>
             )}
-            <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+            <div className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
               msg.role === 'user' ? 'bg-[#800000] text-white rounded-br-md' : 'bg-gray-100 text-gray-800 rounded-bl-md'
             }`}>
               {msg.isVoice && <Badge variant="outline" className="text-[9px] mb-1 border-white/30 text-white/70"><Mic className="h-2 w-2 mr-0.5" />Voice</Badge>}
-              {msg.text.split('\n').map((line, j) => {
-                const parts = line.split(/(\*\*[^*]+\*\*)/g);
-                return (
-                  <p key={j} className={j > 0 ? 'mt-1' : ''}>
-                    {parts.map((part, k) => {
-                      if (part.startsWith('**') && part.endsWith('**')) return <strong key={k}>{part.slice(2, -2)}</strong>;
-                      if (part.includes('`')) {
-                        const cp = part.split(/(`[^`]+`)/g);
-                        return cp.map((c, ci) => c.startsWith('`') && c.endsWith('`') ? <code key={ci} className="bg-gray-200 px-1 rounded text-xs">{c.slice(1, -1)}</code> : c);
-                      }
-                      return part;
-                    })}
-                  </p>
-                );
-              })}
+              <MessageContent text={msg.text} isUser={msg.role === 'user'} />
               {msg.attachmentCount > 0 && <Badge variant="outline" className="mt-1 text-[9px] border-white/30 text-white/70"><Paperclip className="h-2 w-2 mr-0.5" />{msg.attachmentCount} file(s)</Badge>}
               {msg.chart && <InlineChart chartData={msg.chart} />}
               {msg.feedbackId && <Badge variant="outline" className="mt-2 text-[10px] bg-green-50 border-green-200 text-green-700">Feedback submitted</Badge>}

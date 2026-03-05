@@ -172,6 +172,12 @@ function AppRoutes() {
   );
 }
 
+function AuthenticatedAiAssistant() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <AiAssistantBubble />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -180,7 +186,7 @@ function App() {
           <GlobalFilterProvider>
             <RBACProvider>
               <AppRoutes />
-              <AiAssistantBubble />
+              <AuthenticatedAiAssistant />
               <Toaster position="top-right" richColors closeButton />
             </RBACProvider>
           </GlobalFilterProvider>

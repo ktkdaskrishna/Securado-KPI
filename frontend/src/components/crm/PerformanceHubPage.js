@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
 import {
-  Target, Plus, TrendingUp, Trophy, Users, Trash2, BarChart2, Activity, Phone, Mail, Calendar, Monitor, FlaskConical, Presentation, DollarSign, Calculator, ChevronDown, Crosshair, Award, FileText, AlertTriangle, CheckCircle2, Bell, User, ExternalLink, Clock, XCircle, Filter, PieChart, Layers, ArrowRight, GitBranch
+  Target, Plus, TrendingUp, Trophy, Users, Trash2, BarChart2, Activity, Phone, Mail, Calendar, Monitor, FlaskConical, Presentation, DollarSign, Calculator, ChevronDown, Crosshair, Award, FileText, AlertTriangle, CheckCircle2, Bell, User, ExternalLink, Clock, XCircle, Filter, PieChart, Layers, ArrowRight, GitBranch, X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell, PieChart as RPieChart, Pie } from 'recharts';
 import { toast } from 'sonner';
@@ -818,33 +818,53 @@ function SegmentEditorDialog({ open, onClose, plan, solutionCats, onSaved }) {
   );
 }
 
-// ===== ASSIGNEE INPUT (for strategy/marketing — loads employees) =====
+// ===== ASSIGNEE INPUT (autocomplete from active users) =====
 function AssigneeInput({ value, onChange, teamType }) {
-  const [employees, setEmployees] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [inputVal, setInputVal] = useState(value || '');
+  const [showDropdown, setShowDropdown] = useState(false);
+
   useEffect(() => {
-    targetAPI.getEmployees({ department: teamType === 'strategy' ? 'Strategy' : 'Marketing' })
-      .then(r => setEmployees(r.data || []))
-      .catch(() => {
-        // Fallback: load all employees
-        targetAPI.getEmployees({}).then(r => setEmployees(r.data || [])).catch(() => {});
-      });
-  }, [teamType]);
+    // Load all active employees for autocomplete
+    targetAPI.getEmployees({ active_only: true })
+      .then(r => setAllUsers(r.data || []))
+      .catch(() => {});
+  }, []);
+
+  const filtered = inputVal.length > 0
+    ? allUsers.filter(u => u.name && u.name.toLowerCase().includes(inputVal.toLowerCase())).slice(0, 8)
+    : allUsers.slice(0, 8);
+
+  const selectUser = (name) => {
+    setInputVal(name);
+    onChange(name);
+    setShowDropdown(false);
+  };
 
   return (
-    <div>
-      <Input value={inputVal} onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
-        placeholder={`Type ${teamType === 'strategy' ? 'Strategy' : 'Marketing'} team member name`}
-        className="h-9 text-sm" data-testid="assignee-input" />
-      {employees.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {employees.slice(0, 10).map(emp => (
-            <button key={emp.name || emp.canonical_id} onClick={() => { setInputVal(emp.name); onChange(emp.name); }}
-              className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${inputVal === emp.name ? 'bg-[#800000] text-white border-[#800000]' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
-              {emp.name} {emp.job_title ? `(${emp.job_title})` : ''}
+    <div className="relative">
+      <Input value={inputVal}
+        onChange={e => { setInputVal(e.target.value); onChange(e.target.value); setShowDropdown(true); }}
+        onFocus={() => setShowDropdown(true)}
+        placeholder="Start typing a name..."
+        className="h-9 text-sm" data-testid="assignee-input"
+        autoComplete="off" />
+      {showDropdown && filtered.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map(emp => (
+            <button key={emp.name || emp.canonical_id} type="button"
+              onClick={() => selectUser(emp.name)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 ${inputVal === emp.name ? 'bg-[#800000]/5 text-[#800000]' : 'text-gray-700'}`}>
+              <span className="font-medium">{emp.name}</span>
+              <span className="text-[10px] text-gray-400">{emp.job_title || emp.department_name || ''}</span>
             </button>
           ))}
         </div>
+      )}
+      {inputVal && !showDropdown && (
+        <button type="button" onClick={() => setInputVal('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <X className="h-3.5 w-3.5" />
+        </button>
       )}
     </div>
   );
