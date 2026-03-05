@@ -446,12 +446,38 @@ async def microsoft_callback(
                 access_level = "USER"
         
         # Generate JWT token for the app (compatible with identity service)
+        # CRITICAL: Include roles and permissions from local user record
+        # so RBAC guards work correctly after SSO login
+        user_roles = []
+        user_permissions = []
+        
+        if local_user:
+            user_roles = local_user.get("roles", [])
+            user_permissions = local_user.get("permissions", [])
+        
+        # If no roles from DB, derive from RBAC access level
+        if not user_roles:
+            if access_level == "ADMIN":
+                user_roles = ["admin", "sales_admin"]
+                user_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
+            elif access_level == "MANAGER":
+                user_roles = ["product_director"]
+                user_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
+            elif access_level == "USER":
+                user_roles = ["user"]
+                user_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+            else:
+                user_roles = ["user"]
+                user_permissions = ["view_dashboard"]
+        
         token_payload = {
             "sub": user_id,
             "type": "access",  # Required by get_current_user dependency
             "email": email,
             "name": display_name,
             "org_id": org_id,
+            "roles": user_roles,
+            "permissions": user_permissions,
             "microsoft_id": ms_id,
             "rbac_linked": bool(rbac_user),
             "access_level": access_level,
@@ -641,16 +667,39 @@ async def _handle_msal_complete(request: Request):
                 access_level = "USER"
         
         # Generate app JWT
+        # CRITICAL: Include roles and permissions from local user record
+        user_roles = []
+        if local_user:
+            user_roles = local_user.get("roles", [])
+            if not permissions:
+                permissions = local_user.get("permissions", [])
+        
+        # If no roles from DB, derive from RBAC access level
+        if not user_roles:
+            if access_level == "ADMIN":
+                user_roles = ["admin", "sales_admin"]
+                permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
+            elif access_level == "MANAGER":
+                user_roles = ["product_director"]
+                permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
+            elif access_level == "USER":
+                user_roles = ["user"]
+                permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+            else:
+                user_roles = ["user"]
+                permissions = ["view_dashboard"]
+        
         token_payload = {
             "sub": user_id,
             "type": "access",  # Required by get_current_user dependency
             "email": email,
             "name": display_name,
             "org_id": org_id,
+            "roles": user_roles,
+            "permissions": permissions,
             "microsoft_id": ms_id,
             "rbac_linked": bool(rbac_user),
             "access_level": access_level,
-            "permissions": permissions,
             "iat": datetime.now(timezone.utc),
             "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
@@ -667,6 +716,7 @@ async def _handle_msal_complete(request: Request):
                 "email": email,
                 "name": display_name,
                 "org_id": org_id,
+                "roles": user_roles,
                 "rbac_linked": bool(rbac_user),
                 "access_level": access_level,
                 "permissions": permissions
