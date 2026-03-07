@@ -1051,14 +1051,14 @@ async def get_data_health(current_user: dict = Depends(get_current_user)):
 
     collections_config = {
         "opportunities": {
-            "required_fields": ["name", "stage", "owner_name", "account_name"],
-            "value_fields": ["sale_value", "amount"],
+            "required_fields": ["name", "stage", "owner_name"],
+            "value_fields": ["sale_value"],
             "date_fields": ["create_date", "date_last_stage_update"],
         },
         "invoices": {
-            "required_fields": ["name", "payment_state", "state"],
-            "value_fields": ["amount_total", "amount_residual"],
-            "date_fields": ["invoice_date", "invoice_date_due"],
+            "required_fields": ["invoice_number", "payment_state", "state"],
+            "value_fields": ["amount_total"],
+            "date_fields": ["invoice_date"],
         },
         "accounts": {
             "required_fields": ["name"],
@@ -1071,7 +1071,7 @@ async def get_data_health(current_user: dict = Depends(get_current_user)):
             "date_fields": ["create_date"],
         },
         "activities": {
-            "required_fields": ["summary", "activity_type"],
+            "required_fields": ["summary"],
             "value_fields": [],
             "date_fields": ["date_deadline"],
         },

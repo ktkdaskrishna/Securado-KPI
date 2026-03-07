@@ -99,7 +99,7 @@ export function SystemLogsPage() {
       const token = localStorage.getItem('access_token');
       
       // Fetch ETL runs for activity log
-      const runsRes = await axios.get(`${API_BASE_URL}/api/etl/runs`, {
+      const runsRes = await axios.get(`${API_BASE_URL}/api/runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
