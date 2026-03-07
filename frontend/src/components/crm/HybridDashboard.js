@@ -17,8 +17,6 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar, PolarGrid } from 'recharts';
 import { toast } from 'sonner';
 
-import DataHealthMonitor from './DataHealthMonitor';
-
 const ICONS = { Target, DollarSign, TrendingUp, Trophy, AlertTriangle, Building2, Users, BarChart2, Activity };
 const CHART_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 const AVATAR_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
@@ -571,15 +569,6 @@ export default function HybridDashboard() {
               ))}
             </div>
           )}
-
-          {/* System Alerts Section */}
-          <div className="mt-6" data-testid="system-alerts-section">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">System Alerts</h2>
-            </div>
-            <DataHealthMonitor />
-          </div>
         </>
       )}
 
