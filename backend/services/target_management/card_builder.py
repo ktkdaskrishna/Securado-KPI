@@ -481,6 +481,18 @@ async def get_my_dashboard(
                     
                     rendered["data"] = await execute_query(query_config)
                     
+                    # For win_rate cards, compute the percentage from grouped data
+                    if card.get("display_type") == "win_rate" and rendered["data"].get("groups"):
+                        groups = rendered["data"]["groups"]
+                        won = sum(g["count"] for g in groups if g.get("label", "").lower() == "won")
+                        lost = sum(g["count"] for g in groups if g.get("label", "").lower() == "lost")
+                        closed = won + lost
+                        win_pct = round(won / closed * 100, 1) if closed > 0 else 0
+                        rendered["data"]["value"] = win_pct
+                        rendered["data"]["won_count"] = won
+                        rendered["data"]["lost_count"] = lost
+                        rendered["data"]["closed_count"] = closed
+                    
                     # Compare with previous period for KPI cards
                     if card.get("display_type") in ("number", "win_rate") and year and card.get("year_filter"):
                         try:
@@ -695,7 +707,7 @@ async def seed_default_cards(current_user: dict = Depends(get_current_user)):
         {"name": "Won Value", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
          "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "number", "color": "#10b981", "icon": "Trophy"},
         {"name": "Win Rate", "collection": "opportunities", "aggregation": "count",
-         "filters": {"type": "opportunity", "stage": {"$in": ["Won", "Lost"]}}, "display_type": "number", "color": "#f59e0b", "icon": "TrendingUp"},
+         "filters": {"type": "opportunity", "stage": {"$in": ["Won", "Lost"]}}, "display_type": "win_rate", "color": "#f59e0b", "icon": "TrendingUp"},
         {"name": "Total Opportunities", "collection": "opportunities", "aggregation": "count",
          "filters": {"type": "opportunity"}, "display_type": "number", "color": "#6366f1", "icon": "Target"},
         {"name": "Pipeline by Stage", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
@@ -1019,4 +1031,158 @@ async def import_template(data: dict, current_user: dict = Depends(get_current_u
         "cards_created": created_cards,
         "cards_reused": len(id_map) - created_cards,
         "total_blocks": len(new_blocks),
+    }
+
+
+
+# ==================== DATA HEALTH MONITOR ====================
+
+@card_builder_router.get("/data-health")
+async def get_data_health(current_user: dict = Depends(get_current_user)):
+    """
+    Comprehensive data health monitor — checks field quality, sync freshness,
+    data integrity across all key collections. Designed for dashboard display.
+    """
+    from datetime import datetime, timezone, timedelta
+    canonical_db = get_canonical_db()
+
+    checks = []
+    score = 100  # Start at perfect, deduct for issues
+
+    collections_config = {
+        "opportunities": {
+            "required_fields": ["name", "stage", "owner_name", "account_name"],
+            "value_fields": ["sale_value", "amount"],
+            "date_fields": ["create_date", "date_last_stage_update"],
+        },
+        "invoices": {
+            "required_fields": ["name", "payment_state", "state"],
+            "value_fields": ["amount_total", "amount_residual"],
+            "date_fields": ["invoice_date", "invoice_date_due"],
+        },
+        "accounts": {
+            "required_fields": ["name"],
+            "value_fields": [],
+            "date_fields": ["create_date"],
+        },
+        "contacts": {
+            "required_fields": ["name"],
+            "value_fields": [],
+            "date_fields": ["create_date"],
+        },
+        "activities": {
+            "required_fields": ["summary", "activity_type"],
+            "value_fields": [],
+            "date_fields": ["date_deadline"],
+        },
+    }
+
+    total_issues = 0
+    collection_reports = []
+
+    for coll_name, config in collections_config.items():
+        coll = canonical_db[coll_name]
+        total = await coll.count_documents({})
+
+        if total == 0:
+            collection_reports.append({
+                "collection": coll_name,
+                "total": 0,
+                "status": "empty",
+                "issues": [{"type": "empty_collection", "message": f"No {coll_name} data synced", "severity": "warning"}],
+            })
+            score -= 5
+            total_issues += 1
+            continue
+
+        issues = []
+
+        # Check required fields
+        for field in config["required_fields"]:
+            missing = await coll.count_documents({"$or": [{field: {"$exists": False}}, {field: None}, {field: ""}]})
+            if missing > 0:
+                pct = round(missing / total * 100, 1)
+                severity = "critical" if pct > 20 else "warning" if pct > 5 else "info"
+                issues.append({
+                    "type": "missing_field",
+                    "field": field,
+                    "missing_count": missing,
+                    "missing_pct": pct,
+                    "severity": severity,
+                    "message": f"{missing}/{total} records missing '{field}' ({pct}%)",
+                })
+                score -= min(10, int(pct / 2))
+                total_issues += 1
+
+        # Check value fields for zeros/nulls
+        for field in config.get("value_fields", []):
+            zero_or_null = await coll.count_documents({"$or": [{field: {"$exists": False}}, {field: None}, {field: 0}]})
+            if zero_or_null > total * 0.3:
+                pct = round(zero_or_null / total * 100, 1)
+                issues.append({
+                    "type": "zero_values",
+                    "field": field,
+                    "count": zero_or_null,
+                    "pct": pct,
+                    "severity": "warning",
+                    "message": f"{zero_or_null}/{total} records have zero/null '{field}' ({pct}%)",
+                })
+                score -= 3
+                total_issues += 1
+
+        # Check sync freshness
+        latest = await coll.find_one({"synced_at": {"$exists": True}}, sort=[("synced_at", -1)])
+        if latest and latest.get("synced_at"):
+            synced_at = latest["synced_at"]
+            if isinstance(synced_at, str):
+                try:
+                    synced_at = datetime.fromisoformat(synced_at.replace("Z", "+00:00"))
+                except Exception:
+                    synced_at = None
+            if synced_at:
+                now = datetime.now(timezone.utc)
+                if hasattr(synced_at, 'tzinfo') and synced_at.tzinfo is None:
+                    synced_at = synced_at.replace(tzinfo=timezone.utc)
+                age_hours = (now - synced_at).total_seconds() / 3600
+                if age_hours > 24:
+                    issues.append({
+                        "type": "stale_data",
+                        "hours_since_sync": round(age_hours, 1),
+                        "severity": "warning" if age_hours < 72 else "critical",
+                        "message": f"Last sync was {round(age_hours, 1)}h ago",
+                    })
+                    score -= 5 if age_hours < 72 else 10
+                    total_issues += 1
+
+        # Check duplicates
+        unique = len(await coll.distinct("source_record_id"))
+        with_source = await coll.count_documents({"source_record_id": {"$exists": True, "$ne": None}})
+        dupes = with_source - unique if with_source > unique else 0
+        if dupes > 0:
+            issues.append({
+                "type": "duplicates",
+                "count": dupes,
+                "severity": "warning" if dupes < total * 0.05 else "critical",
+                "message": f"{dupes} duplicate records found",
+            })
+            score -= min(10, dupes)
+            total_issues += 1
+
+        status = "healthy" if not issues else ("warning" if all(i["severity"] != "critical" for i in issues) else "critical")
+        collection_reports.append({
+            "collection": coll_name,
+            "total": total,
+            "status": status,
+            "issues": issues,
+        })
+
+    score = max(0, score)
+    overall = "healthy" if score >= 80 else "warning" if score >= 50 else "critical"
+
+    return {
+        "score": score,
+        "status": overall,
+        "total_issues": total_issues,
+        "collections": collection_reports,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
     }

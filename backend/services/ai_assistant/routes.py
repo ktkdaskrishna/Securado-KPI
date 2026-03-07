@@ -734,15 +734,25 @@ async def export_report(
             total_map.setdefault(name, {"won": 0, "won_count": 0, "open": 0})
             total_map[name]["open"] = o["open_value"]
         
-        all_deals = await canonical_db.opportunities.aggregate([
-            {"$match": {"active": True, "date_last_stage_update": {"$regex": f"^{year}"}}},
-            {"$group": {"_id": "$owner_name", "total": {"$sum": 1}}}
+        # Total closed (Won + Lost) by salesperson for win rate
+        lost_deals = await canonical_db.opportunities.aggregate([
+            {"$match": {"active": {"$ne": True}, "stage": "Lost", "date_last_stage_update": {"$regex": f"^{year}"}}},
+            {"$group": {"_id": "$owner_name", "lost_count": {"$sum": 1}}}
         ]).to_list(50)
-        total_deals = {d["_id"]: d["total"] for d in all_deals}
+        # Also check active=True but stage=Lost
+        lost_deals2 = await canonical_db.opportunities.aggregate([
+            {"$match": {"active": True, "stage": "Lost", "date_last_stage_update": {"$regex": f"^{year}"}}},
+            {"$group": {"_id": "$owner_name", "lost_count": {"$sum": 1}}}
+        ]).to_list(50)
+        lost_map = {}
+        for d in lost_deals + lost_deals2:
+            name = d["_id"] or "Unknown"
+            lost_map[name] = lost_map.get(name, 0) + d["lost_count"]
         
         for name, vals in sorted(total_map.items(), key=lambda x: -x[1]["won"]):
-            total = total_deals.get(name, vals["won_count"])
-            win_rate = round(vals["won_count"] / total * 100) if total > 0 else 0
+            # Win Rate = Won / (Won + Lost) — standard B2B formula
+            closed = vals["won_count"] + lost_map.get(name, 0)
+            win_rate = round(vals["won_count"] / closed * 100) if closed > 0 else 0
             rows.append([name, vals["won_count"], round(vals["won"]), round(vals["open"]), win_rate])
     
     if not rows:

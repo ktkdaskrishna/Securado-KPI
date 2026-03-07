@@ -485,13 +485,16 @@ async def create_revenue_plan(
                         "_id": None,
                         "total_opps": {"$sum": 1},
                         "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                        "lost_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Lost"]}, 1, 0]}},
                         "won_value": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", 0]}, 0]}}
                     }}
                 ]).to_list(1)
                 
-                h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0}
+                h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0, "lost_count": 0}
                 avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else target_val / 10
-                win_rate = h["won_count"] / h["total_opps"] if h["total_opps"] > 0 else 0.25
+                # Win Rate = Won / (Won + Lost) — standard B2B formula
+                closed_deals = h["won_count"] + h.get("lost_count", 0)
+                win_rate = h["won_count"] / closed_deals if closed_deals > 0 else 0.25
                 required_deals = max(1, round(target_val / avg_deal)) if avg_deal > 0 else 10
                 
                 current_year = datetime.now().strftime("%Y")

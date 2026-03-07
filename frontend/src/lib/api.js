@@ -375,6 +375,7 @@ export const targetAPI = {
   exportTemplate: (id) => api.get(`/card-builder/templates/${id}/export`),
   importTemplate: (data) => api.post('/card-builder/templates/import', data),
   getAvailableRoles: () => api.get('/card-builder/available-roles'),
+  getDataHealth: () => api.get('/card-builder/data-health'),
 };
 
 // Events/DLQ APIs
