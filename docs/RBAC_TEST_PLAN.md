@@ -1,7 +1,7 @@
 # CRM RBAC Test Plan
 ## For Claude Bot with Chrome Extension UI Access
 
-**Application URL**: https://ai-assistant-test-2.preview.emergentagent.com
+**Application URL**: https://perf-dashboard-fix-1.preview.emergentagent.com
 **Test Date**: February 2026
 **Version**: 1.0
 
@@ -80,7 +80,7 @@
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: krishna@securado.net
 - Enter password: test123456
 - Click "Sign in" button
@@ -169,7 +169,7 @@ STEP 8: Test Admin Section
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: ceo@test.securado.com
 - Enter password: test123456
 - Click "Sign in" button
@@ -261,7 +261,7 @@ STEP 9: Negative Test - ETL Access Attempt
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: sales@test.securado.com
 - Enter password: test123456
 - Click "Sign in" button
@@ -335,7 +335,7 @@ STEP 7: Attempt Direct URL Access to ETL (Negative Test)
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: sales.director@test.securado.com
 - Enter password: test123456
 - Click "Sign in" button
@@ -415,7 +415,7 @@ STEP 8: Negative Test - ETL Access
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: finance@test.securado.com
 - Enter password: test123456
 - Click "Sign in" button
@@ -489,7 +489,7 @@ STEP 7: Test Dashboard
 
 ```
 STEP 1: Login
-- Navigate to: https://ai-assistant-test-2.preview.emergentagent.com
+- Navigate to: https://perf-dashboard-fix-1.preview.emergentagent.com
 - Enter email: presales@test.securado.com
 - Enter password: test123456
 - Click "Sign in" button
@@ -677,12 +677,12 @@ Create screenshots for the following states:
 
 ```bash
 # Login and get token
-curl -X POST https://ai-assistant-test-2.preview.emergentagent.com/api/auth/login \
+curl -X POST https://perf-dashboard-fix-1.preview.emergentagent.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"USER_EMAIL","password":"test123456"}'
 
 # Check RBAC permissions (use token from login)
-curl -X GET https://ai-assistant-test-2.preview.emergentagent.com/api/odoo-rbac/current-user-rbac \
+curl -X GET https://perf-dashboard-fix-1.preview.emergentagent.com/api/odoo-rbac/current-user-rbac \
   -H "Authorization: Bearer TOKEN"
 
 # Expected response fields:

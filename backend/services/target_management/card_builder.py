@@ -294,9 +294,14 @@ async def drill_down_card(
     collection = card.get("collection", "opportunities")
     rbac_filter = await resolve_hierarchy_filter(current_user, collection)
     
-    # Build query matching the card's filters
+    # Build query matching the card's filters — collection-aware base
     filters = dict(card.get("filters", {}))
-    query = {"deleted": {"$ne": True}, "active": True}
+    if collection in ("opportunities", "leads"):
+        query = {"deleted": {"$ne": True}, "active": True}
+    elif collection == "invoices":
+        query = {}
+    else:
+        query = {"deleted": {"$ne": True}}
     query.update(filters)
     
     # Apply RBAC

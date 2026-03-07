@@ -556,7 +556,7 @@ const HelpPage = () => {
                     </li>
                     <li className="flex items-start gap-2 text-sm text-gray-700">
                       <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                      Your Securado CRM app URL (e.g., <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">https://ai-assistant-test-2.preview.emergentagent.com</code>)
+                      Your Securado CRM app URL (e.g., <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">https://perf-dashboard-fix-1.preview.emergentagent.com</code>)
                     </li>
                   </ul>
                 </div>
@@ -592,7 +592,7 @@ const HelpPage = () => {
                             </div>
                             <div className="flex items-start gap-2">
                               <span className="text-gray-500 w-40 shrink-0">Redirect URI (SPA):</span>
-                              <code className="px-2 py-0.5 bg-white rounded border text-xs font-mono break-all">https://ai-assistant-test-2.preview.emergentagent.com/login</code>
+                              <code className="px-2 py-0.5 bg-white rounded border text-xs font-mono break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/login</code>
                             </div>
                           </div>
                         </div>
@@ -632,7 +632,7 @@ const HelpPage = () => {
                         </div>
                         <p className="text-xs text-gray-500 mb-2">Used by the frontend MSAL library for browser-based authentication</p>
                         <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5 border">
-                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://ai-assistant-test-2.preview.emergentagent.com/login</code>
+                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/login</code>
                           <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0" onClick={() => {navigator.clipboard.writeText(window.location.origin + '/login')}}>
                             <Copy className="h-3.5 w-3.5 text-gray-400" />
                           </Button>
@@ -645,7 +645,7 @@ const HelpPage = () => {
                         </div>
                         <p className="text-xs text-gray-500 mb-2">Used if backend server-side OAuth callback is needed</p>
                         <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5 border">
-                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://ai-assistant-test-2.preview.emergentagent.com/api/auth/microsoft/callback</code>
+                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/api/auth/microsoft/callback</code>
                           <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0" onClick={() => {navigator.clipboard.writeText(window.location.origin + '/api/auth/microsoft/callback')}}>
                             <Copy className="h-3.5 w-3.5 text-gray-400" />
                           </Button>

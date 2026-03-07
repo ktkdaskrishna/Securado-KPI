@@ -374,7 +374,7 @@ class IncrementalSyncWorker:
 
     def _transform_record(self, record: dict, entity_id: str, canonical_id: str) -> dict:
         """Transform Odoo record to canonical format"""
-        doc = {"canonical_id": canonical_id, "source_record_id": str(record.get("id", ""))}
+        doc = {"canonical_id": canonical_id, "id": canonical_id, "source_record_id": str(record.get("id", ""))}
         
         # Resolve Many2one fields (they come as [id, name] arrays)
         for key, value in record.items():

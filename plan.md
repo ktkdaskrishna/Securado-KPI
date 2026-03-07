@@ -155,7 +155,7 @@ Pipeline config can include `"use_event_queue": true` to enable queue-based data
 ---
 
 ## Preview URL
-https://ai-assistant-test-2.preview.emergentagent.com
+https://perf-dashboard-fix-1.preview.emergentagent.com
 
 ## Test Credentials
 - Email: `test@securado.com`

@@ -168,8 +168,20 @@ async def execute_query(query_config: dict) -> dict:
     year = query_config.get("year")
     rbac_filter = query_config.get("rbac_filter")
     
-    # Build MongoDB query
-    query = {"deleted": {"$ne": True}, "active": True}
+    # Build MongoDB query — collection-aware base filters
+    # Invoices use 'state' (posted/draft/cancel), not 'active' for lifecycle.
+    # Accounts/employees don't need blanket active filtering.
+    # Only opportunities/leads rely on the 'active' field from Odoo.
+    query = {}
+    if collection in ("opportunities", "leads"):
+        query["deleted"] = {"$ne": True}
+        query["active"] = True
+    elif collection == "invoices":
+        # Invoices: no blanket active/deleted filter — card filters handle state/payment_state
+        pass
+    else:
+        # Default: only exclude explicitly deleted
+        query["deleted"] = {"$ne": True}
     query.update(filters)
     
     # Apply RBAC scope filter (hierarchy-based)
@@ -196,6 +208,8 @@ async def execute_query(query_config: dict) -> dict:
     db = canonical_db
     if collection in ["target_plans", "target_plan_items", "users", "roles"]:
         db = app_db
+    
+    logger.info(f"execute_query: collection={collection}, agg={aggregation}, field={field}, group_by={group_by}, year={year}, query_keys={list(query.keys())}")
     
     result = {}
     
