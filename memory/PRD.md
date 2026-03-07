@@ -1,4 +1,4 @@
-# Securado CRM — Product Requirements Document
+# Securado CRM (ERP AI) — Product Requirements Document
 
 ## Original Problem Statement
 Build a comprehensive sales target, incentive, and KPI management system with Odoo integration. Evolved to include configurable dashboards, RBAC, Microsoft SSO, AI assistant, and Performance Hub.
@@ -19,42 +19,44 @@ Build a comprehensive sales target, incentive, and KPI management system with Od
 - Performance Hub v2 with cascading targets + AI activity recommendations
 - Activity creation/management in Opportunities
 - Accounts, Contacts, Opportunities, Invoices/Receivables pages
+- Data Health Monitor (System Alerts section on dashboard)
 - Pure Tailwind CSS (legacy CSS removed)
 
-## Critical Production Fix (2026-03-08) — Canonical DB Authorization
-### Root Cause (discovered via production site analysis)
-The original `database.py` defaulted `CANONICAL_DB_NAME` to `'event_mesh_canonical'` — a SEPARATE database from `event_mesh_app`. The production MongoDB user only has authorization for `event_mesh_app`, NOT `event_mesh_canonical`. This caused:
-1. ALL canonical_db queries (RBAC, dashboard, opportunities) to fail with authorization errors
-2. The incremental sync to fail on every poll
-3. SSO users to get RESTRICTED access (blank sidebar)
+## Fixes Applied (2026-03-08)
 
-### Fix Applied
-1. **database.py**: Changed canonical DB default to use SAME database as app_db (`DB_NAME`). Added startup access test — if canonical DB is unauthorized, automatically falls back to app_db for ALL queries.
-2. **SSO flow** (both MSAL + callback): 3-source role derivation cascade with try/except protection on canonical_db access. Default to basic user access for SSO-authenticated users.
-3. **RBAC endpoint**: Protected canonical_db.sales_users query. SSO users always get at least basic user access.
+### P0: Invoice KPI Cards Showing "0" (FIXED)
+- **Root Cause**: `execute_query()` applied blanket `active: True` filter to ALL collections. Invoices don't use `active` field.
+- **Fix**: Collection-aware base filters in `redis_pipeline.py` and `card_builder.py`
 
-## Critical Bug Fix (2026-03-08) — Invoice KPI Cards Showing "0"
-### Root Cause
-`libs/redis_pipeline.py` `execute_query()` applied a blanket `{"active": True, "deleted": {"$ne": True}}` filter to ALL collection queries. Invoices don't use the `active` field — they use `state` (posted/draft/cancel) and `payment_state`. Many invoices lacked the `active` field entirely, causing them to be excluded from ALL invoice card queries.
+### Win Rate Formula Standardization (FIXED)
+- **Root Cause**: Inconsistent formulas — some used Won/TotalOpps, others Won/(Won+Lost)
+- **Fix**: All 6 locations now use standard `Won / (Won + Lost) × 100`
+- Locations fixed: `planning.py`, `ai_assistant/routes.py`, card builder seed defaults
+- Win Rate card updated from `display_type: "number"` to `"win_rate"` with backend percentage calculation
 
-### Fix Applied
-1. **redis_pipeline.py**: Made base filters collection-aware. Opportunities/leads get `active: True` + `deleted: ne True`. Invoices get NO base filter (card configs handle `payment_state`). Other collections get only `deleted: ne True`.
-2. **card_builder.py**: Same collection-aware fix applied to drill-down queries.
-3. **incremental_sync.py**: Fixed activities sync `id: null` duplicate key error by setting `id = canonical_id` in transform.
+### Excel Export Not Matching Dashboard Filters (FIXED)
+- **Root Cause**: Export used `create_date` for year filtering, dashboard used `date_last_stage_update`
+- **Fix**: Changed export date field to `date_last_stage_update`, added `product_director` and `solution_category` filter params
+- Both HybridDashboard and DashboardPage now pass all active filters to export
 
-### Verification
-- Overdue Invoices: 108 (was 0)
-- Unpaid Invoices Value: 2.85M (was 0)
-- Invoice Revenue: 2.24M (was 0)
-- Tested across admin, product_director, and sales_rep roles
+### Tab Title (FIXED)
+- Changed from "Emergent | Fullstack App" to "ERP AI"
+
+### Data Health Monitor (NEW FEATURE)
+- Backend endpoint `GET /api/card-builder/data-health` checks all collections for missing fields, stale data, duplicates
+- Frontend component displays score/100, collection breakdown, expandable issues list
+- Placed in "System Alerts" section at bottom of dashboard
+
+### Activities Sync Duplicate Key Error (FIXED)
+- Set `id = canonical_id` in `_transform_record` to prevent `id: null` duplicates
 
 ## Open Bugs
-1. Activity Logs from Odoo — sync now working, but historical data may need a full re-sync
-2. Account Alert on paid accounts showing overdue (needs specific reproduction steps from user)
+1. Activity Logs from Odoo — sync now working, but historical data may need full re-sync
+2. Account Alert on paid accounts showing overdue (needs specific reproduction steps)
 
 ## Backlog
 - P1: Complete KPI Framework (incentive weights, collection/GP floor)
-- P1: Refactor to Services/Repositories pattern
 - P1: Verify new features (Add Activity, AI Report Export, AI Recommendations)
+- P1: Refactor to Services/Repositories pattern
 - P2: Replace in-memory Event Bus with Redis Streams
 - P2: Component modularization (AiAssistantBubble.js, PerformanceHubPage.js)
