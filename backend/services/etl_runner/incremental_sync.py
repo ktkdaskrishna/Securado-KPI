@@ -109,6 +109,33 @@ INCREMENTAL_ENTITIES = {
             "salesman_id", "product_director_id", "productcategory_id",
             "create_date", "write_date"],
     },
+    "sales_teams": {
+        "odoo_model": "crm.team",
+        "canonical_collection": "sales_teams",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_team",
+        "default_fields": ["id", "name", "alias_name", "use_leads", "use_opportunities",
+            "member_ids", "crm_team_member_ids", "invoiced", "invoiced_target",
+            "active", "create_date", "write_date"],
+    },
+    "sales_users": {
+        "odoo_model": "res.users",
+        "canonical_collection": "sales_users",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_user",
+        "domain": [["share", "=", False]],
+        "default_fields": ["id", "name", "login", "email", "partner_id", "company_id",
+            "active", "create_date", "write_date", "groups_id", "sale_team_id"],
+    },
+    "tasks": {
+        "odoo_model": "project.task",
+        "canonical_collection": "tasks",
+        "id_field": "id",
+        "canonical_id_prefix": "odoo_task",
+        "default_fields": ["id", "name", "project_id", "user_ids", "partner_id",
+            "stage_id", "date_deadline", "state", "priority", "description",
+            "active", "create_date", "write_date"],
+    },
 }
 
 # Field cache per model (refreshed every hour)
@@ -233,9 +260,9 @@ class IncrementalSyncWorker:
         if sync_state:
             last_sync_ts = sync_state.get("last_write_date")
         
-        # If never synced, use 30 days ago (don't pull everything)
+        # If never synced, use 365 days ago for initial sync to capture all relevant data
         if not last_sync_ts:
-            last_sync_ts = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+            last_sync_ts = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
         
         # Validate fields against Odoo (cached for 1 hour)
         valid_fields = await self._get_valid_fields(models, db_name, uid, api_key, odoo_model)
