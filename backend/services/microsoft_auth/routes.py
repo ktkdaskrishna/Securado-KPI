@@ -646,24 +646,45 @@ async def _handle_msal_complete(request: Request):
         
         if local_user:
             # Update existing user with Microsoft info
+            # CRITICAL: Also persist roles/permissions if missing in DB
+            existing_roles = local_user.get("roles", [])
+            existing_permissions = local_user.get("permissions", [])
+            
+            update_fields = {
+                "microsoft_id": ms_id,
+                "name": display_name,
+                "display_name": display_name,
+                "last_login": now_utc(),
+                "auth_provider": "microsoft",
+                "rbac_linked": bool(rbac_user),
+                "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None,
+                "status": local_user.get("status", "approved"),
+            }
+            
+            # If user has no roles, derive from RBAC and persist
+            if not existing_roles and rbac_user:
+                rbac_groups = rbac_user.get("odoo_group_names", [])
+                if any(g in rbac_groups for g in ["Sales / Administrator", "Administration / Settings"]):
+                    existing_roles = ["admin", "sales_admin"]
+                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
+                elif any(g in rbac_groups for g in ["Sales / Manager"]):
+                    existing_roles = ["product_director"]
+                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
+                elif any(g in rbac_groups for g in ["Sales / User", "Sales / Salesperson"]):
+                    existing_roles = ["user"]
+                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                
+                if existing_roles:
+                    update_fields["roles"] = existing_roles
+                    update_fields["permissions"] = existing_permissions
+            
             await app_db.users.update_one(
                 {"_id": local_user["_id"]},
-                {
-                    "$set": {
-                        "microsoft_id": ms_id,
-                        "name": display_name,  # Store as 'name' for compatibility with identity service
-                        "display_name": display_name,
-                        "last_login": now_utc(),
-                        "auth_provider": "microsoft",
-                        "rbac_linked": bool(rbac_user),
-                        "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None,
-                        "status": local_user.get("status", "approved")  # Ensure status exists
-                    }
-                }
+                {"$set": update_fields}
             )
             user_id = str(local_user["_id"])
             org_id = local_user.get("org_id", "default")
-            permissions = local_user.get("permissions", [])
+            permissions = existing_permissions if existing_permissions else local_user.get("permissions", [])
         else:
             # Create new user with all required fields for identity service compatibility
             user_id = generate_id()

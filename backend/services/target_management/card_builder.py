@@ -43,13 +43,14 @@ async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optio
     if not user_email:
         return None
     
-    # Check if user is admin
+    # Check if user is admin or director (broad access roles)
     user = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
     user_roles = user.get("roles", []) if user else []
-    if any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
-        return None  # Admin sees all
+    broad_access_roles = ["admin", "system_admin", "sales_admin", "product_director", "sales_director"]
+    if any(r in user_roles for r in broad_access_roles):
+        return None  # Admin/Director sees all
     
-    # Check RBAC groups for admin-level access
+    # Check RBAC groups for admin/director-level access
     rbac_user = await app_db.users_rbac.find_one({
         "$or": [
             {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
@@ -58,9 +59,9 @@ async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optio
     })
     if rbac_user:
         group_names = rbac_user.get("odoo_group_names", [])
-        admin_patterns = ["administration / settings", "sales / administrator", "sales / all documents"]
+        admin_patterns = ["administration / settings", "sales / administrator", "all documents", "crm / sales director"]
         if any(p in g.lower() for g in group_names for p in admin_patterns):
-            return None  # Admin sees all
+            return None  # Admin/Director sees all
     
     # Find employee by email
     employee = await canonical_db.employees.find_one(
