@@ -374,6 +374,7 @@ async def get_my_dashboard(
     salesperson: Optional[str] = None,
     product_director: Optional[str] = None,
     solution_category: Optional[str] = None,
+    stage: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Get the dashboard template assigned to the current user's role, render all blocks.
@@ -389,6 +390,8 @@ async def get_my_dashboard(
         global_filter["product_manager"] = {"$regex": f"^{re.escape(product_director)}$", "$options": "i"}
     if solution_category:
         global_filter["solution_category"] = solution_category
+    if stage:
+        global_filter["stage"] = stage
     
     # Get user's roles
     user = await app_db.users.find_one({"email": {"$regex": f"^{current_user.get('email', '')}$", "$options": "i"}})

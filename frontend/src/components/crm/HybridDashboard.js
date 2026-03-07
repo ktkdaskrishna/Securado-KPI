@@ -356,6 +356,7 @@ export default function HybridDashboard() {
       if (filters.salesRep) filterParams.salesperson = filters.salesRep;
       if (filters.productDirector) filterParams.product_director = filters.productDirector;
       if (filters.solutionCategory) filterParams.solution_category = filters.solutionCategory;
+      if (filters.stage) filterParams.stage = filters.stage;
       const r = await targetAPI.getMyDashboard(filters.year || String(new Date().getFullYear()), filterParams);
       setBlocks(r.data.blocks || []);
       setTemplateName(r.data.template?.name || 'Dashboard');

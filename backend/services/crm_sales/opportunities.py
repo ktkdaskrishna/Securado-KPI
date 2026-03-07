@@ -4,6 +4,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from bson import ObjectId
 import logging
+import re
 
 from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, now_utc, PipelineStages
@@ -13,6 +14,7 @@ from services.identity.routes import get_current_user
 from services.crm_sales.models import *
 from services.crm_sales.bluesheet import calculate_bluesheet_probability, get_bluesheet_form_options, BUYING_INFLUENCES, COMPETITION_STATUS, BUDGET_STATUS
 from services.rbac_sync.middleware import get_rbac_filter
+from services.target_management.card_builder import resolve_hierarchy_filter
 from services.crm_sales.helpers import STAGE_ALIASES, apply_date_filters, merge_with_overrides, normalize_stage, STAGE_MAPPING
 
 logger = logging.getLogger(__name__)
@@ -338,41 +340,52 @@ async def export_opportunities_excel(
     app_db = get_app_db()
     org_id = current_user.get("org_id", "default")
     
-    # Get RBAC filter - CRITICAL for security
-    rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
+    # Get RBAC filter — use resolve_hierarchy_filter (same as dashboard) for consistency
+    rbac_filter = await resolve_hierarchy_filter(current_user, "opportunities") or {}
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC — MUST match dashboard card_builder query for consistency
+    # Dashboard (execute_query) uses: deleted!=True, active=True for opportunities
+    query = {"type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)  # Apply RBAC filter
     
     if stage:
         query["stage"] = stage
     if sales_rep:
-        query["owner_name"] = sales_rep
+        query["owner_name"] = {"$regex": f"^{re.escape(sales_rep)}$", "$options": "i"}
     if account:
         query["account_name"] = account
     if product_director:
-        query["product_manager"] = {"$regex": f"^{product_director}$", "$options": "i"}
+        query["product_manager"] = {"$regex": f"^{re.escape(product_director)}$", "$options": "i"}
     if solution_category:
-        query["solution_category"] = {"$regex": f"^{solution_category}$", "$options": "i"}
+        query["solution_category"] = {"$regex": f"^{re.escape(solution_category)}$", "$options": "i"}
+    
+    # Apply year filter in MongoDB query (matching dashboard behavior)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     
     # Get all matching records
     records = await canonical_db.opportunities.find(query).to_list(10000)
     
-    # Apply date filters — use date_last_stage_update to match dashboard card behavior
-    if year or quarter:
-        records = apply_date_filters(records, year=year, quarter=quarter, date_field='date_last_stage_update')
+    # Apply quarter filter post-fetch if needed (quarter requires date parsing)
+    if quarter:
+        records = apply_date_filters(records, quarter=quarter, date_field='date_last_stage_update')
     
     # Merge with overrides
     merged = await merge_with_overrides(records, org_id, app_db)
     
-    # Build data for Excel
+    # Build data for Excel — use original stage names (not normalized internal names)
+    STAGE_DISPLAY = {
+        "closed_lost": "Lost", "closed_won": "Won", "qualified": "Qualified",
+        "proposal": "Proposal", "negotiation": "Negotiation",
+    }
     data = []
     for opp in merged:
+        raw_stage = opp.get("stage", "")
+        display_stage = STAGE_DISPLAY.get(raw_stage, raw_stage)
         data.append({
             "Opportunity Name": opp.get("name", ""),
             "Account": opp.get("account_name", ""),
-            "Stage": opp.get("stage", ""),
+            "Stage": display_stage,
             "Sale Value (OMR)": opp.get("sale_value", 0) or 0,
             "Probability (%)": opp.get("probability", 0) or 0,
             "Product Category": opp.get("solution_category", ""),
