@@ -25,7 +25,7 @@ import secrets
 import hashlib
 import base64
 
-from libs.database import get_app_db
+from libs.database import get_app_db, get_canonical_db
 from libs.utils import generate_id, now_utc, JWT_SECRET
 
 logger = logging.getLogger(__name__)
@@ -280,13 +280,14 @@ async def microsoft_callback(
 ):
     """Handle Microsoft OAuth callback"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
     
     # Handle errors from Microsoft
     if error:
         logger.error(f"Microsoft OAuth error: {error} - {error_description}")
         # Redirect to frontend with error
         return RedirectResponse(url=f"/login?error={error}&message={error_description}")
-    
     if not code or not state:
         raise HTTPException(status_code=400, detail="Missing code or state parameter")
     
@@ -376,6 +377,16 @@ async def microsoft_callback(
             ]
         })
         
+        # Also check canonical sales_users as fallback
+        canonical_sales_user = None
+        if not rbac_user:
+            canonical_sales_user = await canonical_db.sales_users.find_one({
+                "$or": [
+                    {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                    {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+                ]
+            })
+        
         # Find or create local user
         local_user = await app_db.users.find_one({
             "$or": [
@@ -390,18 +401,37 @@ async def microsoft_callback(
             existing_roles = local_user.get("roles", [])
             existing_permissions = local_user.get("permissions", [])
             
-            # If user has no roles in DB, derive from RBAC
-            if not existing_roles and rbac_user:
-                rbac_groups = rbac_user.get("odoo_group_names", [])
-                if any(g in rbac_groups for g in ["Sales / Administrator", "Administration / Settings"]):
-                    existing_roles = ["admin", "sales_admin"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
-                elif any(g in rbac_groups for g in ["Sales / Manager"]):
-                    existing_roles = ["product_director"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
-                elif any(g in rbac_groups for g in ["Sales / User", "Sales / Salesperson"]):
+            # If user has no roles in DB, derive from multiple sources
+            if not existing_roles:
+                derived = False
+                # Source 1: users_rbac
+                if rbac_user:
+                    rbac_groups = rbac_user.get("odoo_group_names", [])
+                    if any(g in rbac_groups for g in ["Sales / Administrator", "Administration / Settings"]):
+                        existing_roles = ["admin", "sales_admin"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
+                        derived = True
+                    elif any(g in rbac_groups for g in ["Sales / Manager"]):
+                        existing_roles = ["product_director"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
+                        derived = True
+                    elif any(g in rbac_groups for g in ["Sales / User", "Sales / Salesperson"]):
+                        existing_roles = ["user"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                        derived = True
+                # Source 2: canonical sales_users
+                if not derived and canonical_sales_user:
+                    su_roles = canonical_sales_user.get("app_roles", [])
+                    su_perms = canonical_sales_user.get("effective_permissions", [])
+                    if su_roles:
+                        existing_roles = su_roles
+                        existing_permissions = su_perms if su_perms else ["view_dashboard", "view_opportunities", "view_accounts", "view_activities"]
+                        derived = True
+                # Source 3: Default for SSO users
+                if not derived:
                     existing_roles = ["user"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                    existing_permissions = ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                    logger.warning(f"SSO callback: No RBAC source for {email}, assigning default 'user' roles")
             
             update_fields = {
                 "microsoft_id": ms_id,
@@ -413,8 +443,8 @@ async def microsoft_callback(
                 "rbac_user_id": rbac_user.get("odoo_user_id") if rbac_user else None,
                 "status": local_user.get("status", "approved"),
             }
-            # Persist roles to DB if they were missing
-            if existing_roles and not local_user.get("roles"):
+            # ALWAYS persist roles if user has no roles in DB
+            if not local_user.get("roles"):
                 update_fields["roles"] = existing_roles
                 update_fields["permissions"] = existing_permissions
             
@@ -601,6 +631,7 @@ async def _handle_msal_complete(request: Request):
     Validates Microsoft tokens and creates/updates local user.
     """
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
     
     try:
         body = await request.json()
@@ -627,7 +658,7 @@ async def _handle_msal_complete(request: Request):
         display_name = ms_user.get("displayName", "")
         ms_id = ms_user.get("id", "")
         
-        # Auto-link to RBAC by email
+        # Auto-link to RBAC by email — check multiple collections
         rbac_user = await app_db.users_rbac.find_one({
             "$or": [
                 {"email": {"$regex": f"^{email}$", "$options": "i"}},
@@ -635,6 +666,17 @@ async def _handle_msal_complete(request: Request):
                 {"name": {"$regex": f"^{display_name}$", "$options": "i"}}
             ]
         })
+        
+        # Also check canonical sales_users as fallback
+        canonical_sales_user = None
+        if not rbac_user:
+            canonical_sales_user = await canonical_db.sales_users.find_one({
+                "$or": [
+                    {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                    {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+                ]
+            })
+            logger.info(f"SSO: No users_rbac record for {email}, canonical_sales_user={'found' if canonical_sales_user else 'not found'}")
         
         # Find or create local user
         local_user = await app_db.users.find_one({
@@ -661,22 +703,44 @@ async def _handle_msal_complete(request: Request):
                 "status": local_user.get("status", "approved"),
             }
             
-            # If user has no roles, derive from RBAC and persist
-            if not existing_roles and rbac_user:
-                rbac_groups = rbac_user.get("odoo_group_names", [])
-                if any(g in rbac_groups for g in ["Sales / Administrator", "Administration / Settings"]):
-                    existing_roles = ["admin", "sales_admin"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
-                elif any(g in rbac_groups for g in ["Sales / Manager"]):
-                    existing_roles = ["product_director"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
-                elif any(g in rbac_groups for g in ["Sales / User", "Sales / Salesperson"]):
-                    existing_roles = ["user"]
-                    existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+            # If user has no roles, derive from RBAC, canonical sales_users, or defaults
+            if not existing_roles:
+                derived = False
+                # Source 1: users_rbac Odoo groups
+                if rbac_user:
+                    rbac_groups = rbac_user.get("odoo_group_names", [])
+                    if any(g in rbac_groups for g in ["Sales / Administrator", "Administration / Settings"]):
+                        existing_roles = ["admin", "sales_admin"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard", "manage_users", "system_admin", "admin:*"]
+                        derived = True
+                    elif any(g in rbac_groups for g in ["Sales / Manager"]):
+                        existing_roles = ["product_director"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_invoices", "view_goals", "manage_goals", "manage_dashboard"]
+                        derived = True
+                    elif any(g in rbac_groups for g in ["Sales / User", "Sales / Salesperson"]):
+                        existing_roles = ["user"]
+                        existing_permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                        derived = True
                 
-                if existing_roles:
-                    update_fields["roles"] = existing_roles
-                    update_fields["permissions"] = existing_permissions
+                # Source 2: canonical sales_users permissions
+                if not derived and canonical_sales_user:
+                    su_roles = canonical_sales_user.get("app_roles", [])
+                    su_perms = canonical_sales_user.get("effective_permissions", [])
+                    if su_roles:
+                        existing_roles = su_roles
+                        existing_permissions = su_perms if su_perms else ["view_dashboard", "view_opportunities", "view_accounts", "view_activities"]
+                        derived = True
+                        logger.info(f"SSO: Derived roles from canonical sales_users: {existing_roles}")
+                
+                # Source 3: Microsoft-authenticated user with no RBAC data — assign basic access
+                if not derived:
+                    existing_roles = ["user"]
+                    existing_permissions = ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                    logger.warning(f"SSO: No RBAC source for {email}, assigning default 'user' roles")
+                
+                # ALWAYS persist derived roles to DB
+                update_fields["roles"] = existing_roles
+                update_fields["permissions"] = existing_permissions
             
             await app_db.users.update_one(
                 {"_id": local_user["_id"]},
@@ -712,7 +776,7 @@ async def _handle_msal_complete(request: Request):
             
             await app_db.users.insert_one(new_user)
         
-        # Determine access level from RBAC
+        # Determine access level from RBAC or canonical data
         access_level = "RESTRICTED"
         if rbac_user:
             rbac_groups = rbac_user.get("odoo_group_names", [])
@@ -725,6 +789,14 @@ async def _handle_msal_complete(request: Request):
             elif any(g in rbac_groups for g in sales_manager_groups):
                 access_level = "MANAGER"
             elif any(g in rbac_groups for g in sales_user_groups):
+                access_level = "USER"
+        elif canonical_sales_user:
+            su_roles = canonical_sales_user.get("app_roles", [])
+            if "admin" in su_roles:
+                access_level = "ADMIN"
+            elif any(r in su_roles for r in ["product_director", "sales_director", "sales_manager"]):
+                access_level = "MANAGER"
+            else:
                 access_level = "USER"
         
         # Generate app JWT
@@ -747,8 +819,16 @@ async def _handle_msal_complete(request: Request):
                 user_roles = ["user"]
                 permissions = ["view_dashboard", "manage_leads", "manage_opportunities", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
             else:
+                # CRITICAL: SSO-authenticated users should always get basic access
                 user_roles = ["user"]
-                permissions = ["view_dashboard"]
+                permissions = ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals"]
+                logger.warning(f"SSO: Granting default 'user' access to {email} (no RBAC data)")
+            
+            # Persist derived roles to DB so RBAC endpoint can find them
+            await app_db.users.update_one(
+                {"id": user_id},
+                {"$set": {"roles": user_roles, "permissions": permissions}}
+            )
         
         token_payload = {
             "sub": user_id,

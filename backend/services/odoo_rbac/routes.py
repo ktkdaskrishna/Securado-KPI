@@ -540,7 +540,32 @@ async def get_current_user_rbac(
                 "source": "app_roles_fallback"
             }
         
-        # SECURITY: User not in RBAC system - give RESTRICTED access only
+        # SECURITY: User not in RBAC system - check if SSO authenticated
+        # SSO users who passed Microsoft authentication are legitimate employees
+        app_user_full = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+        is_sso_user = app_user_full and app_user_full.get("auth_provider") == "microsoft"
+        
+        if is_sso_user:
+            # SSO-authenticated user without RBAC data — give basic user access
+            logger.warning(f"SSO user {email} has no RBAC record - granting basic user access")
+            basic_permissions = ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals", "view_profile"]
+            # Persist roles so subsequent requests don't hit this fallback
+            await app_db.users.update_one(
+                {"_id": app_user_full["_id"]},
+                {"$set": {"roles": ["user"], "permissions": basic_permissions}}
+            )
+            return {
+                "user_id": current_user.get("id"),
+                "name": current_user.get("name"),
+                "app_roles": ["user"],
+                "effective_permissions": basic_permissions,
+                "record_access": "own",
+                "field_access": "standard",
+                "hidden_fields": [],
+                "rbac_synced": False,
+                "source": "sso_default_access"
+            }
+        
         logger.warning(f"SECURITY: User {email} has no RBAC record and no app roles - applying RESTRICTED access")
         restricted_permissions = ["view_profile"]
         return {
