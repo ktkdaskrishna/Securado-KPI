@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 class SchemaLibraryTester:
-    def __init__(self, base_url="https://odoo-sync-portal.preview.emergentagent.com"):
+    def __init__(self, base_url="https://ai-assistant-test-2.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

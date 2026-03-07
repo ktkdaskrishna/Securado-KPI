@@ -20,7 +20,7 @@ Before using the ETL Mapping Editor, ensure:
 
 ## Accessing the Mapping Editor
 
-1. Log in to the application at `https://odoo-sync-portal.preview.emergentagent.com`
+1. Log in to the application at `https://ai-assistant-test-2.preview.emergentagent.com`
 2. Navigate to **ETL Platform > Mappings** in the sidebar
 3. The Visual Mapping Editor will load with three tabs:
    - **Field Mappings** - Map source fields to target fields

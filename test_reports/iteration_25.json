@@ -28,7 +28,7 @@
   "seed_data_creation": "TEST_ prefixed feedback items created during testing",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "Iteration 25 verified all AI Assistant enhancements: 1) Voice endpoint at POST /api/ai-assistant/voice - accepts audio file uploads, returns {text: string} or {text: '', error: string}, 2) Feedback-with-attachment endpoint at POST /api/ai-assistant/feedback-with-attachment - accepts form data with question, session_id, and screenshots (image files), stores to feedback_attachments collection, 3) Inline chart rendering - AI chat returns ```chart``` JSON blocks which frontend parses and renders using Recharts (bar, pie, line charts), 4) Export chat button in AI header downloads chat as text file, 5) Voice (Mic) button uses MediaRecorder to capture audio and send to transcription endpoint, 6) Paperclip attachment button only shows in feedback mode, 7) MS SSO credentials updated in .env (MICROSOFT_CLIENT_ID=1c0f219e-99c3-4233-8f36-20d99c478cb5, MICROSOFT_TENANT_ID=db98eaa2-c396-4631-af24-ebe233fffe16)",
+  "context_for_next_testing_agent": "Iteration 25 verified all AI Assistant enhancements: 1) Voice endpoint at POST /api/ai-assistant/voice - accepts audio file uploads, returns {text: string} or {text: '', error: string}, 2) Feedback-with-attachment endpoint at POST /api/ai-assistant/feedback-with-attachment - accepts form data with question, session_id, and screenshots (image files), stores to feedback_attachments collection, 3) Inline chart rendering - AI chat returns ```chart``` JSON blocks which frontend parses and renders using Recharts (bar, pie, line charts), 4) Export chat button in AI header downloads chat as text file, 5) Voice (Mic) button uses MediaRecorder to capture audio and send to transcription endpoint, 6) Paperclip attachment button only shows in feedback mode, 7) MS SSO credentials updated in .env (MICROSOFT_CLIENT_ID=ai-assistant-test-2, MICROSOFT_TENANT_ID=ai-assistant-test-2)",
   "features_tested": {
     "ai_assistant_right_position": {
       "status": "PASSED",
@@ -68,7 +68,7 @@
     },
     "ms_sso_credentials": {
       "status": "PASSED",
-      "details": "MS SSO config endpoint returns correct clientId=1c0f219e-99c3-4233-8f36-20d99c478cb5 and tenantId=db98eaa2-c396-4631-af24-ebe233fffe16"
+      "details": "MS SSO config endpoint returns correct clientId=ai-assistant-test-2 and tenantId=ai-assistant-test-2"
     }
   },
   "backend_tests": {

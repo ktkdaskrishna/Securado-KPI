@@ -511,7 +511,7 @@ async def export_opportunities(...):
 ---
 
 ## Preview URL
-https://odoo-sync-portal.preview.emergentagent.com
+https://ai-assistant-test-2.preview.emergentagent.com
 
 ---
 

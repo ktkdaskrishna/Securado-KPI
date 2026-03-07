@@ -1,27 +1,45 @@
-<analysis>**original_problem_statement:** The user initiated a request to build a comprehensive sales target, incentive, and KPI management system. This evolved significantly into a series of critical data integrity fixes, a complete RBAC overhaul, and a major architectural redesign. The final, overarching goal became replacing static dashboards with a fully configurable, Odoo-like dashboard system, complete with a dynamic query builder, layout management, and role-based template assignments. Subsequent requests included fixing production deployment issues, implementing a robust feedback system, and integrating a floating RAG AI Assistant for querying CRM data.
+<analysis>**original_problem_statement:** The user initiated a request to build a comprehensive sales target, incentive, and KPI management system. This has since evolved to include major production bug fixes, a complete overhaul of the Performance Hub, and significant enhancements to a conversational AI assistant. The current primary goals are to fix a critical production Single Sign-On (SSO) issue preventing user access, resolve data discrepancies on dashboards, and continue building out the multi-layered Performance Hub for target and activity management.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a mature, production-ready, full-stack React/FastAPI/MongoDB platform with Redis for caching. It features a dynamic, configurable dashboard system with a read-only view () and a full-featured builder (). The data sync from Odoo is now a resilient incremental polling worker covering 7 key entities, including  and  to ensure data integrity for invoices and margins. A sophisticated, hierarchy-aware RBAC system scopes data correctly for all user levels, from individual reps to managers viewing their team's data. A floating AI Assistant is integrated, capable of answering questions about live CRM data and capturing user feedback in a single conversational interface. All critical production deployment issues related to environment variables, database connections, and SSO have been resolved.
+The application is a full-stack React/FastAPI/MongoDB platform with Redis for caching. Key features include:
+- A configurable, Odoo-like dashboard system with a dashboard builder.
+- A resilient incremental data sync worker from Odoo.
+- A sophisticated, hierarchy-aware RBAC system.
+- An advanced floating AI Assistant with conversational feedback, voice input (Whisper), file attachments, persistent chat history, and server-generated inline charts and styled tables.
+- A new Performance Hub with a cascading target assignment view (CEO -> Product Director -> Strategy/Marketing Teams). It includes an advanced autocomplete component for assigning users that can differentiate between managers (HODs) and individual contributors, allowing for team-based assignments.
+- The codebase has been cleaned to use Tailwind CSS almost exclusively, with legacy CSS removed.
 
 **Last working item**:
-- **Last item agent was working:** The user requested to merge the feedback submission functionality directly into the new AI Assistant, so users can give feedback conversationally instead of using a separate form. The agent had formulated a plan to implement this but had not yet started coding.
+- **Last item agent was working:** Fixing a critical production bug where a user logging in via Microsoft SSO () has no permissions and sees a blank dashboard. The agent identified two root causes: 1) The backend SSO callback flow was not saving the user's  and  to their database record upon login. 2) The frontend was using inconsistent localStorage keys ( vs. ) and had no logic to read the token from the cookie set by the server-redirect SSO flow. The agent has implemented fixes in both the backend and frontend to address this.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
 - **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Merge Feedback System into AI Assistant (P0)**
-  - **Description:** The user wants the floating AI assistant to handle both RAG queries and feedback submission in a single conversational interface. The agent has a plan but has not started coding.
+- **Issue 1: Production SSO Login Fails, User Sees Blank Dashboard (P0)**
+  - **Description:** After logging in via Microsoft SSO on the production site, the user  is not assigned any roles/permissions, resulting in no sidebar tabs being visible and a completely blank/unusable interface. This is a critical blocker.
+  - **Attempted fixes:** The agent has modified  to ensure the SSO callback flow correctly identifies and saves the user's roles to their database document. The agent also modified  to standardize the localStorage key to  and added logic to read the token from a cookie for the server-redirect flow.
+  - **Next debug checklist:**
+    1.  Verify the backend fix by manually inspecting the  collection in the database after an SSO login to confirm  and  fields are populated correctly.
+    2.  Use the browser's developer tools to trace the frontend auth flow, ensuring the  is correctly retrieved from either localStorage or the  cookie and stored in the application's auth context.
+    3.  Perform an end-to-end test by logging in as  via SSO and confirming the sidebar tabs and dashboard appear.
+  - **Why fix this issue and what will be achieved with the fix?** This is a critical production bug that makes the application unusable for SSO users. Fixing it will restore access for all users authenticating via Microsoft.
   - **Status:** IN PROGRESS
-  - **Is recurring issue?** N
+  - **Is recurring issue?** Y
   - **Should Test frontend/backend/both after fix?** both
   - **Blocked on other issue:** None
 
 - **Issue 2: Dashboard cards showing '0' for some roles (P1)**
-  - **Description:** A user video showed that the Director Dashboard has cards displaying 0 with warnings. This is likely due to misconfigured invoice-related cards for that specific role template. The agent acknowledged this but has not yet addressed it.
+  - **Description:** User has repeatedly reported that dashboard cards for certain roles (e.g., Director Dashboard) show 0 values, indicating a data fetching or filtering problem for that specific dashboard template.
+  - **Attempted fixes:** None yet.
+  - **Next debug checklist:**
+    1.  Log in as a user with the Director role (e.g., ).
+    2.  Inspect the network requests made by the dashboard page to fetch card data.
+    3.  Examine the queries being run by the  for these cards and the filters being applied based on the user's role and the card's configuration in the  collection.
+  - **Why fix this issue and what will be achieved with the fix?** This will fix a major data integrity issue and make the dashboards reliable and useful for all roles.
   - **Status:** NOT STARTED
   - **Is recurring issue?** Y
   - **Should Test frontend/backend/both after fix?** both
@@ -32,128 +50,120 @@ The application is a mature, production-ready, full-stack React/FastAPI/MongoDB 
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P0: Complete the Performance Hub Overhaul (Phase 1):** This is a large, user-driven initiative to rebuild the Performance Hub based on an extensive KPI framework document. The user wants a multi-level planning process (CEO -> Director -> Sales Rep) with cascading targets for booking, invoicing, and margin. It also involves tracking strategic activities for marketing and strategy teams. The agent has received the user's detailed requirements and provided an initial plan, but implementation has not started.
-        - **Next steps:** Implement the multi-level target assignment flow in the Performance Hub UI and backend. Create separate targets for booking, invoicing, and margin.
+    - **P0: Complete Performance Hub Overhaul (Phase 2):** Implement the AI-powered Activity Recommendation Engine. After a Product Director segments their target, the system should suggest relevant value-selling, marketing, and strategy activities.
+    - **P1: Fix Remaining Feedback Items:** Address the outstanding bugs from :
+        - Activity Logs are missing from the Opportunities view.
+        - Invoice data for the year 2026 is showing as zero.
+        - The Account Alert on paid invoices incorrectly shows them as overdue.
+    - **P2: AI Assistant - Report Generation:** Implement the user's request for the AI assistant to generate and export reports in Excel and PDF formats.
 
 - **Future Tasks:**
-    - **P1: Implement Full KPI Framework (Phases 2-4):**
-        - **Phase 2:** Implement role-specific incentive weight presets and gate logic (collection/GP floors) in the incentive engine.
-        - **Phase 3:** Build out GP and attribution models for pre-sales and marketing influence.
-    - **P1: Refactor to Services/Repositories:** Continue the architectural refactoring by extracting business logic from routes into a dedicated service layer and database logic into a repository layer.
-    - **P2: Replace In-Memory Event Bus:** Migrate the application's internal event bus from the current in-memory implementation to use Redis Streams to support scalable, multi-instance backend deployments.
+    - **P1: Complete KPI Framework:** Implement incentive weight presets and collection/GP floor logic.
+    - **P1: Refactor to Services/Repositories:** Continue extracting business logic from API routes into a dedicated service layer.
+    - **P2: Replace Event Bus:** Migrate the in-memory event bus to Redis Streams for scalability.
 
 **Completed work in this session**
-- **Architecture & Production Readiness:**
-    - **Solved All Deployment Blockers:** Fixed critical production issues related to Redis connection spam, JWT session invalidation (by adding a stable ), and database name mismatches between development and production. The application is now stable in production.
-    - **Bundled Redis:** Integrated Redis into the backend's startup lifecycle, ensuring it's available in the production environment.
-    - **Agentic Feedback Loop:** Established a robust workflow for the agent to pull user feedback from production via an API, track it in , and systematically resolve issues.
-- **Core Feature Implementation:**
-    - **AI RAG Assistant:** Implemented a floating AI chat assistant powered by an Emergent LLM Key, capable of answering natural language questions about live CRM data.
-    - **Full-featured Dashboard Builder:** Completed the Odoo-style dashboard builder with drag-and-drop, a visual domain editor, template management (including clone, import/export), and multiple chart types (Bar, Pie, Area, Radial, Table).
-    - **Invoice Module Overhaul:** Rebuilt the invoice page with a KPI dashboard, drill-down capabilities, and an enhanced detail panel with a collection notes feature.
-    - **Activities Module Rebuild:** Completely redesigned the Activities page to match the Odoo reference, focusing on value-selling activities and member performance tracking.
-    - **Data Model Integrity:** Established a canonical data flow from Odoo to link Invoices -> Sales Orders -> SO Lines -> Opportunities, ensuring correct Product Manager, Solution Category, and margin data.
-- **Critical Fixes:**
-    - **Data Consistency:** Standardized date filtering () and stage filtering () across all modules (Dashboard, Opportunities List, Kanban), eliminating major data discrepancies.
-    - **Security:** Patched a critical vulnerability allowing non-admin users to access settings and self-promote to admin by adding backend route protection and stricter frontend guards.
+- **AI Assistant Major Enhancements:**
+  - Merged feedback submission directly into the chat, removing the separate button.
+  - Implemented persistent chat history per user.
+  - Added voice input, file attachments, server-generated inline charts, and Tailwind CSS-styled tables.
+  - Hid the assistant on the login page.
+- **Performance Hub v2 (Phase 1 Implemented):**
+  - Built the cascading target assignment UI (CEO -> PDs).
+  - Added support for distinct Strategy Team and Marketing Team targets.
+  - Created an advanced assignee autocomplete input that detects department heads (HODs) and allows for assigning tasks to their entire team or to them individually.
+- **Critical Bug Fixes & Refactoring:**
+  - Identified the root cause of the production SSO failure and implemented a fix (pending verification).
+  - Cleaned , removing ~400 lines of unused CSS to make the project pure Tailwind CSS.
 
 **Earlier issues found/mentioned but not fixed**
-- None.
+- The Dashboard cards show 0 issue and other items from the  (missing activity logs, incorrect invoice data) have been acknowledged but not yet resolved.
 
 **Known issue recurrence from previous fork**
-- None.
+- **Issue:** Dashboard cards showing '0' for some roles.
+- **Recurrence count:** At least 2.
+- **Status:** NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Resilient Services:** Redis caching layer designed to fail silently and fall back to MongoDB. The backend now auto-starts Redis if unavailable.
-- **Production Readiness:** Fixed critical deployment blockers related to environment variables (, ), database access permissions, and service dependencies (Redis).
-- **Agentic Workflow:** A  file and an  API endpoint were created to allow the agent to pull user-reported issues from production into its context for a more structured debugging process.
-- **RAG Pipeline:** The AI Assistant uses a backend RAG pipeline to answer natural language questions by querying live CRM data from MongoDB.
-- **Data Model Integrity:** Established a canonical data flow from Odoo to MongoDB for all key entities, including a multi-step chain to link Invoices -> SOs -> SO Lines -> Opportunities to derive correct Product Manager, Solution Category, and margin data.
+- **SSO Authentication Flow:** The recent work involved a deep-dive into the MSAL SSO flow, revealing the critical need for the backend to persist user  to the database during the auth callback and for the frontend to handle token storage consistently.
+- **Server-Side Chart Generation:** To ensure reliability, the backend now generates chart-ready data structures for the AI assistant, which are then rendered by the frontend using Recharts.
+- **Advanced UI Components:** A new  component was created with features like user autocomplete (fetching from a  endpoint) and conditional UI for handling managers (HODs).
+- **CSS Refactoring:** A significant cleanup was performed to remove legacy CSS in  and rely solely on Tailwind CSS, improving code maintainability.
 
 **key DB schema**
-- ****: 
-- ****:  (synced from Odoo)
-- ****:  (Enriched)
-- ****:  (Synced from Odoo)
-- ****:  (Synced from Odoo)
-- ****: 
-- ****: 
+- ****: Added , , .
+- **** (activities): Added , .
+- ** / **: The  and  fields are now critically important and must be populated for SSO users to have access.
 
 **changes in tech stack**
-- **Redis:** Now fully integrated and bundled with the backend for production deployment.
-- **:** Added to ensure reliable loading of  files at application startup.
-- **:** Used for the AI Assistant's LLM calls with the Emergent LLM Key.
+- ** & :** Added to frontend dependencies to render markdown tables with Tailwind CSS in the AI Assistant chat.
 
 **All files of reference**
-- : Dashboard builder and query engine logic.
-- : Invoice API, now with complex enrichment logic.
-- : The core Odoo sync logic, now syncing 7 entities.
-- : Critical file for handling database connections in dev vs. prod.
-- : The RAG and chat API for the AI assistant.
-- : The Dashboard Builder UI.
-- : The enhanced Invoices page.
-- : The floating AI chat bubble UI.
-- : The most up-to-date system architecture document.
-- : The agent's internal log for user-reported issues.
+- **Backend:** , , 
+- **Frontend:** , , , , 
+- **Memory/Docs:** , 
 
 **Areas that need refactoring**:
-- The  analytics endpoints (, etc.) should be refactored to use the central  to eliminate redundant logic.
+-  has grown very complex and could be broken down into smaller components for message rendering, charts, and input handling.
+-  is now a very large file and should be modularized.
 
 **key api endpoints**
-- : Fetches the layout and card configurations for the current user's dashboard (now with full RBAC).
-- : Fetches all invoices with rich enrichment (SO, PM, Opp links).
-- : Submits user feedback with optional screenshots.
-- : The new endpoint for the RAG AI assistant.
-- : The agent-only endpoint to pull feedback for the .
+- : (New) Transcribes user voice input.
+- : (New) Handles file uploads for the chat.
+- : (Modified) Manages sessions, attachments, and server-side chart data generation.
+- : (New) Fetches a list of all employees for the assignee autocomplete.
+- : (Modified) Ensures user roles from the IdP are saved to the database.
+- : (Modified) Ensures the JWT returned includes user roles.
 
 **Critical Info for New Agent**
-- **Production vs. Dev is solved, but be careful.** All critical environment differences (DB names, secrets, Redis) have been fixed. Any new environment-dependent feature must be tested for both scenarios. Do not re-introduce hardcoded DB names or dependencies that only work in the dev sandbox.
-- **The Agentic Feedback Loop is key.** Before fixing any new user-reported bug, you MUST first fetch the latest feedback using the  endpoint and update your . This ensures you are working on the correct, user-validated problems.
-- **The Data Model is complex but canonical.** The path from an Invoice to its Product Manager is . Do not use fallbacks like  unless necessary. All core data now flows directly from the Odoo incremental sync.
-- **The Performance Hub rebuild is the next major task.** The user has provided a detailed, multi-phase plan. You need to present your implementation plan for this before starting.
+- **The SSO bug is the absolute highest priority (P0).** The user is blocked from using the production application. Your first task is to validate the implemented fix and deploy it. The core of the fix is ensuring the  collection in MongoDB has the  and  fields populated for SSO users upon every login.
+- **The blank dashboard is a symptom of the SSO bug.** No roles/permissions means no sidebar tabs can be rendered, leaving the user stranded. Fixing the auth flow will fix this.
+- **The Dashboard cards show 0 is a separate, long-standing P1 data bug.** Once the SSO issue is resolved, this should be the next priority to restore user trust in the data.
+- The Performance Hub relies on the  collection being correctly populated with  relationships to power the HOD detection and team assignment logic.
 
 **documents and test reports created in this job**
--  (Updated to v3.0+)
--  (New agentic tracking file)
--  (Continuously updated)
+-  (Updated)
+-  (Updated)
+- Multiple  files were generated throughout the session.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:** Asks to merge the feedback app and the AI bot. (PENDING)
-2.  **user:** Asks for an AI avatar on top of the UI for RAG. (DONE - AI Assistant built)
-3.  **user:** Reports production dashboard is empty after redeploy. (DONE - Fixed DB name issue)
-4.  **user:** Asks for the app architecture. (DONE - Provided summary)
-5.  **user:** Reports  state and requests complete rebuild of Activities page. (DONE)
-6.  **user:** Asks for collection notes on the invoice detail panel. (DONE)
-7.  **user:** Reports discrepancy in Product Manager name (Shrihari vs Taj). (DONE - Fixed data linkage)
-8.  **user:** Reports 6M pipeline is wrong. (DONE - Fixed query to exclude won/lost)
-9.  **user:** Reports missing  from Odoo. (DONE - Fixed sync config)
-10. **user:** Asks about Odoo  margin field and real-time sync. (DONE - Implemented sale.order sync)
+1. **user:** Reports no data on the dashboard in production (screenshot provided). (PENDING - SYMPTOM OF SSO BUG)
+2. **user:** Requests that when an HOD is selected as an assignee, it should offer to assign to their team or them individually. (DONE)
+3. **user:** Requests to use Tailwind CSS across the project. (DONE - Cleaned up legacy CSS)
+4. **user:** Reports the production login for  shows no tabs/data. (PENDING - SSO BUG)
+5. **user:** Requests assignee input to be an autocomplete dropdown from active users. (DONE)
+6. **user:** Requests the AI Assistant be hidden on the login page. (DONE)
+7. **user:** Requests AI Assistant tables to be styled with CSS, not raw markdown. (DONE)
+8. **user:** Reports chat history is not remembered, charts don't work, attachments are limited to feedback mode, and assignee dropdown is empty for strategy/marketing teams. Also requests GM Strategy be renamed to Strategy Team. (ALL DONE)
+9. **user:** Requests the AI assistant accept attachments, voice input, and provide graph/chart/Excel/PDF reports. Also asks to fix all pending feedback. (PARTIALLY DONE - Voice, attachments, charts implemented. Reports and bug fixes are pending).
+10. **user:** Reports MS Login error (AADSTS900023). (DONE - Agent fixed credentials).
 
 **Project Health Check:**
-- **Broken:** None.
+- **Broken:** The production authentication flow for Microsoft SSO is critically broken, preventing user access.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Odoo (v17.0 Enterprise):** Primary data source. Syncing 7 entities via incremental polling worker.
+- **Odoo (v17.0 Enterprise):** Primary data source.
 - **MongoDB Atlas:** Production database.
-- **Redis:** Bundled with the application for caching and performance.
-- **Microsoft Identity Platform (Azure AD):** Used for SSO, now stable on production.
-- **Emergent LLM Key:** Used by the  library for the AI Assistant's RAG capabilities.
+- **Redis:** Caching and performance.
+- **Microsoft Identity Platform (Azure AD):** For SSO. This is the source of the current critical bug.
+- **Emergent LLM Key:** Used via  for the AI Assistant (LLM chat, Whisper for voice).
 
 **Testing status**
 - **Testing agent used after significant changes:** YES
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** Yes, via the testing agent.
-- **Known regressions:** None.
+- **Test files created:** Yes, by the testing agent.
+- **Known regressions:** Production SSO login is a major regression.
 
 **Credentials to test flow:**
-- **Admin:**  / 
-- **Product Director (Manager):**  / 
-- **Product Director (Admin rights):**  / 
+- **Admin:**  /  (Use this account for testing the SSO fix)
+- **Product Director (Manager):**  /  (Use for testing the dashboard shows 0 bug)
 - **Sales Rep (User):**  / 
 
 **What agent forgot to execute**
-- The agent acknowledged a dashboard card issue for the Director role (cards showing 0) but has not yet fixed it.</analysis>
+- Did not fix the long-standing Dashboard cards show 0 issue for the Director role.
+- Did not fix other acknowledged feedback items: missing activity logs, incorrect 2026 invoice data, and overdue alerts on paid accounts.
+- Did not implement the requested Excel/PDF report generation feature for the AI Assistant.</analysis>

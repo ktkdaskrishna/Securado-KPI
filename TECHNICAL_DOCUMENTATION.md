@@ -9,7 +9,7 @@
 
 ### Live Preview URL
 ```
-https://odoo-sync-portal.preview.emergentagent.com
+https://ai-assistant-test-2.preview.emergentagent.com
 ```
 
 ### Test Credentials
