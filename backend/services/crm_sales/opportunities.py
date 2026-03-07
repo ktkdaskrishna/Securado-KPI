@@ -909,6 +909,97 @@ async def get_opportunity_activities(
     return serialize_doc(normalized)
 
 
+
+@opportunities_router.post("/{opp_id}/activities")
+async def create_opportunity_activity(
+    opp_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new activity for an opportunity"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    opp = await find_opportunity_by_id(opp_id, org_id, canonical_db)
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    activity_id = generate_id()
+    activity = {
+        "id": activity_id,
+        "canonical_id": activity_id,
+        "opportunity_id": opp_id,
+        "org_id": org_id,
+        "activity_type": data.get("type", "To Do"),
+        "summary": data.get("subject", ""),
+        "note": data.get("description", ""),
+        "state": "pending",
+        "status": "pending",
+        "completed": False,
+        "date_deadline": data.get("date_deadline"),
+        "assigned_user": data.get("assigned_user", current_user.get("name", "")),
+        "assigned_user_id": data.get("assigned_user_id"),
+        "user_id": current_user.get("id"),
+        "created_by": current_user.get("email"),
+        "source_system": "local",
+        "created_at": now_utc(),
+    }
+    
+    await app_db.activities.insert_one(activity)
+    logger.info(f"Activity created: {activity_id} for opp {opp_id} by {current_user.get('email')}")
+    
+    return {
+        "id": activity_id,
+        "type": activity["activity_type"].lower().replace(" ", "_"),
+        "subject": activity["summary"],
+        "description": activity["note"],
+        "status": "pending",
+        "completed": False,
+        "created_at": activity["created_at"],
+        "date_deadline": activity["date_deadline"],
+        "assigned_user": activity["assigned_user"],
+        "source_system": "local",
+    }
+
+
+@opportunities_router.patch("/{opp_id}/activities/{activity_id}")
+async def update_opportunity_activity(
+    opp_id: str,
+    activity_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an activity (mark complete, edit, etc.)"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    update_fields = {}
+    if "completed" in data:
+        update_fields["completed"] = data["completed"]
+        update_fields["state"] = "done" if data["completed"] else "pending"
+        update_fields["status"] = "completed" if data["completed"] else "pending"
+    if "subject" in data:
+        update_fields["summary"] = data["subject"]
+    if "description" in data:
+        update_fields["note"] = data["description"]
+    if "date_deadline" in data:
+        update_fields["date_deadline"] = data["date_deadline"]
+    
+    update_fields["updated_at"] = now_utc()
+    
+    result = await app_db.activities.update_one(
+        {"$or": [{"id": activity_id}, {"canonical_id": activity_id}], "org_id": org_id},
+        {"$set": update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    
+    return {"success": True, "updated": activity_id}
+
+
+
 # ==================== LOG MESSAGES ====================
 
 @opportunities_router.get("/{opp_id}/logs")

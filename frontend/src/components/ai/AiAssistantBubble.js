@@ -3,7 +3,7 @@ import { aiAssistantAPI } from '../../lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Bot, Send, Minimize2, Sparkles, User, Loader2, MessageSquarePlus, RotateCcw, Mic, MicOff, Paperclip, X, Download, BarChart3 } from 'lucide-react';
+import { Bot, Send, Minimize2, Sparkles, User, Loader2, MessageSquarePlus, RotateCcw, Mic, MicOff, Paperclip, X, Download, BarChart3, FileSpreadsheet, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const CHART_COLORS = ['#800000', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
@@ -248,6 +248,24 @@ export default function AiAssistantBubble() {
     URL.revokeObjectURL(url);
   };
 
+  const [showReportPanel, setShowReportPanel] = useState(false);
+  const [exportingReport, setExportingReport] = useState(null);
+
+  const handleExportReport = async (format, type) => {
+    setExportingReport(`${type}-${format}`);
+    try {
+      const res = await aiAssistantAPI.exportReport(format, type, '2026');
+      const blob = new Blob([res.data], { type: res.headers['content-type'] });
+      const ext = format === 'excel' ? 'xlsx' : 'pdf';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${type}_report_2026.${ext}`; a.click();
+      URL.revokeObjectURL(url);
+      setMessages(prev => [...prev, { role: 'assistant', text: `Report exported: **${type.charAt(0).toUpperCase() + type.slice(1)} Report (${format.toUpperCase()})** downloaded successfully.` }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: 'Failed to export report. Please try again.' }]);
+    } finally { setExportingReport(null); }
+  };
+
   const quickQuestions = [
     "What's my pipeline for 2026?",
     "Show overdue invoices",
@@ -333,7 +351,7 @@ export default function AiAssistantBubble() {
         )}
       </div>
 
-      {/* Quick Questions + Feedback (show only at start) */}
+      {/* Quick Questions + Feedback + Reports (show only at start) */}
       {messages.length <= 1 && (
         <div className="px-4 pb-2 space-y-1.5">
           <div className="flex flex-wrap gap-1.5">
@@ -346,10 +364,47 @@ export default function AiAssistantBubble() {
               <BarChart3 className="h-2.5 w-2.5" /> Pipeline chart
             </button>
           </div>
-          <button onClick={switchToFeedback} data-testid="ai-feedback-mode-btn"
-            className="w-full text-[10px] px-2.5 py-1.5 rounded-lg border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1">
-            <MessageSquarePlus className="h-3 w-3" /> Give Feedback or Report an Issue
-          </button>
+          <div className="flex gap-1.5">
+            <button onClick={switchToFeedback} data-testid="ai-feedback-mode-btn"
+              className="flex-1 text-[10px] px-2.5 py-1.5 rounded-lg border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1">
+              <MessageSquarePlus className="h-3 w-3" /> Feedback
+            </button>
+            <button onClick={() => setShowReportPanel(!showReportPanel)} data-testid="ai-report-export-btn"
+              className="flex-1 text-[10px] px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1">
+              <FileSpreadsheet className="h-3 w-3" /> Export Reports
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Report Export Panel */}
+      {showReportPanel && (
+        <div className="px-4 pb-2">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
+            <p className="text-[10px] font-semibold text-emerald-800">Export CRM Report</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { type: 'pipeline', label: 'Pipeline' },
+                { type: 'invoices', label: 'Invoices' },
+                { type: 'performance', label: 'Performance' },
+                { type: 'activities', label: 'Activities' },
+              ].map(r => (
+                <div key={r.type} className="flex gap-1">
+                  <button onClick={() => handleExportReport('excel', r.type)} disabled={!!exportingReport}
+                    data-testid={`export-${r.type}-excel`}
+                    className="flex-1 text-[9px] px-2 py-1.5 rounded-lg border border-green-200 bg-white text-green-700 hover:bg-green-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50">
+                    {exportingReport === `${r.type}-excel` ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <FileSpreadsheet className="h-2.5 w-2.5" />} {r.label}
+                  </button>
+                  <button onClick={() => handleExportReport('pdf', r.type)} disabled={!!exportingReport}
+                    data-testid={`export-${r.type}-pdf`}
+                    className="text-[9px] px-2 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50">
+                    {exportingReport === `${r.type}-pdf` ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <FileText className="h-2.5 w-2.5" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowReportPanel(false)} className="text-[9px] text-gray-500 hover:text-gray-700 underline">Close</button>
+          </div>
         </div>
       )}
 

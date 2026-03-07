@@ -209,6 +209,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState('');
   const [newNoteType, setNewNoteType] = useState('general');
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [newActivity, setNewActivity] = useState({ type: 'Call', subject: '', description: '', date_deadline: '', assigned_user: '' });
   const [savingBluesheet, setSavingBluesheet] = useState(false);
   
   // Bluesheet form state
@@ -272,6 +274,29 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
       toast.error('Failed to save bluesheet');
     } finally {
       setSavingBluesheet(false);
+    }
+  };
+
+  const handleCreateActivity = async () => {
+    if (!newActivity.subject.trim()) { toast.error('Subject is required'); return; }
+    try {
+      const res = await crmAPI.createOpportunityActivity(opportunity.canonical_id, newActivity);
+      setActivities(prev => [res.data, ...prev]);
+      setNewActivity({ type: 'Call', subject: '', description: '', date_deadline: '', assigned_user: '' });
+      setShowAddActivity(false);
+      toast.success('Activity created');
+    } catch (error) {
+      toast.error('Failed to create activity');
+    }
+  };
+
+  const handleToggleActivity = async (activityId, completed) => {
+    try {
+      await crmAPI.updateOpportunityActivity(opportunity.canonical_id, activityId, { completed: !completed });
+      setActivities(prev => prev.map(a => a.id === activityId ? { ...a, completed: !completed, status: !completed ? 'completed' : 'pending' } : a));
+      toast.success(completed ? 'Activity reopened' : 'Activity completed');
+    } catch (error) {
+      toast.error('Failed to update activity');
     }
   };
 
@@ -978,8 +1003,52 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
             <TabsContent value="activities" className="mt-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-medium text-sm">Activity Stream</h3>
-                <Badge variant="secondary">{activities.length} activities</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{activities.length} activities</Badge>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddActivity(!showAddActivity)} data-testid="add-activity-btn">
+                    <Plus className="h-3 w-3 mr-1" />{showAddActivity ? 'Cancel' : 'Add'}
+                  </Button>
+                </div>
               </div>
+              
+              {showAddActivity && (
+                <Card className="mb-4 border-blue-200 bg-blue-50/30">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Type</Label>
+                        <Select value={newActivity.type} onValueChange={v => setNewActivity(p => ({ ...p, type: v }))}>
+                          <SelectTrigger className="h-8 text-sm bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {['Call', 'Email', 'Meeting', 'Demo', 'Proof of concept', 'Work Shop', 'Site Visit', 'To Do'].map(t => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Deadline</Label>
+                        <Input type="date" className="h-8 text-sm bg-white" value={newActivity.date_deadline} onChange={e => setNewActivity(p => ({ ...p, date_deadline: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Subject</Label>
+                      <Input className="h-8 text-sm bg-white" placeholder="Activity subject..." value={newActivity.subject} onChange={e => setNewActivity(p => ({ ...p, subject: e.target.value }))} data-testid="activity-subject-input" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Description</Label>
+                      <Textarea className="text-sm bg-white resize-none" rows={2} placeholder="Optional details..." value={newActivity.description} onChange={e => setNewActivity(p => ({ ...p, description: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Assigned To</Label>
+                      <Input className="h-8 text-sm bg-white" placeholder="Name..." value={newActivity.assigned_user} onChange={e => setNewActivity(p => ({ ...p, assigned_user: e.target.value }))} />
+                    </div>
+                    <Button size="sm" onClick={handleCreateActivity} className="bg-[#800000] hover:bg-[#600000] text-white" data-testid="save-activity-btn">
+                      <Plus className="h-3 w-3 mr-1" /> Create Activity
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
               
               <ScrollArea className="h-[400px]">
                 <div className="space-y-3">
@@ -987,6 +1056,7 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                     <div className="text-center py-8 text-gray-500">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No activities yet</p>
+                      <p className="text-xs mt-1">Click "Add" to create your first activity</p>
                     </div>
                   ) : (
                     activities.map((activity) => {
@@ -1039,9 +1109,14 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                       const IconComponent = config.icon;
                       
                       return (
-                        <Card key={activity.id} className={`border-l-4 ${urgency === 'overdue' ? 'border-l-red-500' : urgency === 'today' ? 'border-l-amber-500' : 'border-l-gray-300'}`}>
+                        <Card key={activity.id} className={`border-l-4 ${activity.completed ? 'border-l-emerald-400 opacity-70' : urgency === 'overdue' ? 'border-l-red-500' : urgency === 'today' ? 'border-l-amber-500' : 'border-l-gray-300'}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
+                              {activity.source_system === 'local' && (
+                                <button onClick={() => handleToggleActivity(activity.id, activity.completed)} className={`mt-1 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${activity.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`} data-testid={`toggle-activity-${activity.id}`}>
+                                  {activity.completed && <Check className="h-3 w-3" />}
+                                </button>
+                              )}
                               <div className={`p-2 rounded-full ${config.color}`}>
                                 <IconComponent className="h-4 w-4" />
                               </div>

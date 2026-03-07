@@ -157,6 +157,8 @@ export const crmAPI = {
   updateProbability: (id, probability) => api.post(`/opportunities/${id}/calculate-probability`, { probability }),
   getMessages: (id) => api.get(`/opportunities/${id}/messages`),
   getOpportunityActivities: (id) => api.get(`/opportunities/${id}/activities`),
+  createOpportunityActivity: (id, data) => api.post(`/opportunities/${id}/activities`, data),
+  updateOpportunityActivity: (id, actId, data) => api.patch(`/opportunities/${id}/activities/${actId}`, data),
   getOpportunityLogs: (id) => api.get(`/opportunities/${id}/logs`),  // Log messages/chatter
   createOpportunityNote: (id, data) => api.post(`/opportunities/${id}/notes`, data),
   exportOpportunities: (params) => api.get('/opportunities/export', { params, responseType: 'blob' }),
@@ -483,5 +485,7 @@ export const aiAssistantAPI = {
     if (files) files.forEach(f => formData.append('screenshots', f));
     return api.post('/ai-assistant/feedback-with-attachment', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  exportReport: (format, type, year) => api.post('/ai-assistant/export-report', { format, type, year }, { responseType: 'blob' }),
+  recommendActivities: (data) => api.post('/ai-assistant/recommend-activities', data),
 };
 

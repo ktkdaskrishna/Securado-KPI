@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { targetAPI, crmAPI } from '../../lib/api';
+import { targetAPI, crmAPI, aiAssistantAPI } from '../../lib/api';
 import { useRBAC } from '../../lib/RBACContext';
 import { AdvancedFilterBuilder, FilterChipBar } from '../layout/AdvancedFilterBuilder';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
 import {
-  Target, Plus, TrendingUp, Trophy, Users, Trash2, BarChart2, Activity, Phone, Mail, Calendar, Monitor, FlaskConical, Presentation, DollarSign, Calculator, ChevronDown, Crosshair, Award, FileText, AlertTriangle, CheckCircle2, Bell, User, ExternalLink, Clock, XCircle, Filter, PieChart, Layers, ArrowRight, GitBranch, X
+  Target, Plus, TrendingUp, Trophy, Users, Trash2, BarChart2, Activity, Phone, Mail, Calendar, Monitor, FlaskConical, Presentation, DollarSign, Calculator, ChevronDown, Crosshair, Award, FileText, AlertTriangle, CheckCircle2, Bell, User, ExternalLink, Clock, XCircle, Filter, PieChart, Layers, ArrowRight, GitBranch, X, Sparkles, Loader2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell, PieChart as RPieChart, Pie } from 'recharts';
 import { toast } from 'sonner';
@@ -79,6 +79,9 @@ export default function PerformanceHubPage() {
   // Segment state
   const [showSegmentEditor, setShowSegmentEditor] = useState(false);
   const [segments, setSegments] = useState(null);
+  // AI Recommendations state
+  const [aiRecommendations, setAiRecommendations] = useState(null);
+  const [loadingRecs, setLoadingRecs] = useState(false);
   // Filters
   const [yearFilter, setYearFilter] = useState('');
   const [pmFilter, setPmFilter] = useState('');
@@ -187,6 +190,21 @@ export default function PerformanceHubPage() {
       if (state) items = items.filter(i => state === 'overdue' ? (i.status_label === 'overdue' || i.is_overdue) : i.payment_state === state);
       setDrillData({ title: `Invoices - ${state || 'All'}`, data: items, type: 'invoices' });
     } catch { toast.error('Failed'); }
+  };
+
+  const fetchAiRecommendations = async () => {
+    if (!selectedPlan) return;
+    setLoadingRecs(true);
+    try {
+      const res = await aiAssistantAPI.recommendActivities({
+        plan_id: selectedPlan.id,
+        segment_name: segments?.segments?.[0]?.category || '',
+        target_amount: selectedPlan.booking_target || selectedPlan.target_amount || 0,
+        product_manager: selectedPlan.product_manager_name || '',
+      });
+      setAiRecommendations(res.data.recommendations);
+    } catch { toast.error('Failed to get recommendations'); }
+    finally { setLoadingRecs(false); }
   };
 
   if (loading || !myData) return <div className="space-y-4" data-testid="performance-hub-loading"><Skeleton className="h-8 w-64" /><div className="grid grid-cols-5 gap-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20" />)}</div></div>;
@@ -333,9 +351,44 @@ export default function PerformanceHubPage() {
             <Card className="border-[#800000]/20"><CardContent className="p-4 flex items-center justify-between"><div><h3 className="font-semibold">{selectedPlan.name}</h3><p className="text-sm text-gray-500">PD: {selectedPlan.product_manager_name} | Booking: OMR {(selectedPlan.booking_target || selectedPlan.target_amount || 0).toLocaleString()}{selectedPlan.invoiced_target > 0 ? ` | Invoiced: OMR ${selectedPlan.invoiced_target.toLocaleString()}` : ''}{selectedPlan.margin_target > 0 ? ` | Margin: OMR ${selectedPlan.margin_target.toLocaleString()}` : ''}</p></div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowSegmentEditor(true)} className="text-xs"><Layers className="h-3.5 w-3.5 mr-1" /> Segment by Category</Button>
+                <Button variant="outline" onClick={fetchAiRecommendations} disabled={loadingRecs} className="text-xs border-amber-200 text-amber-700 hover:bg-amber-50" data-testid="ai-recommend-btn">
+                  {loadingRecs ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />} AI Suggest Activities
+                </Button>
                 <Button onClick={() => setShowAddItem(true)} className="bg-[#800000] hover:bg-[#9a1919] text-white text-xs"><Plus className="h-4 w-4 mr-1" /> Add Activity</Button>
               </div>
             </CardContent></Card>
+            
+            {/* AI Activity Recommendations */}
+            {aiRecommendations && aiRecommendations.length > 0 && (
+              <Card className="border-2 border-amber-200 bg-amber-50/30" data-testid="ai-recommendations-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2 text-amber-700">
+                    <Sparkles className="h-4 w-4" /> AI-Recommended Activities
+                    <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">{aiRecommendations.length} suggestions</Badge>
+                    <button onClick={() => setAiRecommendations(null)} className="ml-auto text-xs text-gray-400 hover:text-gray-600">Dismiss</button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {aiRecommendations.map((rec, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-2.5 bg-white rounded-lg border border-amber-100">
+                      <div className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase ${rec.priority === 'high' ? 'bg-red-100 text-red-700' : rec.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {rec.priority}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[9px] shrink-0">{rec.type}</Badge>
+                          <p className="text-sm font-medium truncate">{rec.title}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{rec.description}</p>
+                      </div>
+                      <Badge variant="outline" className={`shrink-0 text-[9px] ${rec.impact === 'high' ? 'border-emerald-300 text-emerald-700' : 'border-gray-200 text-gray-500'}`}>
+                        {rec.impact} impact
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
             
             <Card><CardHeader className="pb-2"><CardTitle className="text-base">Activity Plan Items <Badge variant="secondary" className="ml-2">{planItems.length}</Badge>
               {planItems.filter(i => i.assign_team === 'marketing').length > 0 && <Badge variant="outline" className="ml-1 text-[10px] border-blue-200 bg-blue-50 text-blue-700">{planItems.filter(i => i.assign_team === 'marketing').length} Marketing</Badge>}

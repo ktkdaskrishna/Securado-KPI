@@ -139,7 +139,7 @@ async def list_accounts(
             "total": len(result),
             "companies": len(accounts),
             "contacts": len(contacts),
-            "with_overdue": len([r for r in result if r.get("has_overdue")])
+            "with_overdue": len([r for r in result if r.get("has_overdue") and r.get("is_company")])
         }
     }
 
