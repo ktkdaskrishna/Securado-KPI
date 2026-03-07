@@ -325,6 +325,8 @@ async def export_opportunities_excel(
     quarter: Optional[str] = Query(None, description="Filter by quarter"),
     sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
     account: Optional[str] = Query(None, description="Filter by account name"),
+    product_director: Optional[str] = Query(None, description="Filter by product director/manager"),
+    solution_category: Optional[str] = Query(None, description="Filter by solution category"),
     current_user: dict = Depends(get_current_user)
 ):
     """Export opportunities to Excel format (RBAC enforced)"""
@@ -349,13 +351,17 @@ async def export_opportunities_excel(
         query["owner_name"] = sales_rep
     if account:
         query["account_name"] = account
+    if product_director:
+        query["product_manager"] = {"$regex": f"^{product_director}$", "$options": "i"}
+    if solution_category:
+        query["solution_category"] = {"$regex": f"^{solution_category}$", "$options": "i"}
     
     # Get all matching records
     records = await canonical_db.opportunities.find(query).to_list(10000)
     
-    # Apply date filters
+    # Apply date filters — use date_last_stage_update to match dashboard card behavior
     if year or quarter:
-        records = apply_date_filters(records, year=year, quarter=quarter)
+        records = apply_date_filters(records, year=year, quarter=quarter, date_field='date_last_stage_update')
     
     # Merge with overrides
     merged = await merge_with_overrides(records, org_id, app_db)

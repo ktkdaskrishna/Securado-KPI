@@ -47,6 +47,9 @@ export function DashboardPage() {
       if (filters.year) params.append('year', filters.year);
       if (filters.quarter) params.append('quarter', filters.quarter);
       if (filters.salesRep) params.append('sales_rep', filters.salesRep);
+      if (filters.stage) params.append('stage', filters.stage);
+      if (filters.productDirector) params.append('product_director', filters.productDirector);
+      if (filters.solutionCategory) params.append('solution_category', filters.solutionCategory);
       
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/opportunities/export?${params.toString()}`, {

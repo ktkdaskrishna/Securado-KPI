@@ -462,19 +462,36 @@ export default function HybridDashboard() {
   const chartBlocks = blocks.filter(b => !isKpi(b));
 
   const handleExportPDF = async () => {
-    const el = document.querySelector('[data-testid="dashboard-page"]');
-    if (!el) return;
-    toast.info('Generating PDF...');
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#f9fafb' });
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
-      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`${templateName.replace(/\s+/g, '_')}_${year}.pdf`);
-      toast.success('PDF downloaded');
-    } catch (e) { toast.error('PDF export failed'); console.error(e); }
+      toast.info('Generating Excel export...');
+      const token = localStorage.getItem('access_token');
+      const params = new URLSearchParams();
+      if (filters.year) params.set('year', filters.year);
+      if (filters.salesRep) params.set('sales_rep', filters.salesRep);
+      if (filters.productDirector) params.set('product_director', filters.productDirector);
+      if (filters.solutionCategory) params.set('solution_category', filters.solutionCategory);
+      // If there's a stage filter from the active view, pass it
+      if (filters.stage) params.set('stage', filters.stage);
+      if (filters.quarter) params.set('quarter', filters.quarter);
+
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/opportunities/export?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Export failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${templateName.replace(/\s+/g, '_')}_${filters.year || 'all'}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('Excel export downloaded!');
+    } catch (e) {
+      toast.error('Export failed');
+      console.error(e);
+    }
   };
 
   if (loading) return (
@@ -555,8 +572,14 @@ export default function HybridDashboard() {
             </div>
           )}
 
-          {/* Data Health Monitor */}
-          <DataHealthMonitor />
+          {/* System Alerts Section */}
+          <div className="mt-6" data-testid="system-alerts-section">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">System Alerts</h2>
+            </div>
+            <DataHealthMonitor />
+          </div>
         </>
       )}
 
