@@ -14,32 +14,24 @@ Build a comprehensive sales target, incentive, and KPI management system with Od
 - Configurable dashboard system with dashboard builder
 - Resilient incremental Odoo data sync worker
 - Hierarchy-aware RBAC system
-- Microsoft SSO (Azure AD) with multi-source role derivation
+- Microsoft SSO (Azure AD) with multi-source role derivation + canonical DB fallback
 - AI Assistant with voice, file attachments, charts, persistent history, Excel/PDF export
 - Performance Hub v2 with cascading targets + AI activity recommendations
 - Activity creation/management in Opportunities
 - Accounts, Contacts, Opportunities, Invoices/Receivables pages
 - Pure Tailwind CSS (legacy CSS removed)
 
-## Critical Fixes (2026-03-08)
-### P0: Production SSO Authentication - Complete Overhaul
-- **Root cause**: SSO login flow only checked `users_rbac` for role derivation. In production, this collection may be empty/stale, leaving SSO users with zero permissions.
-- **Fix**: Implemented 3-source role derivation cascade:
-  1. `users_rbac` (Odoo RBAC groups)
-  2. `canonical.sales_users` (Odoo sales data)
-  3. Default basic user access (SSO-authenticated = legitimate employee)
-- **RBAC endpoint safety net**: SSO-authenticated users (`auth_provider: "microsoft"`) now always get at least basic user access instead of RESTRICTED
-- **Role persistence**: Both SSO flows (MSAL popup + server redirect) now ALWAYS persist derived roles to the `users` collection in MongoDB
+## Critical Production Fix (2026-03-08) — Canonical DB Authorization
+### Root Cause (discovered via production site analysis)
+The original `database.py` defaulted `CANONICAL_DB_NAME` to `'event_mesh_canonical'` — a SEPARATE database from `event_mesh_app`. The production MongoDB user only has authorization for `event_mesh_app`, NOT `event_mesh_canonical`. This caused:
+1. ALL canonical_db queries (RBAC, dashboard, opportunities) to fail with authorization errors
+2. The incremental sync to fail on every poll
+3. SSO users to get RESTRICTED access (blank sidebar)
 
-### P1: Dashboard Cards Showing 0 for Director
-- **Root cause**: `resolve_hierarchy_filter` didn't grant broad access to `product_director`/`sales_director` roles
-- **Fix**: Added these roles to `broad_access_roles` and fixed admin pattern matching
-
-## Features Added (2026-03-08)
-1. **Activity Management in Opportunities**: Create, toggle complete, view activities per opportunity
-2. **AI Activity Recommendations**: AI-powered activity suggestions in Performance Hub
-3. **Report Export**: Excel/PDF export for Pipeline, Invoices, Performance, Activities via AI Assistant
-4. **Account Alert Fix**: Summary counter now correctly counts only companies (not contacts) with overdue
+### Fix Applied
+1. **database.py**: Changed canonical DB default to use SAME database as app_db (`DB_NAME`). Added startup access test — if canonical DB is unauthorized, automatically falls back to app_db for ALL queries.
+2. **SSO flow** (both MSAL + callback): 3-source role derivation cascade with try/except protection on canonical_db access. Default to basic user access for SSO-authenticated users.
+3. **RBAC endpoint**: Protected canonical_db.sales_users query. SSO users always get at least basic user access.
 
 ## Open Bugs
 1. Activity Logs from Odoo missing (data sync gap - no mail.activity data from Odoo)

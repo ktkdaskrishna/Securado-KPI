@@ -380,12 +380,15 @@ async def microsoft_callback(
         # Also check canonical sales_users as fallback
         canonical_sales_user = None
         if not rbac_user:
-            canonical_sales_user = await canonical_db.sales_users.find_one({
-                "$or": [
-                    {"email": {"$regex": f"^{email}$", "$options": "i"}},
-                    {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
-                ]
-            })
+            try:
+                canonical_sales_user = await canonical_db.sales_users.find_one({
+                    "$or": [
+                        {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                        {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+                    ]
+                })
+            except Exception as e:
+                logger.warning(f"SSO callback: Cannot access canonical_db.sales_users: {str(e)[:100]}")
         
         # Find or create local user
         local_user = await app_db.users.find_one({
@@ -670,12 +673,15 @@ async def _handle_msal_complete(request: Request):
         # Also check canonical sales_users as fallback
         canonical_sales_user = None
         if not rbac_user:
-            canonical_sales_user = await canonical_db.sales_users.find_one({
-                "$or": [
-                    {"email": {"$regex": f"^{email}$", "$options": "i"}},
-                    {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
-                ]
-            })
+            try:
+                canonical_sales_user = await canonical_db.sales_users.find_one({
+                    "$or": [
+                        {"email": {"$regex": f"^{email}$", "$options": "i"}},
+                        {"login": {"$regex": f"^{email.split('@')[0]}$", "$options": "i"}}
+                    ]
+                })
+            except Exception as e:
+                logger.warning(f"SSO MSAL: Cannot access canonical_db.sales_users: {str(e)[:100]}")
             logger.info(f"SSO: No users_rbac record for {email}, canonical_sales_user={'found' if canonical_sales_user else 'not found'}")
         
         # Find or create local user

@@ -68,6 +68,7 @@ async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optio
         {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
         {"_id": 0, "source_record_id": 1, "name": 1}
     )
+    
     if not employee:
         # Try identity map
         identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()})
@@ -490,7 +491,7 @@ async def get_my_dashboard(
                             else:
                                 change_pct = 0
                             rendered["prev_period"] = {"value": prev_val, "change_pct": change_pct, "year": prev_year}
-                        except:
+                        except Exception:
                             pass
                 except Exception as ex:
                     logger.error(f"Card query error for {card.get('name')}: {ex}")

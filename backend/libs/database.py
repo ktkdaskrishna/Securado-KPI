@@ -55,7 +55,21 @@ class DatabaseManager:
                 socketTimeoutMS=10000
             )
             self.app_db = self.client[app_db_name]
-            self.canonical_db = self.client[canonical_db_name]
+            
+            # Test canonical_db access — if it fails (unauthorized), fall back to app_db
+            canonical_candidate = self.client[canonical_db_name]
+            if canonical_db_name != app_db_name:
+                try:
+                    # Use a lightweight query to test actual read access
+                    await canonical_candidate.command('ping')
+                    await canonical_candidate.list_collection_names()
+                    self.canonical_db = canonical_candidate
+                    logger.info(f"Canonical DB '{canonical_db_name}' accessible")
+                except Exception as e:
+                    logger.warning(f"Canonical DB '{canonical_db_name}' not accessible ({str(e)[:100]}). Using app_db '{app_db_name}' as fallback for ALL data.")
+                    self.canonical_db = self.app_db
+            else:
+                self.canonical_db = canonical_candidate
             
             # Test connection with a ping
             await self.client.admin.command('ping')
@@ -63,7 +77,7 @@ class DatabaseManager:
             # Create indexes
             await self._create_indexes()
             
-            logger.info(f"Connected to MongoDB: app={app_db_name}, canonical={canonical_db_name}")
+            logger.info(f"Connected to MongoDB: app={app_db_name}, canonical={'(same as app)' if self.canonical_db == self.app_db else canonical_db_name}")
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             # Don't raise - allow app to start even if DB is temporarily unavailable
@@ -162,22 +176,25 @@ class DatabaseManager:
         await self.app_db.notes.create_index("account_id")
         await self.app_db.notes.create_index("created_at")
         
-        # Canonical DB indexes
-        await self.canonical_db.opportunities.create_index("canonical_id", unique=True)
-        await self.canonical_db.opportunities.create_index("org_id")
-        await self.canonical_db.opportunities.create_index("source_system")
-        await self.canonical_db.opportunities.create_index("source_record_id")
-        await self.canonical_db.opportunities.create_index("stage")
-        
-        await self.canonical_db.accounts.create_index("canonical_id", unique=True)
-        await self.canonical_db.accounts.create_index("org_id")
-        await self.canonical_db.accounts.create_index("source_system")
-        
-        await self.canonical_db.contacts.create_index("canonical_id", unique=True)
-        await self.canonical_db.contacts.create_index("org_id")
-        
-        await self.canonical_db.users.create_index("canonical_id", unique=True)
-        await self.canonical_db.users.create_index("org_id")
+        # Canonical DB indexes (may fail if canonical_db == app_db or unauthorized)
+        try:
+            await self.canonical_db.opportunities.create_index("canonical_id", unique=True)
+            await self.canonical_db.opportunities.create_index("org_id")
+            await self.canonical_db.opportunities.create_index("source_system")
+            await self.canonical_db.opportunities.create_index("source_record_id")
+            await self.canonical_db.opportunities.create_index("stage")
+            
+            await self.canonical_db.accounts.create_index("canonical_id", unique=True)
+            await self.canonical_db.accounts.create_index("org_id")
+            await self.canonical_db.accounts.create_index("source_system")
+            
+            await self.canonical_db.contacts.create_index("canonical_id", unique=True)
+            await self.canonical_db.contacts.create_index("org_id")
+            
+            await self.canonical_db.users.create_index("canonical_id", unique=True)
+            await self.canonical_db.users.create_index("org_id")
+        except Exception as e:
+            logger.warning(f"Could not create canonical DB indexes: {str(e)[:80]}")
         
         # Target Management indexes
         await self.app_db.sales_targets.create_index("id", unique=True)

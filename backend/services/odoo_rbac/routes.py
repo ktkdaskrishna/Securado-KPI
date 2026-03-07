@@ -494,8 +494,12 @@ async def get_current_user_rbac(
     email = current_user.get("email")
     logger.info(f"Looking up RBAC for user: {email}, org_id: {org_id}")
     
-    # First check canonical sales_users
-    user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
+    # First check canonical sales_users (may fail if canonical DB is not accessible)
+    user = None
+    try:
+        user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
+    except Exception as e:
+        logger.warning(f"Cannot access canonical_db.sales_users: {str(e)[:100]}. Falling back to app_db.")
     
     # If not in canonical, check users_rbac for Odoo group info
     users_rbac_record = None
