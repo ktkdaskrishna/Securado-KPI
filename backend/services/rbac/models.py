@@ -25,14 +25,9 @@ ALL_PERMISSIONS = [
     "run_pipelines",
     "delete_pipelines",
     
-    # ETL - Runs
+    # Runs
     "view_runs",
     "cancel_runs",
-    
-    # ETL - DLQ
-    "view_dlq",
-    "manage_dlq",
-    "retry_dlq",
     
     # CRM - Opportunities
     "view_opportunities",
@@ -54,22 +49,14 @@ ALL_PERMISSIONS = [
     # CRM - Goals
     "view_goals",
     "manage_goals",
-    "delete_goals",
     
     # CRM - Teams
     "view_teams",
     "manage_teams",
-    "delete_teams",
-    
-    # CRM - Portfolios
-    "view_portfolios",
-    "manage_portfolios",
-    "delete_portfolios",
     
     # CRM - KPIs
     "view_kpis",
     "manage_kpis",
-    "delete_kpis",
     
     # Admin - Users
     "view_users",
@@ -85,7 +72,6 @@ ALL_PERMISSIONS = [
     # Admin - Departments
     "view_departments",
     "manage_departments",
-    "delete_departments",
     
     # Admin - Config
     "view_config",
@@ -93,6 +79,42 @@ ALL_PERMISSIONS = [
     
     # Admin - Audit
     "view_audit_logs",
+    
+    # CRM - Leads
+    "view_leads",
+    "manage_leads",
+    
+    # CRM - Invoices
+    "view_invoices",
+    "manage_invoices",
+    
+    # AI Analytics
+    "view_analytics",
+    
+    # Dashboard Builder
+    "manage_dashboard_builder",
+    "manage_templates",
+    "manage_cards",
+    
+    # Performance Hub & Targets
+    "view_performance",
+    "manage_targets",
+    "manage_incentives",
+    
+    # Organization
+    "view_org_structure",
+    
+    # Integrations & Sync
+    "view_integrations",
+    "manage_sync",
+    
+    # Settings
+    "view_settings",
+    "manage_sso",
+    
+    # RBAC Management
+    "view_rbac",
+    "manage_rbac",
     
     # Super admin
     "admin:*"
@@ -125,11 +147,6 @@ DEFAULT_PERMISSIONS = [
     {"name": "view_runs", "resource": "runs", "action": "view", "description": "View run history"},
     {"name": "cancel_runs", "resource": "runs", "action": "cancel", "description": "Cancel running pipelines"},
     
-    # DLQ
-    {"name": "view_dlq", "resource": "dlq", "action": "view", "description": "View dead letter queue"},
-    {"name": "manage_dlq", "resource": "dlq", "action": "manage", "description": "Manage DLQ items"},
-    {"name": "retry_dlq", "resource": "dlq", "action": "retry", "description": "Retry DLQ items"},
-    
     # Opportunities
     {"name": "view_opportunities", "resource": "opportunities", "action": "view", "description": "View opportunities"},
     {"name": "manage_opportunities", "resource": "opportunities", "action": "manage", "description": "Edit opportunities"},
@@ -150,22 +167,14 @@ DEFAULT_PERMISSIONS = [
     # Goals
     {"name": "view_goals", "resource": "goals", "action": "view", "description": "View goals"},
     {"name": "manage_goals", "resource": "goals", "action": "manage", "description": "Create/edit goals"},
-    {"name": "delete_goals", "resource": "goals", "action": "delete", "description": "Delete goals"},
     
     # Teams
     {"name": "view_teams", "resource": "teams", "action": "view", "description": "View teams"},
     {"name": "manage_teams", "resource": "teams", "action": "manage", "description": "Create/edit teams"},
-    {"name": "delete_teams", "resource": "teams", "action": "delete", "description": "Delete teams"},
-    
-    # Portfolios
-    {"name": "view_portfolios", "resource": "portfolios", "action": "view", "description": "View portfolios"},
-    {"name": "manage_portfolios", "resource": "portfolios", "action": "manage", "description": "Create/edit portfolios"},
-    {"name": "delete_portfolios", "resource": "portfolios", "action": "delete", "description": "Delete portfolios"},
     
     # KPIs
     {"name": "view_kpis", "resource": "kpis", "action": "view", "description": "View KPIs"},
     {"name": "manage_kpis", "resource": "kpis", "action": "manage", "description": "Create/edit KPIs"},
-    {"name": "delete_kpis", "resource": "kpis", "action": "delete", "description": "Delete KPIs"},
     
     # Users
     {"name": "view_users", "resource": "users", "action": "view", "description": "View users"},
@@ -180,8 +189,7 @@ DEFAULT_PERMISSIONS = [
     
     # Departments
     {"name": "view_departments", "resource": "departments", "action": "view", "description": "View departments"},
-    {"name": "manage_departments", "resource": "departments", "action": "manage", "description": "Create/edit departments"},
-    {"name": "delete_departments", "resource": "departments", "action": "delete", "description": "Delete departments"},
+    {"name": "manage_departments", "resource": "departments", "action": "manage", "description": "Manage departments"},
     
     # Config
     {"name": "view_config", "resource": "config", "action": "view", "description": "View system config"},
@@ -189,6 +197,42 @@ DEFAULT_PERMISSIONS = [
     
     # Audit
     {"name": "view_audit_logs", "resource": "audit", "action": "view", "description": "View audit logs"},
+    
+    # Leads
+    {"name": "view_leads", "resource": "leads", "action": "view", "description": "View leads"},
+    {"name": "manage_leads", "resource": "leads", "action": "manage", "description": "Create/edit leads"},
+    
+    # Invoices
+    {"name": "view_invoices", "resource": "invoices", "action": "view", "description": "View invoices"},
+    {"name": "manage_invoices", "resource": "invoices", "action": "manage", "description": "Manage invoices"},
+    
+    # AI Analytics
+    {"name": "view_analytics", "resource": "analytics", "action": "view", "description": "View AI analytics"},
+    
+    # Dashboard Builder
+    {"name": "manage_dashboard_builder", "resource": "dashboard_builder", "action": "manage", "description": "Access dashboard builder"},
+    {"name": "manage_templates", "resource": "dashboard_builder", "action": "manage_templates", "description": "Create/edit dashboard templates"},
+    {"name": "manage_cards", "resource": "dashboard_builder", "action": "manage_cards", "description": "Create/edit dashboard cards"},
+    
+    # Performance Hub & Targets
+    {"name": "view_performance", "resource": "performance", "action": "view", "description": "View Performance Hub"},
+    {"name": "manage_targets", "resource": "performance", "action": "manage_targets", "description": "Create/edit sales targets"},
+    {"name": "manage_incentives", "resource": "performance", "action": "manage_incentives", "description": "Manage incentive plans"},
+    
+    # Organization
+    {"name": "view_org_structure", "resource": "organization", "action": "view", "description": "View org structure"},
+    
+    # Integrations & Sync
+    {"name": "view_integrations", "resource": "integrations", "action": "view", "description": "View integrations/sync status"},
+    {"name": "manage_sync", "resource": "integrations", "action": "manage", "description": "Control data sync"},
+    
+    # Settings
+    {"name": "view_settings", "resource": "settings", "action": "view", "description": "View system settings"},
+    {"name": "manage_sso", "resource": "settings", "action": "manage_sso", "description": "Configure Microsoft SSO"},
+    
+    # RBAC Management
+    {"name": "view_rbac", "resource": "rbac", "action": "view", "description": "View RBAC configuration"},
+    {"name": "manage_rbac", "resource": "rbac", "action": "manage", "description": "Manage RBAC rules/overrides"},
 ]
 
 

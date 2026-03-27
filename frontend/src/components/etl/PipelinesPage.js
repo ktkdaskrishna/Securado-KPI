@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { 
-  Plus, GitMerge, Trash2, Play, RefreshCw, Workflow, Clock, CheckCircle, XCircle,
+  Plus, GitMerge, Trash2, Play, RefreshCw, Workflow, Clock, CheckCircle, XCircle, Pencil,
   Calendar, Webhook, Settings, Copy, Eye, Pause, AlertTriangle, Database, ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ export function PipelinesPage() {
   const [mappings, setMappings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPipelineId, setEditingPipelineId] = useState(null);
   const [runningId, setRunningId] = useState(null);
   const [selectedMappings, setSelectedMappings] = useState([]);
   const [activeTab, setActiveTab] = useState('basic');
@@ -104,18 +105,22 @@ export function PipelinesPage() {
       const pipelineData = {
         ...formData,
         mapping_ids: selectedMappings,
-        // For backward compatibility, also set mapping_id to first selection
         mapping_id: selectedMappings[0],
         cron_expression: SCHEDULE_OPTIONS.find(s => s.value === formData.schedule)?.cron,
       };
       
-      await etlAPI.createPipeline(pipelineData);
-      toast.success('Pipeline created');
+      if (editingPipelineId) {
+        await etlAPI.updatePipeline(editingPipelineId, pipelineData);
+        toast.success('Pipeline updated');
+      } else {
+        await etlAPI.createPipeline(pipelineData);
+        toast.success('Pipeline created');
+      }
       setDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create pipeline');
+      toast.error(error.response?.data?.detail || 'Failed to save pipeline');
     }
   };
 
@@ -129,11 +134,10 @@ export function PipelinesPage() {
       description: '',
       schedule: 'manual',
       schedule_enabled: false,
-      webhook_enabled: false,
-      webhook_secret: '',
     });
     setSelectedMappings([]);
     setActiveTab('basic');
+    setEditingPipelineId(null);
   };
 
   const handleRun = async (id) => {
@@ -160,10 +164,21 @@ export function PipelinesPage() {
     }
   };
 
-  const copyWebhookUrl = (pipelineId) => {
-    const url = `${window.location.origin}/api/webhooks/pipeline/${pipelineId}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Webhook URL copied to clipboard');
+  const handleEditPipeline = (pipeline) => {
+    // Pre-fill the form with pipeline data
+    setFormData({
+      name: pipeline.name || '',
+      description: pipeline.description || '',
+      connection_id: pipeline.connection_id || '',
+      schedule_type: pipeline.schedule_type || 'manual',
+      interval_minutes: pipeline.interval_minutes || 60,
+      cron_expression: pipeline.cron_expression || '',
+      sync_mode: pipeline.sync_mode || 'full',
+      incremental_field: pipeline.incremental_field || 'write_date',
+    });
+    setSelectedMappings(pipeline.mappings || (pipeline.mapping_id ? [pipeline.mapping_id] : []));
+    setEditingPipelineId(pipeline.id);
+    setDialogOpen(true);
   };
 
   // Filter mappings by selected connection
@@ -204,7 +219,7 @@ export function PipelinesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>Create Pipeline</DialogTitle>
+              <DialogTitle>{editingPipelineId ? 'Edit Pipeline' : 'Create Pipeline'}</DialogTitle>
               <DialogDescription>
                 Configure a pipeline to sync data from your connections
               </DialogDescription>
@@ -622,6 +637,14 @@ export function PipelinesPage() {
                   <div className="flex items-center gap-2 pt-2 border-t">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleEditPipeline(pipeline)}
+                      title="Edit Pipeline"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={() => handleRun(pipeline.id)}
                       disabled={runningId === pipeline.id || pipeline.status === 'running'}
                       className="flex-1 bg-primary hover:bg-primary/90"
@@ -633,16 +656,6 @@ export function PipelinesPage() {
                       )}
                       Run Now
                     </Button>
-                    {pipeline.webhook_enabled && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyWebhookUrl(pipeline.id)}
-                        title="Copy Webhook URL"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    )}
                     <Button
                       variant="ghost"
                       size="icon"

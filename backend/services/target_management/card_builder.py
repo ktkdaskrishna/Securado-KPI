@@ -1,0 +1,1191 @@
+"""Dashboard Card Builder - Configurable dashboard cards with query engine.
+
+Each card is a saved query configuration:
+- collection: which data source
+- aggregation: count, sum, avg
+- field: which field to aggregate
+- filters: MongoDB-style filters
+- display: card type (number, chart, table, progress)
+- group_by: optional grouping
+
+Templates group cards into layouts assignable to roles.
+RBAC: Queries are scoped by org hierarchy - users see only their data,
+managers see their team's data, directors see entire reporting chain.
+"""
+from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional, List
+from pydantic import BaseModel
+import logging
+import re
+
+from libs.database import get_app_db, get_canonical_db
+from libs.utils import serialize_doc, generate_id, now_utc
+from libs.redis_pipeline import execute_query, invalidate_dashboard_cache
+from services.identity.routes import get_current_user
+
+logger = logging.getLogger(__name__)
+card_builder_router = APIRouter(prefix="/card-builder", tags=["card-builder"])
+
+
+async def resolve_hierarchy_filter(current_user: dict, collection: str) -> Optional[dict]:
+    """Resolve RBAC filter based on org hierarchy.
+    
+    - Admin/CEO: no filter (sees all)
+    - Manager/Director: sees own + entire subordinate chain's data
+    - User: sees only own data
+    
+    Uses the employee hierarchy (manager_id) from Odoo to walk the tree.
+    """
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    user_email = current_user.get("email", "")
+    
+    if not user_email:
+        return None
+    
+    # Check if user is admin or director (broad access roles)
+    user = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+    user_roles = user.get("roles", []) if user else []
+    broad_access_roles = ["admin", "system_admin", "sales_admin", "product_director", "sales_director"]
+    if any(r in user_roles for r in broad_access_roles):
+        return None  # Admin/Director sees all
+    
+    # Check RBAC groups for admin/director-level access
+    rbac_user = await app_db.users_rbac.find_one({
+        "$or": [
+            {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
+            {"login": {"$regex": f"^{user_email}$", "$options": "i"}}
+        ]
+    })
+    if rbac_user:
+        group_names = rbac_user.get("odoo_group_names", [])
+        admin_patterns = ["administration / settings", "sales / administrator", "all documents", "crm / sales director"]
+        if any(p in g.lower() for g in group_names for p in admin_patterns):
+            return None  # Admin/Director sees all
+    
+    # Find employee by email
+    employee = await canonical_db.employees.find_one(
+        {"email": {"$regex": f"^{user_email}$", "$options": "i"}},
+        {"_id": 0, "source_record_id": 1, "name": 1}
+    )
+    
+    if not employee:
+        # Try identity map
+        identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()})
+        if identity:
+            emp_name = identity.get("canonical_name", "")
+            if emp_name:
+                employee = await canonical_db.employees.find_one(
+                    {"name": {"$regex": f"^{re.escape(emp_name)}$", "$options": "i"}},
+                    {"_id": 0, "source_record_id": 1, "name": 1}
+                )
+    
+    if not employee:
+        return None  # Can't determine hierarchy, allow access
+    
+    emp_id = str(employee.get("source_record_id", ""))
+    emp_name = employee.get("name", "")
+    
+    # Walk the tree: find ALL subordinates recursively
+    all_employees = await canonical_db.employees.find(
+        {"active": True},
+        {"_id": 0, "source_record_id": 1, "name": 1, "manager_id": 1, "email": 1}
+    ).to_list(500)
+    
+    # Build parent→children map
+    children_map = {}
+    for e in all_employees:
+        mgr = str(e.get("manager_id", ""))
+        if mgr:
+            children_map.setdefault(mgr, []).append(e)
+    
+    # Check if this user has any subordinates
+    def collect_subordinate_names(manager_id):
+        names = []
+        for child in children_map.get(manager_id, []):
+            child_name = child.get("name", "")
+            if child_name:
+                names.append(child_name)
+            child_id = str(child.get("source_record_id", ""))
+            if child_id:
+                names.extend(collect_subordinate_names(child_id))
+        return names
+    
+    subordinate_names = collect_subordinate_names(emp_id)
+    
+    # Also get identity map name variants for the user
+    all_user_names = [emp_name]
+    identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()})
+    if identity:
+        all_user_names = list(set([emp_name] + identity.get("all_names", [])))
+    
+    # Combine: user's names + all subordinate names
+    all_visible_names = list(set(all_user_names + subordinate_names))
+    
+    if not subordinate_names:
+        # Pure user - sees only own data
+        name_pattern = "|".join([f"^{re.escape(n)}$" for n in all_user_names])
+        logger.info(f"RBAC scope: {emp_name} is USER - sees own data only ({len(all_user_names)} name variants)")
+    else:
+        name_pattern = "|".join([f"^{re.escape(n)}$" for n in all_visible_names])
+        logger.info(f"RBAC scope: {emp_name} is MANAGER - sees {len(subordinate_names)} subordinates + own data")
+    
+    # Apply filter based on collection type
+    if collection in ["opportunities", "leads"]:
+        return {"$or": [
+            {"owner_name": {"$regex": name_pattern, "$options": "i"}},
+            {"product_manager": {"$regex": name_pattern, "$options": "i"}}
+        ]}
+    elif collection == "activities":
+        return {"$or": [
+            {"assigned_user": {"$regex": name_pattern, "$options": "i"}},
+            {"owner_name": {"$regex": name_pattern, "$options": "i"}}
+        ]}
+    elif collection == "invoices":
+        # For invoices, filter by invoice_user_id (salesperson) matching visible names
+        return {"invoice_user_id": {"$regex": name_pattern, "$options": "i"}}
+    elif collection == "accounts":
+        return None  # Accounts are shared, no ownership filter
+    elif collection == "employees":
+        return None  # Employees visible to all
+    else:
+        return {"owner_name": {"$regex": name_pattern, "$options": "i"}}
+
+
+class CardConfig(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    collection: str = "opportunities"
+    aggregation: str = "count"  # count, sum, avg, list
+    field: Optional[str] = None  # field to aggregate
+    filters: Optional[dict] = {}
+    group_by: Optional[str] = None
+    display_type: str = "number"  # number, chart, table, progress, pie
+    color: Optional[str] = "#800000"
+    icon: Optional[str] = "Target"
+    size: str = "small"  # small (1x1), medium (2x1), large (2x2)
+    year_filter: bool = True  # apply year filter
+    date_filter_field: Optional[str] = None  # which date field to use for year filtering
+    sort_by: Optional[str] = None  # field to sort grouped data by (count, total, avg)
+    sort_order: str = "desc"  # desc or asc
+    cache_ttl: int = 60
+
+
+class TemplateConfig(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    cards: List[str] = []  # card IDs in order
+    layout: Optional[str] = "grid"  # grid, list
+    assigned_roles: List[str] = []  # role IDs
+    is_default: bool = False
+
+
+# ==================== CARDS ====================
+
+@card_builder_router.get("/cards")
+async def list_cards(current_user: dict = Depends(get_current_user)):
+    """List all dashboard cards"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    cards = await app_db.dashboard_cards.find({"org_id": org_id}).sort("created_at", -1).to_list(200)
+    return serialize_doc(cards)
+
+
+@card_builder_router.get("/cards/{card_id}")
+async def get_card(card_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a single card config"""
+    app_db = get_app_db()
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return serialize_doc(card)
+
+
+@card_builder_router.post("/cards")
+async def create_card(data: CardConfig, current_user: dict = Depends(get_current_user)):
+    """Create a new dashboard card"""
+    app_db = get_app_db()
+    doc = {
+        "id": generate_id(),
+        "org_id": current_user.get("org_id", "default"),
+        "created_by": current_user.get("name", ""),
+        "created_at": now_utc(),
+        **data.model_dump()
+    }
+    await app_db.dashboard_cards.insert_one(doc)
+    return serialize_doc(doc)
+
+
+@card_builder_router.put("/cards/{card_id}")
+async def update_card(card_id: str, data: CardConfig, current_user: dict = Depends(get_current_user)):
+    """Update a dashboard card"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_cards.update_one(
+        {"id": card_id},
+        {"$set": {**data.model_dump(), "updated_at": now_utc()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Card not found")
+    await invalidate_dashboard_cache()
+    return {"success": True}
+
+
+@card_builder_router.delete("/cards/{card_id}")
+async def delete_card(card_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a dashboard card"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_cards.delete_one({"id": card_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return {"success": True}
+
+
+@card_builder_router.post("/cards/{card_id}/execute")
+async def execute_card(
+    card_id: str,
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Execute a card's query and return data (RBAC-scoped)"""
+    app_db = get_app_db()
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    collection = card.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    
+    query_config = {
+        "collection": collection,
+        "aggregation": card.get("aggregation", "count"),
+        "field": card.get("field"),
+        "filters": card.get("filters", {}),
+        "group_by": card.get("group_by"),
+        "year": year if card.get("year_filter") else None,
+        "cache_ttl": card.get("cache_ttl", 60),
+        "sort_by": card.get("sort_by"),
+        "sort_order": card.get("sort_order", "desc"),
+    }
+    if rbac_filter:
+        query_config["rbac_filter"] = rbac_filter
+    
+    result = await execute_query(query_config)
+    return {"card_id": card_id, "card_name": card.get("name"), "display_type": card.get("display_type"), **result}
+
+
+@card_builder_router.post("/cards/{card_id}/drill-down")
+async def drill_down_card(
+    card_id: str,
+    year: Optional[str] = None,
+    group_value: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the actual records behind a card's aggregated value (RBAC-scoped).
+    If group_value is provided, filters to that specific group segment."""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    
+    card = await app_db.dashboard_cards.find_one({"id": card_id})
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    collection = card.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    
+    # Build query matching the card's filters — collection-aware base
+    filters = dict(card.get("filters", {}))
+    if collection in ("opportunities", "leads"):
+        query = {"deleted": {"$ne": True}, "active": True}
+    elif collection == "invoices":
+        query = {}
+    else:
+        query = {"deleted": {"$ne": True}}
+    query.update(filters)
+    
+    # Apply RBAC
+    if rbac_filter:
+        for k, v in rbac_filter.items():
+            if k == "$or":
+                query.setdefault("$and", []).append({"$or": v})
+            else:
+                query[k] = v
+    
+    # Year filter
+    if year and card.get("year_filter", True):
+        stage_val = filters.get("stage", "")
+        if stage_val in ["Won", "Lost"]:
+            query["date_last_stage_update"] = {"$regex": f"^{year}"}
+        else:
+            query["create_date"] = {"$regex": f"^{year}"}
+    
+    # Group drill-down: filter to specific group value
+    if group_value and card.get("group_by"):
+        query[card["group_by"]] = group_value
+    
+    # Determine DB
+    db = canonical_db
+    if collection in ["target_plans", "target_plan_items", "users", "roles"]:
+        db = app_db
+    
+    # Define display fields per collection
+    field_configs = {
+        "opportunities": {"fields": {"_id": 0, "name": 1, "owner_name": 1, "stage": 1, "sale_value": 1, "product_manager": 1, "account_name": 1, "create_date": 1, "probability": 1, "solution_category": 1, "presales_engineer": 1, "presales_contribution": 1, "lead_source": 1, "campaign_name": 1}},
+        "accounts": {"fields": {"_id": 0, "name": 1, "city": 1, "country": 1, "phone": 1, "email": 1, "is_company": 1}},
+        "invoices": {"fields": {"_id": 0, "invoice_number": 1, "partner_name": 1, "amount_total": 1, "payment_state": 1, "invoice_date": 1, "salesperson_name": 1}},
+        "activities": {"fields": {"_id": 0, "summary": 1, "activity_type": 1, "assigned_user": 1, "date_deadline": 1, "state": 1, "opportunity_name": 1}},
+        "employees": {"fields": {"_id": 0, "name": 1, "job_title": 1, "department_name": 1, "email": 1}},
+    }
+    config = field_configs.get(collection, {"fields": {"_id": 0}})
+    
+    total = await db[collection].count_documents(query)
+    records = await db[collection].find(query, config["fields"]).sort("create_date", -1).skip(skip).limit(limit).to_list(limit)
+    
+    return {
+        "card_id": card_id,
+        "card_name": card.get("name"),
+        "collection": collection,
+        "group_value": group_value,
+        "total": total,
+        "records": serialize_doc(records),
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@card_builder_router.post("/execute-query")
+async def execute_adhoc_query(
+    query_config: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Execute an ad-hoc query (for preview/testing, RBAC-scoped)"""
+    collection = query_config.get("collection", "opportunities")
+    rbac_filter = await resolve_hierarchy_filter(current_user, collection)
+    if rbac_filter:
+        query_config["rbac_filter"] = rbac_filter
+    result = await execute_query(query_config)
+    return result
+
+
+@card_builder_router.get("/my-dashboard")
+async def get_my_dashboard(
+    year: Optional[str] = None,
+    salesperson: Optional[str] = None,
+    product_director: Optional[str] = None,
+    solution_category: Optional[str] = None,
+    stage: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the dashboard template assigned to the current user's role, render all blocks.
+    Supports global filters that apply across all cards."""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Build global filter from query params
+    global_filter = {}
+    if salesperson:
+        global_filter["owner_name"] = {"$regex": f"^{re.escape(salesperson)}$", "$options": "i"}
+    if product_director:
+        global_filter["product_manager"] = {"$regex": f"^{re.escape(product_director)}$", "$options": "i"}
+    if solution_category:
+        global_filter["solution_category"] = solution_category
+    if stage:
+        global_filter["stage"] = stage
+    
+    # Get user's roles
+    user = await app_db.users.find_one({"email": {"$regex": f"^{current_user.get('email', '')}$", "$options": "i"}})
+    user_roles = user.get("roles", []) if user else []
+    
+    # Sort roles: specific roles first, generic ('user') last for better template matching
+    role_priority = {"admin": 0, "system_admin": 0, "sales_admin": 1, "sales_director": 2, "product_director": 3, "product_manager": 3, "finance": 4, "marketing": 5, "sales_rep": 6, "user": 99}
+    sorted_roles = sorted(user_roles, key=lambda r: role_priority.get(r, 50))
+    
+    # Find template assigned to user's role (or default)
+    template = None
+    for role in sorted_roles:
+        t = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "assigned_roles": role})
+        if t:
+            template = t
+            break
+    
+    if not template:
+        template = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "is_default": True})
+    
+    if not template:
+        return {"template": None, "blocks": []}
+    
+    # Get layout blocks - auto-generate from cards list if blocks are empty
+    blocks = template.get("blocks", [])
+    if not blocks and template.get("cards"):
+        card_ids = template["cards"]
+        col = 0
+        row = 0
+        for card_id in card_ids:
+            card = await app_db.dashboard_cards.find_one({"id": card_id})
+            if not card:
+                continue
+            is_chart = card.get("display_type") in ("chart", "pie", "leaderboard", "progress")
+            w = 6 if is_chart else 3
+            h = 3 if is_chart else 1
+            if col + w > 12:
+                col = 0
+                row += max(1, h)
+            blocks.append({
+                "i": card_id, "x": col, "y": row, "w": w, "h": h,
+                "type": "query_card", "card_id": card_id
+            })
+            col += w
+            if col >= 12:
+                col = 0
+                row += h
+        # Persist generated blocks
+        await app_db.dashboard_templates_v2.update_one(
+            {"id": template["id"]}, {"$set": {"blocks": blocks}}
+        )
+    
+    # Resolve RBAC hierarchy filter for this user (once, shared across all cards)
+    # This caches per-collection filters to avoid repeated hierarchy walks
+    rbac_filters_cache = {}
+    
+    # Execute query cards
+    rendered_blocks = []
+    for block in blocks:
+        rendered = {k: v for k, v in block.items() if k != "_id"}
+        if block.get("type") == "query_card" and block.get("card_id"):
+            card = await app_db.dashboard_cards.find_one({"id": block["card_id"]})
+            if card:
+                rendered["card"] = serialize_doc(card)
+                try:
+                    group_by = card.get("group_by")
+                    if card.get("display_type") == "win_rate" and not group_by:
+                        group_by = "stage"
+                    
+                    collection = card.get("collection", "opportunities")
+                    
+                    # Get RBAC filter for this collection (cached)
+                    if collection not in rbac_filters_cache:
+                        rbac_filters_cache[collection] = await resolve_hierarchy_filter(current_user, collection)
+                    rbac_filter = rbac_filters_cache[collection]
+                    
+                    query_config = {
+                        "collection": collection,
+                        "aggregation": card.get("aggregation", "count"),
+                        "field": card.get("field"),
+                        "filters": {**card.get("filters", {}), **({k: v for k, v in global_filter.items()} if collection == "opportunities" else {})},
+                        "group_by": group_by,
+                        "year": year if card.get("year_filter") else None,
+                        "cache_ttl": card.get("cache_ttl", 60),
+                        "sort_by": card.get("sort_by"),
+                        "sort_order": card.get("sort_order", "desc"),
+                    }
+                    if rbac_filter:
+                        query_config["rbac_filter"] = rbac_filter
+                    
+                    rendered["data"] = await execute_query(query_config)
+                    
+                    # For win_rate cards, compute the percentage from grouped data
+                    if card.get("display_type") == "win_rate" and rendered["data"].get("groups"):
+                        groups = rendered["data"]["groups"]
+                        won = sum(g["count"] for g in groups if g.get("label", "").lower() == "won")
+                        lost = sum(g["count"] for g in groups if g.get("label", "").lower() == "lost")
+                        closed = won + lost
+                        win_pct = round(won / closed * 100, 1) if closed > 0 else 0
+                        rendered["data"]["value"] = win_pct
+                        rendered["data"]["won_count"] = won
+                        rendered["data"]["lost_count"] = lost
+                        rendered["data"]["closed_count"] = closed
+                    
+                    # Compare with previous period for KPI cards
+                    if card.get("display_type") in ("number", "win_rate") and year and card.get("year_filter"):
+                        try:
+                            prev_year = str(int(year) - 1)
+                            prev_config = {**query_config, "year": prev_year, "cache_ttl": 300}
+                            prev_data = await execute_query(prev_config)
+                            current_val = rendered["data"].get("value", 0)
+                            prev_val = prev_data.get("value", 0)
+                            if prev_val and prev_val > 0:
+                                change_pct = round(((current_val - prev_val) / prev_val) * 100, 1)
+                            elif current_val > 0:
+                                change_pct = 100.0
+                            else:
+                                change_pct = 0
+                            rendered["prev_period"] = {"value": prev_val, "change_pct": change_pct, "year": prev_year}
+                        except Exception:
+                            pass
+                except Exception as ex:
+                    logger.error(f"Card query error for {card.get('name')}: {ex}")
+                    rendered["data"] = {"error": True}
+        rendered_blocks.append(rendered)
+    
+    return {
+        "template": serialize_doc(template),
+        "blocks": rendered_blocks
+    }
+
+
+
+@card_builder_router.get("/filter-options")
+async def get_filter_options(current_user: dict = Depends(get_current_user)):
+    """Get distinct values for global dashboard filters"""
+    canonical_db = get_canonical_db()
+    salespersons = await canonical_db.opportunities.distinct("owner_name", {"active": True, "owner_name": {"$ne": None}})
+    pds = await canonical_db.opportunities.distinct("product_manager", {"active": True, "product_manager": {"$ne": None}})
+    categories = await canonical_db.opportunities.distinct("solution_category", {"active": True, "solution_category": {"$ne": None}})
+    return {
+        "salespersons": sorted([s for s in salespersons if s]),
+        "product_directors": sorted([p for p in pds if p]),
+        "solution_categories": sorted([c for c in categories if c])
+    }
+
+
+@card_builder_router.post("/templates/{template_id}/layout")
+async def save_template_layout(
+    template_id: str,
+    layout: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Save the layout (block positions + types) for a template"""
+    app_db = get_app_db()
+    blocks = layout.get("blocks", [])
+    card_ids = [b["card_id"] for b in blocks if b.get("card_id")]
+    result = await app_db.dashboard_templates_v2.update_one(
+        {"id": template_id},
+        {"$set": {"blocks": blocks, "cards": card_ids, "updated_at": now_utc()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+@card_builder_router.get("/available-roles")
+async def list_available_roles(current_user: dict = Depends(get_current_user)):
+    """List all available roles for template assignment"""
+    app_db = get_app_db()
+    
+    # Default CRM roles always available
+    default_roles = [
+        {"id": "admin", "name": "Admin"},
+        {"id": "sales_admin", "name": "Sales Admin"},
+        {"id": "sales_director", "name": "Sales Director"},
+        {"id": "product_director", "name": "Product Director"},
+        {"id": "sales_rep", "name": "Sales Representative"},
+        {"id": "marketing", "name": "Marketing"},
+        {"id": "user", "name": "User"},
+    ]
+    default_ids = {r["id"] for r in default_roles}
+    
+    # Add any custom roles from the database
+    db_roles = await app_db.roles.find({}, {"_id": 0}).to_list(100)
+    for r in db_roles:
+        rid = r.get("id") or r.get("name", "").lower().replace(" ", "_")
+        if rid not in default_ids:
+            default_roles.append({"id": rid, "name": r.get("name", rid)})
+    
+    return default_roles
+
+
+
+
+# ==================== TEMPLATES ====================
+
+@card_builder_router.get("/templates")
+async def list_templates(current_user: dict = Depends(get_current_user)):
+    """List all dashboard templates"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    templates = await app_db.dashboard_templates_v2.find({"org_id": org_id}).sort("created_at", -1).to_list(50)
+    return serialize_doc(templates)
+
+
+@card_builder_router.post("/templates")
+async def create_template(data: TemplateConfig, current_user: dict = Depends(get_current_user)):
+    """Create a dashboard template"""
+    app_db = get_app_db()
+    doc = {
+        "id": generate_id(),
+        "org_id": current_user.get("org_id", "default"),
+        "created_by": current_user.get("name", ""),
+        "created_at": now_utc(),
+        **data.model_dump()
+    }
+    await app_db.dashboard_templates_v2.insert_one(doc)
+    return serialize_doc(doc)
+
+
+@card_builder_router.put("/templates/{template_id}")
+async def update_template(template_id: str, data: TemplateConfig, current_user: dict = Depends(get_current_user)):
+    """Update a template metadata (name, description, roles). Does NOT overwrite cards/blocks."""
+    app_db = get_app_db()
+    # Only update metadata fields, never overwrite cards/blocks from this endpoint
+    update_fields = {
+        "name": data.name,
+        "description": data.description,
+        "assigned_roles": data.assigned_roles,
+        "is_default": data.is_default,
+        "updated_at": now_utc()
+    }
+    result = await app_db.dashboard_templates_v2.update_one(
+        {"id": template_id},
+        {"$set": update_fields}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+@card_builder_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a template"""
+    app_db = get_app_db()
+    result = await app_db.dashboard_templates_v2.delete_one({"id": template_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"success": True}
+
+
+@card_builder_router.get("/templates/{template_id}/render")
+async def render_template(
+    template_id: str,
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Render a template - execute all its cards and return results"""
+    app_db = get_app_db()
+    template = await app_db.dashboard_templates_v2.find_one({"id": template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    card_ids = template.get("cards", [])
+    cards = await app_db.dashboard_cards.find({"id": {"$in": card_ids}}).to_list(50)
+    card_map = {c["id"]: serialize_doc(c) for c in cards}
+    
+    results = []
+    for card_id in card_ids:
+        card = card_map.get(card_id)
+        if not card:
+            continue
+        
+        query_config = {
+            "collection": card.get("collection", "opportunities"),
+            "aggregation": card.get("aggregation", "count"),
+            "field": card.get("field"),
+            "filters": card.get("filters", {}),
+            "group_by": card.get("group_by"),
+            "year": year if card.get("year_filter") else None,
+            "cache_ttl": card.get("cache_ttl", 60),
+            "sort_by": card.get("sort_by"),
+            "sort_order": card.get("sort_order", "desc"),
+        }
+        
+        try:
+            data = await execute_query(query_config)
+        except Exception as e:
+            data = {"error": str(e)}
+        
+        results.append({
+            "card_id": card_id,
+            "card": card,
+            "data": data
+        })
+    
+    return {
+        "template": serialize_doc(template),
+        "cards": results,
+        "rendered_at": now_utc()
+    }
+
+
+# ==================== SEED DEFAULT CARDS ====================
+
+@card_builder_router.post("/seed-defaults")
+async def seed_default_cards(current_user: dict = Depends(get_current_user)):
+    """Seed default dashboard cards matching Odoo's dashboard"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    default_cards = [
+        {"name": "Total Pipeline", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "display_type": "number", "color": "#3b82f6", "icon": "DollarSign"},
+        {"name": "Won Value", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "number", "color": "#10b981", "icon": "Trophy"},
+        {"name": "Win Rate", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity", "stage": {"$in": ["Won", "Lost"]}}, "display_type": "win_rate", "color": "#f59e0b", "icon": "TrendingUp"},
+        {"name": "Total Opportunities", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity"}, "display_type": "number", "color": "#6366f1", "icon": "Target"},
+        {"name": "Pipeline by Stage", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "stage", "display_type": "chart", "size": "large"},
+        {"name": "Won by Salesperson", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "group_by": "owner_name", "display_type": "chart", "size": "large"},
+        {"name": "Pipeline by PM", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "product_manager", "display_type": "chart", "size": "medium"},
+        {"name": "Overdue Invoices", "collection": "invoices", "aggregation": "count",
+         "filters": {"payment_state": {"$in": ["not_paid", "partial"]}}, "display_type": "number", "color": "#ef4444", "icon": "AlertTriangle", "year_filter": False},
+        {"name": "Total Accounts", "collection": "accounts", "aggregation": "count",
+         "filters": {}, "display_type": "number", "color": "#06b6d4", "icon": "Building2", "year_filter": False},
+        {"name": "Won Top 10", "collection": "opportunities", "aggregation": "list",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "table", "size": "large", "color": "#1a6b4a"},
+        {"name": "Lost Top 10", "collection": "opportunities", "aggregation": "list",
+         "filters": {"type": "opportunity", "stage": "Lost"}, "display_type": "table", "size": "large", "color": "#8b1a1a"},
+        {"name": "Pipeline Trend", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "stage", "display_type": "area", "size": "large"},
+        {"name": "Solution Mix", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "group_by": "solution_category", "display_type": "radial", "size": "large"},
+    ]
+    
+    created = 0
+    card_ids = []
+    for card_def in default_cards:
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "created_by": "system",
+            "created_at": now_utc(),
+            "cache_ttl": 60,
+            "year_filter": True,
+            **card_def
+        }
+        await app_db.dashboard_cards.insert_one(doc)
+        card_ids.append(doc["id"])
+        created += 1
+    
+    # Build blocks with grid positions (12-column grid)
+    blocks = []
+    grid_positions = [
+        {"x": 0, "y": 0, "w": 3, "h": 1},  # Total Pipeline
+        {"x": 3, "y": 0, "w": 3, "h": 1},  # Won Value
+        {"x": 6, "y": 0, "w": 3, "h": 1},  # Win Rate
+        {"x": 9, "y": 0, "w": 3, "h": 1},  # Total Opportunities
+        {"x": 0, "y": 1, "w": 6, "h": 3},  # Pipeline by Stage (chart)
+        {"x": 6, "y": 1, "w": 6, "h": 3},  # Won by Salesperson (chart)
+        {"x": 0, "y": 4, "w": 6, "h": 3},  # Pipeline by PM (chart)
+        {"x": 6, "y": 4, "w": 3, "h": 1},  # Overdue Invoices
+        {"x": 9, "y": 4, "w": 3, "h": 1},  # Total Accounts
+        {"x": 0, "y": 7, "w": 6, "h": 3},  # Won Top 10
+        {"x": 6, "y": 7, "w": 6, "h": 3},  # Lost Top 10
+        {"x": 0, "y": 10, "w": 6, "h": 3}, # Pipeline Trend (area)
+        {"x": 6, "y": 10, "w": 6, "h": 3}, # Solution Mix (radial)
+    ]
+    for idx, card_id in enumerate(card_ids):
+        pos = grid_positions[idx] if idx < len(grid_positions) else {"x": (idx % 4) * 3, "y": 7 + idx // 4, "w": 3, "h": 1}
+        blocks.append({
+            "i": card_id, "type": "query_card", "card_id": card_id, **pos
+        })
+
+    # Create default template
+    template = {
+        "id": generate_id(),
+        "org_id": org_id,
+        "name": "CEO Dashboard",
+        "description": "Default executive dashboard matching Odoo KPIs",
+        "cards": card_ids,
+        "blocks": blocks,
+        "layout": "grid",
+        "assigned_roles": ["admin", "sales_admin", "sales_director"],
+        "is_default": True,
+        "created_by": "system",
+        "created_at": now_utc()
+    }
+    await app_db.dashboard_templates_v2.insert_one(template)
+    
+    return {"success": True, "cards_created": created, "template_id": template["id"]}
+
+
+@card_builder_router.post("/seed-role-templates")
+async def seed_role_templates(current_user: dict = Depends(get_current_user)):
+    """Seed dashboard templates for all roles using existing cards."""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    # Get all existing cards
+    cards = await app_db.dashboard_cards.find({"org_id": org_id}).to_list(100)
+    card_map = {c.get("name"): c for c in cards}
+    
+    def get_ids(names):
+        return [card_map[n]["id"] for n in names if n in card_map]
+    
+    def make_blocks(names):
+        ids = get_ids(names)
+        blocks = []
+        col, row = 0, 0
+        for cid in ids:
+            c = next((x for x in cards if x["id"] == cid), {})
+            is_chart = c.get("display_type") in ("chart", "pie", "leaderboard", "progress", "area", "radial", "table")
+            w = 6 if is_chart else 3
+            h = 3 if is_chart else 1
+            if col + w > 12:
+                col = 0
+                row += h
+            blocks.append({"i": cid, "x": col, "y": row, "w": w, "h": h, "type": "query_card", "card_id": cid})
+            col += w
+            if col >= 12:
+                col = 0
+                row += h
+        return blocks, ids
+    
+    # First, create any missing cards needed by templates
+    extra_cards = [
+        {"name": "My Pipeline", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "display_type": "number", "color": "#1e3a5f", "icon": "DollarSign"},
+        {"name": "My Won Deals", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity", "stage": "Won"}, "display_type": "number", "color": "#1a6b4a", "icon": "Trophy"},
+        {"name": "My Activities", "collection": "activities", "aggregation": "count",
+         "filters": {}, "display_type": "number", "color": "#5b21b6", "icon": "Activity", "year_filter": False},
+        {"name": "Leads Count", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "lead"}, "display_type": "number", "color": "#1e3a5f", "icon": "Users"},
+        {"name": "Lead to Opp Conversion", "collection": "opportunities", "aggregation": "count",
+         "filters": {"type": "opportunity"}, "display_type": "win_rate", "color": "#b45309", "icon": "TrendingUp"},
+        {"name": "Invoice Revenue", "collection": "invoices", "aggregation": "sum", "field": "amount_total",
+         "filters": {"payment_state": "paid"}, "display_type": "number", "color": "#1a6b4a", "icon": "DollarSign", "year_filter": False},
+        {"name": "Unpaid Invoices Value", "collection": "invoices", "aggregation": "sum", "field": "amount_total",
+         "filters": {"payment_state": {"$in": ["not_paid", "partial"]}}, "display_type": "number", "color": "#8b1a1a", "icon": "AlertTriangle", "year_filter": False},
+        {"name": "Pipeline by Salesperson", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": {"$nin": ["Won", "Lost"]}}, "group_by": "owner_name", "display_type": "chart", "size": "large"},
+        {"name": "Won by Solution Category", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity", "stage": "Won"}, "group_by": "solution_category", "display_type": "pie", "size": "large"},
+        {"name": "Invoices by Status", "collection": "invoices", "aggregation": "count",
+         "filters": {}, "group_by": "payment_state", "display_type": "pie", "size": "large", "year_filter": False},
+        {"name": "Team Comparison", "collection": "opportunities", "aggregation": "sum", "field": "sale_value",
+         "filters": {"type": "opportunity"}, "group_by": "team_name", "display_type": "chart", "size": "large"},
+    ]
+    
+    for ec in extra_cards:
+        if ec["name"] not in card_map:
+            doc = {"id": generate_id(), "org_id": org_id, "created_by": "system", "created_at": now_utc(), "cache_ttl": 60, "year_filter": True, **ec}
+            await app_db.dashboard_cards.insert_one(doc)
+            card_map[ec["name"]] = doc
+            cards.append(doc)
+    
+    # Define templates per role
+    template_defs = [
+        {
+            "name": "CEO Dashboard",
+            "description": "Executive overview of all sales, pipeline, and team performance",
+            "assigned_roles": ["admin", "sales_admin"],
+            "is_default": True,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Stage", "Won by Salesperson", "Pipeline by PM",
+                          "Overdue Invoices", "Total Accounts", "Won Top 10", "Lost Top 10"]
+        },
+        {
+            "name": "Sales Director Dashboard",
+            "description": "Team pipeline, performance rankings, and conversion metrics",
+            "assigned_roles": ["sales_director"],
+            "is_default": False,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Salesperson", "Team Comparison",
+                          "Won by Solution Category", "Won Top 10"]
+        },
+        {
+            "name": "Product Director Dashboard",
+            "description": "Product line performance, solution category analysis",
+            "assigned_roles": ["product_director"],
+            "is_default": False,
+            "card_names": ["Total Pipeline", "Win Rate", "Total Opportunities", "Won Value",
+                          "Pipeline by Stage", "Solution Mix",
+                          "Won by Solution Category", "Pipeline by PM"]
+        },
+        {
+            "name": "Sales Rep Dashboard",
+            "description": "Personal pipeline, activities, and deal tracking",
+            "assigned_roles": ["sales_rep", "user"],
+            "is_default": False,
+            "card_names": ["My Pipeline", "My Won Deals", "Win Rate", "My Activities",
+                          "Pipeline by Stage", "Won Top 10"]
+        },
+        {
+            "name": "Finance Dashboard",
+            "description": "Invoice tracking, collections, and revenue overview",
+            "assigned_roles": ["finance", "accounting"],
+            "is_default": False,
+            "card_names": ["Invoice Revenue", "Unpaid Invoices Value", "Overdue Invoices", "Total Accounts",
+                          "Invoices by Status", "Won Value"]
+        },
+        {
+            "name": "Marketing Dashboard",
+            "description": "Lead generation, conversion, and pipeline contribution",
+            "assigned_roles": ["marketing"],
+            "is_default": False,
+            "card_names": ["Leads Count", "Lead to Opp Conversion", "Total Opportunities", "Total Pipeline",
+                          "Pipeline by Stage", "Won by Solution Category"]
+        },
+    ]
+    
+    created_templates = []
+    for tdef in template_defs:
+        # Skip if template with same name already exists
+        existing = await app_db.dashboard_templates_v2.find_one({"org_id": org_id, "name": tdef["name"]})
+        if existing:
+            continue
+        
+        blocks, card_ids = make_blocks(tdef["card_names"])
+        template = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "name": tdef["name"],
+            "description": tdef["description"],
+            "cards": card_ids,
+            "blocks": blocks,
+            "assigned_roles": tdef["assigned_roles"],
+            "is_default": tdef["is_default"],
+            "created_by": "system",
+            "created_at": now_utc()
+        }
+        await app_db.dashboard_templates_v2.insert_one(template)
+        created_templates.append({"name": tdef["name"], "id": template["id"], "cards": len(card_ids)})
+    
+    return {"success": True, "templates_created": len(created_templates), "templates": created_templates, "total_cards": len(cards)}
+
+
+
+@card_builder_router.get("/templates/{template_id}/export")
+async def export_template(template_id: str, current_user: dict = Depends(get_current_user)):
+    """Export a template with all its cards as a portable JSON bundle.
+    Can be imported into another environment (e.g., preview → production)."""
+    app_db = get_app_db()
+    
+    template = await app_db.dashboard_templates_v2.find_one({"id": template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Collect all cards referenced by this template
+    card_ids = set()
+    for b in template.get("blocks", []):
+        if b.get("card_id"):
+            card_ids.add(b["card_id"])
+    for cid in template.get("cards", []):
+        card_ids.add(cid)
+    
+    cards = []
+    for cid in card_ids:
+        card = await app_db.dashboard_cards.find_one({"id": cid})
+        if card:
+            cards.append(serialize_doc(card))
+    
+    export_data = {
+        "export_version": "1.0",
+        "exported_at": now_utc(),
+        "template": serialize_doc(template),
+        "cards": cards,
+    }
+    
+    return export_data
+
+
+@card_builder_router.post("/templates/import")
+async def import_template(data: dict, current_user: dict = Depends(get_current_user)):
+    """Import a template bundle (from export). Creates cards + template with new IDs."""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    tpl_data = data.get("template", {})
+    cards_data = data.get("cards", [])
+    
+    if not tpl_data or not tpl_data.get("name"):
+        raise HTTPException(status_code=400, detail="Invalid import data — no template found")
+    
+    # Map old card IDs to new IDs
+    id_map = {}
+    created_cards = 0
+    for card in cards_data:
+        old_id = card.get("id")
+        # Check if card with same name already exists
+        existing = await app_db.dashboard_cards.find_one({"org_id": org_id, "name": card.get("name")})
+        if existing:
+            id_map[old_id] = existing["id"]
+        else:
+            new_id = generate_id()
+            id_map[old_id] = new_id
+            new_card = {k: v for k, v in card.items() if k not in ["_id", "id", "org_id"]}
+            new_card["id"] = new_id
+            new_card["org_id"] = org_id
+            new_card["created_at"] = now_utc()
+            await app_db.dashboard_cards.insert_one(new_card)
+            created_cards += 1
+    
+    # Create template with mapped card IDs
+    new_tpl_id = generate_id()
+    new_blocks = []
+    for b in tpl_data.get("blocks", []):
+        old_card_id = b.get("card_id")
+        new_card_id = id_map.get(old_card_id, old_card_id)
+        new_blocks.append({**b, "i": new_card_id, "card_id": new_card_id})
+    
+    new_cards = [id_map.get(cid, cid) for cid in tpl_data.get("cards", [])]
+    
+    new_template = {
+        "id": new_tpl_id,
+        "org_id": org_id,
+        "name": tpl_data.get("name"),
+        "description": tpl_data.get("description", ""),
+        "cards": new_cards,
+        "blocks": new_blocks,
+        "assigned_roles": tpl_data.get("assigned_roles", []),
+        "is_default": False,
+        "created_by": current_user.get("email", "import"),
+        "created_at": now_utc(),
+    }
+    await app_db.dashboard_templates_v2.insert_one(new_template)
+    
+    return {
+        "success": True,
+        "template_id": new_tpl_id,
+        "template_name": new_template["name"],
+        "cards_created": created_cards,
+        "cards_reused": len(id_map) - created_cards,
+        "total_blocks": len(new_blocks),
+    }
+
+
+
+# ==================== DATA HEALTH MONITOR ====================
+
+@card_builder_router.get("/data-health")
+async def get_data_health(current_user: dict = Depends(get_current_user)):
+    """
+    Comprehensive data health monitor — checks field quality, sync freshness,
+    data integrity across all key collections. Designed for dashboard display.
+    """
+    from datetime import datetime, timezone, timedelta
+    canonical_db = get_canonical_db()
+
+    checks = []
+    score = 100  # Start at perfect, deduct for issues
+
+    collections_config = {
+        "opportunities": {
+            "required_fields": ["name", "stage", "owner_name"],
+            "value_fields": ["sale_value"],
+            "date_fields": ["create_date", "date_last_stage_update"],
+        },
+        "invoices": {
+            "required_fields": ["invoice_number", "payment_state", "state"],
+            "value_fields": ["amount_total"],
+            "date_fields": ["invoice_date"],
+        },
+        "accounts": {
+            "required_fields": ["name"],
+            "value_fields": [],
+            "date_fields": ["create_date"],
+        },
+        "contacts": {
+            "required_fields": ["name"],
+            "value_fields": [],
+            "date_fields": ["create_date"],
+        },
+        "activities": {
+            "required_fields": ["summary"],
+            "value_fields": [],
+            "date_fields": ["date_deadline"],
+        },
+    }
+
+    total_issues = 0
+    collection_reports = []
+
+    for coll_name, config in collections_config.items():
+        coll = canonical_db[coll_name]
+        total = await coll.count_documents({})
+
+        if total == 0:
+            collection_reports.append({
+                "collection": coll_name,
+                "total": 0,
+                "status": "empty",
+                "issues": [{"type": "empty_collection", "message": f"No {coll_name} data synced", "severity": "warning"}],
+            })
+            score -= 5
+            total_issues += 1
+            continue
+
+        issues = []
+
+        # Check required fields
+        for field in config["required_fields"]:
+            missing = await coll.count_documents({"$or": [{field: {"$exists": False}}, {field: None}, {field: ""}]})
+            if missing > 0:
+                pct = round(missing / total * 100, 1)
+                severity = "critical" if pct > 20 else "warning" if pct > 5 else "info"
+                issues.append({
+                    "type": "missing_field",
+                    "field": field,
+                    "missing_count": missing,
+                    "missing_pct": pct,
+                    "severity": severity,
+                    "message": f"{missing}/{total} records missing '{field}' ({pct}%)",
+                })
+                score -= min(10, int(pct / 2))
+                total_issues += 1
+
+        # Check value fields for zeros/nulls
+        for field in config.get("value_fields", []):
+            zero_or_null = await coll.count_documents({"$or": [{field: {"$exists": False}}, {field: None}, {field: 0}]})
+            if zero_or_null > total * 0.3:
+                pct = round(zero_or_null / total * 100, 1)
+                issues.append({
+                    "type": "zero_values",
+                    "field": field,
+                    "count": zero_or_null,
+                    "pct": pct,
+                    "severity": "warning",
+                    "message": f"{zero_or_null}/{total} records have zero/null '{field}' ({pct}%)",
+                })
+                score -= 3
+                total_issues += 1
+
+        # Check sync freshness
+        latest = await coll.find_one({"synced_at": {"$exists": True}}, sort=[("synced_at", -1)])
+        if latest and latest.get("synced_at"):
+            synced_at = latest["synced_at"]
+            if isinstance(synced_at, str):
+                try:
+                    synced_at = datetime.fromisoformat(synced_at.replace("Z", "+00:00"))
+                except Exception:
+                    synced_at = None
+            if synced_at:
+                now = datetime.now(timezone.utc)
+                if hasattr(synced_at, 'tzinfo') and synced_at.tzinfo is None:
+                    synced_at = synced_at.replace(tzinfo=timezone.utc)
+                age_hours = (now - synced_at).total_seconds() / 3600
+                if age_hours > 24:
+                    issues.append({
+                        "type": "stale_data",
+                        "hours_since_sync": round(age_hours, 1),
+                        "severity": "warning" if age_hours < 72 else "critical",
+                        "message": f"Last sync was {round(age_hours, 1)}h ago",
+                    })
+                    score -= 5 if age_hours < 72 else 10
+                    total_issues += 1
+
+        # Check duplicates
+        unique = len(await coll.distinct("source_record_id"))
+        with_source = await coll.count_documents({"source_record_id": {"$exists": True, "$ne": None}})
+        dupes = with_source - unique if with_source > unique else 0
+        if dupes > 0:
+            issues.append({
+                "type": "duplicates",
+                "count": dupes,
+                "severity": "warning" if dupes < total * 0.05 else "critical",
+                "message": f"{dupes} duplicate records found",
+            })
+            score -= min(10, dupes)
+            total_issues += 1
+
+        status = "healthy" if not issues else ("warning" if all(i["severity"] != "critical" for i in issues) else "critical")
+        collection_reports.append({
+            "collection": coll_name,
+            "total": total,
+            "status": status,
+            "issues": issues,
+        })
+
+    score = max(0, score)
+    overall = "healthy" if score >= 80 else "warning" if score >= 50 else "critical"
+
+    return {
+        "score": score,
+        "status": overall,
+        "total_issues": total_issues,
+        "collections": collection_reports,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }

@@ -56,8 +56,6 @@ class PipelineCreate(BaseModel):
     schedule_type: str = "manual"  # manual, interval, cron
     interval_minutes: Optional[int] = 60
     cron_expression: Optional[str] = None
-    # Webhook
-    webhook_enabled: bool = False
     # Sync mode
     sync_mode: str = "full"  # full, incremental
     incremental_field: Optional[str] = "write_date"
@@ -72,7 +70,6 @@ class PipelineUpdate(BaseModel):
     schedule_type: Optional[str] = None
     interval_minutes: Optional[int] = None
     cron_expression: Optional[str] = None
-    webhook_enabled: Optional[bool] = None
     sync_mode: Optional[str] = None
     incremental_field: Optional[str] = None
     delete_mode: Optional[str] = None

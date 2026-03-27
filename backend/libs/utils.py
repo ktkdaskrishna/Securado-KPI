@@ -12,14 +12,18 @@ import os
 
 # JWT Configuration - Use environment variable, fail if not set in production
 def get_jwt_secret():
-    """Get JWT secret from environment, with fallback for development only"""
+    """Get JWT secret from environment. Fails fast if not set in production."""
     secret = os.environ.get('JWT_SECRET')
     if secret:
         return secret
-    # Fallback for development - but log warning
+    # Check if we're in production
+    env = os.environ.get('ENVIRONMENT', 'development')
+    if env in ('production', 'staging'):
+        raise RuntimeError("CRITICAL: JWT_SECRET environment variable is required in production. Set it and restart.")
+    # Development fallback only
     import logging
-    logging.warning("JWT_SECRET not set - using development fallback. DO NOT use in production!")
-    return 'event-mesh-crm-secret-key-12345'
+    logging.warning("JWT_SECRET not set - using development fallback. Set JWT_SECRET env var for production.")
+    return os.environ.get('JWT_SECRET_DEV', 'dev-only-secret-' + os.environ.get('HOSTNAME', 'local'))
 
 JWT_SECRET = get_jwt_secret()
 JWT_ALGORITHM = 'HS256'

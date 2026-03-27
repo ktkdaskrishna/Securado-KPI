@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 26 - Dashboard RBAC Bug Fix Verification: Both bugs FIXED and verified. Bug #1 (Dashboard cards showing 0 for director) fixed via broad_access_roles update in resolve_hierarchy_filter. Bug #2 (SSO MSAL role persistence) fix verified via code review. Backend: 12/12 tests passed. Frontend: Admin and Director dashboards verified with non-zero values.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_26_dashboard_rbac.py",
+    "/app/test_reports/pytest/iteration_26_dashboard_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "card_builder.py Line 49-50: broad_access_roles now correctly includes product_director and sales_director",
+    "card_builder.py Line 62: admin_patterns now includes 'all documents' and 'crm / sales director' for RBAC group matching",
+    "microsoft_auth/routes.py Line 665-679: _handle_msal_complete now correctly derives and persists roles/permissions for existing users with empty roles"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_26_dashboard_rbac.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (admin and director dashboards verified)"
+  },
+  "test_credentials": {
+    "admin": "krishna@securado.net / test123456",
+    "director": "vimod.c@securado.net / test123456",
+    "sales_rep": "nabisaheb@securado.net / test123456"
+  },
+  "seed_data_creation": "None - used existing data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 26 verified two critical bug fixes: (1) Dashboard RBAC filter - product_director/sales_director now have broad access via resolve_hierarchy_filter, (2) SSO MSAL flow now persists roles/permissions to DB. Key endpoints tested: /api/auth/login, /api/auth/me, /api/odoo-rbac/current-user-rbac, /api/card-builder/my-dashboard?year=2026. Director user (vimod.c@securado.net) now sees full dashboard data including invoice cards.",
+  "bugs_verified_fixed": {
+    "bug_1_dashboard_zeros_for_director": {
+      "status": "FIXED",
+      "description": "Dashboard cards were showing 0 for director role",
+      "root_cause": "resolve_hierarchy_filter in card_builder.py did not include product_director/sales_director in broad_access_roles",
+      "fix_location": "card_builder.py Line 49-50 and Line 62",
+      "verification": {
+        "director_dashboard_values": {
+          "Total Pipeline": "4.1M",
+          "Overdue Invoices": 78,
+          "Win Rate": "57%",
+          "Unpaid Invoices Value": "1.8M",
+          "Invoice Revenue": "2.2M",
+          "Won This Period": "899K"
+        }
+      }
+    },
+    "bug_2_sso_msal_role_persistence": {
+      "status": "FIXED (verified via code review)",
+      "description": "SSO MSAL flow was not persisting roles/permissions to DB for existing users",
+      "root_cause": "_handle_msal_complete was not deriving roles from RBAC for existing users with empty roles",
+      "fix_location": "microsoft_auth/routes.py Line 665-679",
+      "note": "Cannot test end-to-end SSO in preview environment, but code logic verified"
+    }
+  },
+  "screenshots": {
+    "admin_dashboard": "CEO Dashboard with 4.1M Total Pipeline, 47% Win Rate, 35 Open Opportunities, 899K Won This Period",
+    "director_dashboard": "Product Director Dashboard with 4.1M Total Pipeline, 78 Overdue Invoices, 57% Win Rate, 1.8M Unpaid Invoices Value, 2.2M Invoice Revenue, 899K Won This Period"
+  }
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyticsAPI } from '../../lib/api';
+import { analyticsAPI, targetAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { useGlobalFilters } from '../../lib/GlobalFilterContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
@@ -33,7 +33,8 @@ import {
   XCircle,
   Clock,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Trophy
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,8 +51,11 @@ export default function AnalyticsPage() {
   const [aiInsights, setAiInsights] = useState(null);
   const [localFilters, setLocalFilters] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedQuarter, setSelectedQuarter] = useState('');
+  const [viewMode] = useState('ai');
+  const [dashBlocks] = useState([]);
+  const [dashLoading] = useState(false);
   
   // Modal state for At Risk/Dormant accounts
   const [riskModalOpen, setRiskModalOpen] = useState(false);

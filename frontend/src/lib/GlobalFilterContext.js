@@ -4,15 +4,17 @@ import { analyticsAPI } from './api';
 
 // Default filter state
 const defaultFilters = {
-  timePeriod: 'all',        // all, year, quarter, month, week
-  year: null,               // 2024, 2025, etc.
-  quarter: null,            // Q1, Q2, Q3, Q4
-  month: null,              // 1-12
-  salesRep: null,           // owner_name
-  team: null,               // team_id
-  account: null,            // account_id or account_name
-  stage: null,              // stage name
-  dateField: 'create_date', // which date to filter on: close_date, create_date
+  timePeriod: 'all',
+  year: null,
+  quarter: null,
+  month: null,
+  salesRep: null,
+  team: null,
+  account: null,
+  stage: null,
+  dateField: 'create_date',
+  productDirector: null,    // Product Director/Manager filter
+  solutionCategory: null,   // Solution category filter
 };
 
 const GlobalFilterContext = createContext(null);
@@ -20,7 +22,6 @@ const GlobalFilterContext = createContext(null);
 // Parse URL params to filter state
 function parseUrlParams(searchParams) {
   const params = {};
-  
   if (searchParams.get('year')) params.year = searchParams.get('year');
   if (searchParams.get('quarter')) params.quarter = searchParams.get('quarter');
   if (searchParams.get('month')) params.month = searchParams.get('month');
@@ -30,7 +31,8 @@ function parseUrlParams(searchParams) {
   if (searchParams.get('stage')) params.stage = searchParams.get('stage');
   if (searchParams.get('dateField')) params.dateField = searchParams.get('dateField');
   if (searchParams.get('timePeriod')) params.timePeriod = searchParams.get('timePeriod');
-  
+  if (searchParams.get('productDirector')) params.productDirector = searchParams.get('productDirector');
+  if (searchParams.get('solutionCategory')) params.solutionCategory = searchParams.get('solutionCategory');
   return params;
 }
 
@@ -47,7 +49,8 @@ function filtersToUrlParams(filters) {
   if (filters.stage) params.set('stage', filters.stage);
   if (filters.dateField && filters.dateField !== 'create_date') params.set('dateField', filters.dateField);
   if (filters.timePeriod && filters.timePeriod !== 'all') params.set('timePeriod', filters.timePeriod);
-  
+  if (filters.productDirector) params.set('productDirector', filters.productDirector);
+  if (filters.solutionCategory) params.set('solutionCategory', filters.solutionCategory);
   return params;
 }
 
@@ -183,6 +186,12 @@ export function GlobalFilterProvider({ children }) {
     if (filters.timePeriod && filters.timePeriod !== 'all') {
       params.time_period = filters.timePeriod;
     }
+    if (filters.productDirector) {
+      params.product_manager = filters.productDirector;
+    }
+    if (filters.solutionCategory) {
+      params.solution_category = filters.solutionCategory;
+    }
     
     return params;
   }, [filters]);
@@ -200,6 +209,8 @@ export function GlobalFilterProvider({ children }) {
     }
     if (filters.account) parts.push(`Account: ${filters.account}`);
     if (filters.stage) parts.push(`Stage: ${filters.stage}`);
+    if (filters.productDirector) parts.push(`PD: ${filters.productDirector}`);
+    if (filters.solutionCategory) parts.push(`Category: ${filters.solutionCategory}`);
     
     return parts.length > 0 ? parts.join(' • ') : 'All Data';
   }, [filters, filterOptions]);
@@ -213,7 +224,9 @@ export function GlobalFilterProvider({ children }) {
       filters.salesRep !== null ||
       filters.team !== null ||
       filters.account !== null ||
-      filters.stage !== null
+      filters.stage !== null ||
+      filters.productDirector !== null ||
+      filters.solutionCategory !== null
     );
   }, [filters]);
 

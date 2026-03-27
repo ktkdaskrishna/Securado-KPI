@@ -23,12 +23,16 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel
 import logging
+from datetime import datetime
 
 from libs.database import get_app_db, get_canonical_db
 from libs.utils import serialize_doc, generate_id, now_utc
 from services.identity.routes import get_current_user
 
 logger = logging.getLogger(__name__)
+
+# Value-selling activity types ONLY (used across all activity queries)
+VALUE_SELLING_TYPES = ["Demo", "Proof of concept", "Site Visit", "Work Shop", "Product Presentation", "Vendor Meeting", "POC"]
 
 # Routers
 lookups_router = APIRouter(prefix="/target-lookups", tags=["target-lookups"])
@@ -39,44 +43,69 @@ actuals_router = APIRouter(prefix="/target-actuals", tags=["target-actuals"])
 # ==================== MODELS ====================
 
 class RevenuePlanCreate(BaseModel):
-    """CEO/Director creates revenue target for a Product Manager"""
+    """CEO/Director creates target for a Product Manager or Strategy GM — single plan with dual targets"""
     name: str
     product_manager_id: Optional[str] = None
     product_manager_name: Optional[str] = None
+    booking_target: float = 0
+    invoiced_target: float = 0
+    margin_target: float = 0
     target_amount: float = 0
     period: str = "2026-Q1"
+    plan_type: str = "revenue"  # "revenue" (PD), "strategy" (Strategy Team), "marketing" (Marketing)
+    assign_mode: Optional[str] = "individual"  # "individual" or "team"
+    team_members: Optional[List[str]] = None  # list of team member names when assign_mode=team
     notes: Optional[str] = None
 
 
 class ActivityPlanItemCreate(BaseModel):
-    """PM creates activity plan item (e.g. 10 demos for NDR)"""
-    activity_type: str  # Call, Demo, Meeting, Proof of concept, Site Visit, Work Shop
+    """PM creates activity plan item — can assign to marketing or strategy team"""
+    activity_type: str  # Demo, POC, Site Visit, Workshop, Awareness Camp, Assessment, CEO Presentation, Digital Campaign, Event
     solution_category: Optional[str] = None
     target_count: int = 0
     notes: Optional[str] = None
+    assign_team: Optional[str] = None  # "marketing", "strategy", or None (sales)
+    sponsor_pd: Optional[str] = None  # PD who sponsors the activity (for marketing/strategy)
 
 
 class PlanRedistributionCreate(BaseModel):
-    """Sales Director assigns plan items to account managers"""
+    """Assign plan items to a team, team manager, or individual salesperson"""
     plan_item_id: str
-    assigned_to_name: str
+    assign_type: str = "person"  # "person", "team"
+    assigned_to_name: str  # Person name or Team name
     assigned_to_id: Optional[str] = None
     assigned_count: int = 0
-    account_ids: Optional[List[str]] = []
+    team_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class CategorySegmentCreate(BaseModel):
+    """PD breaks down their target by solution category"""
+    solution_category: str
+    booking_target: float = 0
+    invoiced_target: float = 0
+    margin_target: float = 0
+    notes: Optional[str] = None
+
+
+class CategorySegmentBulk(BaseModel):
+    """Bulk create/update segments — validates sum = total"""
+    segments: List[CategorySegmentCreate]
 
 
 # ==================== LOOKUPS (from Odoo data) ====================
 
 @lookups_router.get("/product-managers")
 async def get_product_managers(current_user: dict = Depends(get_current_user)):
-    """Get list of product managers from Odoo opportunities data"""
+    """Get list of product managers from Odoo - current year only"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
     pipeline = [
-        {"$match": {"product_manager": {"$ne": None}}},
+        {"$match": {"product_manager": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}},
         {"$group": {
             "_id": {"name": "$product_manager", "id": "$product_manager_id"},
             "opp_count": {"$sum": 1},
-            "total_pipeline": {"$sum": "$amount"}
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}
         }},
         {"$sort": {"opp_count": -1}}
     ]
@@ -104,15 +133,16 @@ async def get_solution_categories(current_user: dict = Depends(get_current_user)
 
 @lookups_router.get("/salespersons")
 async def get_salespersons(current_user: dict = Depends(get_current_user)):
-    """Get salespersons (opportunity owners) from Odoo"""
+    """Get salespersons (opportunity owners) from Odoo - current year"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
     pipeline = [
-        {"$match": {"owner_name": {"$ne": None}}},
+        {"$match": {"owner_name": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}},
         {"$group": {
             "_id": "$owner_name",
             "owner_id": {"$first": "$owner_id"},
             "opp_count": {"$sum": 1},
-            "total_pipeline": {"$sum": "$amount"},
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}},
             "teams": {"$addToSet": "$team_name"}
         }},
         {"$sort": {"total_pipeline": -1}}
@@ -137,11 +167,74 @@ async def get_accounts(
     return accounts
 
 
+@lookups_router.get("/teams-with-members")
+async def get_teams_with_members(current_user: dict = Depends(get_current_user)):
+    """Get sales teams with their members from Odoo employees hierarchy"""
+    canonical_db = get_canonical_db()
+
+    # Get all employees
+    employees = await canonical_db.employees.find(
+        {"department_name": {"$regex": "Sales|Business|Management", "$options": "i"}},
+        {"_id": 0, "canonical_id": 1, "source_record_id": 1, "name": 1, "job_title": 1, "manager_id": 1, "department_name": 1}
+    ).to_list(200)
+
+    # Build manager → reports mapping using source_record_id
+    mgr_teams = {}
+    for emp in employees:
+        mgr_id = str(emp.get("manager_id", ""))
+        if mgr_id:
+            if mgr_id not in mgr_teams:
+                mgr_teams[mgr_id] = []
+            mgr_teams[mgr_id].append({
+                "id": emp.get("source_record_id"),
+                "name": emp.get("name"),
+                "job_title": emp.get("job_title")
+            })
+
+    result = []
+    # Build teams from manager hierarchy
+    for mgr_id, members in mgr_teams.items():
+        # Find manager by source_record_id
+        mgr = await canonical_db.employees.find_one(
+            {"source_record_id": mgr_id},
+            {"_id": 0, "name": 1, "job_title": 1}
+        )
+        mgr_name = mgr.get("name", f"Manager #{mgr_id}") if mgr else f"Manager #{mgr_id}"
+        mgr_title = mgr.get("job_title", "") if mgr else ""
+
+        if len(members) > 0:
+            result.append({
+                "name": f"{mgr_name}'s Team",
+                "manager_name": mgr_name,
+                "manager_title": mgr_title,
+                "manager_id": mgr_id,
+                "members": members,
+                "member_count": len(members)
+            })
+
+    # Also add Odoo sales teams
+    odoo_teams = await canonical_db.sales_teams.find({}, {"_id": 0}).to_list(20)
+    for t in odoo_teams:
+        if t.get("name"):
+            result.append({
+                "name": t.get("name"),
+                "manager_name": None,
+                "members": [],
+                "member_count": len(t.get("member_ids", [])),
+                "target": t.get("invoiced_target", 0)
+            })
+
+    # Sort: manager-based teams first (they have members)
+    result.sort(key=lambda x: x.get("member_count", 0), reverse=True)
+    return result
+
+
 @lookups_router.get("/activity-types")
 async def get_activity_types(current_user: dict = Depends(get_current_user)):
-    """Get activity types from Odoo"""
+    """Get value-selling activity types from Odoo"""
     canonical_db = get_canonical_db()
     pipeline = [
+        {"$match": {"activity_type": {"$in": VALUE_SELLING_TYPES}}},
         {"$group": {"_id": "$activity_type", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}}
     ]
@@ -162,6 +255,8 @@ async def get_sales_teams(current_user: dict = Depends(get_current_user)):
 @plans_router.get("/revenue")
 async def list_revenue_plans(
     period: Optional[str] = None,
+    product_manager: Optional[str] = None,
+    year: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """List all revenue plans (CEO-level view)"""
@@ -169,39 +264,77 @@ async def list_revenue_plans(
     canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
 
-    query = {"org_id": org_id, "plan_type": "revenue"}
+    query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue", "strategy", "marketing"]}}
     if period:
         query["period"] = period
+    if product_manager:
+        query["product_manager_name"] = {"$regex": f"^{product_manager}$", "$options": "i"}
+    # Filter plans by year if specified
+    if year:
+        query["$or"] = [
+            {"name": {"$regex": year}},
+            {"period": {"$regex": year}},
+            {"year": year},
+            {"year": int(year) if year.isdigit() else 0},
+        ]
 
     plans = await app_db.target_plans.find(query).sort("created_at", -1).to_list(100)
     serialized = serialize_doc(plans)
 
     # Enrich with actual data from canonical
+    filter_year = year or datetime.now().strftime("%Y")
     for plan in serialized:
         pm_name = plan.get("product_manager_name")
         if pm_name:
-            # Get actual revenue from opportunities for this PM
-            pipeline = [
-                {"$match": {"product_manager": pm_name, "stage": {"$in": ["Won", "Closed Won", "closed_won"]}}},
-                {"$group": {"_id": None, "actual_revenue": {"$sum": "$amount"}, "won_count": {"$sum": 1}}}
+            year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
+            
+            # Booking actual: Won opportunities (CRM)
+            booking_pipeline = [
+                {"$match": {"product_manager": pm_name, "stage": "Won", "deleted": {"$ne": True}, **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
             ]
-            result = await canonical_db.opportunities.aggregate(pipeline).to_list(1)
-            if result:
-                plan["actual_revenue"] = result[0].get("actual_revenue", 0)
-                plan["won_deals"] = result[0].get("won_count", 0)
-            else:
-                plan["actual_revenue"] = 0
-                plan["won_deals"] = 0
+            booking_result = await canonical_db.opportunities.aggregate(booking_pipeline).to_list(1)
+            plan["actual_booking"] = booking_result[0].get("total", 0) if booking_result else 0
+            plan["won_deals"] = booking_result[0].get("count", 0) if booking_result else 0
+            
+            # Invoiced actual: Paid invoices
+            inv_pipeline = [
+                {"$match": {"salesperson_name": {"$regex": pm_name, "$options": "i"}, "payment_state": "paid", "invoice_date": {"$regex": f"^{filter_year}"}}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$amount_total", 0]}}, "count": {"$sum": 1}}}
+            ]
+            inv_result = await canonical_db.invoices.aggregate(inv_pipeline).to_list(1)
+            plan["actual_invoiced"] = inv_result[0].get("total", 0) if inv_result else 0
+            plan["invoiced_count"] = inv_result[0].get("count", 0) if inv_result else 0
+            
+            # Margin actual: from sales_orders margin field
+            margin_pipeline = [
+                {"$match": {"salesperson": {"$regex": pm_name, "$options": "i"}, "order_date": {"$regex": f"^{filter_year}"}}},
+                {"$group": {"_id": None, "total_margin": {"$sum": {"$ifNull": ["$margin", 0]}}, "total_revenue": {"$sum": {"$ifNull": ["$amount", 0]}}}}
+            ]
+            margin_result = await canonical_db.sales_orders.aggregate(margin_pipeline).to_list(1)
+            plan["actual_margin"] = margin_result[0].get("total_margin", 0) if margin_result else 0
+            plan["so_revenue"] = margin_result[0].get("total_revenue", 0) if margin_result else 0
+            plan["margin_pct_actual"] = round(plan["actual_margin"] / plan["so_revenue"] * 100, 1) if plan["so_revenue"] > 0 else 0
+            
+            # Legacy field
+            plan["actual_revenue"] = plan["actual_booking"]
+            
+            # Compute achievement percentages
+            bt = plan.get("booking_target", plan.get("target_amount", 0))
+            it = plan.get("invoiced_target", 0)
+            plan["booking_pct"] = round(plan["actual_booking"] / bt * 100, 1) if bt > 0 else 0
+            plan["invoiced_pct"] = round(plan["actual_invoiced"] / it * 100, 1) if it > 0 else 0
+            mt = plan.get("margin_target", 0)
+            plan["margin_pct"] = round(plan["actual_margin"] / mt * 100, 1) if mt > 0 else 0
 
-            # Get total pipeline
+            # Get total pipeline (current year, open opportunities only, exclude Won/Lost/Hold)
             pipeline2 = [
-                {"$match": {"product_manager": pm_name}},
-                {"$group": {"_id": None, "pipeline": {"$sum": "$amount"}, "total_opps": {"$sum": 1}}}
+                {"$match": {"product_manager": pm_name, "deleted": {"$ne": True}, "active": True, "stage": {"$nin": ["Won", "Lost", "Hold"]}, **year_filter}},
+                {"$group": {"_id": None, "pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "total_opps": {"$sum": 1}}}
             ]
             result2 = await canonical_db.opportunities.aggregate(pipeline2).to_list(1)
-            if result2:
-                plan["total_pipeline"] = result2[0].get("pipeline", 0)
-                plan["total_opps"] = result2[0].get("total_opps", 0)
+            plan["total_pipeline"] = result2[0].get("pipeline", 0) if result2 else 0
+            plan["total_opps"] = result2[0].get("total_opps", 0) if result2 else 0
 
             # Count activity plan items
             items_count = await app_db.target_plan_items.count_documents({
@@ -225,6 +358,7 @@ async def create_revenue_plan(
 ):
     """CEO creates revenue target for a Product Manager"""
     app_db = get_app_db()
+    canonical_db = get_canonical_db()
     org_id = current_user.get("org_id", "default")
 
     doc = {
@@ -232,15 +366,220 @@ async def create_revenue_plan(
         "org_id": org_id,
         "plan_type": "revenue",
         "status": "active",
+        "booking_target": data.booking_target or data.target_amount,  # Backward compatible
+        "invoiced_target": data.invoiced_target,
+        "margin_target": data.margin_target,
+        "target_amount": data.booking_target or data.target_amount,
+        "actual_booking": 0,
+        "actual_invoiced": 0,
         "actual_revenue": 0,
         "created_by": current_user["id"],
         "created_by_name": current_user.get("name", "Unknown"),
         "created_at": now_utc(),
         "updated_at": now_utc(),
-        **data.model_dump()
+        **{k: v for k, v in data.model_dump().items() if k not in ["booking_target", "invoiced_target", "target_amount"]}
     }
 
     await app_db.target_plans.insert_one(doc)
+    
+    # Auto-generate activity suggestions based on PD's historical data + solution categories
+    # Also generate Marketing & Strategy activity recommendations
+    pm_name = data.product_manager_name
+    is_strategy = data.plan_type == "strategy"
+    is_marketing = data.plan_type == "marketing"
+    
+    if pm_name and (data.target_amount > 0 or data.booking_target > 0):
+        try:
+            target_val = data.booking_target or data.target_amount
+            
+            if is_strategy:
+                # Strategy GM: assessment services, workshops, CEO presentations, awareness camps
+                suggestions = []
+                # Get solution categories for context
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}, {"$limit": 8}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(8)
+                
+                strategy_activities = [
+                    ("Assessment Services", "Security/compliance assessments per category"),
+                    ("CEO Presentation", "Executive-level presentations to key accounts"),
+                    ("Awareness Camp", "Customer awareness roundtables per category"),
+                    ("Work Shop", "Technical workshops with ministries/enterprises"),
+                    ("Vendor Meeting", "Strategic vendor alignment meetings"),
+                ]
+                
+                for cat in (categories or [{"_id": "General"}]):
+                    cat_name = cat["_id"] if isinstance(cat, dict) else cat
+                    for act_type, desc in strategy_activities:
+                        count = 2 if act_type in ("CEO Presentation", "Awareness Camp") else 4
+                        suggestions.append({
+                            "activity_type": act_type,
+                            "solution_category": cat_name,
+                            "count": count,
+                            "formula": f"{desc} [{cat_name}]",
+                            "assign_team": "strategy",
+                            "accepted": False
+                        })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": 0, "win_rate": 0, "required_deals": 0,
+                    "pipeline_coverage": 0,
+                    "categories": [c["_id"] for c in categories] if categories else [],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
+                
+            elif is_marketing:
+                # Marketing: digital campaigns, events, content per category
+                suggestions = []
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}, {"$limit": 8}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(8)
+                
+                marketing_activities = [
+                    ("Digital Campaign", "Targeted digital campaigns per category"),
+                    ("Event", "Industry events and tradeshows"),
+                    ("Awareness Camp", "Customer awareness roundtables (quarterly)"),
+                    ("Product Presentation", "Webinars and product showcases"),
+                ]
+                
+                for cat in (categories or [{"_id": "General"}]):
+                    cat_name = cat["_id"] if isinstance(cat, dict) else cat
+                    for act_type, desc in marketing_activities:
+                        count = 2 if act_type == "Event" else 4
+                        suggestions.append({
+                            "activity_type": act_type,
+                            "solution_category": cat_name,
+                            "count": count,
+                            "formula": f"{desc} [{cat_name}]",
+                            "assign_team": "marketing",
+                            "accepted": False
+                        })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": 0, "win_rate": 0, "required_deals": 0,
+                    "pipeline_coverage": 0,
+                    "categories": [c["_id"] for c in categories] if categories else [],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
+                
+            else:
+                # Standard PD revenue plan — existing logic
+                # Get PD's historical metrics
+                hist = await canonical_db.opportunities.aggregate([
+                    {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}}},
+                    {"$group": {
+                        "_id": None,
+                        "total_opps": {"$sum": 1},
+                        "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+                        "lost_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Lost"]}, 1, 0]}},
+                        "won_value": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", 0]}, 0]}}
+                    }}
+                ]).to_list(1)
+                
+                h = hist[0] if hist else {"total_opps": 0, "won_count": 0, "won_value": 0, "lost_count": 0}
+                avg_deal = h["won_value"] / h["won_count"] if h["won_count"] > 0 else target_val / 10
+                # Win Rate = Won / (Won + Lost) — standard B2B formula
+                closed_deals = h["won_count"] + h.get("lost_count", 0)
+                win_rate = h["won_count"] / closed_deals if closed_deals > 0 else 0.25
+                required_deals = max(1, round(target_val / avg_deal)) if avg_deal > 0 else 10
+                
+                current_year = datetime.now().strftime("%Y")
+                cat_pipeline = [
+                    {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}, "solution_category": {"$ne": None}}},
+                    {"$group": {"_id": "$solution_category", "count": {"$sum": 1}, "value": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}}},
+                    {"$sort": {"value": -1}}
+                ]
+                categories = await canonical_db.opportunities.aggregate(cat_pipeline).to_list(20)
+                total_cat_value = sum(c["value"] for c in categories) or 1
+                
+                suggestions = []
+                # Sales activities
+                sales_activities = [
+                    ("Demo", 0.5, "product demos"),
+                    ("Proof of concept", 0.15, "POC/pilot"),
+                    ("Call", 2.5, "outbound calls"),
+                    ("Meeting", 1.0, "client meetings"),
+                ]
+                # Marketing activities (PD sponsors, marketing executes)
+                marketing_activities = [
+                    ("Awareness Camp", 0.05, "customer awareness roundtable (quarterly)"),
+                    ("Digital Campaign", 0.1, "targeted digital campaigns"),
+                ]
+                # Strategy activities (PD sponsors, strategy GM executes)
+                strategy_activities = [
+                    ("Work Shop", 0.08, "technical workshops with key accounts"),
+                    ("Assessment Services", 0.05, "security/compliance assessments"),
+                ]
+                
+                if categories:
+                    for cat in categories:
+                        cat_name = cat["_id"]
+                        weight = cat["value"] / total_cat_value
+                        cat_deals = max(1, round(required_deals * weight))
+                        
+                        # Sales activities
+                        for act_type, multiplier, desc in sales_activities:
+                            count = max(1, round(cat_deals / max(win_rate, 0.1) * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"{cat_deals} deals × {multiplier} ({desc}) [{cat_name}]",
+                                "assign_team": None, "accepted": False
+                            })
+                        
+                        # Marketing activities (PD-sponsored)
+                        for act_type, multiplier, desc in marketing_activities:
+                            count = max(1, round(cat_deals * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"PD sponsors, Marketing executes: {desc} [{cat_name}]",
+                                "assign_team": "marketing", "sponsor_pd": pm_name, "accepted": False
+                            })
+                        
+                        # Strategy activities (PD-sponsored)
+                        for act_type, multiplier, desc in strategy_activities:
+                            count = max(1, round(cat_deals * multiplier))
+                            suggestions.append({
+                                "activity_type": act_type, "solution_category": cat_name,
+                                "count": count, "formula": f"PD sponsors, Strategy executes: {desc} [{cat_name}]",
+                                "assign_team": "strategy", "sponsor_pd": pm_name, "accepted": False
+                            })
+                else:
+                    demos = max(5, round(required_deals / max(win_rate, 0.1) * 0.5))
+                    for act_type, multiplier, desc in sales_activities:
+                        count = max(2, round(demos * multiplier / 0.5))
+                        suggestions.append({
+                            "activity_type": act_type, "solution_category": "",
+                            "count": count, "formula": f"({required_deals} deals / {win_rate:.0%} win rate) × {multiplier}",
+                            "assign_team": None, "accepted": False
+                        })
+                
+                suggestion_doc = {
+                    "id": generate_id(), "org_id": org_id, "revenue_plan_id": doc["id"],
+                    "product_director_name": pm_name, "revenue_target": target_val,
+                    "avg_deal_size": round(avg_deal, 2), "win_rate": round(win_rate * 100, 1),
+                    "required_deals": required_deals,
+                    "pipeline_coverage": round(target_val * 3, 2),
+                    "categories": [c["_id"] for c in categories],
+                    "suggestions": suggestions, "status": "pending_review", "created_at": now_utc()
+                }
+                await app_db.activity_suggestions.insert_one(suggestion_doc)
+        except Exception as e:
+            logger.error(f"Failed to generate activity suggestions: {e}")
+    
     return serialize_doc(doc)
 
 
@@ -407,6 +746,132 @@ async def delete_redistribution(redist_id: str, current_user: dict = Depends(get
     return {"success": True}
 
 
+
+# ==================== MY DATA (role-specific) ====================
+
+@actuals_router.get("/my-data")
+async def get_my_data(current_user: dict = Depends(get_current_user)):
+    """Get role-specific data for the current user from Odoo"""
+    canonical_db = get_canonical_db()
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    user_email = current_user.get("email", "")
+
+    # Get fresh user record from DB (JWT name may be stale)
+    user_record = await app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+    roles = user_record.get("roles", []) if user_record else []
+    
+    # Use DB name, normalize whitespace
+    import re
+    user_name = re.sub(r'\s+', ' ', (user_record.get("name") if user_record else current_user.get("name", ""))).strip()
+    
+    # Resolve canonical Odoo name via identity map (single lookup)
+    identity = await app_db.user_identity_map.find_one({"email": user_email.lower().strip()}, {"_id": 0}) if user_email else None
+    if identity:
+        user_name = identity.get("canonical_name", user_name)
+    else:
+        emp = await canonical_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+        if emp and emp.get("name"):
+            user_name = emp["name"]
+
+    is_admin = "admin" in roles or "sales_admin" in roles
+    is_pd = "product_director" in roles or "product_manager" in roles
+    is_sd = "sales_director" in roles
+    is_rep = not is_admin and not is_pd and not is_sd
+
+    result = {
+        "user_name": user_name,
+        "user_email": user_email,
+        "roles": roles,
+        "is_admin": is_admin,
+        "is_product_director": is_pd,
+        "is_sales_director": is_sd,
+        "is_sales_rep": is_rep,
+    }
+
+    if is_pd:
+        # Product Director: show opportunities under my management
+        pm_opps = await canonical_db.opportunities.aggregate([
+            {"$match": {"product_manager": {"$regex": user_name, "$options": "i"}}},
+            {"$group": {
+                "_id": None,
+                "total_pipeline": {"$sum": "$amount"},
+                "opp_count": {"$sum": 1},
+                "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
+                "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            }}
+        ]).to_list(1)
+
+        result["pm_summary"] = pm_opps[0] if pm_opps else {"total_pipeline": 0, "opp_count": 0, "won_count": 0, "won_amount": 0}
+        if result["pm_summary"].get("_id"):
+            del result["pm_summary"]["_id"]
+
+        # My categories
+        cats = await canonical_db.opportunities.distinct("solution_category", {"product_manager": {"$regex": user_name, "$options": "i"}})
+        result["my_categories"] = [c for c in cats if c]
+
+        # My salespersons
+        sp_pipeline = [
+            {"$match": {"product_manager": {"$regex": user_name, "$options": "i"}, "owner_name": {"$ne": None}}},
+            {"$group": {"_id": "$owner_name", "count": {"$sum": 1}, "pipeline": {"$sum": "$amount"}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 20}
+        ]
+        result["my_salespersons"] = [{"name": s["_id"], "opp_count": s["count"], "pipeline": s["pipeline"]} for s in await canonical_db.opportunities.aggregate(sp_pipeline).to_list(20)]
+
+        # My plans
+        plans = await app_db.target_plans.find({"product_manager_name": {"$regex": user_name, "$options": "i"}, "org_id": org_id}).to_list(10)
+        result["my_plans"] = serialize_doc(plans)
+
+        # My plan items
+        for plan in result["my_plans"]:
+            items = await app_db.target_plan_items.find({"revenue_plan_id": plan["id"], "org_id": org_id}).to_list(100)
+            plan["items"] = serialize_doc(items)
+
+    if is_rep or (not is_admin and not is_sd and not is_pd):
+        # Sales Rep: show my assigned targets, activities, accounts
+        # My opportunities
+        my_opps = await canonical_db.opportunities.aggregate([
+            {"$match": {"owner_name": {"$regex": user_name, "$options": "i"}}},
+            {"$group": {
+                "_id": None,
+                "total_pipeline": {"$sum": "$amount"},
+                "opp_count": {"$sum": 1},
+                "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
+                "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            }}
+        ]).to_list(1)
+        result["my_opp_summary"] = my_opps[0] if my_opps else {"total_pipeline": 0, "opp_count": 0, "won_count": 0, "won_amount": 0}
+        if result["my_opp_summary"].get("_id"):
+            del result["my_opp_summary"]["_id"]
+
+        # My value-selling activities from Odoo
+        my_acts = await canonical_db.activities.aggregate([
+            {"$match": {"assigned_user": {"$regex": user_name, "$options": "i"}, "activity_type": {"$in": VALUE_SELLING_TYPES}}},
+            {"$group": {"_id": "$activity_type", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ]).to_list(20)
+        result["my_activities"] = [{"type": a["_id"], "count": a["count"]} for a in my_acts]
+
+        # My accounts
+        my_accts = await canonical_db.accounts.count_documents({"owner_name": {"$regex": user_name, "$options": "i"}})
+        result["my_accounts_count"] = my_accts
+
+        # Redistributed tasks assigned to me (search by canonical name AND app name)
+        app_name = (user_record.get("name", "") if user_record else "").strip()
+        name_patterns = list(set([user_name, app_name]))
+        or_conditions = [{"assigned_to_name": {"$regex": f"^{n}$", "$options": "i"}} for n in name_patterns if n]
+        
+        # Also check team assignments where user is a member
+        my_tasks = await app_db.target_redistributions.find({
+            "org_id": org_id,
+            "$or": or_conditions if or_conditions else [{"assigned_to_name": ""}]
+        }).to_list(100)
+        result["my_assigned_tasks"] = serialize_doc(my_tasks)
+
+    return result
+
+
 # ==================== ACTUALS (from Odoo data) ====================
 
 @actuals_router.get("/by-product-manager")
@@ -414,10 +879,11 @@ async def get_actuals_by_pm(
     product_manager: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get actual performance data per product manager from Odoo"""
+    """Get actual performance data per product manager - current year"""
     canonical_db = get_canonical_db()
+    current_year = datetime.now().strftime("%Y")
 
-    match = {"product_manager": {"$ne": None}}
+    match = {"product_manager": {"$ne": None}, "deleted": {"$ne": True}, "create_date": {"$regex": f"^{current_year}"}}
     if product_manager:
         match["product_manager"] = product_manager
 
@@ -425,10 +891,10 @@ async def get_actuals_by_pm(
         {"$match": match},
         {"$group": {
             "_id": "$product_manager",
-            "total_pipeline": {"$sum": "$amount"},
+            "total_pipeline": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}},
             "opp_count": {"$sum": 1},
-            "won_count": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, 1, 0]}},
-            "won_amount": {"$sum": {"$cond": [{"$in": ["$stage", ["Won", "Closed Won", "closed_won"]]}, "$amount", 0]}},
+            "won_count": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, 1, 0]}},
+            "won_amount": {"$sum": {"$cond": [{"$eq": ["$stage", "Won"]}, {"$ifNull": ["$sale_value", "$amount"]}, 0]}},
             "categories": {"$addToSet": "$solution_category"}
         }},
         {"$sort": {"total_pipeline": -1}}
@@ -480,7 +946,7 @@ async def get_actual_activities(
     """Get actual activity counts from Odoo"""
     canonical_db = get_canonical_db()
 
-    match = {}
+    match = {"activity_type": {"$in": VALUE_SELLING_TYPES}}
     if assigned_user:
         match["assigned_user"] = assigned_user
     if activity_type:
@@ -577,7 +1043,7 @@ async def get_team_comparison(current_user: dict = Depends(get_current_user)):
         total_actual_act = 0
         for item in items:
             atype = item.get("activity_type")
-            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id}) if atype else 0
+            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id, "activity_type": {"$in": VALUE_SELLING_TYPES}}) if atype else 0
             total_actual_act += min(actual, item.get("target_count", 0))
         act_pct = min(round((total_actual_act / total_target_act * 100) if total_target_act > 0 else 0, 1), 100)
 
@@ -800,5 +1266,444 @@ async def calculate_multi_vector_incentive(
             {"label": f"Activities ({data.activity_weight}%)", "score": activity_pct, "weighted": round(activity_pct * activity_w, 1)},
             {"label": f"Collection ({data.collection_weight}%)", "score": on_time_pct, "weighted": round(on_time_pct * collection_w, 1)},
         ]
+    }
+
+
+
+# ==================== SUGGESTIONS ====================
+
+@plans_router.get("/revenue/{plan_id}/suggestions")
+async def get_activity_suggestions(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Get auto-generated activity suggestions for a revenue plan"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    suggestion = await app_db.activity_suggestions.find_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    )
+    if not suggestion:
+        return None
+    return serialize_doc(suggestion)
+
+
+@plans_router.post("/revenue/{plan_id}/suggestions/accept")
+async def accept_suggestions(
+    plan_id: str,
+    modifications: Optional[List[dict]] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """PD accepts suggestions (optionally modified) and creates plan items"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    suggestion = await app_db.activity_suggestions.find_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    )
+    if not suggestion:
+        raise HTTPException(status_code=404, detail="No suggestions found")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    # Use modifications if provided, otherwise use original suggestions
+    items_to_create = modifications if modifications else suggestion.get("suggestions", [])
+    
+    created = []
+    for item in items_to_create:
+        if item.get("count", 0) <= 0:
+            continue
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "revenue_plan_id": plan_id,
+            "product_manager_name": plan.get("product_manager_name"),
+            "activity_type": item.get("activity_type"),
+            "solution_category": item.get("solution_category", ""),
+            "target_count": item.get("count", 0),
+            "assign_team": item.get("assign_team"),
+            "sponsor_pd": item.get("sponsor_pd"),
+            "notes": item.get("formula", "Auto-generated from revenue target"),
+            "status": "active",
+            "created_by": current_user["id"],
+            "created_at": now_utc()
+        }
+        await app_db.target_plan_items.insert_one(doc)
+        created.append(doc)
+    
+    # Mark suggestions as accepted
+    await app_db.activity_suggestions.update_one(
+        {"revenue_plan_id": plan_id, "org_id": org_id},
+        {"$set": {"status": "accepted", "accepted_at": now_utc()}}
+    )
+    
+    return {"success": True, "items_created": len(created)}
+
+
+# ==================== CATEGORY SEGMENTATION (PD breaks down target) ====================
+
+@plans_router.get("/revenue/{plan_id}/segments")
+async def list_segments(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Get category segments for a revenue plan"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    segments = await app_db.target_plan_segments.find(
+        {"revenue_plan_id": plan_id, "org_id": org_id}, {"_id": 0}
+    ).sort("booking_target", -1).to_list(50)
+    
+    # Enrich with actuals per category
+    pm_name = plan.get("product_manager_name", "")
+    filter_year = plan.get("period", "2026")[:4]
+    year_filter = {"date_last_stage_update": {"$regex": f"^{filter_year}"}}
+    
+    for seg in segments:
+        cat = seg.get("solution_category", "")
+        if cat and pm_name:
+            # Booking actual (Won opportunities in this category)
+            won_r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"},
+                             "solution_category": cat, "stage": "Won", **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
+            ]).to_list(1)
+            seg["actual_booking"] = won_r[0]["total"] if won_r else 0
+            seg["won_deals"] = won_r[0]["count"] if won_r else 0
+            
+            # Pipeline (open opps in this category)
+            pipe_r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"^{pm_name}$", "$options": "i"},
+                             "solution_category": cat, "stage": {"$nin": ["Won", "Lost", "Hold"]}, **year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", "$amount"]}}, "count": {"$sum": 1}}}
+            ]).to_list(1)
+            seg["pipeline"] = pipe_r[0]["total"] if pipe_r else 0
+            seg["pipeline_count"] = pipe_r[0]["count"] if pipe_r else 0
+            
+            # Achievement %
+            bt = seg.get("booking_target", 0)
+            seg["booking_pct"] = round(seg["actual_booking"] / bt * 100, 1) if bt > 0 else 0
+            
+            # Coverage ratio
+            seg["coverage_ratio"] = round(seg["pipeline"] / bt, 1) if bt > 0 else 0
+    
+    # Compute totals
+    totals = {
+        "booking_target": sum(s.get("booking_target", 0) for s in segments),
+        "invoiced_target": sum(s.get("invoiced_target", 0) for s in segments),
+        "margin_target": sum(s.get("margin_target", 0) for s in segments),
+        "actual_booking": sum(s.get("actual_booking", 0) for s in segments),
+        "pipeline": sum(s.get("pipeline", 0) for s in segments),
+    }
+    
+    plan_targets = {
+        "booking_target": plan.get("booking_target", plan.get("target_amount", 0)),
+        "invoiced_target": plan.get("invoiced_target", 0),
+        "margin_target": plan.get("margin_target", 0),
+    }
+    
+    return {
+        "segments": serialize_doc(segments),
+        "totals": totals,
+        "plan_targets": plan_targets,
+        "is_balanced": (
+            abs(totals["booking_target"] - plan_targets["booking_target"]) < 1 and
+            abs(totals["invoiced_target"] - plan_targets["invoiced_target"]) < 1 and
+            abs(totals["margin_target"] - plan_targets["margin_target"]) < 1
+        ),
+    }
+
+
+@plans_router.post("/revenue/{plan_id}/segments")
+async def save_segments(
+    plan_id: str,
+    data: CategorySegmentBulk,
+    current_user: dict = Depends(get_current_user)
+):
+    """PD saves category breakdown — validates sum equals plan target"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    plan_booking = plan.get("booking_target", plan.get("target_amount", 0))
+    plan_invoiced = plan.get("invoiced_target", 0)
+    plan_margin = plan.get("margin_target", 0)
+    
+    seg_booking = sum(s.booking_target for s in data.segments)
+    seg_invoiced = sum(s.invoiced_target for s in data.segments)
+    seg_margin = sum(s.margin_target for s in data.segments)
+    
+    # Validate sums (allow small rounding tolerance)
+    errors = []
+    if abs(seg_booking - plan_booking) > 1:
+        errors.append(f"Booking total {seg_booking:,.0f} != plan target {plan_booking:,.0f}")
+    if plan_invoiced > 0 and abs(seg_invoiced - plan_invoiced) > 1:
+        errors.append(f"Invoiced total {seg_invoiced:,.0f} != plan target {plan_invoiced:,.0f}")
+    if plan_margin > 0 and abs(seg_margin - plan_margin) > 1:
+        errors.append(f"Margin total {seg_margin:,.0f} != plan target {plan_margin:,.0f}")
+    
+    if errors:
+        raise HTTPException(status_code=400, detail=f"Validation failed: {'; '.join(errors)}")
+    
+    # Delete existing segments and recreate
+    await app_db.target_plan_segments.delete_many({"revenue_plan_id": plan_id, "org_id": org_id})
+    
+    created = []
+    for seg in data.segments:
+        if seg.booking_target <= 0 and seg.invoiced_target <= 0:
+            continue
+        doc = {
+            "id": generate_id(),
+            "org_id": org_id,
+            "revenue_plan_id": plan_id,
+            "product_manager_name": plan.get("product_manager_name"),
+            "solution_category": seg.solution_category,
+            "booking_target": seg.booking_target,
+            "invoiced_target": seg.invoiced_target,
+            "margin_target": seg.margin_target,
+            "notes": seg.notes or "",
+            "created_by": current_user["id"],
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
+        }
+        await app_db.target_plan_segments.insert_one(doc)
+        created.append(doc)
+    
+    # Update plan status
+    await app_db.target_plans.update_one(
+        {"id": plan_id}, {"$set": {"segmented": True, "segment_count": len(created), "updated_at": now_utc()}}
+    )
+    
+    logger.info(f"Segments saved for plan {plan_id}: {len(created)} categories by {current_user.get('email')}")
+    return {"success": True, "segments_created": len(created)}
+
+
+@plans_router.delete("/revenue/{plan_id}/segments/{segment_id}")
+async def delete_segment(plan_id: str, segment_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a single segment"""
+    app_db = get_app_db()
+    org_id = current_user.get("org_id", "default")
+    result = await app_db.target_plan_segments.delete_one({"id": segment_id, "revenue_plan_id": plan_id, "org_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Segment not found")
+    return {"success": True}
+
+
+# ==================== REVENUE CAP ====================
+
+@actuals_router.get("/revenue-cap/{plan_id}")
+async def get_revenue_cap(plan_id: str, current_user: dict = Depends(get_current_user)):
+    """Check if revenue is capped due to low activity for a plan"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    
+    plan = await app_db.target_plans.find_one({"id": plan_id, "org_id": org_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    # Calculate activity completion
+    items = await app_db.target_plan_items.find(
+        {"revenue_plan_id": plan_id, "org_id": org_id}
+    ).to_list(100)
+    
+    total_target = sum(i.get("target_count", 0) for i in items)
+    total_actual = 0
+    for item in items:
+        atype = item.get("activity_type")
+        if atype:
+            actual = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id})
+            total_actual += min(actual, item.get("target_count", 0))
+    
+    activity_pct = round(total_actual / total_target * 100, 1) if total_target > 0 else 0
+    
+    # Revenue calculation
+    pm_name = plan.get("product_manager_name", "")
+    target_amount = plan.get("target_amount", 0)
+    won_r = await canonical_db.opportunities.aggregate([
+        {"$match": {"product_manager": {"$regex": f"{pm_name}", "$options": "i"}, "stage": "Won"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+    ]).to_list(1)
+    actual_revenue = won_r[0]["total"] if won_r else 0
+    raw_revenue_pct = round(actual_revenue / target_amount * 100, 1) if target_amount > 0 else 0
+    
+    # Apply cap
+    is_capped = False
+    cap_pct = 100
+    effective_revenue_pct = raw_revenue_pct
+    
+    if total_target > 0:  # Only cap if activity targets exist
+        if activity_pct < 50:
+            is_capped = True
+            cap_pct = 40
+            effective_revenue_pct = min(raw_revenue_pct, 40)
+        elif activity_pct < 80:
+            is_capped = True
+            cap_pct = 70
+            effective_revenue_pct = min(raw_revenue_pct, 70)
+    
+    return {
+        "plan_id": plan_id,
+        "product_director": pm_name,
+        "is_capped": is_capped,
+        "cap_percentage": cap_pct,
+        "activity_completion": activity_pct,
+        "activity_target": total_target,
+        "activity_actual": total_actual,
+        "raw_revenue_pct": raw_revenue_pct,
+        "effective_revenue_pct": effective_revenue_pct,
+        "actual_revenue": actual_revenue,
+        "target_revenue": target_amount,
+        "reason": f"Activity completion {activity_pct}% {'< 80% threshold' if is_capped else '>= 80%'}" if total_target > 0 else "No activity targets set"
+    }
+
+
+# ==================== CEO SUMMARY ====================
+
+@actuals_router.get("/ceo-summary")
+async def get_ceo_summary(
+    year: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """CEO single-screen RAG summary with 5 signals + auto-insight"""
+    app_db = get_app_db()
+    canonical_db = get_canonical_db()
+    org_id = current_user.get("org_id", "default")
+    from datetime import datetime
+    
+    # Default to current year
+    if not year:
+        year = str(datetime.now().year)
+    
+    # Year filter for opportunities (using date_last_stage_update like Odoo)
+    opp_year_filter = {"date_last_stage_update": {"$regex": f"^{year}"}}
+    
+    # 1. Revenue vs Plan — dual target (Booking + Invoiced)
+    plan_query = {"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}
+    plan_query["$or"] = [
+        {"name": {"$regex": year}},
+        {"period": {"$regex": year}},
+        {"year": year},
+        {"year": int(year) if year.isdigit() else 0},
+    ]
+    plans = await app_db.target_plans.find(plan_query).to_list(100)
+    if not plans:
+        plans = await app_db.target_plans.find({"org_id": org_id, "plan_type": {"$in": ["revenue", "booking", "invoiced_revenue"]}}).to_list(100)
+    
+    # Booking actuals (Won opportunities)
+    total_booking_target = sum(p.get("booking_target", p.get("target_amount", 0)) for p in plans)
+    total_invoiced_target = sum(p.get("invoiced_target", 0) for p in plans)
+    total_won = 0
+    total_invoiced = 0
+    for plan in plans:
+        pm = plan.get("product_manager_name", "")
+        if pm:
+            r = await canonical_db.opportunities.aggregate([
+                {"$match": {"product_manager": {"$regex": f"{pm}", "$options": "i"}, "stage": "Won", **opp_year_filter}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+            ]).to_list(1)
+            total_won += r[0]["total"] if r else 0
+    
+    # Invoiced actuals (paid invoices) — only if invoiced targets set
+    if total_invoiced_target > 0:
+        inv_r = await canonical_db.invoices.aggregate([
+            {"$match": {"payment_state": "paid", "invoice_date": {"$regex": f"^{year}"}}},
+            {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$amount_total", 0]}}}}
+        ]).to_list(1)
+        total_invoiced = inv_r[0]["total"] if inv_r else 0
+    
+    # Combined view
+    rev_pct = round(total_won / total_booking_target * 100, 1) if total_booking_target > 0 else 0
+    rev_signal = "green" if rev_pct >= 80 else "amber" if rev_pct >= 50 else "red"
+    rev_detail = f"Booked: OMR {total_won:,.0f} / {total_booking_target:,.0f}"
+    if total_invoiced_target > 0:
+        inv_pct = round(total_invoiced / total_invoiced_target * 100, 1)
+        rev_detail += f" | Invoiced: OMR {total_invoiced:,.0f} / {total_invoiced_target:,.0f} ({inv_pct}%)"
+    
+    # 2. Activity Coverage
+    all_items = await app_db.target_plan_items.find({"org_id": org_id}).to_list(500)
+    act_target = sum(i.get("target_count", 0) for i in all_items)
+    act_actual = 0
+    for item in all_items:
+        atype = item.get("activity_type")
+        if atype:
+            c = await canonical_db.activities.count_documents({"activity_type": atype, "org_id": org_id, "date_deadline": {"$regex": f"^{year}"}})
+            act_actual += min(c, item.get("target_count", 0))
+    act_pct = round(act_actual / act_target * 100, 1) if act_target > 0 else 0
+    act_signal = "green" if act_pct >= 80 else "amber" if act_pct >= 50 else "red"
+    
+    # 3. Collections Health
+    total_inv = await canonical_db.invoices.count_documents({})
+    overdue = await canonical_db.invoices.count_documents({
+        "payment_state": {"$in": ["not_paid", "partial"]},
+        "due_date": {"$lt": datetime.now().strftime("%Y-%m-%d")}
+    })
+    overdue_pct = round(overdue / total_inv * 100, 1) if total_inv > 0 else 0
+    coll_signal = "green" if overdue_pct < 10 else "amber" if overdue_pct < 25 else "red"
+    
+    overdue_amt_r = await canonical_db.invoices.aggregate([
+        {"$match": {"payment_state": {"$in": ["not_paid", "partial"]}, "due_date": {"$lt": datetime.now().strftime("%Y-%m-%d")}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_total"}}}
+    ]).to_list(1)
+    overdue_amt = overdue_amt_r[0]["total"] if overdue_amt_r else 0
+    
+    # 4. Pipeline Coverage
+    pipeline_r = await canonical_db.opportunities.aggregate([
+        {"$match": {"stage": {"$nin": ["Won", "Lost", "Hold"]}, **opp_year_filter}},
+        {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$sale_value", 0]}}}}
+    ]).to_list(1)
+    pipeline = pipeline_r[0]["total"] if pipeline_r else 0
+    coverage = round(pipeline / total_booking_target, 1) if total_booking_target > 0 else 0
+    pipe_signal = "green" if coverage >= 3 else "amber" if coverage >= 2 else "red"
+    
+    # 5. Team Execution (based on plan items redistribution)
+    total_items = len(all_items)
+    items_with_assignment = 0
+    for item in all_items:
+        redist = await app_db.target_redistributions.count_documents({"plan_item_id": item.get("id"), "org_id": org_id})
+        if redist > 0:
+            items_with_assignment += 1
+    exec_pct = round(items_with_assignment / total_items * 100, 1) if total_items > 0 else 0
+    exec_signal = "green" if exec_pct >= 80 else "amber" if exec_pct >= 50 else "red"
+    
+    # Auto-generate insight
+    issues = []
+    if rev_signal == "red":
+        issues.append(f"revenue at {rev_pct}% of target")
+    if act_signal == "red":
+        # Find worst activity
+        worst_items = sorted(all_items, key=lambda x: x.get("target_count", 0), reverse=True)
+        if worst_items:
+            issues.append(f"low activity in {worst_items[0].get('solution_category', worst_items[0].get('activity_type', 'unknown'))}")
+    if coll_signal == "red":
+        issues.append(f"{overdue} overdue invoices (OMR {overdue_amt:,.0f})")
+    if pipe_signal == "red":
+        issues.append(f"pipeline coverage only {coverage}x (need 3x)")
+    
+    insight = f"Risk driven by {' and '.join(issues)}." if issues else "All signals healthy."
+    
+    signals = [
+        {"name": "Revenue vs Plan", "value": f"{rev_pct}%", "detail": rev_detail, "signal": rev_signal},
+        {"name": "Activity Coverage", "value": f"{act_pct}%", "detail": f"{act_actual} / {act_target} activities", "signal": act_signal},
+        {"name": "Collections Health", "value": f"{100 - overdue_pct:.0f}%", "detail": f"{overdue} overdue (OMR {overdue_amt:,.0f})", "signal": coll_signal},
+        {"name": "Pipeline Coverage", "value": f"{coverage}x", "detail": f"OMR {pipeline:,.0f} pipeline", "signal": pipe_signal},
+        {"name": "Team Execution", "value": f"{exec_pct}%", "detail": f"{items_with_assignment}/{total_items} items assigned", "signal": exec_signal},
+    ]
+    
+    red_count = len([s for s in signals if s["signal"] == "red"])
+    amber_count = len([s for s in signals if s["signal"] == "amber"])
+    
+    return {
+        "signals": signals,
+        "insight": insight,
+        "overall": "red" if red_count >= 2 else "amber" if red_count >= 1 or amber_count >= 2 else "green",
+        "red_count": red_count,
+        "amber_count": amber_count
     }
 

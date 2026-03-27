@@ -4,12 +4,11 @@ Syncs Odoo user groups to application roles and handles:
 - User groups (res.groups) sync
 - User-group membership sync
 - Role mapping from Odoo to app permissions
-- Real-time sync via webhooks
 """
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 import json
 
@@ -20,7 +19,6 @@ from services.etl_runner.runner import ETLRunner
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/odoo-rbac", tags=["odoo-rbac"])
-webhook_router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 # Odoo group to app role mapping
 # Maps Odoo group IDs to application roles with permissions
@@ -225,15 +223,6 @@ FIELD_ACCESS_RULES = {
     "standard": ["expected_revenue", "margin", "cost"],  # Some financial fields hidden
     "limited": ["sale_value", "expected_revenue", "margin", "cost", "commission", "probability"]  # Most sensitive fields hidden
 }
-
-
-class OdooWebhookPayload(BaseModel):
-    """Payload received from Odoo webhook/automation"""
-    model: str
-    action: str  # create, write, unlink
-    record_id: int
-    record_data: Optional[Dict[str, Any]] = None
-    timestamp: Optional[str] = None
 
 
 class SyncResult(BaseModel):
@@ -458,6 +447,37 @@ async def get_user_permissions(
     }
 
 
+# Shared role → permissions mapping for app-level role resolution
+APP_ROLE_PERMS = {
+    "admin": {"perms": ["admin:*", "view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "manage_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics",
+        "view_profile", "system_admin"], "access": "all"},
+    "sales_admin": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "manage_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "system_admin": {"perms": ["admin:*", "view_dashboard", "manage_dashboard", "system_admin", "manage_users", "view_users", "view_goals", "view_kpis", "view_profile"], "access": "all"},
+    "sales_director": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "update_stage", "update_probability",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "manage_teams",
+        "view_kpis", "manage_kpis", "view_users", "view_invoices", "manage_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "product_director": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals",
+        "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_teams", "view_profile"], "access": "all"},
+    "product_manager": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities",
+        "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals",
+        "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_teams", "view_profile"], "access": "all"},
+    "sales_manager": {"perms": ["view_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts",
+        "view_activities", "manage_activities", "view_goals", "manage_goals", "view_teams", "view_kpis", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "sales_rep": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+    "sales_user_own": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+    "sales_user_all": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "executive": {"perms": ["view_dashboard", "manage_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals",
+        "view_kpis", "view_invoices", "view_analytics", "manage_analytics", "view_profile"], "access": "all"},
+    "accountant": {"perms": ["view_dashboard", "view_accounts", "view_invoices", "manage_invoices", "view_analytics", "view_profile"], "access": "all"},
+    "billing": {"perms": ["view_dashboard", "view_invoices", "manage_invoices", "view_profile"], "access": "all"},
+    "user": {"perms": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"], "access": "own"},
+}
+
 @router.get("/current-user-rbac")
 async def get_current_user_rbac(
     current_user: dict = Depends(get_current_user)
@@ -474,8 +494,12 @@ async def get_current_user_rbac(
     email = current_user.get("email")
     logger.info(f"Looking up RBAC for user: {email}, org_id: {org_id}")
     
-    # First check canonical sales_users
-    user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
+    # First check canonical sales_users (may fail if canonical DB is not accessible)
+    user = None
+    try:
+        user = await canonical_db.sales_users.find_one({"email": email, "org_id": org_id})
+    except Exception as e:
+        logger.warning(f"Cannot access canonical_db.sales_users: {str(e)[:100]}. Falling back to app_db.")
     
     # If not in canonical, check users_rbac for Odoo group info
     users_rbac_record = None
@@ -490,16 +514,70 @@ async def get_current_user_rbac(
     
     # Determine access based on what we found
     if not user and not users_rbac_record:
-        # SECURITY: User not in RBAC system - give RESTRICTED access only
-        # They can see their profile but no business data
-        logger.warning(f"SECURITY: User {email} has no RBAC record - applying RESTRICTED access")
-        restricted_permissions = ["view_profile"]  # Only basic profile access
+        # Check if user has roles in the app users collection as fallback
+        app_user = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+        app_roles_list = app_user.get("roles", []) if app_user else []
+        
+        if app_roles_list:
+            # Resolve permissions from app-level roles
+            logger.info(f"User {email} not in RBAC but has app roles: {app_roles_list}")
+            permissions = set(["view_dashboard", "view_profile"])
+            resolved_roles = []
+            record_access = "own"
+            
+            for role in app_roles_list:
+                if role in APP_ROLE_PERMS:
+                    permissions.update(APP_ROLE_PERMS[role]["perms"])
+                    resolved_roles.append(role)
+                    if APP_ROLE_PERMS[role]["access"] == "all":
+                        record_access = "all"
+            
+            return {
+                "user_id": current_user.get("id"),
+                "name": current_user.get("name") or app_user.get("name"),
+                "app_roles": resolved_roles or app_roles_list,
+                "effective_permissions": list(permissions),
+                "record_access": record_access,
+                "field_access": "all" if "admin" in app_roles_list or "sales_admin" in app_roles_list else "standard",
+                "hidden_fields": [],
+                "rbac_synced": False,
+                "source": "app_roles_fallback"
+            }
+        
+        # SECURITY: User not in RBAC system - check if SSO authenticated
+        # SSO users who passed Microsoft authentication are legitimate employees
+        app_user_full = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+        is_sso_user = app_user_full and app_user_full.get("auth_provider") == "microsoft"
+        
+        if is_sso_user:
+            # SSO-authenticated user without RBAC data — give basic user access
+            logger.warning(f"SSO user {email} has no RBAC record - granting basic user access")
+            basic_permissions = ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_invoices", "view_goals", "view_profile"]
+            # Persist roles so subsequent requests don't hit this fallback
+            await app_db.users.update_one(
+                {"_id": app_user_full["_id"]},
+                {"$set": {"roles": ["user"], "permissions": basic_permissions}}
+            )
+            return {
+                "user_id": current_user.get("id"),
+                "name": current_user.get("name"),
+                "app_roles": ["user"],
+                "effective_permissions": basic_permissions,
+                "record_access": "own",
+                "field_access": "standard",
+                "hidden_fields": [],
+                "rbac_synced": False,
+                "source": "sso_default_access"
+            }
+        
+        logger.warning(f"SECURITY: User {email} has no RBAC record and no app roles - applying RESTRICTED access")
+        restricted_permissions = ["view_profile"]
         return {
             "user_id": current_user.get("id"),
             "name": current_user.get("name"),
             "app_roles": ["restricted"],
             "effective_permissions": restricted_permissions,
-            "record_access": "none",  # No business data access
+            "record_access": "none",
             "field_access": "limited",
             "hidden_fields": FIELD_ACCESS_RULES.get("limited", []),
             "rbac_synced": False,
@@ -510,6 +588,34 @@ async def get_current_user_rbac(
     if users_rbac_record and not user:
         odoo_groups = users_rbac_record.get("odoo_group_names", [])
         logger.info(f"User {email} found in users_rbac with groups: {odoo_groups}")
+        
+        # If odoo_groups is empty OR all numeric IDs (no readable names), fall back to app roles
+        named_groups = [g for g in odoo_groups if not g.startswith("group_")]
+        if not named_groups:
+            app_user = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+            app_roles_list = app_user.get("roles", []) if app_user else []
+            if app_roles_list:
+                logger.info(f"User {email} has empty odoo_groups, using app roles: {app_roles_list}")
+                permissions = set(["view_dashboard", "view_profile"])
+                resolved_roles = []
+                record_access = "own"
+                for role in app_roles_list:
+                    if role in APP_ROLE_PERMS:
+                        permissions.update(APP_ROLE_PERMS[role]["perms"])
+                        resolved_roles.append(role)
+                        if APP_ROLE_PERMS[role]["access"] == "all":
+                            record_access = "all"
+                return {
+                    "user_id": users_rbac_record.get("odoo_user_id") or current_user.get("id"),
+                    "name": current_user.get("name"),
+                    "app_roles": resolved_roles or app_roles_list,
+                    "effective_permissions": list(permissions),
+                    "record_access": record_access,
+                    "field_access": "all" if any(r in ["admin", "sales_admin", "sales_director"] for r in app_roles_list) else "standard",
+                    "hidden_fields": [],
+                    "rbac_synced": True,
+                    "source": "app_roles_fallback_from_rbac"
+                }
         
         # Determine access level from groups (highest wins)
         access_level = "user"  # Default
@@ -543,19 +649,30 @@ async def get_current_user_rbac(
         # Build permissions based on access level
         permissions = ["view_dashboard", "view_profile"]
         if access_level in ["admin", "director", "manager", "user"]:
-            permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+            permissions.extend(["view_opportunities", "view_accounts", "view_activities", "view_goals"])
         if access_level in ["admin", "director", "manager"]:
-            permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+            permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams", "manage_goals", "view_invoices"])
         if access_level in ["admin", "director"]:
-            permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+            permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis", "manage_invoices"])
         if access_level == "admin":
             permissions.extend(["manage_users", "view_users", "manage_teams", "system_admin"])
         
+        # Also merge app-level roles
+        app_user_record = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+        if app_user_record:
+            for role in app_user_record.get("roles", []):
+                if role in APP_ROLE_PERMS:
+                    permissions.extend(APP_ROLE_PERMS[role]["perms"])
+        
+        merged_roles = [access_level]
+        if app_user_record:
+            merged_roles = list(set(merged_roles + app_user_record.get("roles", [])))
+        
         return {
             "user_id": users_rbac_record.get("odoo_user_id"),
-            "name": users_rbac_record.get("name"),
-            "app_roles": [access_level],
-            "effective_permissions": permissions,
+            "name": users_rbac_record.get("name") or current_user.get("name"),
+            "app_roles": merged_roles,
+            "effective_permissions": list(set(permissions)),
             "record_access": record_access,
             "field_access": "all" if access_level in ["admin", "director"] else "standard",
             "hidden_fields": [],
@@ -581,7 +698,35 @@ async def get_current_user_rbac(
         
         if users_rbac_record:
             odoo_groups = users_rbac_record.get("odoo_group_names", [])
-            # Determine access from groups (same logic as above)
+            named_groups2 = [g for g in odoo_groups if not g.startswith("group_")]
+            
+            # If all groups are numeric IDs, fall back to app roles
+            if not named_groups2:
+                app_user2 = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+                app_roles2 = app_user2.get("roles", []) if app_user2 else []
+                if app_roles2:
+                    permissions2 = set(["view_dashboard", "view_profile"])
+                    resolved2 = []
+                    rec_access2 = "own"
+                    for role in app_roles2:
+                        if role in APP_ROLE_PERMS:
+                            permissions2.update(APP_ROLE_PERMS[role]["perms"])
+                            resolved2.append(role)
+                            if APP_ROLE_PERMS[role]["access"] == "all":
+                                rec_access2 = "all"
+                    return {
+                        "user_id": user.get("odoo_user_id") or current_user.get("id"),
+                        "name": current_user.get("name"),
+                        "app_roles": resolved2 or app_roles2,
+                        "effective_permissions": list(permissions2),
+                        "record_access": rec_access2,
+                        "field_access": "all" if any(r in ["admin", "system_admin", "sales_admin"] for r in app_roles2) else "standard",
+                        "hidden_fields": [],
+                        "rbac_synced": True,
+                        "source": "app_roles_fallback_numeric_groups"
+                    }
+            
+            # Determine access from named groups
             access_level = "user"
             record_access = "own"
             
@@ -603,16 +748,27 @@ async def get_current_user_rbac(
             
             permissions = ["view_dashboard", "view_profile"]
             if access_level in ["admin", "director", "manager", "user"]:
-                permissions.extend(["view_opportunities", "view_accounts", "view_activities"])
+                permissions.extend(["view_opportunities", "view_accounts", "view_activities", "view_goals"])
             if access_level in ["admin", "director", "manager"]:
-                permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams"])
+                permissions.extend(["manage_opportunities", "manage_accounts", "view_analytics", "view_teams", "manage_goals", "view_invoices"])
             if access_level in ["admin", "director"]:
-                permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis"])
+                permissions.extend(["manage_dashboard", "manage_analytics", "view_kpis", "manage_kpis", "manage_invoices"])
             if access_level == "admin":
                 permissions.extend(["manage_users", "view_users", "manage_teams", "system_admin"])
             
-            effective_permissions = permissions
+            # Also merge permissions from app-level roles
+            app_user_record = await app_db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+            if app_user_record:
+                for role in app_user_record.get("roles", []):
+                    if role in APP_ROLE_PERMS:
+                        permissions.extend(APP_ROLE_PERMS[role]["perms"])
+                        if APP_ROLE_PERMS[role]["access"] == "all":
+                            record_access = "all"
+            
+            effective_permissions = list(set(permissions))
             app_roles = [access_level]
+            if app_user_record:
+                app_roles = list(set(app_roles + app_user_record.get("roles", [])))
             
             return {
                 "user_id": user.get("odoo_id") or user.get("source_record_id"),
@@ -649,601 +805,3 @@ async def get_current_user_rbac(
         "rbac_synced": True
     }
 
-
-# ==================== WEBHOOKS ====================
-
-@webhook_router.post("/odoo")
-async def odoo_webhook(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    model: Optional[str] = None,
-    action: Optional[str] = None
-):
-    """
-    Receive webhook notifications from Odoo for real-time sync.
-    
-    This endpoint can be disabled via the webhook configuration settings.
-    """
-    # Check if webhooks are enabled
-    app_db = get_app_db()
-    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
-    
-    if not config or not config.get("enabled", False):
-        # Silently accept but don't process - prevents Odoo from retrying
-        return {"success": True, "message": "Webhooks disabled - request ignored"}
-    
-    try:
-        payload = await request.json()
-        logger.info(f"Received Odoo webhook: model={model}, action={action}, payload={payload}")
-        
-        # Get model and action from query params (set by our webhook URL)
-        # or fall back to payload fields for backwards compatibility
-        webhook_model = model or payload.get("model") or payload.get("_model")
-        webhook_action = action or payload.get("action")
-        
-        # Odoo's webhook sends record data directly, with '_id' or 'id' as the record ID
-        record_id = payload.get("id") or payload.get("_id") or payload.get("record_id")
-        
-        # The rest of the payload is the record data
-        record_data = payload.get("record_data") or payload
-        
-        if not webhook_model:
-            logger.warning("Webhook received without model - ignoring")
-            return {"success": True, "message": "No model specified - ignored"}
-        
-        if not record_id:
-            logger.warning(f"Webhook received without record_id for {webhook_model} - ignoring")
-            return {"success": True, "message": "No record_id - ignored"}
-        
-        # Default action to 'write' if not specified
-        if not webhook_action:
-            webhook_action = "write"
-        
-        # Process in background
-        background_tasks.add_task(
-            process_webhook_event,
-            model=webhook_model,
-            action=webhook_action,
-            record_id=record_id,
-            record_data=record_data
-        )
-        
-        return {"success": True, "message": "Webhook received and queued for processing"}
-        
-    except json.JSONDecodeError:
-        return {"success": True, "message": "Invalid JSON - ignored"}
-    except Exception as e:
-        logger.error(f"Webhook error: {e}")
-        # Return success to prevent Odoo from retrying
-        return {"success": True, "message": f"Error: {str(e)}"}
-
-
-async def process_webhook_event(model: str, action: str, record_id: int, record_data: dict):
-    """Process a webhook event from Odoo"""
-    canonical_db = get_canonical_db()
-    org_id = "default"  # TODO: Support multi-org
-    
-    logger.info(f"Processing webhook: {model}.{action} for record {record_id}")
-    
-    # Model to collection mapping
-    model_collection_map = {
-        "crm.lead": "opportunities",
-        "res.partner": "accounts",
-        "res.users": "sales_users",
-        "account.move": "invoices",
-        "mail.activity": "activities"
-    }
-    
-    collection_name = model_collection_map.get(model)
-    if not collection_name:
-        logger.warning(f"Unknown model: {model}")
-        return
-    
-    collection = canonical_db[collection_name]
-    
-    if action == "unlink":
-        # Soft delete - mark as deleted instead of removing
-        await collection.update_one(
-            {"odoo_id": record_id, "org_id": org_id},
-            {"$set": {
-                "deleted": True,
-                "deleted_at": now_utc(),
-                "active": False
-            }}
-        )
-        logger.info(f"Soft deleted {model} record {record_id}")
-        
-    elif action in ["create", "write"]:
-        # For create/write, we need to fetch the full record from Odoo
-        # if record_data is not provided
-        if not record_data:
-            # Trigger a sync for this specific record
-            logger.info("Record data not provided, will sync on next ETL run")
-            return
-        
-        # Update/insert the record
-        record_data["odoo_id"] = record_id
-        record_data["org_id"] = org_id
-        record_data["updated_at"] = now_utc()
-        record_data["deleted"] = False
-        
-        await collection.update_one(
-            {"odoo_id": record_id, "org_id": org_id},
-            {"$set": record_data},
-            upsert=True
-        )
-        logger.info(f"Upserted {model} record {record_id}")
-
-
-@webhook_router.get("/setup-instructions")
-async def get_webhook_setup_instructions():
-    """Get instructions for setting up Odoo webhooks"""
-    return {
-        "title": "Odoo Webhook Setup Instructions",
-        "steps": [
-            {
-                "step": 1,
-                "title": "Enable Developer Mode in Odoo",
-                "instruction": "Go to Settings > General Settings > Developer Tools > Activate Developer Mode"
-            },
-            {
-                "step": 2,
-                "title": "Create Automated Actions",
-                "instruction": "Go to Settings > Technical > Automation > Automated Actions"
-            },
-            {
-                "step": 3,
-                "title": "Create Action for each model",
-                "models": [
-                    {
-                        "model": "crm.lead",
-                        "name": "CRM Lead Sync Webhook",
-                        "triggers": ["On Creation", "On Update", "On Deletion"]
-                    },
-                    {
-                        "model": "res.partner",
-                        "name": "Partner/Account Sync Webhook",
-                        "triggers": ["On Creation", "On Update", "On Deletion"]
-                    },
-                    {
-                        "model": "res.users",
-                        "name": "User Sync Webhook",
-                        "triggers": ["On Update"]
-                    },
-                    {
-                        "model": "account.move",
-                        "name": "Invoice Sync Webhook",
-                        "triggers": ["On Creation", "On Update"]
-                    },
-                    {
-                        "model": "mail.activity",
-                        "name": "Activity Sync Webhook",
-                        "triggers": ["On Creation", "On Update", "On Deletion"]
-                    }
-                ]
-            },
-            {
-                "step": 4,
-                "title": "Configure Action",
-                "fields": {
-                    "action_type": "Execute Python Code",
-                    "python_code": """
-import requests
-import json
-
-webhook_url = "https://your-app-domain/api/webhooks/odoo"
-
-payload = {
-    "model": record._name,
-    "action": "write",  # or "create" / "unlink" based on trigger
-    "record_id": record.id,
-    "record_data": {
-        "name": record.name,
-        # Add other fields as needed
-    }
-}
-
-try:
-    requests.post(webhook_url, json=payload, timeout=5)
-except Exception as e:
-    pass  # Log error if needed
-"""
-                }
-            }
-        ],
-        "webhook_url": "/api/webhooks/odoo",
-        "expected_payload": {
-            "model": "crm.lead",
-            "action": "create | write | unlink",
-            "record_id": 123,
-            "record_data": {"name": "...", "stage_id": [1, "Won"], "...": "..."}
-        }
-    }
-
-
-@webhook_router.post("/setup-odoo-automations")
-async def setup_odoo_automations(
-    webhook_base_url: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Automatically create Odoo Automated Actions for webhook sync.
-    
-    This will create automated actions in Odoo that call our webhook endpoint
-    when records are created, updated, or deleted.
-    
-    Args:
-        webhook_base_url: The base URL of this application (e.g., https://permission-audit-2.preview.emergentagent.com)
-    """
-    app_db = get_app_db()
-    org_id = current_user.get("org_id", "default")
-    
-    # Get Odoo connection
-    conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
-    if not conn:
-        raise HTTPException(status_code=404, detail="No Odoo connection found")
-    
-    try:
-        from services.etl_control.routes import create_odoo_proxy
-        
-        common = create_odoo_proxy(conn["url"], "common")
-        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
-        
-        if not uid:
-            raise HTTPException(status_code=401, detail="Odoo authentication failed")
-        
-        models = create_odoo_proxy(conn["url"], "object")
-        
-        webhook_url = f"{webhook_base_url.rstrip('/')}/api/webhooks/odoo"
-        
-        # First, we need to get the ir.model IDs for each model
-        # because we need to reference them properly
-        model_names = ['crm.lead', 'res.partner', 'res.users', 'account.move', 'mail.activity']
-        model_ids = {}
-        
-        for model_name in model_names:
-            try:
-                result = models.execute_kw(
-                    conn["database"], uid, conn["api_key"],
-                    'ir.model', 'search_read',
-                    [[('model', '=', model_name)]],
-                    {'fields': ['id', 'model'], 'limit': 1}
-                )
-                if result:
-                    model_ids[model_name] = result[0]['id']
-                    logger.info(f"Found model {model_name} with ID {result[0]['id']}")
-            except Exception as e:
-                logger.error(f"Error fetching model ID for {model_name}: {e}")
-        
-        # Model configurations for webhook setup
-        model_configs = [
-            {
-                "model": "crm.lead",
-                "name": "CRM Webhook Sync",
-                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
-                "fields": ["name", "stage_id", "user_id", "partner_id", "expected_revenue", 
-                          "sale_amount_total", "type", "active", "lost_reason_id", "date_closed", "probability"]
-            },
-            {
-                "model": "res.partner",
-                "name": "Partner Webhook Sync",
-                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
-                "fields": ["name", "email", "phone", "active", "company_type", "user_id"]
-            },
-            {
-                "model": "res.users",
-                "name": "User Webhook Sync",
-                "triggers": [("on_write", "write")],
-                "fields": ["name", "login", "email", "groups_id", "active"]
-            },
-            {
-                "model": "account.move",
-                "name": "Invoice Webhook Sync",
-                "triggers": [("on_create", "create"), ("on_write", "write")],
-                "fields": ["name", "partner_id", "amount_total", "state", "payment_state", 
-                          "invoice_date", "invoice_date_due"]
-            },
-            {
-                "model": "mail.activity",
-                "name": "Activity Webhook Sync",
-                "triggers": [("on_create", "create"), ("on_write", "write"), ("on_unlink", "unlink")],
-                "fields": ["activity_type_id", "summary", "date_deadline", "user_id", "res_id", "res_model"]
-            }
-        ]
-        
-        created_actions = []
-        errors = []
-        
-        for config in model_configs:
-            model_id = model_ids.get(config["model"])
-            if not model_id:
-                errors.append(f"Model ID not found for {config['model']}")
-                continue
-                
-            for trigger, action_type in config["triggers"]:
-                action_name = f"{config['name']} - {action_type.upper()}"
-                
-                try:
-                    # Check if automation already exists
-                    existing = models.execute_kw(
-                        conn["database"], uid, conn["api_key"],
-                        'base.automation', 'search',
-                        [[('name', '=', action_name)]]
-                    )
-                    
-                    if existing:
-                        logger.info(f"Automation '{action_name}' already exists, skipping")
-                        continue
-                    
-                    # Odoo 17 has a built-in 'webhook' state for server actions
-                    # This sends a POST request with record data to the specified URL
-                    # The webhook URL includes query params to identify the action type
-                    webhook_url_with_params = f"{webhook_url}?model={config['model']}&action={action_type}"
-                    
-                    # Step 1: Create the ir.actions.server with state='webhook'
-                    server_action_name = f"Webhook: {action_name}"
-                    server_action_id = models.execute_kw(
-                        conn["database"], uid, conn["api_key"],
-                        'ir.actions.server', 'create',
-                        [{
-                            'name': server_action_name,
-                            'model_id': model_id,
-                            'state': 'webhook',
-                            'webhook_url': webhook_url_with_params,
-                            'webhook_field_ids': []  # Empty means send all accessible fields
-                        }]
-                    )
-                    logger.info(f"Created webhook server action: {server_action_name} (ID: {server_action_id})")
-                    
-                    # Step 2: Create the base.automation record that references the server action
-                    automation_id = models.execute_kw(
-                        conn["database"], uid, conn["api_key"],
-                        'base.automation', 'create',
-                        [{
-                            'name': action_name,
-                            'model_id': model_id,
-                            'trigger': trigger,
-                            'action_server_ids': [(4, server_action_id)],  # Link to server action
-                            'active': True
-                        }]
-                    )
-                    
-                    created_actions.append({
-                        "name": action_name,
-                        "automation_id": automation_id,
-                        "server_action_id": server_action_id,
-                        "model": config["model"],
-                        "trigger": trigger
-                    })
-                    logger.info(f"Created automation: {action_name} (ID: {automation_id})")
-                    
-                except Exception as e:
-                    error_msg = f"Failed to create '{action_name}': {str(e)}"
-                    errors.append(error_msg)
-                    logger.error(error_msg)
-        
-        # Store the automation IDs in config for later deletion
-        await app_db.webhook_config.update_one(
-            {"type": "odoo_webhooks"},
-            {
-                "$set": {
-                    "enabled": True,  # Enable by default after creation
-                    "odoo_automations_created": True,
-                    "automation_ids": created_actions,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "webhook_url": webhook_url,
-                    "models": [c["model"] for c in model_configs]
-                }
-            },
-            upsert=True
-        )
-        
-        return {
-            "success": len(errors) == 0,
-            "created_actions": created_actions,
-            "errors": errors,
-            "webhook_url": webhook_url,
-            "message": f"Created {len(created_actions)} automated actions" + (f" with {len(errors)} errors" if errors else "")
-        }
-        
-    except Exception as e:
-        logger.error(f"Error setting up Odoo automations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@webhook_router.get("/config")
-async def get_webhook_config(current_user: dict = Depends(get_current_user)):
-    """Get current webhook configuration"""
-    app_db = get_app_db()
-    config = await app_db.webhook_config.find_one({"type": "odoo_webhooks"})
-    
-    if not config:
-        return {
-            "enabled": False,
-            "odoo_automations_created": False,
-            "created_at": None,
-            "models": []
-        }
-    
-    return {
-        "enabled": config.get("enabled", False),
-        "odoo_automations_created": config.get("odoo_automations_created", False),
-        "created_at": config.get("created_at"),
-        "models": config.get("models", []),
-        "automation_ids": config.get("automation_ids", [])
-    }
-
-
-@webhook_router.post("/config")
-async def update_webhook_config(
-    enabled: bool,
-    current_user: dict = Depends(get_current_user)
-):
-    """Enable or disable webhook processing"""
-    app_db = get_app_db()
-    
-    await app_db.webhook_config.update_one(
-        {"type": "odoo_webhooks"},
-        {
-            "$set": {
-                "enabled": enabled,
-                "updated_at": datetime.utcnow().isoformat(),
-                "updated_by": current_user.get("id")
-            }
-        },
-        upsert=True
-    )
-    
-    return {
-        "success": True,
-        "enabled": enabled,
-        "message": f"Webhook processing {'enabled' if enabled else 'disabled'}"
-    }
-
-
-@webhook_router.delete("/odoo-automations")
-async def delete_odoo_automations(
-    current_user: dict = Depends(get_current_user),
-    odoo_url: Optional[str] = None,
-    odoo_database: Optional[str] = None,
-    odoo_username: Optional[str] = None,
-    odoo_api_key: Optional[str] = None
-):
-    """
-    Delete all webhook automations from Odoo.
-    
-    This will search for and remove all automated actions we created in Odoo to stop webhooks.
-    
-    Can use either:
-    1. Stored Odoo connection (if available)
-    2. Provided credentials via query params
-    """
-    app_db = get_app_db()
-    org_id = current_user.get("org_id", "default")
-    
-    # Try to get stored connection first
-    conn = await app_db.connections.find_one({"org_id": org_id, "type": "odoo"})
-    
-    # If no stored connection, use provided credentials
-    if not conn:
-        if all([odoo_url, odoo_database, odoo_username, odoo_api_key]):
-            conn = {
-                "url": odoo_url,
-                "database": odoo_database,
-                "username": odoo_username,
-                "api_key": odoo_api_key
-            }
-        else:
-            raise HTTPException(
-                status_code=404, 
-                detail="No Odoo connection found. Please provide Odoo credentials (url, database, username, api_key)"
-            )
-    
-    try:
-        from services.etl_control.routes import create_odoo_proxy
-        
-        common = create_odoo_proxy(conn["url"], "common")
-        uid = common.authenticate(conn["database"], conn["username"], conn["api_key"], {})
-        
-        if not uid:
-            raise HTTPException(status_code=401, detail="Odoo authentication failed")
-        
-        models = create_odoo_proxy(conn["url"], "object")
-        
-        deleted_automations = 0
-        deleted_actions = 0
-        errors = []
-        
-        # Search for automations by name pattern (our automations have specific names)
-        automation_names = [
-            "CRM Webhook Sync - CREATE",
-            "CRM Webhook Sync - WRITE", 
-            "CRM Webhook Sync - UNLINK",
-            "Partner Webhook Sync - CREATE",
-            "Partner Webhook Sync - WRITE",
-            "Partner Webhook Sync - UNLINK",
-            "User Webhook Sync - WRITE",
-            "Invoice Webhook Sync - CREATE",
-            "Invoice Webhook Sync - WRITE",
-            "Activity Webhook Sync - CREATE",
-            "Activity Webhook Sync - WRITE",
-            "Activity Webhook Sync - UNLINK"
-        ]
-        
-        # Delete automations
-        try:
-            automation_ids = models.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'base.automation', 'search',
-                [[('name', 'in', automation_names)]]
-            )
-            if automation_ids:
-                models.execute_kw(
-                    conn["database"], uid, conn["api_key"],
-                    'base.automation', 'unlink', [automation_ids]
-                )
-                deleted_automations = len(automation_ids)
-                logger.info(f"Deleted {deleted_automations} automations from Odoo")
-        except Exception as e:
-            errors.append(f"Failed to delete automations: {str(e)}")
-            logger.error(f"Failed to delete automations: {e}")
-        
-        # Delete server actions
-        server_action_names = [f"Webhook: {name}" for name in automation_names]
-        try:
-            action_ids = models.execute_kw(
-                conn["database"], uid, conn["api_key"],
-                'ir.actions.server', 'search',
-                [[('name', 'in', server_action_names)]]
-            )
-            if action_ids:
-                models.execute_kw(
-                    conn["database"], uid, conn["api_key"],
-                    'ir.actions.server', 'unlink', [action_ids]
-                )
-                deleted_actions = len(action_ids)
-                logger.info(f"Deleted {deleted_actions} server actions from Odoo")
-        except Exception as e:
-            errors.append(f"Failed to delete server actions: {str(e)}")
-            logger.error(f"Failed to delete server actions: {e}")
-        
-        # Update config
-        await app_db.webhook_config.update_one(
-            {"type": "odoo_webhooks"},
-            {
-                "$set": {
-                    "enabled": False,
-                    "odoo_automations_created": False,
-                    "automation_ids": [],
-                    "deleted_at": datetime.utcnow().isoformat()
-                }
-            },
-            upsert=True
-        )
-        
-        return {
-            "success": len(errors) == 0,
-            "deleted_automations": deleted_automations,
-            "deleted_server_actions": deleted_actions,
-            "errors": errors,
-            "message": f"Deleted {deleted_automations} automations and {deleted_actions} server actions from Odoo"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error deleting Odoo automations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/role-mappings")
-async def get_role_mappings():
-    """Get all configured role mappings"""
-    return {
-        "mappings": [
-            {
-                "odoo_group_id": gid,
-                **mapping
-            }
-            for gid, mapping in ODOO_GROUP_MAPPING.items()
-        ],
-        "field_access_rules": FIELD_ACCESS_RULES
-    }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { crmAPI, analyticsAPI } from '../../lib/api';
+import { crmAPI, analyticsAPI, targetAPI } from '../../lib/api';
 import { useCurrency } from '../../lib/CurrencyContext';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -19,9 +20,10 @@ import { Separator } from '../ui/separator';
 import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Search, Filter, GripVertical, DollarSign, User, Mail, Phone, Calendar, MessageSquare, Activity, Target, TrendingUp, AlertTriangle, CheckCircle, Plus, Send, Clock, Building2, Users, Tag, Briefcase, FileText, Check, X, Edit2, Maximize2, Minimize2, Download } from 'lucide-react';
+import { Search, Filter, GripVertical, DollarSign, User, Mail, Phone, Calendar, MessageSquare, Activity, Target, TrendingUp, AlertTriangle, CheckCircle, Plus, Send, Clock, Building2, Users, Tag, Briefcase, FileText, Check, X, Edit2, Maximize2, Minimize2, Download, Settings2, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, AccountFilter, StageFilter } from '../layout/PageFilters';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, AccountFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
+import { AdvancedFilterBuilder, FilterChipBar } from '../layout/AdvancedFilterBuilder';
 
 const STAGES = ['qualified', 'proposal', 'negotiation', 'review_negotiation', 'closed_won', 'closed_lost'];
 
@@ -207,6 +209,8 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState('');
   const [newNoteType, setNewNoteType] = useState('general');
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [newActivity, setNewActivity] = useState({ type: 'Call', subject: '', description: '', date_deadline: '', assigned_user: '' });
   const [savingBluesheet, setSavingBluesheet] = useState(false);
   
   // Bluesheet form state
@@ -270,6 +274,29 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
       toast.error('Failed to save bluesheet');
     } finally {
       setSavingBluesheet(false);
+    }
+  };
+
+  const handleCreateActivity = async () => {
+    if (!newActivity.subject.trim()) { toast.error('Subject is required'); return; }
+    try {
+      const res = await crmAPI.createOpportunityActivity(opportunity.canonical_id, newActivity);
+      setActivities(prev => [res.data, ...prev]);
+      setNewActivity({ type: 'Call', subject: '', description: '', date_deadline: '', assigned_user: '' });
+      setShowAddActivity(false);
+      toast.success('Activity created');
+    } catch (error) {
+      toast.error('Failed to create activity');
+    }
+  };
+
+  const handleToggleActivity = async (activityId, completed) => {
+    try {
+      await crmAPI.updateOpportunityActivity(opportunity.canonical_id, activityId, { completed: !completed });
+      setActivities(prev => prev.map(a => a.id === activityId ? { ...a, completed: !completed, status: !completed ? 'completed' : 'pending' } : a));
+      toast.success(completed ? 'Activity reopened' : 'Activity completed');
+    } catch (error) {
+      toast.error('Failed to update activity');
     }
   };
 
@@ -476,6 +503,25 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                             <span key={star} className={star <= opportunity.priority ? 'text-amber-400' : 'text-gray-200'}>★</span>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {opportunity.presales_engineer && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Pre-sales:</span>
+                        <span className="text-sm font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{opportunity.presales_engineer}</span>
+                        {opportunity.presales_contribution && <Badge variant="outline" className="text-[10px]">{opportunity.presales_contribution}</Badge>}
+                      </div>
+                    )}
+                    {opportunity.lead_source && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Lead Source:</span>
+                        <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{opportunity.lead_source}</span>
+                      </div>
+                    )}
+                    {opportunity.campaign_name && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 w-24">Campaign:</span>
+                        <span className="text-sm font-medium">{opportunity.campaign_name}</span>
                       </div>
                     )}
                   </CardContent>
@@ -957,8 +1003,52 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
             <TabsContent value="activities" className="mt-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-medium text-sm">Activity Stream</h3>
-                <Badge variant="secondary">{activities.length} activities</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{activities.length} activities</Badge>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddActivity(!showAddActivity)} data-testid="add-activity-btn">
+                    <Plus className="h-3 w-3 mr-1" />{showAddActivity ? 'Cancel' : 'Add'}
+                  </Button>
+                </div>
               </div>
+              
+              {showAddActivity && (
+                <Card className="mb-4 border-blue-200 bg-blue-50/30">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Type</Label>
+                        <Select value={newActivity.type} onValueChange={v => setNewActivity(p => ({ ...p, type: v }))}>
+                          <SelectTrigger className="h-8 text-sm bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {['Call', 'Email', 'Meeting', 'Demo', 'Proof of concept', 'Work Shop', 'Site Visit', 'To Do'].map(t => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Deadline</Label>
+                        <Input type="date" className="h-8 text-sm bg-white" value={newActivity.date_deadline} onChange={e => setNewActivity(p => ({ ...p, date_deadline: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Subject</Label>
+                      <Input className="h-8 text-sm bg-white" placeholder="Activity subject..." value={newActivity.subject} onChange={e => setNewActivity(p => ({ ...p, subject: e.target.value }))} data-testid="activity-subject-input" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Description</Label>
+                      <Textarea className="text-sm bg-white resize-none" rows={2} placeholder="Optional details..." value={newActivity.description} onChange={e => setNewActivity(p => ({ ...p, description: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Assigned To</Label>
+                      <Input className="h-8 text-sm bg-white" placeholder="Name..." value={newActivity.assigned_user} onChange={e => setNewActivity(p => ({ ...p, assigned_user: e.target.value }))} />
+                    </div>
+                    <Button size="sm" onClick={handleCreateActivity} className="bg-[#800000] hover:bg-[#600000] text-white" data-testid="save-activity-btn">
+                      <Plus className="h-3 w-3 mr-1" /> Create Activity
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
               
               <ScrollArea className="h-[400px]">
                 <div className="space-y-3">
@@ -966,6 +1056,7 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                     <div className="text-center py-8 text-gray-500">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No activities yet</p>
+                      <p className="text-xs mt-1">Click "Add" to create your first activity</p>
                     </div>
                   ) : (
                     activities.map((activity) => {
@@ -1018,9 +1109,14 @@ function OpportunityDetailSheet({ opportunity, open, onClose, formatCurrency }) 
                       const IconComponent = config.icon;
                       
                       return (
-                        <Card key={activity.id} className={`border-l-4 ${urgency === 'overdue' ? 'border-l-red-500' : urgency === 'today' ? 'border-l-amber-500' : 'border-l-gray-300'}`}>
+                        <Card key={activity.id} className={`border-l-4 ${activity.completed ? 'border-l-emerald-400 opacity-70' : urgency === 'overdue' ? 'border-l-red-500' : urgency === 'today' ? 'border-l-amber-500' : 'border-l-gray-300'}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
+                              {activity.source_system === 'local' && (
+                                <button onClick={() => handleToggleActivity(activity.id, activity.completed)} className={`mt-1 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${activity.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`} data-testid={`toggle-activity-${activity.id}`}>
+                                  {activity.completed && <Check className="h-3 w-3" />}
+                                </button>
+                              )}
                               <div className={`p-2 rounded-full ${config.color}`}>
                                 <IconComponent className="h-4 w-4" />
                               </div>
@@ -1217,16 +1313,56 @@ export function OpportunitiesPage() {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const { formatCurrency } = useCurrency();
-  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [] });
-
-  // Initialize filters from URL params
-  const getInitialFilters = () => ({
-    year: searchParams.get('year') || null,
-    quarter: searchParams.get('quarter') || null,
-    salesRep: searchParams.get('salesRep') || null,
-    account: searchParams.get('account') || null,
-    stage: searchParams.get('stage') || null
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], accounts: [], stages: [], productDirectors: [], solutionCategories: [] });
+  
+  // Column selection (saved to localStorage)
+  const ALL_COLUMNS = [
+    { key: 'name', label: 'Name', default: true },
+    { key: 'account', label: 'Account', default: true },
+    { key: 'stage', label: 'Stage', default: true },
+    { key: 'amount', label: 'Amount', default: true },
+    { key: 'owner', label: 'Owner', default: true },
+    { key: 'probability', label: 'Probability', default: true },
+    { key: 'days', label: 'Last Updated', default: true },
+    { key: 'product_manager', label: 'Product Director', default: false },
+    { key: 'solution_category', label: 'Solution Category', default: false },
+    { key: 'presales', label: 'Pre-sales', default: false },
+    { key: 'lead_source', label: 'Lead Source', default: false },
+    { key: 'campaign', label: 'Campaign', default: false },
+    { key: 'create_date', label: 'Created Date', default: false },
+  ];
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try { const saved = localStorage.getItem('opp_columns'); return saved ? JSON.parse(saved) : ALL_COLUMNS.filter(c => c.default).map(c => c.key); }
+    catch { return ALL_COLUMNS.filter(c => c.default).map(c => c.key); }
   });
+  const toggleColumn = (key) => {
+    const next = visibleColumns.includes(key) ? visibleColumns.filter(k => k !== key) : [...visibleColumns, key];
+    setVisibleColumns(next); localStorage.setItem('opp_columns', JSON.stringify(next));
+  };
+  
+  // Sorting
+  const [sortField, setSortField] = useState('days_since_update');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const toggleSort = (field) => {
+    if (sortField === field) { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); }
+    else { setSortField(field); setSortOrder('asc'); }
+  };
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+
+  // Initialize filters from URL params (including dashboard navigation)
+  const getInitialFilters = () => {
+    const stageExclude = searchParams.get('stage_exclude');
+    return {
+      year: searchParams.get('year') || null,
+      quarter: searchParams.get('quarter') || null,
+      salesRep: searchParams.get('salesRep') || null,
+      account: searchParams.get('account') || null,
+      stage: searchParams.get('stage') || (stageExclude ? `exclude:${stageExclude}` : null),
+      productDirector: searchParams.get('productDirector') || null,
+      solutionCategory: searchParams.get('solutionCategory') || null
+    };
+  };
 
   // Contextual filters for Opportunities page
   const [filters, setFilters] = useState(getInitialFilters);
@@ -1246,7 +1382,8 @@ export function OpportunitiesPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null });
+    setFilters({ year: null, quarter: null, salesRep: null, account: null, stage: null, productDirector: null, solutionCategory: null });
+    setCurrentPage(0);
     setSearchParams({}, { replace: true });
   };
 
@@ -1262,15 +1399,22 @@ export function OpportunitiesPage() {
 
   const loadFilterOptions = useCallback(async () => {
     try {
-      const res = await analyticsAPI.getFilters();
-      if (res.data) {
-        setFilterOptions({
-          years: res.data.years || [],
-          salesReps: res.data.sales_reps || res.data.salesReps || [],  // Handle both naming conventions
-          accounts: res.data.accounts || [],
-          stages: res.data.stages || []
-        });
-      }
+      const [filterRes, pmRes, catRes] = await Promise.allSettled([
+        analyticsAPI.getFilters(),
+        targetAPI.getProductManagers(),
+        targetAPI.getSolutionCategories(),
+      ]);
+      const fData = filterRes.status === 'fulfilled' ? filterRes.value.data : {};
+      const pms = pmRes.status === 'fulfilled' ? pmRes.value.data : [];
+      const cats = catRes.status === 'fulfilled' ? catRes.value.data : [];
+      setFilterOptions({
+        years: fData.years || [],
+        salesReps: fData.sales_reps || fData.salesReps || [],
+        accounts: (fData.accounts || []).map(a => typeof a === 'object' ? a.name : a).filter(Boolean),
+        stages: fData.stages || [],
+        productDirectors: pms.map(p => p.name),
+        solutionCategories: cats.map(c => c.name),
+      });
     } catch (error) {
       console.error('Failed to load filter options:', error);
     }
@@ -1319,7 +1463,7 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     loadData();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage, currentPage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.account, filters.stage, filters.productDirector, filters.solutionCategory, currentPage]);
 
   const loadData = async () => {
     try {
@@ -1330,6 +1474,8 @@ export function OpportunitiesPage() {
       if (filters.salesRep) params.sales_rep = filters.salesRep;
       if (filters.account) params.account = filters.account;
       if (filters.stage) params.stage = filters.stage;
+      if (filters.productDirector) params.product_manager = filters.productDirector;
+      if (filters.solutionCategory) params.solution_category = filters.solutionCategory;
 
       const [listRes, kanbanRes] = await Promise.all([
         crmAPI.listOpportunities(params),
@@ -1444,7 +1590,23 @@ export function OpportunitiesPage() {
           onChange={(v) => updateFilter('stage', v)} 
           stages={filterOptions.stages}
         />
+        <ProductDirectorFilter
+          value={filters.productDirector}
+          onChange={(v) => updateFilter('productDirector', v)}
+          productDirectors={filterOptions.productDirectors}
+        />
+        <SolutionCategoryFilter
+          value={filters.solutionCategory}
+          onChange={(v) => updateFilter('solutionCategory', v)}
+          categories={filterOptions.solutionCategories}
+        />
       </PageFilters>
+      <FilterChipBar
+        filters={filters}
+        onClear={(key) => updateFilter(key, null)}
+        onClearAll={resetFilters}
+        onOpenAdvanced={() => setShowAdvancedFilter(true)}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
@@ -1461,8 +1623,27 @@ export function OpportunitiesPage() {
               data-testid="export-excel-btn"
             >
               <Download className="h-4 w-4" />
-              Export Excel
+              Export
             </Button>
+            <Popover open={showColumnPicker} onOpenChange={setShowColumnPicker}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="column-picker-btn">
+                  <Settings2 className="h-4 w-4 mr-1" /> Columns
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">Show/Hide Columns</p>
+                {ALL_COLUMNS.map(col => (
+                  <button key={col.key} onClick={() => toggleColumn(col.key)}
+                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 flex items-center gap-2 ${visibleColumns.includes(col.key) ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleColumns.includes(col.key) ? 'bg-[#800000] border-[#800000] text-white' : 'border-gray-300'}`}>
+                      {visibleColumns.includes(col.key) ? '✓' : ''}
+                    </span>
+                    {col.label}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -1481,64 +1662,45 @@ export function OpportunitiesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Probability</TableHead>
+                  {visibleColumns.includes('name') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('name')}>Name {sortField === 'name' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('account') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('account_name')}>Account {sortField === 'account_name' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('stage') && <TableHead>Stage</TableHead>}
+                  {visibleColumns.includes('amount') && <TableHead className="cursor-pointer hover:bg-gray-50 text-right" onClick={() => toggleSort('sale_value')}>Amount {sortField === 'sale_value' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('owner') && <TableHead>Owner</TableHead>}
+                  {visibleColumns.includes('probability') && <TableHead>Probability</TableHead>}
+                  {visibleColumns.includes('product_manager') && <TableHead>Product Director</TableHead>}
+                  {visibleColumns.includes('solution_category') && <TableHead>Solution Category</TableHead>}
+                  {visibleColumns.includes('presales') && <TableHead>Pre-sales</TableHead>}
+                  {visibleColumns.includes('lead_source') && <TableHead>Lead Source</TableHead>}
+                  {visibleColumns.includes('campaign') && <TableHead>Campaign</TableHead>}
+                  {visibleColumns.includes('create_date') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('create_date')}>Created {sortField === 'create_date' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
+                  {visibleColumns.includes('days') && <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => toggleSort('days_since_update')}>Last Updated {sortField === 'days_since_update' && <ArrowUpDown className="inline h-3 w-3 ml-0.5" />}</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {opportunities.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No opportunities found. Run an ETL pipeline to import data.
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={visibleColumns.length + 1} className="text-center py-8 text-gray-500">No opportunities found.</TableCell></TableRow>
                 ) : (
-                  opportunities
-                    .filter(opp => 
-                      !searchQuery ||
-                      opp.name?.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
+                  [...opportunities]
+                    .filter(opp => !searchQuery || opp.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .sort((a, b) => { let va = a[sortField] ?? (typeof b[sortField] === 'number' ? 9999 : ''); let vb = b[sortField] ?? (typeof a[sortField] === 'number' ? 9999 : ''); if (typeof va === 'number' && typeof vb === 'number') return sortOrder === 'asc' ? va - vb : vb - va; return sortOrder === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va)); })
                     .map((opp) => (
-                      <TableRow 
-                        key={opp.canonical_id} 
-                        data-testid={`opp-row-${opp.canonical_id}`}
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleOpenDetail(opp)}
-                      >
-                        <TableCell className="font-medium">{opp.name}</TableCell>
-                        <TableCell>{opp.account_name || '-'}</TableCell>
-                        <TableCell>
-                          <Badge className={stageColors[opp.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opp.stage] || 'bg-gray-100 text-gray-700'}>
-                            {opp.custom_stage || formatStage(opp.stage)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(opp.sale_value || opp.amount || 0)}
-                        </TableCell>
-                        <TableCell>{opp.owner_name || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={opp.user_probability || opp.probability || 0} className="w-16 h-2" />
-                            <span className="text-sm">{opp.user_probability || opp.probability || 0}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDetail(opp);
-                            }}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
+                      <TableRow key={opp.canonical_id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleOpenDetail(opp)}>
+                        {visibleColumns.includes('name') && <TableCell className="font-medium">{opp.name}</TableCell>}
+                        {visibleColumns.includes('account') && <TableCell>{opp.account_name || '-'}</TableCell>}
+                        {visibleColumns.includes('stage') && <TableCell><Badge className={stageColors[opp.custom_stage?.toLowerCase().replace(/[&\s]/g, '_')] || stageColors[opp.stage] || 'bg-gray-100 text-gray-700'}>{opp.custom_stage || formatStage(opp.stage)}</Badge></TableCell>}
+                        {visibleColumns.includes('amount') && <TableCell className="text-right font-mono">{formatCurrency(opp.sale_value || opp.amount || 0)}</TableCell>}
+                        {visibleColumns.includes('owner') && <TableCell>{opp.owner_name || '-'}</TableCell>}
+                        {visibleColumns.includes('probability') && <TableCell><div className="flex items-center gap-2"><Progress value={opp.user_probability || opp.probability || 0} className="w-16 h-2" /><span className="text-sm">{opp.user_probability || opp.probability || 0}%</span></div></TableCell>}
+                        {visibleColumns.includes('product_manager') && <TableCell className="text-xs">{opp.product_manager || '-'}</TableCell>}
+                        {visibleColumns.includes('solution_category') && <TableCell className="text-xs">{opp.solution_category || '-'}</TableCell>}
+                        {visibleColumns.includes('presales') && <TableCell>{opp.presales_engineer ? <span className="text-xs text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">{opp.presales_engineer}</span> : <span className="text-xs text-gray-300">-</span>}</TableCell>}
+                        {visibleColumns.includes('lead_source') && <TableCell>{opp.lead_source ? <span className="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{opp.lead_source}</span> : <span className="text-xs text-gray-300">-</span>}</TableCell>}
+                        {visibleColumns.includes('campaign') && <TableCell className="text-xs">{opp.campaign_name || '-'}</TableCell>}
+                        {visibleColumns.includes('create_date') && <TableCell className="text-xs text-gray-500">{(opp.create_date || '').split(' ')[0]}</TableCell>}
+                        {visibleColumns.includes('days') && <TableCell>{opp.days_since_update != null ? (<span className={`text-xs font-medium px-2 py-0.5 rounded-full ${opp.days_since_update <= 7 ? 'bg-green-100 text-green-700' : opp.days_since_update <= 30 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{opp.days_since_update}d ago</span>) : <span className="text-xs text-gray-400">-</span>}</TableCell>}
+                        <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenDetail(opp); }}>View</Button></TableCell>
                       </TableRow>
                     ))
                 )}
@@ -1592,6 +1754,11 @@ export function OpportunitiesPage() {
         open={detailSheetOpen}
         onClose={() => setDetailSheetOpen(false)}
         formatCurrency={formatCurrency}
+      />
+      <AdvancedFilterBuilder open={showAdvancedFilter} onClose={() => setShowAdvancedFilter(false)}
+        currentFilters={filters}
+        filterOptions={{ productDirectors: filterOptions.productDirectors, solutionCategories: filterOptions.solutionCategories, salespersons: filterOptions.salesReps }}
+        onApply={(newFilters) => { setFilters(prev => ({ ...prev, ...newFilters })); setCurrentPage(0); }}
       />
     </div>
   );

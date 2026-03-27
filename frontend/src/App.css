@@ -1,484 +1,58 @@
-/* Securado CRM Platform - Application Styles */
+/* Securado CRM Platform — Minimal CSS (Tailwind handles 99% of styling) */
 
-/* Main Layout */
-.app-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Hide Emergent badge */
+#emergent-badge { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
+
+/* react-grid-layout overrides (library requires CSS, can't use Tailwind) */
+.react-grid-layout {
+  @apply relative;
+}
+.react-grid-item {
+  @apply transition-all duration-200 ease-in-out;
+  transition-property: left, top, width, height;
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+.react-grid-item > .react-resizable-handle {
+  @apply hidden;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle {
+  @apply block absolute w-5 h-5 z-30;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle::after {
+  content: '';
+  @apply absolute right-0.5 bottom-0.5 w-2 h-2 border-r-2 border-b-2 border-[#800000] opacity-60;
+}
+.dashboard-editing .react-grid-item > .react-resizable-handle:hover::after {
+  @apply opacity-100;
+  border-color: #cc0000;
+}
+.dashboard-editing .react-grid-item {
+  @apply border border-dashed border-[#800000]/20 rounded-xl;
+}
+.dashboard-editing .react-grid-item:hover {
+  @apply border-[#800000]/50;
+}
+.react-grid-item.react-grid-placeholder {
+  @apply !bg-[#800000] !opacity-[0.15] rounded-xl;
 }
 
-.main-layout {
-  display: flex;
-  flex: 1;
-}
-
-/* Sidebar Navigation */
-.sidebar {
-  width: 260px;
-  background: linear-gradient(180deg, #333333 0%, #2a2a2a 100%);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  transition: width 0.3s ease;
-}
-
-.sidebar-collapsed {
-  width: 72px;
-}
-
-.sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-logo {
-  height: 40px;
-  width: auto;
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 16px 12px;
-  overflow-y: auto;
-}
-
-.sidebar-section {
-  margin-bottom: 24px;
-}
-
-.sidebar-section-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
-  padding: 0 12px;
-  margin-bottom: 8px;
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.sidebar-item.active {
-  background: #800000;
-  color: white;
-}
-
-.sidebar-item-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-/* Main Content Area */
-.main-content {
-  flex: 1;
-  background: #f5f5f5;
-  overflow-y: auto;
-}
-
-.content-header {
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.content-body {
-  padding: 24px;
-}
-
-/* Page Title */
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #333333;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-/* Cards */
-.securado-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
-}
-
-.securado-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.securado-card-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.securado-card-body {
-  padding: 20px;
-}
-
-/* Stat Cards */
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-}
-
-.stat-card-primary {
-  background: linear-gradient(135deg, #800000 0%, #9a1919 100%);
-  color: white;
-  border: none;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-.stat-card-primary .stat-label {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* Buttons */
-.btn-securado-primary {
-  background: linear-gradient(135deg, #800000 0%, #9a1919 100%);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-securado-primary:hover {
-  background: linear-gradient(135deg, #9a1919 0%, #b02020 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(128, 0, 0, 0.3);
-}
-
-.btn-securado-secondary {
-  background: #333333;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-securado-secondary:hover {
-  background: #444444;
-}
-
-.btn-securado-outline {
-  background: transparent;
-  color: #800000;
-  border: 2px solid #800000;
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-securado-outline:hover {
-  background: #800000;
-  color: white;
-}
-
-/* Tables */
-.securado-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.securado-table th {
-  background: #f9fafb;
-  color: #374151;
-  font-weight: 600;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.securado-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #333333;
-}
-
-.securado-table tr:hover td {
-  background: rgba(128, 0, 0, 0.02);
-}
-
-/* Badges */
-.badge-securado-primary {
-  background: #800000;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-securado-success {
-  background: #86c881;
-  color: #1f2937;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-securado-warning {
-  background: #ee6543;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-securado-neutral {
-  background: #e5e7eb;
-  color: #374151;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* Form Elements */
-.input-securado {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.input-securado:focus {
-  border-color: #800000;
-  box-shadow: 0 0 0 3px rgba(128, 0, 0, 0.1);
-  outline: none;
-}
-
-/* Login Page */
-.login-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e0dfd4 100%);
-}
-
-.login-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  padding: 48px;
-  width: 100%;
-  max-width: 420px;
-}
-
-.login-logo {
-  height: 48px;
-  margin-bottom: 32px;
-}
-
-.login-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333333;
-  margin-bottom: 8px;
-}
-
-.login-subtitle {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 32px;
-}
-
-/* Dashboard */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 24px;
-}
-
-.dashboard-chart {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-}
-
-/* Kanban Board */
-.kanban-column {
-  background: #f9fafb;
-  border-radius: 12px;
-  min-width: 280px;
-}
-
-.kanban-column-header {
-  padding: 16px;
-  background: white;
-  border-radius: 12px 12px 0 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.kanban-card {
-  background: white;
-  border-radius: 8px;
-  padding: 14px;
-  margin: 8px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.kanban-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-color: #800000;
-}
-
-/* User Avatar */
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #800000 0%, #9a1919 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-/* Progress Bars */
-.progress-securado {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-securado-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #800000 0%, #9a1919 100%);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-/* Tabs */
-.tabs-securado .tab-active {
-  color: #800000;
-  border-bottom-color: #800000;
-}
-
-/* Alerts */
-.alert-securado {
-  padding: 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.alert-securado-info {
-  background: rgba(128, 0, 0, 0.05);
-  border: 1px solid rgba(128, 0, 0, 0.2);
-  color: #800000;
-}
-
-.alert-securado-success {
-  background: rgba(134, 200, 129, 0.1);
-  border: 1px solid rgba(134, 200, 129, 0.3);
-  color: #2d6a29;
-}
-
-.alert-securado-warning {
-  background: rgba(238, 101, 67, 0.1);
-  border: 1px solid rgba(238, 101, 67, 0.3);
-  color: #c94424;
-}
-
-/* Animations */
+/* Custom animations (extend Tailwind) */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* Responsive */
+/* Responsive sidebar (mobile) */
 @media (max-width: 768px) {
   .sidebar {
-    position: fixed;
-    left: -260px;
-    height: 100vh;
-    z-index: 50;
+    @apply fixed -left-[260px] h-screen z-50;
   }
-  
   .sidebar.open {
-    left: 0;
-  }
-  
-  .content-body {
-    padding: 16px;
+    @apply left-0;
   }
 }

@@ -323,18 +323,16 @@ class DashboardAggregator:
             
             # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
             def get_opp_value(opp):
-                sale_val = opp.get("sale_value", 0)
-                if sale_val and sale_val != 'False':
-                    try:
-                        return float(sale_val)
-                    except:
-                        pass
-                amount = opp.get("amount", 0)
-                if amount and amount != 'False':
-                    try:
-                        return float(amount)
-                    except:
-                        pass
+                """Priority: x_studio_sale_value > sale_value > sale_amount_total > amount"""
+                for field in ["x_studio_sale_value", "sale_value", "sale_amount_total", "amount"]:
+                    val = opp.get(field, 0)
+                    if val and val != 'False' and val != False:
+                        try:
+                            v = float(val)
+                            if v > 0:
+                                return v
+                        except:
+                            pass
                 return 0
             
             # Calculate aggregates for OPPORTUNITIES only - use sale_value as primary
@@ -497,13 +495,15 @@ dashboard_aggregator = DashboardAggregator()
 @router.get("/stats")
 async def get_dashboard_stats(
     request: Request,
-    year: Optional[str] = Query(None, description="Filter by year (e.g., 2024, 2025, 2026)"),
-    quarter: Optional[str] = Query(None, description="Filter by quarter (Q1, Q2, Q3, Q4)"),
-    sales_rep: Optional[str] = Query(None, description="Filter by sales rep name"),
+    year: Optional[str] = Query(None, description="Filter by year"),
+    quarter: Optional[str] = Query(None, description="Filter by quarter"),
+    sales_rep: Optional[str] = Query(None, description="Filter by sales rep"),
     team_id: Optional[str] = Query(None, description="Filter by team ID"),
-    account: Optional[str] = Query(None, description="Filter by account name"),
+    account: Optional[str] = Query(None, description="Filter by account"),
     stage: Optional[str] = Query(None, description="Filter by stage"),
-    date_field: Optional[str] = Query('create_date', description="Date field to filter on: create_date or close_date"),
+    product_manager: Optional[str] = Query(None, description="Filter by product director"),
+    solution_category: Optional[str] = Query(None, description="Filter by solution category"),
+    date_field: Optional[str] = Query('create_date', description="Date field"),
     current_user: dict = Depends(get_current_user)
 ):
     """Get dashboard statistics - real-time calculation with optional filters and RBAC"""
@@ -518,7 +518,7 @@ async def get_dashboard_stats(
     rbac_filter = await get_rbac_filter(request, current_user, "opportunity")
     
     # Check if any filter is applied (including RBAC)
-    has_filters = any([year, quarter, sales_rep, team_id, account, stage]) or bool(rbac_filter)
+    has_filters = any([year, quarter, sales_rep, team_id, account, stage, product_manager, solution_category]) or bool(rbac_filter)
     
     if not has_filters:
         # Use cache for unfiltered view
@@ -542,8 +542,8 @@ async def get_dashboard_stats(
             return serialize_doc(stats)
     
     # Calculate filtered stats in real-time
-    # Build MongoDB query for non-date filters
-    query = {"org_id": org_id}
+    # Build MongoDB query - ALL filters applied at DB level for consistency
+    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": True}
     
     # Apply RBAC filter
     query.update(rbac_filter)
@@ -556,68 +556,85 @@ async def get_dashboard_stats(
         query["account_name"] = account
     if stage:
         query["stage"] = stage
+    if product_manager:
+        query["product_manager"] = {"$regex": f"^{product_manager}$", "$options": "i"}
+    if solution_category:
+        query["solution_category"] = solution_category
     
-    opps = await canonical_db.opportunities.find(query).to_list(10000)
+    # ODOO-MATCHING DATE FILTER LOGIC:
+    # - Won/Lost deals: filter by date_last_stage_update (when stage changed)
+    # - Open deals: filter by create_date (when deal was created)
+    # This matches Odoo's dashboard behavior exactly
     
-    # Filter out test/demo records from analytics
-    opps = filter_out_test_records(opps)
+    if year:
+        # Fetch ALL non-deleted active records (we'll split by stage then filter dates)
+        opps = await canonical_db.opportunities.find(query).to_list(10000)
+        opps = filter_out_test_records(opps)
+        
+        # Classify first
+        def is_won(o):
+            stage = str(o.get("stage", "")).lower()
+            return stage == "won" or "closed won" in stage
+        def is_lost(o):
+            stage = str(o.get("stage", "")).lower()
+            return stage == "lost" or "closed lost" in stage
+        
+        open_opps = [o for o in opps if not is_won(o) and not is_lost(o)]
+        won_opps = [o for o in opps if is_won(o)]
+        lost_opps = [o for o in opps if is_lost(o)]
+        
+        # Filter by year using Odoo's logic
+        open_opps = [o for o in open_opps if str(o.get("create_date", "")).startswith(year)]
+        won_opps = [o for o in won_opps if str(o.get("date_last_stage_update") or "").startswith(year)]
+        lost_opps = [o for o in lost_opps if str(o.get("date_last_stage_update") or "").startswith(year)]
+        
+        if quarter:
+            quarter_months = {"Q1": ["01","02","03"], "Q2": ["04","05","06"], "Q3": ["07","08","09"], "Q4": ["10","11","12"]}
+            months = quarter_months.get(quarter, [])
+            if months:
+                open_opps = [o for o in open_opps if any(f"-{m}-" in str(o.get("create_date", "")) for m in months)]
+                won_opps = [o for o in won_opps if any(f"-{m}-" in str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "") for m in months)]
+                lost_opps = [o for o in lost_opps if any(f"-{m}-" in str(o.get("date_last_stage_update") or o.get("date_closed") or o.get("write_date") or "") for m in months)]
+        
+        opps = open_opps + won_opps + lost_opps
+    else:
+        opps = await canonical_db.opportunities.find(query).to_list(10000)
+        opps = filter_out_test_records(opps)
     
-    # Apply date filters (year and quarter) using the helper function
-    # For open opportunities, filter by create_date
-    # For closed (won/lost), filter by date_closed
-    
-    # Classify opportunities:
-    # - Won = stage is 'Won' (use date_closed)
-    # - Lost = active=False and has lost_reason_id (use date_closed)
-    # - Open = everything else (use create_date)
-    
+    # Classify (or re-classify if already done above)
     def is_won(o):
-        stage = o.get("stage", "").lower()
+        stage = str(o.get("stage", "")).lower()
         return stage == "won" or "closed won" in stage
     
     def is_lost(o):
-        active = o.get("active", True)
-        if active == 'False' or active is False:
-            return bool(o.get("lost_reason_id") or o.get("lost_reason"))
-        return False
+        stage = str(o.get("stage", "")).lower()
+        return stage == "lost" or "closed lost" in stage
     
     open_opps = [o for o in opps if not is_won(o) and not is_lost(o)]
     won_opps = [o for o in opps if is_won(o)]
     lost_opps = [o for o in opps if is_lost(o)]
     
-    # Apply date filters
-    if year or quarter:
-        # Open opportunities: filter by create_date
-        open_opps = apply_date_filters(open_opps, year=year, quarter=quarter, date_field='create_date')
-        # Won opportunities: filter by date_closed
-        won_opps = apply_date_filters_for_won_lost(won_opps, year=year, quarter=quarter)
-        # Lost opportunities: filter by date_closed  
-        lost_opps = apply_date_filters_for_won_lost(lost_opps, year=year, quarter=quarter)
-    
-    # Combine all
-    opps = open_opps + won_opps + lost_opps
+    # NO additional post-filtering - year is already in MongoDB query
     
     # Separate leads from opportunities by type field
     opportunities_only = [o for o in opps if o.get("type") == "opportunity"]
     leads_only = [o for o in opps if o.get("type") == "lead"]
     
-    logger.info(f"After filtering: {len(opps)} total records ({len(opportunities_only)} opportunities, {len(leads_only)} leads)")
+    logger.info(f"Dashboard stats: {len(opps)} total ({len(opportunities_only)} opps, {len(leads_only)} leads, {len(won_opps)} won, {len(lost_opps)} lost, {len(open_opps)} open) [year={year}]")
     logger.info(f"  Open: {len(open_opps)}, Won: {len(won_opps)}, Lost: {len(lost_opps)}")
     
     # Helper to get opportunity value - use sale_value (RFP quoted value) if available, else amount
     def get_opp_value(opp):
-        sale_val = opp.get("sale_value", 0)
-        if sale_val and sale_val != 'False':
-            try:
-                return float(sale_val)
-            except:
-                pass
-        amount = opp.get("amount", 0)
-        if amount and amount != 'False':
-            try:
-                return float(amount)
-            except:
-                pass
+        """Get opportunity value - priority: x_studio_sale_value > sale_value > sale_amount_total > amount"""
+        for field in ["x_studio_sale_value", "sale_value", "sale_amount_total", "amount"]:
+            val = opp.get(field, 0)
+            if val and val != 'False' and val != False:
+                try:
+                    v = float(val)
+                    if v > 0:
+                        return v
+                except:
+                    pass
         return 0
     
     # Calculate stats for OPPORTUNITIES only - use sale_value as primary

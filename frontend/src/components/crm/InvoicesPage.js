@@ -18,7 +18,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { 
   FileText, Search, Eye, DollarSign, Calendar, Clock, AlertTriangle,
   CheckCircle, TrendingUp, Building2, Download, Send, Plus, Filter, 
-  RotateCcw, ChevronDown, RefreshCw, Users, Award
+  RotateCcw, ChevronDown, RefreshCw, Users, Award, Maximize2, Minimize2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,11 +35,17 @@ export function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState(null);
   const [salespersonData, setSalespersonData] = useState([]);
-  const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [] });
+  const [filterOptions, setFilterOptions] = useState({ accounts: [], years: [], salespersons: [], product_managers: [], solution_categories: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [agingFilter, setAgingFilter] = useState(null);
+  const [statusDrill, setStatusDrill] = useState(null);
+  const [invoiceNotes, setInvoiceNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [noteType, setNoteType] = useState('note'); // null=all, 'paid', 'overdue', 'pending' // null=all, '0_30', '30_60', '60_90', '90_plus'
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [accountOpen, setAccountOpen] = useState(false);
   const { currency: globalCurrency, formatCurrency, updateCurrency } = useCurrency();
@@ -47,9 +53,8 @@ export function InvoicesPage() {
 
   // Contextual filters for Invoices page
   const [filters, setFilters] = useState({
-    year: null,
-    quarter: null,
-    account: null
+    year: null, quarter: null, account: null,
+    salesperson: null, product_manager: null, solution_category: null
   });
 
   // Sync with global currency setting
@@ -68,12 +73,12 @@ export function InvoicesPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, account: null });
+    setFilters({ year: null, quarter: null, account: null, salesperson: null, product_manager: null, solution_category: null });
     setActiveTab('all');
   };
 
   const hasActiveFilters = () => {
-    return filters.year || filters.quarter || filters.account;
+    return filters.year || filters.quarter || filters.account || filters.salesperson || filters.product_manager || filters.solution_category;
   };
 
   const loadInvoices = useCallback(async () => {
@@ -102,13 +107,34 @@ export function InvoicesPage() {
       
       // Handle new API response format
       const invoiceData = invoicesRes.data?.invoices || invoicesRes.data || [];
-      const statsData = statsRes.data?.stats || invoicesRes.data?.stats || {};
+      const mainStats = invoicesRes.data?.stats || {};
+      const statsData = statsRes.data?.stats || statsRes.data || {};
       const options = statsRes.data?.filter_options || { accounts: [], years: [] };
       const spData = salespersonRes.data?.data || [];
       
+      // Merge stats — prefer main response (has collection_rate + aging)
+      const mergedStats = {
+        ...statsData,
+        total_invoiced: mainStats.total || statsData.total_invoiced || 0,
+        total_paid: mainStats.paid || statsData.total_paid || 0,
+        total_overdue: mainStats.overdue || statsData.total_overdue || 0,
+        total_pending: mainStats.pending || statsData.total_pending || 0,
+        count_total: mainStats.total_count || statsData.count_total || 0,
+        count_paid: mainStats.paid_count || statsData.count_paid || 0,
+        count_overdue: mainStats.overdue_count || statsData.count_overdue || 0,
+        count_pending: mainStats.pending_count || statsData.count_pending || 0,
+        collection_rate: invoicesRes.data?.collection_rate,
+        aging_breakdown: invoicesRes.data?.aging_breakdown,
+      };
+      
       setInvoices(invoiceData);
-      setStats(statsData);
+      setStats(mergedStats);
       setFilterOptions(options);
+      // Also extract salesperson, PM, category from invoice data
+      const salespersons = [...new Set(invoiceData.map(i => i.salesperson).filter(Boolean))].sort();
+      const pms = [...new Set(invoiceData.map(i => i.product_manager).filter(Boolean))].sort();
+      const cats = [...new Set(invoiceData.map(i => i.solution_category).filter(Boolean))].sort();
+      setFilterOptions(prev => ({ ...prev, ...options, salespersons, product_managers: pms, solution_categories: cats }));
       setSalespersonData(spData);
       
     } catch (error) {
@@ -142,7 +168,29 @@ export function InvoicesPage() {
   const filteredInvoices = invoices.filter(inv => {
     const matchesSearch = !searchQuery ||
       inv.account?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase());
+      inv.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.so_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.salesperson?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.product_manager?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status drill-down
+    if (statusDrill && inv.status !== statusDrill) return false;
+    
+    // Salesperson / PM / Category filters
+    if (filters.salesperson && inv.salesperson !== filters.salesperson) return false;
+    if (filters.product_manager && inv.product_manager !== filters.product_manager) return false;
+    if (filters.solution_category && inv.solution_category !== filters.solution_category) return false;
+    
+    // Aging drill-down filter
+    if (agingFilter && inv.status === 'overdue') {
+      const days = inv.aging_days || 0;
+      if (agingFilter === '0_30' && (days < 0 || days > 30)) return false;
+      if (agingFilter === '30_60' && (days <= 30 || days > 60)) return false;
+      if (agingFilter === '60_90' && (days <= 60 || days > 90)) return false;
+      if (agingFilter === '90_plus' && days <= 90) return false;
+    } else if (agingFilter) {
+      return false; // Only show overdue when aging filter active
+    }
     
     return matchesSearch;
   });
@@ -150,7 +198,25 @@ export function InvoicesPage() {
   const viewInvoice = (invoice) => {
     setSelectedInvoice(invoice);
     setSheetOpen(true);
+    // Load notes for this invoice
+    setInvoiceNotes([]);
+    setNewNote('');
+    setNoteType('note');
+    if (invoice?.id) {
+      crmAPI.getInvoiceNotes(invoice.id).then(r => setInvoiceNotes(r.data || [])).catch(() => {});
+    }
   };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !selectedInvoice?.id) return;
+    try {
+      const res = await crmAPI.addInvoiceNote(selectedInvoice.id, { text: newNote, type: noteType });
+      setInvoiceNotes(prev => [res.data, ...prev]);
+      setNewNote('');
+      toast.success('Note added');
+    } catch { toast.error('Failed to add note'); }
+  };
+
 
   // Calculate collection rate
   const collectionRate = stats?.total_invoiced > 0 
@@ -192,7 +258,7 @@ export function InvoicesPage() {
             <SelectContent>
               {getCurrencyOptions().map((curr) => (
                 <SelectItem key={curr.code} value={curr.code}>
-                  {curr.symbol} {curr.code}
+                  {curr.code === 'OMR' || curr.code === 'SAR' ? curr.code : `${curr.symbol} ${curr.code}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -297,6 +363,33 @@ export function InvoicesPage() {
           </PopoverContent>
         </Popover>
 
+        {/* Salesperson Filter */}
+        <Select value={filters.salesperson || 'all'} onValueChange={v => updateFilter('salesperson', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="All Sales Reps" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sales Reps</SelectItem>
+            {filterOptions.salespersons?.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Product Manager Filter */}
+        <Select value={filters.product_manager || 'all'} onValueChange={v => updateFilter('product_manager', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="All Product Mgrs" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Product Mgrs</SelectItem>
+            {filterOptions.product_managers?.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Solution Category Filter */}
+        <Select value={filters.solution_category || 'all'} onValueChange={v => updateFilter('solution_category', v === 'all' ? null : v)}>
+          <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="All Categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {filterOptions.solution_categories?.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
         {/* Reset Button */}
         {hasActiveFilters() && (
           <Button 
@@ -310,6 +403,20 @@ export function InvoicesPage() {
             Reset
           </Button>
         )}
+        
+        {/* Export Excel */}
+        <Button variant="outline" size="sm" className="h-9 ml-auto"
+          onClick={async () => {
+            try {
+              const res = await crmAPI.exportInvoicesExcel(filteredInvoices);
+              const url = URL.createObjectURL(new Blob([res.data]));
+              const a = document.createElement('a'); a.href = url; a.download = 'invoices_export.xlsx'; a.click();
+              URL.revokeObjectURL(url);
+              toast.success(`Exported ${filteredInvoices.length} invoices`);
+            } catch { toast.error('Export failed'); }
+          }} data-testid="export-excel-btn">
+          <Download className="h-4 w-4 mr-1" /> Export Excel
+        </Button>
 
         {/* Active Filter Summary */}
         {hasActiveFilters() && (
@@ -321,73 +428,39 @@ export function InvoicesPage() {
         )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards — Clickable Drill-Down */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Invoiced</p>
-                <p className="text-2xl font-bold text-foreground" data-testid="stat-total">
-                  {formatCurrency(stats?.total_invoiced || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_total || 0} invoices</p>
+        {[
+          { label: 'Total Invoiced', value: stats?.total_invoiced, count: stats?.count_total, icon: FileText, color: 'text-foreground', bgIcon: 'bg-primary/10', iconColor: 'text-primary', status: null },
+          { label: 'Pending', value: stats?.total_pending, count: stats?.count_pending, icon: Clock, color: 'text-amber-600', bgIcon: 'bg-amber-100', iconColor: 'text-amber-600', status: 'pending' },
+          { label: 'Overdue', value: stats?.total_overdue, count: stats?.count_overdue, icon: AlertTriangle, color: 'text-red-600', bgIcon: 'bg-red-100', iconColor: 'text-red-600', status: 'overdue' },
+          { label: 'Collected', value: stats?.total_paid, count: stats?.count_paid, icon: CheckCircle, color: 'text-emerald-600', bgIcon: 'bg-emerald-100', iconColor: 'text-emerald-600', status: 'paid' },
+        ].map(kpi => { const KI = kpi.icon; return (
+          <Card key={kpi.label} className={`cursor-pointer transition-all hover:shadow-md ${statusDrill === kpi.status && kpi.status ? 'ring-2 ring-[#800000] ring-offset-1' : ''}`}
+            onClick={() => { setStatusDrill(statusDrill === kpi.status ? null : kpi.status); setAgingFilter(null); }}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                    {statusDrill === kpi.status && kpi.status && <Badge className="bg-[#800000] text-white text-[9px]">Filtered</Badge>}
+                  </div>
+                  <p className={`text-2xl font-bold ${kpi.color}`}>{formatCurrency(kpi.value || 0, selectedCurrency)}</p>
+                  <p className="text-xs text-muted-foreground">{kpi.count || 0} invoices</p>
+                </div>
+                <div className={`h-12 w-12 rounded-full ${kpi.bgIcon} flex items-center justify-center`}><KI className={`h-6 w-6 ${kpi.iconColor}`} /></div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-amber-600" data-testid="stat-pending">
-                  {formatCurrency(stats?.total_pending || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_pending || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-600" data-testid="stat-overdue">
-                  {formatCurrency(stats?.total_overdue || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_overdue || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Collected</p>
-                <p className="text-2xl font-bold text-emerald-600" data-testid="stat-paid">
-                  {formatCurrency(stats?.total_paid || 0, selectedCurrency)}
-                </p>
-                <p className="text-xs text-muted-foreground">{stats?.count_paid || 0} invoices</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>); })}
       </div>
+
+      {(statusDrill || agingFilter) && (
+        <div className="flex items-center gap-2 bg-[#800000]/5 border border-[#800000]/20 rounded-lg px-4 py-2">
+          <span className="text-sm text-[#800000] font-medium">Drill-down: {statusDrill ? statusDrill + ' invoices' : ''} {agingFilter ? 'aging ' + agingFilter.replace('_','-') + ' days' : ''}</span>
+          <Button variant="ghost" size="sm" onClick={() => { setStatusDrill(null); setAgingFilter(null); }} className="h-6 text-xs text-[#800000]">Clear filter</Button>
+          <span className="text-xs text-gray-500 ml-auto">{filteredInvoices.length} results</span>
+        </div>
+      )}
 
       {/* Collection Progress */}
       <Card>
@@ -410,6 +483,29 @@ export function InvoicesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Aging Breakdown */}
+      {stats?.aging_breakdown && (stats.aging_breakdown['0_30'] > 0 || stats.aging_breakdown['30_60'] > 0 || stats.aging_breakdown['60_90'] > 0 || stats.aging_breakdown['90_plus'] > 0) && (
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: '0-30 Days', key: '0_30', color: 'text-amber-600 bg-amber-50', min: 0, max: 30 },
+            { label: '30-60 Days', key: '30_60', color: 'text-orange-600 bg-orange-50', min: 30, max: 60 },
+            { label: '60-90 Days', key: '60_90', color: 'text-red-500 bg-red-50', min: 60, max: 90 },
+            { label: '90+ Days', key: '90_plus', color: 'text-red-700 bg-red-100', min: 90, max: 9999 },
+          ].map(bucket => (
+            <Card key={bucket.key} className={`cursor-pointer transition-all hover:shadow-md ${agingFilter === bucket.key ? 'ring-2 ring-[#800000] ring-offset-1' : ''}`}
+              onClick={() => setAgingFilter(agingFilter === bucket.key ? null : bucket.key)}>
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500">{bucket.label}</p>
+                  {agingFilter === bucket.key && <Badge className="bg-[#800000] text-white text-[9px]">Filtered</Badge>}
+                </div>
+                <p className={`text-lg font-bold ${bucket.color.split(' ')[0]}`}>{formatCurrency(stats.aging_breakdown[bucket.key] || 0, selectedCurrency)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Invoices Table */}
       <Card>
@@ -571,8 +667,11 @@ export function InvoicesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Invoice #</TableHead>
+                  <TableHead>SO #</TableHead>
                   <TableHead>Account</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Salesperson</TableHead>
+                  <TableHead>Product Mgr</TableHead>
                   <TableHead>Invoice Date</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -595,15 +694,18 @@ export function InvoicesPage() {
                           {invoice.invoice_number}
                         </div>
                       </TableCell>
+                      <TableCell className="text-xs text-gray-600">{invoice.so_number || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           {invoice.account}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono font-medium">
+                      <TableCell className="text-right font-mono font-medium">
                         {formatCurrency(invoice.amount, selectedCurrency)}
                       </TableCell>
+                      <TableCell className="text-sm">{invoice.salesperson || '-'}</TableCell>
+                      <TableCell className="text-sm">{invoice.product_manager || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -641,35 +743,28 @@ export function InvoicesPage() {
         </CardContent>
       </Card>
 
-      {/* Invoice Detail Sheet */}
+      {/* Invoice Detail Sheet — Enhanced */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-[500px] sm:w-[600px]">
+        <SheetContent className={`${sheetExpanded ? 'w-[90vw] sm:w-[85vw] sm:max-w-[1200px]' : 'w-[500px] sm:w-[650px]'} overflow-y-auto transition-all duration-300`}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               {selectedInvoice?.invoice_number}
+              <button onClick={() => setSheetExpanded(!sheetExpanded)} className="ml-auto p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Double-click or click to expand/collapse">
+                {sheetExpanded ? <Minimize2 className="h-4 w-4 text-gray-500" /> : <Maximize2 className="h-4 w-4 text-gray-500" />}
+              </button>
             </SheetTitle>
           </SheetHeader>
           
           {selectedInvoice && (
-            <div className="mt-6 space-y-6">
+            <div className="mt-4 space-y-5">
+              {/* Status + Amount Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-muted-foreground">Bill To</p>
-                  <p className="font-medium text-lg">{selectedInvoice.account}</p>
+                  <p className="text-xs text-muted-foreground">Bill To</p>
+                  <p className="font-semibold text-lg">{selectedInvoice.account}</p>
                 </div>
                 {getStatusBadge(selectedInvoice.status)}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Invoice Date</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.invoice_date)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Due Date</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.due_date)}</p>
-                </div>
               </div>
 
               <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
@@ -677,15 +772,155 @@ export function InvoicesPage() {
                 <span className="text-2xl font-bold">{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
               </div>
 
-              <div className="flex gap-2">
+              {/* Key Dates */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Invoice Date</p>
+                  <p className="text-sm font-medium mt-0.5">{formatDate(selectedInvoice.invoice_date) || '-'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Due Date</p>
+                  <p className="text-sm font-medium mt-0.5">{formatDate(selectedInvoice.due_date) || '-'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Aging</p>
+                  <p className={`text-sm font-bold mt-0.5 ${selectedInvoice.aging_days > 60 ? 'text-red-600' : selectedInvoice.aging_days > 30 ? 'text-amber-600' : 'text-green-600'}`}>
+                    {selectedInvoice.status === 'overdue' ? `${selectedInvoice.aging_days || 0} days overdue` : selectedInvoice.status === 'paid' ? 'Paid' : 'Current'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sales & Product Info */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sales Information</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">SO Number</p>
+                      <p className="font-medium">{selectedInvoice.so_number || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Salesperson</p>
+                      <p className="font-medium">{selectedInvoice.salesperson || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Product Manager</p>
+                      <p className="font-medium">{selectedInvoice.product_manager ? <span className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded text-xs">{selectedInvoice.product_manager}</span> : '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Solution Category</p>
+                      <p className="font-medium">{selectedInvoice.solution_category ? <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-xs">{selectedInvoice.solution_category}</span> : '-'}</p>
+                    </div>
+                  </div>
+                  {selectedInvoice.opportunity_name && (
+                    <div>
+                      <p className="text-xs text-gray-400">Linked Opportunity</p>
+                      <p className="text-sm font-medium text-[#800000]">{selectedInvoice.opportunity_name}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Financial Details */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Financial Details</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Subtotal (excl. tax)</span>
+                      <span className="font-mono">{formatCurrency(selectedInvoice.amount - (selectedInvoice.amount * 0.05), selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Tax (est. 5%)</span>
+                      <span className="font-mono">{formatCurrency(selectedInvoice.amount * 0.05, selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="text-gray-500">Total</span>
+                      <span className="font-mono font-bold">{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5">
+                      <span className="text-gray-500">Amount Remaining</span>
+                      <span className={`font-mono font-bold ${selectedInvoice.amount_residual > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(selectedInvoice.amount_residual || 0, selectedCurrency)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Payment & Collection */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment Status</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Collection Progress</span>
+                        <span>{selectedInvoice.amount > 0 ? Math.round(((selectedInvoice.amount - (selectedInvoice.amount_residual || 0)) / selectedInvoice.amount) * 100) : 0}%</span>
+                      </div>
+                      <Progress value={selectedInvoice.amount > 0 ? ((selectedInvoice.amount - (selectedInvoice.amount_residual || 0)) / selectedInvoice.amount) * 100 : 0} className="h-2" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-2">
+                    <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                      <p className="text-[10px] text-green-600">Collected</p>
+                      <p className="font-bold text-green-700">{formatCurrency(selectedInvoice.amount - (selectedInvoice.amount_residual || 0), selectedCurrency)}</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-2 border border-red-100">
+                      <p className="text-[10px] text-red-600">Outstanding</p>
+                      <p className="font-bold text-red-700">{formatCurrency(selectedInvoice.amount_residual || 0, selectedCurrency)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Collection Notes & Follow-up Logs */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collection Notes</p>
+                    <Badge variant="outline" className="text-[10px]">{invoiceNotes.length} notes</Badge>
+                  </div>
+                  {/* Add Note Form */}
+                  <div className="flex gap-2">
+                    <Input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." className="flex-1 h-8 text-sm" onKeyDown={e => { if (e.key === 'Enter' && newNote.trim()) handleAddNote(); }} />
+                    <Select value={noteType} onValueChange={setNoteType}>
+                      <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="note">Note</SelectItem>
+                        <SelectItem value="followup">Follow-up</SelectItem>
+                        <SelectItem value="reminder">Reminder</SelectItem>
+                        <SelectItem value="payment">Payment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="h-8 bg-[#800000] hover:bg-[#9a1919] text-white" disabled={!newNote.trim()} onClick={handleAddNote}>Add</Button>
+                  </div>
+                  {/* Notes List */}
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {invoiceNotes.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-3">No collection notes yet</p>
+                    ) : invoiceNotes.map(note => (
+                      <div key={note.id} className="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={`text-[9px] ${note.type === 'payment' ? 'bg-green-100 text-green-700' : note.type === 'followup' ? 'bg-blue-100 text-blue-700' : note.type === 'reminder' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{note.type}</Badge>
+                          <span className="text-[10px] text-gray-500">{note.author}</span>
+                          <span className="text-[10px] text-gray-400 ml-auto">{new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+                        </div>
+                        <p className="text-xs text-gray-700">{note.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                  <Download className="h-4 w-4 mr-2" /> Download PDF
                 </Button>
                 {selectedInvoice.status !== 'paid' && (
-                  <Button className="flex-1 bg-primary hover:bg-primary/90">
-                    <Send className="h-4 w-4 mr-2" />
-                    Send Reminder
+                  <Button className="flex-1 bg-[#800000] hover:bg-[#9a1919] text-white">
+                    <Send className="h-4 w-4 mr-2" /> Send Reminder
                   </Button>
                 )}
               </div>

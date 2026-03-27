@@ -28,7 +28,7 @@ const getMsalConfig = (clientId, tenantId) => ({
     authority: `https://login.microsoftonline.com/${tenantId}`,
     redirectUri: `${window.location.origin}/login`,
     postLogoutRedirectUri: `${window.location.origin}/login`,
-    navigateToLoginRequestUrl: false, // Changed to false to prevent redirect issues
+    navigateToLoginRequestUrl: true, // Let MSAL handle the full redirect cycle
   },
   cache: {
     cacheLocation: 'localStorage', // Changed from sessionStorage to localStorage for better persistence
@@ -77,6 +77,9 @@ const completeMicrosoftLoginStatic = async (msalResponse) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[MSAL] Backend error:', errorText);
+      // Show error to user via URL param so login page can display it
+      const msg = errorText.includes('not authorized') ? 'Database connection error on server. Contact admin.' : 'Microsoft login failed on server.';
+      window.location.href = `/login?error=${encodeURIComponent(msg)}`;
       return;
     }
     
@@ -84,22 +87,16 @@ const completeMicrosoftLoginStatic = async (msalResponse) => {
     
     if (data.access_token) {
       console.log('[MSAL] Login successful, storing token and redirecting...');
-      
-      // Store token in localStorage
       localStorage.setItem('access_token', data.access_token);
-      
-      // Store user info
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-      
-      // Navigate to dashboard
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       window.location.href = '/dashboard';
     } else {
       console.error('[MSAL] No access_token in response:', data);
+      window.location.href = `/login?error=${encodeURIComponent('No token received from server')}`;
     }
   } catch (err) {
     console.error('[MSAL] Login completion error:', err);
+    window.location.href = `/login?error=${encodeURIComponent(err.message || 'Microsoft login failed')}`;
   }
 };
 
@@ -114,44 +111,49 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
   useEffect(() => {
     const initMsal = async () => {
       try {
-        // Fetch Microsoft config from backend
-        const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`);
+        // Fetch Microsoft config
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const configResponse = await fetch(`${API_URL}/api/auth/microsoft/config`, { signal: controller.signal });
+        clearTimeout(timeout);
         const config = await configResponse.json();
         
         if (config.clientId && config.tenantId) {
-          console.log('[MSAL] Initializing with clientId:', config.clientId.substring(0, 8) + '...');
           const msalConfig = getMsalConfig(config.clientId, config.tenantId);
           const pca = new PublicClientApplication(msalConfig);
           await pca.initialize();
+          
+          // CRITICAL: Handle redirect IMMEDIATELY after init, before setting any state
+          const response = await pca.handleRedirectPromise();
+          
           setMsalInstance(pca);
           setConfigLoaded(true);
-          console.log('[MSAL] Initialized successfully');
           
-          // IMPORTANT: Handle redirect response IMMEDIATELY after init
-          // This catches the return from Microsoft redirect
-          try {
-            const response = await pca.handleRedirectPromise();
-            if (response && response.accessToken) {
-              console.log('[MSAL] Got redirect response with token, completing login...');
-              setMsLoading(true);
-              await completeMicrosoftLoginStatic(response);
-            } else if (response) {
-              console.log('[MSAL] Got redirect response but no token:', response);
-            }
-          } catch (redirectErr) {
-            if (redirectErr.errorCode === 'no_token_request_cache_error') {
-              // This is normal on fresh page load
-              console.log('[MSAL] No pending redirect (normal)');
-            } else {
-              console.error('[MSAL] Redirect handling error:', redirectErr);
+          if (response && response.accessToken) {
+            console.log('[MSAL] Redirect login successful');
+            setMsLoading(true);
+            await completeMicrosoftLoginStatic(response);
+          } else if (response && response.account) {
+            // Got account but no access token — acquire silently
+            console.log('[MSAL] Got account, acquiring token silently...');
+            setMsLoading(true);
+            try {
+              const silentResp = await pca.acquireTokenSilent({ scopes: ['openid', 'profile', 'email', 'User.Read'], account: response.account });
+              if (silentResp.accessToken) {
+                await completeMicrosoftLoginStatic(silentResp);
+              }
+            } catch (silentErr) {
+              console.error('[MSAL] Silent acquire failed:', silentErr.errorCode);
+              setMsLoading(false);
+              setError('Could not complete login. Please try again.');
             }
           }
+          // If response is null — no pending redirect, normal page load. Do nothing.
         } else {
-          console.warn('[MSAL] Microsoft SSO not configured');
           setConfigLoaded(false);
         }
       } catch (err) {
-        console.error('[MSAL] Failed to initialize:', err);
+        console.error('[MSAL] Init error:', err.name === 'AbortError' ? 'Config timeout' : err);
         setConfigLoaded(false);
       }
     };
@@ -159,7 +161,7 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     initMsal();
   }, []);
 
-  // Handle Microsoft login button click - use redirect flow (more reliable than popup)
+  // Handle Microsoft login — redirect flow only
   const handleMicrosoftLogin = async () => {
     if (!msalInstance) {
       setError('Microsoft SSO not configured. Please contact your administrator.');
@@ -171,15 +173,10 @@ const MicrosoftLoginButton = ({ className = '', onSuccess, onError }) => {
     
     try {
       console.log('[MSAL] Starting redirect login...');
-      
-      // Use redirect flow - more reliable than popup
       await msalInstance.loginRedirect({
         ...loginRequest,
         prompt: 'select_account',
       });
-      
-      // Note: Code after loginRedirect won't execute as page will redirect
-      
     } catch (err) {
       console.error('[MSAL] Login error:', err);
       setError(err.message || 'Microsoft login failed');

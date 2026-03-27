@@ -165,7 +165,12 @@ async def login(credentials: UserLogin):
         roles = await db.roles.find({"id": {"$in": role_ids}}).to_list(100)
         for role in roles:
             permissions.extend(role.get("permissions", []))
-        permissions = list(set(permissions))  # Remove duplicates
+        permissions = list(set(permissions))
+    
+    # Admin roles always get full access wildcard
+    if any(r in role_ids for r in ["admin", "system_admin", "sales_admin"]):
+        if "admin:*" not in permissions:
+            permissions.append("admin:*")
     
     # Create tokens
     token_data = {
@@ -371,8 +376,14 @@ async def update_user(
     user_data: UserUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update user details"""
+    """Update user details — ADMIN ONLY"""
     db = get_app_db()
+    
+    # Security: Only admins can update users
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Only administrators can modify user accounts")
     
     update_data = {k: v for k, v in user_data.model_dump().items() if v is not None}
     update_data["updated_at"] = now_utc()
@@ -416,7 +427,10 @@ async def assign_role_to_user(
     role_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Assign a role to user"""
+    """Assign a role to user — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        raise HTTPException(status_code=403, detail="Only administrators can assign roles")
     db = get_app_db()
     
     result = await db.users.update_one(
@@ -436,7 +450,10 @@ async def remove_role_from_user(
     role_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Remove a role from user"""
+    """Remove a role from user — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        raise HTTPException(status_code=403, detail="Only administrators can remove roles")
     db = get_app_db()
     
     result = await db.users.update_one(

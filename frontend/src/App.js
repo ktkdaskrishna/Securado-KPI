@@ -15,16 +15,20 @@ import { RegisterPage } from './components/auth/RegisterPage';
 
 // CRM Pages
 import { DashboardPage } from './components/crm/DashboardPage';
+import HybridDashboard from './components/crm/HybridDashboard';
 import { OpportunitiesPage } from './components/crm/OpportunitiesPage';
 import LeadsPage from './components/crm/LeadsPage';
 import { AccountsPage } from './components/crm/AccountsPage';
-import { ActivitiesPage } from './components/crm/ActivitiesPage';
+import ActivitiesPage from './components/crm/ActivitiesPage';
 import { ProfilePage } from './components/crm/ProfilePage';
 import { InvoicesPage } from './components/crm/InvoicesPage';
 import { ActivityTimelinePage } from './components/crm/ActivityTimelinePage';
 import AnalyticsPage from './components/crm/AnalyticsPage';
 import PerformanceHubPage from './components/crm/PerformanceHubPage';
 import IncentiveCalcPage from './components/crm/IncentiveCalcPage';
+import OrgStructurePage from './components/crm/OrgStructurePage';
+import IntegrationsPage from './components/admin/IntegrationsPage';
+import ConfigurableDashboard from './components/crm/ConfigurableDashboard';
 
 // ETL Pages
 import { ConnectionsPage } from './components/etl/ConnectionsPage';
@@ -49,6 +53,8 @@ import { CustomFieldsPage } from './components/admin/CustomFieldsPage';
 import { DataQualityPage } from './components/admin/DataQualityPage';
 import RBACManagementPage from './components/admin/RBACManagementPage';
 import HelpPage from './components/admin/HelpPage';
+import FeedbackAdminPage from './components/admin/FeedbackPage';
+import AiAssistantBubble from './components/ai/AiAssistantBubble';
 
 import './App.css';
 
@@ -118,7 +124,9 @@ function AppRoutes() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* CRM Platform - with RBAC guards */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<HybridDashboard />} />
+        <Route path="/dashboard-classic" element={<DashboardPage />} />
+        <Route path="/dashboard-builder" element={<RBACGuard permission="manage_dashboard"><ConfigurableDashboard /></RBACGuard>} />
         <Route path="/opportunities" element={<RBACGuard permission="view_opportunities"><OpportunitiesPage /></RBACGuard>} />
         <Route path="/leads" element={<RBACGuard permission="view_opportunities"><LeadsPage /></RBACGuard>} />
         <Route path="/accounts" element={<RBACGuard permission="view_accounts"><AccountsPage /></RBACGuard>} />
@@ -128,9 +136,12 @@ function AppRoutes() {
         <Route path="/invoices" element={<RBACGuard permission="view_invoices"><InvoicesPage /></RBACGuard>} />
         <Route path="/performance" element={<RBACGuard permission="view_goals"><PerformanceHubPage /></RBACGuard>} />
         <Route path="/incentives" element={<RBACGuard permission="view_goals"><IncentiveCalcPage /></RBACGuard>} />
+        <Route path="/org-structure" element={<OrgStructurePage />} />
         <Route path="/profile" element={<ProfilePage />} />
 
         {/* ETL Platform - System Admin only */}
+        <Route path="/integration-hub" element={<Navigate to="/admin/integrations" replace />} />
+        <Route path="/sync-center" element={<Navigate to="/admin/integrations" replace />} />
         <Route path="/etl/connections" element={<RBACGuard permission="system_admin"><ConnectionsPage /></RBACGuard>} />
         <Route path="/etl/mappings" element={<RBACGuard permission="system_admin"><MappingEditor /></RBACGuard>} />
         <Route path="/etl/pipelines" element={<RBACGuard permission="system_admin"><PipelinesPage /></RBACGuard>} />
@@ -141,8 +152,8 @@ function AppRoutes() {
         <Route path="/etl/model-browser" element={<RBACGuard permission="system_admin"><OdooModelBrowserPage /></RBACGuard>} />
 
         {/* Admin - manage_users or system_admin */}
-        <Route path="/admin/users" element={<RBACGuard permission="manage_users"><UsersPage /></RBACGuard>} />
-        <Route path="/admin/roles" element={<RBACGuard permission="manage_users"><RolesPage /></RBACGuard>} />
+        <Route path="/admin/users" element={<RBACGuard permission="admin:*"><UsersPage /></RBACGuard>} />
+        <Route path="/admin/roles" element={<RBACGuard permission="admin:*"><RolesPage /></RBACGuard>} />
         <Route path="/admin/rbac" element={<RBACGuard permission="system_admin"><RBACManagementPage /></RBACGuard>} />
         <Route path="/admin/departments" element={<RBACGuard permission="manage_users"><DepartmentsPage /></RBACGuard>} />
         <Route path="/admin/settings" element={<RBACGuard permission="system_admin"><SettingsPage /></RBACGuard>} />
@@ -150,13 +161,21 @@ function AppRoutes() {
         <Route path="/admin/webhooks" element={<RBACGuard permission="system_admin"><WebhookConfigPage /></RBACGuard>} />
         <Route path="/admin/custom-fields" element={<RBACGuard permission="system_admin"><CustomFieldsPage /></RBACGuard>} />
         <Route path="/admin/data-quality" element={<RBACGuard permission="system_admin"><DataQualityPage /></RBACGuard>} />
+        <Route path="/admin/integrations" element={<RBACGuard permission="system_admin"><IntegrationsPage /></RBACGuard>} />
         <Route path="/help" element={<HelpPage />} />
+        <Route path="/feedback" element={<FeedbackAdminPage />} />
       </Route>
 
       {/* 404 Catch-all */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
+}
+
+function AuthenticatedAiAssistant() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <AiAssistantBubble />;
 }
 
 function App() {
@@ -167,6 +186,7 @@ function App() {
           <GlobalFilterProvider>
             <RBACProvider>
               <AppRoutes />
+              <AuthenticatedAiAssistant />
               <Toaster position="top-right" richColors closeButton />
             </RBACProvider>
           </GlobalFilterProvider>

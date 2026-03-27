@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { crmAPI, analyticsAPI } from '../../lib/api';
+import { crmAPI, analyticsAPI, targetAPI } from '../../lib/api';
+import EditChartDialog from './EditChartDialog';
 import { useCurrency } from '../../lib/CurrencyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -8,10 +9,10 @@ import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Target, Users, Activity, RefreshCw, Zap, Filter, Award, Layers, Trophy, Download, ExternalLink, Pencil } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
-import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter } from '../layout/PageFilters';
+import { PageFilters, YearFilter, QuarterFilter, SalesRepFilter, StageFilter, ProductDirectorFilter, SolutionCategoryFilter } from '../layout/PageFilters';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -19,8 +20,10 @@ export function DashboardPage() {
   const [pmLeaderboard, setPmLeaderboard] = useState(null);
   const [categoryStats, setCategoryStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editingCard, setEditingCard] = useState(null);
+  const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [] });
+  const [filterOptions, setFilterOptions] = useState({ years: [], salesReps: [], stages: [], productDirectors: [], solutionCategories: [] });
   const { formatCurrency, currency, reloadCurrency } = useCurrency();
   
   // Get current year for default filter
@@ -31,7 +34,9 @@ export function DashboardPage() {
     year: currentYear,  // Default to current year
     quarter: null,
     salesRep: null,
-    stage: null
+    stage: null,
+    productDirector: null,
+    solutionCategory: null,
   });
 
   // Export dashboard data to Excel
@@ -42,6 +47,9 @@ export function DashboardPage() {
       if (filters.year) params.append('year', filters.year);
       if (filters.quarter) params.append('quarter', filters.quarter);
       if (filters.salesRep) params.append('sales_rep', filters.salesRep);
+      if (filters.stage) params.append('stage', filters.stage);
+      if (filters.productDirector) params.append('product_director', filters.productDirector);
+      if (filters.solutionCategory) params.append('solution_category', filters.solutionCategory);
       
       const token = localStorage.getItem('access_token');
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/opportunities/export?${params.toString()}`, {
@@ -85,6 +93,8 @@ export function DashboardPage() {
     // Always pass year and quarter from current filters
     if (filters.year) params.append('year', filters.year);
     if (filters.quarter) params.append('quarter', filters.quarter);
+    if (filters.productDirector) params.append('productDirector', filters.productDirector);
+    if (filters.solutionCategory) params.append('solutionCategory', filters.solutionCategory);
     navigate(`/opportunities?${params.toString()}`);
   };
 
@@ -106,7 +116,7 @@ export function DashboardPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ year: null, quarter: null, salesRep: null, stage: null });
+    setFilters({ year: null, quarter: null, salesRep: null, stage: null, productDirector: null, solutionCategory: null });
   };
 
   const hasActiveFilters = () => {
@@ -115,14 +125,21 @@ export function DashboardPage() {
 
   const loadFilterOptions = useCallback(async () => {
     try {
-      const res = await analyticsAPI.getFilters();
-      if (res.data) {
-        setFilterOptions({
-          years: res.data.years || [],
-          salesReps: res.data.sales_reps || res.data.salesReps || [],
-          stages: res.data.stages || []
-        });
-      }
+      const [filterRes, pmRes, catRes] = await Promise.allSettled([
+        analyticsAPI.getFilters(),
+        targetAPI.getProductManagers(),
+        targetAPI.getSolutionCategories(),
+      ]);
+      const fData = filterRes.status === 'fulfilled' ? filterRes.value.data : {};
+      const pms = pmRes.status === 'fulfilled' ? pmRes.value.data : [];
+      const cats = catRes.status === 'fulfilled' ? catRes.value.data : [];
+      setFilterOptions({
+        years: fData.years || [],
+        salesReps: fData.sales_reps || fData.salesReps || [],
+        stages: fData.stages || [],
+        productDirectors: pms.map(p => p.name),
+        solutionCategories: cats.map(c => c.name),
+      });
     } catch (error) {
       console.error('Failed to load filter options:', error);
     }
@@ -136,6 +153,8 @@ export function DashboardPage() {
       if (filters.quarter) params.quarter = filters.quarter;
       if (filters.salesRep) params.sales_rep = filters.salesRep;
       if (filters.stage) params.stage = filters.stage;
+      if (filters.productDirector) params.product_manager = filters.productDirector;
+      if (filters.solutionCategory) params.solution_category = filters.solutionCategory;
       
       // Load all dashboard data in parallel
       const [statsRes, pmRes, catRes] = await Promise.all([
@@ -164,7 +183,7 @@ export function DashboardPage() {
   // Reload when filters change
   useEffect(() => {
     loadStats();
-  }, [filters.year, filters.quarter, filters.salesRep, filters.stage]);
+  }, [filters.year, filters.quarter, filters.salesRep, filters.stage, filters.productDirector, filters.solutionCategory]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -316,6 +335,16 @@ export function DashboardPage() {
           onChange={(v) => updateFilter('stage', v)} 
           stages={filterOptions.stages}
         />
+        <ProductDirectorFilter
+          value={filters.productDirector}
+          onChange={(v) => updateFilter('productDirector', v)}
+          productDirectors={filterOptions.productDirectors}
+        />
+        <SolutionCategoryFilter
+          value={filters.solutionCategory}
+          onChange={(v) => updateFilter('solutionCategory', v)}
+          categories={filterOptions.solutionCategories}
+        />
       </PageFilters>
 
       {/* KPI Cards - Clickable */}
@@ -324,7 +353,7 @@ export function DashboardPage() {
           <Card 
             key={index} 
             data-testid={`crm-kpi-card-${kpi.title.toLowerCase().replace(/\s/g, '-')}`}
-            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group overflow-hidden"
+            className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 group overflow-hidden relative"
             onClick={() => {
               if (kpi.title === 'Total Pipeline' || kpi.title === 'Open Opportunities') {
                 handleNavigateToOpportunities();
@@ -335,6 +364,11 @@ export function DashboardPage() {
               }
             }}
           >
+            {/* Edit query button */}
+            <button className="absolute top-2 right-2 z-10 p-1 rounded bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); setEditingCard({ name: kpi.title, collection: 'opportunities', aggregation: kpi.format === 'currency' ? 'sum' : 'count', field: kpi.format === 'currency' ? 'sale_value' : '', display_type: 'number', color: '#800000', icon: 'Target', year_filter: true, filters: kpi.title.includes('Won') ? '{"type":"opportunity","stage":"Won"}' : '{"type":"opportunity"}' }); setShowQueryEditor(true); }}>
+              <Pencil className="h-3 w-3 text-gray-400" />
+            </button>
             <CardContent className="pt-6">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -388,7 +422,7 @@ export function DashboardPage() {
                   style={{ cursor: 'pointer' }}
                 >
                   <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(v)} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000000 ? `OMR ${(v/1000000).toFixed(1)}M` : v >= 1000 ? `OMR ${(v/1000).toFixed(0)}K` : `OMR ${v}`} width={85} />
                   <Tooltip 
                     formatter={(value) => [formatCurrency(value), 'Value']}
                     labelFormatter={(label) => `Stage: ${label}`}
@@ -678,6 +712,19 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Query Editor for dashboard cards */}
+      <EditChartDialog open={showQueryEditor} onClose={() => { setShowQueryEditor(false); setEditingCard(null); }}
+        card={editingCard}
+        onSave={async (formData) => {
+          try {
+            await targetAPI.createCard(formData);
+            toast.success('Card saved to Dashboard Builder');
+            setShowQueryEditor(false);
+            setEditingCard(null);
+          } catch { toast.error('Failed'); }
+        }}
+      />
     </div>
   );
 }

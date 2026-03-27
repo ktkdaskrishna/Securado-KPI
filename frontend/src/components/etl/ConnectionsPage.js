@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Link, RefreshCw, CheckCircle, XCircle, AlertCircle, Trash2, TestTube, Database, Cloud, Target, TrendingUp, FileText, FlaskConical } from 'lucide-react';
+import { Plus, Link, RefreshCw, CheckCircle, XCircle, AlertCircle, Trash2, TestTube, Database, Cloud, Target, TrendingUp, FileText, FlaskConical, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusColors = {
@@ -39,6 +39,7 @@ export function ConnectionsPage() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [testingId, setTestingId] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [createMode, setCreateMode] = useState('template'); // 'template' or 'manual'
@@ -83,24 +84,44 @@ export function ConnectionsPage() {
 
   const handleCreate = async () => {
     try {
-      if (selectedTemplate) {
+      if (editingId) {
+        await etlAPI.updateConnection(editingId, formData);
+        toast.success('Connection updated');
+      } else if (selectedTemplate) {
         await etlAPI.createConnectionFromTemplate(selectedTemplate.id, formData);
+        toast.success('Connection created');
       } else {
         await etlAPI.createConnection(formData);
+        toast.success('Connection created');
       }
-      toast.success('Connection created');
       setDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create connection');
+      toast.error(error.response?.data?.detail || 'Failed to save connection');
     }
+  };
+
+  const handleEdit = (conn) => {
+    setEditingId(conn.id);
+    setFormData({
+      name: conn.name || '',
+      type: conn.type || 'odoo',
+      url: conn.url || '',
+      database: conn.database || '',
+      username: conn.username || '',
+      api_key: conn.api_key || '',
+      description: conn.description || '',
+    });
+    setCreateMode('manual');
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
     setFormData({ name: '', type: 'odoo', url: '', database: '', username: '', api_key: '', description: '' });
     setSelectedTemplate(null);
     setCreateMode('template');
+    setEditingId(null);
   };
 
   const handleTest = async (id) => {
@@ -174,7 +195,7 @@ export function ConnectionsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Connection</DialogTitle>
+              <DialogTitle>{editingId ? 'Edit Connection' : 'Create Connection'}</DialogTitle>
               <DialogDescription>
                 Choose a template or configure a custom connection
               </DialogDescription>
@@ -418,6 +439,14 @@ export function ConnectionsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(conn)}
+                        title="Edit Connection"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

@@ -1,41 +1,62 @@
-# Securado CRM - Product Requirements Document
+# Securado CRM (ERP AI) — Product Requirements Document
 
 ## Original Problem Statement
-Enterprise CRM analytics platform for Securado. Sales analytics tool - all data from Odoo via ETL. Only Target Plans created in-app.
+Build a comprehensive sales target, incentive, and KPI management system with Odoo integration. Evolved to include configurable dashboards, RBAC, Microsoft SSO, AI assistant, and Performance Hub.
 
-## Performance Hub (8 features)
-1. **CEO View** - Revenue plans → PMs with pipeline/won from Odoo
-2. **PM Plan Builder** - Activity items with Odoo actuals + match indicator
-3. **Sales Director** - PM plan buckets + salesperson leaderboard
-4. **Team Compare** - Side-by-side PM comparison (Revenue/Activity/Leads)
-5. **Marketing** - 345 leads, 75.1% conversion, funnel by stage, by PM/category
-6. **Collection** - Invoice states + 64 overdue (OMR 998K)
-7. **Incentive Score** - Multi-vector (Revenue 50% + Activity 30% + Collection 20%)
-8. **Alert Center** - Proactive monitoring with 6 alert types
+## Architecture
+- **Frontend**: React + Tailwind CSS + Shadcn UI
+- **Backend**: FastAPI + MongoDB (Motor async) + Redis caching
+- **Auth**: JWT + Microsoft SSO (MSAL popup + server redirect)
+- **Data**: Odoo v17 incremental sync -> canonical DB -> app DB
+- **AI**: Emergent LLM key (GPT for chat, Whisper for voice)
 
-## Alert Center (NEW)
-Auto-generated alerts scanning all data:
-- REVENUE_AT_RISK: PM below target threshold (critical/high)
-- ACTIVITY_DROP: Activity completion below 30% (high)
-- OVERDUE_SPIKE: Invoice overdue rate >25% (critical) or >15% (high)
-- PLAN_UNMATCHED: Redistribution items not fully assigned (medium)
-- STALE_LEADS: Leads stuck in early stages >40% (medium)
-- TOP_PERFORMER: Activity targets exceeded (positive)
+## What's Been Implemented
+- Configurable dashboard system with dashboard builder
+- Resilient incremental Odoo data sync worker
+- Hierarchy-aware RBAC system
+- Microsoft SSO (Azure AD) with multi-source role derivation + canonical DB fallback
+- AI Assistant with voice, file attachments, charts, persistent history, Excel/PDF export
+- Performance Hub v2 with cascading targets + AI activity recommendations
+- Activity creation/management in Opportunities
+- Accounts, Contacts, Opportunities, Invoices/Receivables pages
+- Data Health Monitor (System Alerts section on dashboard)
+- Pure Tailwind CSS (legacy CSS removed)
 
-## Bug Fixes Completed
-- RBAC route protection (frontend + backend ETL 403)
-- Opportunities pagination (1039 total, 11 pages)
-- Roles page user counts (was 0, now actual)
-- Login error message (inline + toast)
+## Fixes Applied (2026-03-08)
+
+### P0: Invoice KPI Cards Showing "0" (FIXED)
+- **Root Cause**: `execute_query()` applied blanket `active: True` filter to ALL collections. Invoices don't use `active` field.
+- **Fix**: Collection-aware base filters in `redis_pipeline.py` and `card_builder.py`
+
+### Win Rate Formula Standardization (FIXED)
+- **Root Cause**: Inconsistent formulas — some used Won/TotalOpps, others Won/(Won+Lost)
+- **Fix**: All 6 locations now use standard `Won / (Won + Lost) × 100`
+- Locations fixed: `planning.py`, `ai_assistant/routes.py`, card builder seed defaults
+- Win Rate card updated from `display_type: "number"` to `"win_rate"` with backend percentage calculation
+
+### Excel Export Not Matching Dashboard Filters (FIXED)
+- **Root Cause**: Export used `create_date` for year filtering, dashboard used `date_last_stage_update`
+- **Fix**: Changed export date field to `date_last_stage_update`, added `product_director` and `solution_category` filter params
+- Both HybridDashboard and DashboardPage now pass all active filters to export
+
+### Tab Title (FIXED)
+- Changed from "Emergent | Fullstack App" to "ERP AI"
+
+### Data Health Monitor (NEW FEATURE)
+- Backend endpoint `GET /api/card-builder/data-health` checks all collections for missing fields, stale data, duplicates
+- Frontend component displays score/100, collection breakdown, expandable issues list
+- Placed in "System Alerts" section at bottom of dashboard
+
+### Activities Sync Duplicate Key Error (FIXED)
+- Set `id = canonical_id` in `_transform_record` to prevent `id: null` duplicates
+
+## Open Bugs
+1. Activity Logs from Odoo — sync now working, but historical data may need full re-sync
+2. Account Alert on paid accounts showing overdue (needs specific reproduction steps)
 
 ## Backlog
-### P2
-- [ ] Modular dashboard custom card builder
-- [ ] User-specific dashboard overrides
-
-## Key Files
-- `/app/backend/services/target_management/alerts.py` - Alert Center API
-- `/app/backend/services/target_management/planning.py` - Planning APIs
-- `/app/frontend/src/components/crm/PerformanceHubPage.js` - Main UI
-
-## Test Results: 9/9 final suite + 17/17 comprehensive + 22/22 planning APIs
+- P1: Complete KPI Framework (incentive weights, collection/GP floor)
+- P1: Verify new features (Add Activity, AI Report Export, AI Recommendations)
+- P1: Refactor to Services/Repositories pattern
+- P2: Replace in-memory Event Bus with Redis Streams
+- P2: Component modularization (AiAssistantBubble.js, PerformanceHubPage.js)

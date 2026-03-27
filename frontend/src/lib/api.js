@@ -25,7 +25,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Don't redirect if already on login page (allows login error to show)
       const isLoginRequest = error.config?.url?.includes('/auth/login');
-      if (!isLoginRequest) {
+      const isOnLoginPage = window.location.pathname === '/login';
+      if (!isLoginRequest && !isOnLoginPage) {
+        // Only clear tokens and redirect if we're not in the middle of navigating
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';
@@ -155,6 +157,8 @@ export const crmAPI = {
   updateProbability: (id, probability) => api.post(`/opportunities/${id}/calculate-probability`, { probability }),
   getMessages: (id) => api.get(`/opportunities/${id}/messages`),
   getOpportunityActivities: (id) => api.get(`/opportunities/${id}/activities`),
+  createOpportunityActivity: (id, data) => api.post(`/opportunities/${id}/activities`, data),
+  updateOpportunityActivity: (id, actId, data) => api.patch(`/opportunities/${id}/activities/${actId}`, data),
   getOpportunityLogs: (id) => api.get(`/opportunities/${id}/logs`),  // Log messages/chatter
   createOpportunityNote: (id, data) => api.post(`/opportunities/${id}/notes`, data),
   exportOpportunities: (params) => api.get('/opportunities/export', { params, responseType: 'blob' }),
@@ -227,6 +231,9 @@ export const crmAPI = {
   listReceivables: (params) => api.get('/receivables', { params }),
   getReceivablesStats: (params) => api.get('/receivables/stats', { params }),
   getReceivablesBySalesperson: (params) => api.get('/receivables/by-salesperson', { params }),
+  exportInvoicesExcel: (invoices) => api.post('/receivables/export-excel', { invoices }, { responseType: 'blob' }),
+  getInvoiceNotes: (invoiceId) => api.get(`/receivables/${invoiceId}/notes`),
+  addInvoiceNote: (invoiceId, data) => api.post(`/receivables/${invoiceId}/notes`, data),
 };
 
 // Target Management APIs
@@ -279,6 +286,7 @@ export const targetAPI = {
   getOdooAccounts: (params) => api.get('/target-lookups/accounts', { params }),
   getActivityTypes: () => api.get('/target-lookups/activity-types'),
   getSalesTeams: () => api.get('/target-lookups/sales-teams'),
+  getTeamsWithMembers: () => api.get('/target-lookups/teams-with-members'),
 
   // Revenue Plans (CEO → PM)
   listRevenuePlans: (params) => api.get('/target-plans/revenue', { params }),
@@ -304,6 +312,70 @@ export const targetAPI = {
   getTeamComparison: () => api.get('/target-actuals/team-comparison'),
   getMarketingMetrics: () => api.get('/target-actuals/marketing-metrics'),
   getAlerts: () => api.get('/alerts'),
+  getMyData: () => api.get('/target-actuals/my-data'),
+  getRevenueCap: (planId) => api.get(`/target-actuals/revenue-cap/${planId}`),
+  getCeoSummary: (year) => api.get('/target-actuals/ceo-summary', { params: { year } }),
+  getActivitySuggestions: (planId) => api.get(`/target-plans/revenue/${planId}/suggestions`),
+  acceptSuggestions: (planId, modifications) => api.post(`/target-plans/revenue/${planId}/suggestions/accept`, modifications),
+
+  // Category Segments (PD breaks down target by solution category)
+  listSegments: (planId) => api.get(`/target-plans/revenue/${planId}/segments`),
+  saveSegments: (planId, segments) => api.post(`/target-plans/revenue/${planId}/segments`, { segments }),
+  deleteSegment: (planId, segmentId) => api.delete(`/target-plans/revenue/${planId}/segments/${segmentId}`),
+
+  // Org Structure
+  getOrgTree: () => api.get('/org-structure/tree'),
+  getDepartments: () => api.get('/org-structure/departments'),
+  getEmployees: (params) => api.get('/org-structure/employees', { params }),
+  toggleArchiveEmployee: (id) => api.patch(`/org-structure/employees/${id}/archive`),
+
+  // Filter Presets
+  listFilterPresets: () => api.get('/filter-presets'),
+  createFilterPreset: (data) => api.post('/filter-presets', data),
+  deleteFilterPreset: (id) => api.delete(`/filter-presets/${id}`),
+
+  // Integration Hub (sync overview only - webhooks handled by original odoo_rbac)
+  getHubOverview: () => api.get('/integration-hub/overview'),
+  updateSyncSchedule: (entityId, data) => api.put(`/integration-hub/schedule/${entityId}`, data),
+  triggerSync: (entityId) => api.post(`/integration-hub/sync/${entityId}`),
+  getSyncHistory: (params) => api.get('/integration-hub/history', { params }),
+  getIncrementalStatus: () => api.get('/integration-hub/incremental-status'),
+  startIncremental: () => api.post('/integration-hub/incremental/start'),
+  stopIncremental: () => api.post('/integration-hub/incremental/stop'),
+  setIncrementalInterval: (seconds) => api.put('/integration-hub/incremental/interval', null, { params: { interval_seconds: seconds } }),
+  rebuildIdentityMap: () => api.post('/integration-hub/rebuild-identity-map'),
+  
+  // Data Tools (Excel)
+  downloadFieldMappings: () => api.get('/data-tools/mappings/download', { responseType: 'blob' }),
+  downloadDataTemplate: (entity) => api.get('/data-tools/data-template/download', { params: { entity }, responseType: 'blob' }),
+  uploadDataCorrections: (file, entity) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/data-tools/data-template/upload?entity=${entity}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+
+  // Card Builder
+  listCards: () => api.get('/card-builder/cards'),
+  createCard: (data) => api.post('/card-builder/cards', data),
+  updateCard: (id, data) => api.put(`/card-builder/cards/${id}`, data),
+  deleteCard: (id) => api.delete(`/card-builder/cards/${id}`),
+  executeCard: (id, year) => api.post(`/card-builder/cards/${id}/execute`, null, { params: { year } }),
+  drillDownCard: (id, params) => api.post(`/card-builder/cards/${id}/drill-down`, null, { params }),
+  executeQuery: (config) => api.post('/card-builder/execute-query', config),
+  listTemplates: () => api.get('/card-builder/templates'),
+  createTemplate: (data) => api.post('/card-builder/templates', data),
+  updateTemplate: (id, data) => api.put(`/card-builder/templates/${id}`, data),
+  deleteTemplate: (id) => api.delete(`/card-builder/templates/${id}`),
+  renderTemplate: (id, year) => api.get(`/card-builder/templates/${id}/render`, { params: { year } }),
+  getMyDashboard: (year, filters) => api.get('/card-builder/my-dashboard', { params: { year, ...filters } }),
+  getFilterOptions: () => api.get('/card-builder/filter-options'),
+  saveTemplateLayout: (id, blocks) => api.post(`/card-builder/templates/${id}/layout`, { blocks }),
+  seedDefaultCards: () => api.post('/card-builder/seed-defaults'),
+  seedRoleTemplates: () => api.post('/card-builder/seed-role-templates'),
+  exportTemplate: (id) => api.get(`/card-builder/templates/${id}/export`),
+  importTemplate: (data) => api.post('/card-builder/templates/import', data),
+  getAvailableRoles: () => api.get('/card-builder/available-roles'),
+  getDataHealth: () => api.get('/card-builder/data-health'),
 };
 
 // Events/DLQ APIs
@@ -389,3 +461,32 @@ export const microsoftAuthAPI = {
   getAdminConfig: () => api.get('/auth/microsoft/admin/config'),
   saveAdminConfig: (config) => api.post('/auth/microsoft/admin/config', config),
 };
+
+// Feedback APIs
+export const feedbackAPI = {
+  submitFeedback: (formData) => api.post('/feedback/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyFeedback: () => api.get('/feedback/my'),
+  getAdminFeedback: (params) => api.get('/feedback/admin', { params }),
+  reviewFeedback: (id, data) => api.post(`/feedback/${id}/review`, data),
+};
+
+// AI Assistant API
+export const aiAssistantAPI = {
+  chat: (question, sessionId, mode = 'auto') => api.post('/ai-assistant/chat', { question, session_id: sessionId, mode }),
+  getHistory: (sessionId) => api.get('/ai-assistant/history', { params: { session_id: sessionId } }),
+  transcribeVoice: (audioBlob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    return api.post('/ai-assistant/voice', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  submitFeedbackWithAttachment: (question, sessionId, files) => {
+    const formData = new FormData();
+    formData.append('question', question);
+    formData.append('session_id', sessionId);
+    if (files) files.forEach(f => formData.append('screenshots', f));
+    return api.post('/ai-assistant/feedback-with-attachment', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  exportReport: (format, type, year) => api.post('/ai-assistant/export-report', { format, type, year }, { responseType: 'blob' }),
+  recommendActivities: (data) => api.post('/ai-assistant/recommend-activities', data),
+};
+

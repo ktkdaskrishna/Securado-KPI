@@ -312,6 +312,25 @@ def calculate_bluesheet_probability(
     bluesheet = bluesheet_data or {}
     activities = activities or []
     
+    # Won opportunities automatically get 100% confidence
+    stage_val = (opportunity.get("custom_stage") or opportunity.get("stage") or "").lower()
+    if stage_val in ["won", "closed won", "closed_won"]:
+        return {
+            "calculated_probability": 100,
+            "risk_level": "won",
+            "confidence": "high",
+            "stage_used": opportunity.get("custom_stage") or opportunity.get("stage"),
+            "breakdown": {
+                "stage_score": 100, "buying_influences_score": 100,
+                "competition_score": 100, "timeline_score": 100,
+                "budget_score": 100, "activity_score": 100,
+            },
+            "details": {"stage": "Won - 100% confidence", "note": "Deal is closed/won"},
+            "identified_influences": [],
+            "competition_status": "won",
+            "budget_status": "approved",
+        }
+    
     # 1. Stage Score - uses custom_stage from Odoo
     stage_score = calculate_stage_score(opportunity)
     stage_used = opportunity.get("custom_stage") or opportunity.get("stage", "qualified")

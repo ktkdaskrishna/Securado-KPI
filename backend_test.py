@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime
 
-BASE_URL = "https://permission-audit-2.preview.emergentagent.com"
+BASE_URL = "https://perf-dashboard-fix-1.preview.emergentagent.com"
 
 class CRMAPITester:
     def __init__(self):

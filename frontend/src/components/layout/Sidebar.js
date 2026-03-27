@@ -42,7 +42,8 @@ import {
   HelpCircle,
   Activity,
   DollarSign,
-  Crosshair
+  Crosshair,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useRBAC } from '../../lib/RBACContext';
@@ -81,6 +82,7 @@ const iconMap = {
   Activity,
   DollarSign,
   Crosshair,
+  RefreshCw,
 };
 
 // Permission requirements for each navigation item
@@ -95,9 +97,12 @@ const permissionRequirements = {
   invoices: 'view_invoices',
   performance: 'view_goals',
   incentives: 'view_goals',
+  'org-structure': null, // visible to all
   profile: null, // Always visible
-  // ETL Platform - System Admin only
-  connections: 'system_admin',
+  // DATA SYNC - System Admin only
+  integrations: 'system_admin',
+  'dashboard-builder': 'manage_dashboard',
+  settings: 'system_admin',
   'model-browser': 'system_admin',
   mappings: 'system_admin',
   'data-model': 'system_admin',
@@ -130,29 +135,19 @@ const defaultNavigation = {
     { id: 'invoices', name: 'Invoices', href: '/invoices', icon: 'FileText', default: true },
     { id: 'performance', name: 'Performance Hub', href: '/performance', icon: 'Crosshair', default: true },
     { id: 'incentives', name: 'Incentives', href: '/incentives', icon: 'DollarSign', default: true },
+    { id: 'org-structure', name: 'Organization', href: '/org-structure', icon: 'Building2', default: true },
     { id: 'profile', name: 'My Profile', href: '/profile', icon: 'User', default: true },
   ],
-  etl: [
-    { id: 'connections', name: 'Connections', href: '/etl/connections', icon: 'Link', default: true },
-    { id: 'model-browser', name: 'Model Browser', href: '/etl/model-browser', icon: 'Database', default: true },
-    { id: 'mappings', name: 'Mappings', href: '/etl/mappings', icon: 'GitMerge', default: true },
-    { id: 'data-model', name: 'Data Model', href: '/etl/data-model', icon: 'Boxes', default: true },
-    { id: 'pipelines', name: 'Pipelines', href: '/etl/pipelines', icon: 'Workflow', default: true },
-    { id: 'runs', name: 'Run History', href: '/etl/runs', icon: 'History', default: false },
-    { id: 'datalake', name: 'Data Lake', href: '/etl/data-lake', icon: 'Database', default: false },
-    { id: 'dlq', name: 'DLQ', href: '/etl/dlq', icon: 'AlertTriangle', default: false },
-  ],
+  etl: [],
   admin: [
     { id: 'users', name: 'Users', href: '/admin/users', icon: 'Users', default: true },
     { id: 'roles', name: 'Roles', href: '/admin/roles', icon: 'Shield', default: true },
-    { id: 'rbac-sync', name: 'RBAC Sync', href: '/admin/rbac', icon: 'ShieldCheck', default: true },
-    { id: 'departments', name: 'Departments', href: '/admin/departments', icon: 'Building', default: false },
-    { id: 'data-quality', name: 'Data Quality', href: '/admin/data-quality', icon: 'ShieldCheck', default: true },
+    { id: 'integrations', name: 'Integrations', href: '/admin/integrations', icon: 'Database', default: true },
+    { id: 'dashboard-builder', name: 'Dashboard Builder', href: '/dashboard-builder', icon: 'BarChart2', default: true },
     { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'Settings', default: true },
     { id: 'system-logs', name: 'System Logs', href: '/admin/logs', icon: 'AlertTriangle', default: true },
-    { id: 'webhooks', name: 'Webhooks', href: '/admin/webhooks', icon: 'Webhook', default: true },
-    { id: 'custom-fields', name: 'Custom Fields', href: '/admin/custom-fields', icon: 'Boxes', default: true },
     { id: 'help', name: 'Help & Support', href: '/help', icon: 'HelpCircle', default: true },
+    { id: 'feedback', name: 'Feedback', href: '/feedback', icon: 'MessageSquare', default: true },
   ],
 };
 
@@ -240,9 +235,13 @@ export function Sidebar() {
 
   // Check if user has access to a section
   const hasSectionAccess = (section) => {
-    if (section === 'crm') return true; // CRM always visible
-    if (section === 'etl') return hasPermission('system_admin'); // ETL Platform - System Admin only
-    if (section === 'admin') return hasPermission('manage_users') || hasPermission('system_admin');
+    if (section === 'crm') return true;
+    if (section === 'etl') return false;
+    if (section === 'admin') {
+      // Only actual admin roles can see admin section — not just permission checks
+      const userRoles = JSON.parse(localStorage.getItem('user') || '{}').roles || [];
+      return userRoles.some(r => ['admin', 'system_admin', 'sales_admin'].includes(r));
+    }
     return true;
   };
 
@@ -375,7 +374,7 @@ export function Sidebar() {
             {hasSectionAccess('etl') && (
             <div>
               <h4 className="text-sm font-semibold text-[#800000] uppercase tracking-wider mb-3">
-                ETL Platform
+                DATA SYNC
               </h4>
               <div className="space-y-3">
                 {defaultNavigation.etl.map((item) => {
@@ -529,12 +528,12 @@ export function Sidebar() {
             <Separator className="bg-white/10 my-4" />
           )}
 
-          {/* ETL Platform */}
+          {/* DATA SYNC */}
           {getVisibleItems(defaultNavigation.etl).length > 0 && (
             <div className="mb-6">
               {!collapsed && (
                 <h3 className="px-3 mb-2 text-xs font-semibold text-[#86c881] uppercase tracking-wider">
-                  ETL Platform
+                  DATA SYNC
                 </h3>
               )}
               <nav className="space-y-1">

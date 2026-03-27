@@ -38,6 +38,11 @@ API Routes:
 import os
 import logging
 from contextlib import asynccontextmanager
+
+# Load .env FIRST before any other imports read env vars
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -68,6 +73,7 @@ from services.etl_control.routes import (
     mapping_editor_router
 )
 from services.etl_runner.runner import etl_runner
+from services.etl_runner.incremental_sync import incremental_worker
 from services.serving_cache.cache_builder import cache_builder
 from services.serving_cache.cache_reader import cache_reader
 from services.serving_cache.routes import router as serving_cache_router
@@ -89,7 +95,7 @@ from services.crm_goals.routes import (
 from services.dashboard_agg.routes import router as dashboard_router, dashboard_aggregator
 from services.event_gateway.routes import router as events_router, dlq_router
 from services.ai_analytics.routes import router as analytics_router
-from services.odoo_rbac.routes import router as odoo_rbac_router, webhook_router
+from services.odoo_rbac.routes import router as odoo_rbac_router
 from services.data_integrity.routes import router as data_integrity_router
 from services.event_queue.queue_service import event_queue_service
 from services.event_queue.worker import event_worker
@@ -110,6 +116,13 @@ from services.target_management.planning import (
     actuals_router as target_actuals_router
 )
 from services.target_management.alerts import alerts_router as target_alerts_router
+from services.target_management.org_structure import org_router
+from services.target_management.filter_presets import filter_presets_router
+from services.target_management.integration_hub import hub_router as integration_hub_router
+from services.target_management.excel_tools import excel_router
+from services.target_management.card_builder import card_builder_router
+from services.feedback.routes import feedback_router
+from services.ai_assistant.routes import ai_assistant_router
 
 
 @asynccontextmanager
@@ -170,6 +183,27 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Dashboard aggregator start failed: {e}")
     
+    try:
+        # Start incremental sync worker (5-min polling for opportunities, accounts, invoices)
+        await incremental_worker.start()
+    except Exception as e:
+        logger.error(f"Incremental sync worker start failed: {e}")
+    
+    # Start Redis server if available (production packaging)
+    import subprocess, shutil
+    redis_process = None
+    if shutil.which("redis-server"):
+        try:
+            redis_process = subprocess.Popen(
+                ["redis-server", "--daemonize", "no", "--protected-mode", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            logger.info("Redis server started (bundled)")
+        except Exception as e:
+            logger.warning(f"Redis server start failed: {e}")
+    else:
+        logger.info("Redis server not found — running without cache")
+    
     logger.info("Event Mesh CRM Platform started successfully")
     
     yield
@@ -177,10 +211,23 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down Event Mesh CRM Platform...")
     
+    if redis_process:
+        try:
+            redis_process.terminate()
+            redis_process.wait(timeout=5)
+            logger.info("Redis server stopped")
+        except Exception:
+            pass
+    
     try:
         await dashboard_aggregator.stop()
     except Exception as e:
         logger.error(f"Dashboard aggregator stop failed: {e}")
+    
+    try:
+        await incremental_worker.stop()
+    except Exception as e:
+        logger.error(f"Incremental sync worker stop failed: {e}")
     
     try:
         await etl_runner.stop()
@@ -218,14 +265,26 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
-cors_origins = os.environ.get("CORS_ORIGINS", "*")
-# Parse CORS origins - support comma-separated values or wildcard
-parsed_origins = cors_origins.split(",") if cors_origins != "*" else ["*"]
+# CORS configuration - restrict in production
+cors_origins = os.environ.get("CORS_ORIGINS", "")
+if not cors_origins:
+    # Auto-detect from REACT_APP_BACKEND_URL
+    backend_url = os.environ.get("REACT_APP_BACKEND_URL", "")
+    if backend_url:
+        cors_origins = backend_url
+    else:
+        cors_origins = "http://localhost:3000"
+
+parsed_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+# Never use wildcard with credentials
+allow_creds = "*" not in parsed_origins
+if "*" in parsed_origins:
+    logger.warning("CORS: Wildcard origin detected. Credentials disabled for security.")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parsed_origins,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -259,9 +318,18 @@ async def health_check():
             "event_bus": "running" if event_bus._running else "stopped",
             "event_queue": "running" if event_queue_service._running else "stopped",
             "event_worker": "running" if event_worker._running else "stopped",
-            "etl_runner": "running" if etl_runner.running else "stopped"
+            "etl_runner": "running" if etl_runner.running else "stopped",
+            "incremental_sync": incremental_worker.get_status()
         }
     }
+    # Add Redis health
+    try:
+        from libs.redis_pipeline import get_redis_health
+        health_data["services"]["redis"] = await get_redis_health()
+    except:
+        health_data["services"]["redis"] = {"status": "not_configured"}
+    
+    return health_data
 
 
 # Include all service routers under /api prefix
@@ -320,9 +388,8 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(dlq_router, prefix="/api")
 
-# Odoo RBAC & Webhooks
+# Odoo RBAC
 app.include_router(odoo_rbac_router, prefix="/api")
-app.include_router(webhook_router, prefix="/api")
 
 # RBAC Sync (Hybrid RBAC Implementation)
 app.include_router(rbac_sync_router, prefix="/api")
@@ -339,6 +406,13 @@ app.include_router(target_lookups_router, prefix="/api")
 app.include_router(target_plans_router, prefix="/api")
 app.include_router(target_actuals_router, prefix="/api")
 app.include_router(target_alerts_router, prefix="/api")
+app.include_router(org_router, prefix="/api")
+app.include_router(filter_presets_router, prefix="/api")
+app.include_router(integration_hub_router, prefix="/api")
+app.include_router(excel_router, prefix="/api")
+app.include_router(card_builder_router, prefix="/api")
+app.include_router(feedback_router, prefix="/api")
+app.include_router(ai_assistant_router, prefix="/api")
 
 
 # Root endpoint

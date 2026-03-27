@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 class Platform3APITester:
-    def __init__(self, base_url="https://permission-audit-2.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://perf-dashboard-fix-1.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

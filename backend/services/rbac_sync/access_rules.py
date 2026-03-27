@@ -114,17 +114,38 @@ class AccessRuleEngine:
         entity_type: str = "opportunity",
         user_email: str = None
     ) -> Dict[str, Any]:
-        """Generate MongoDB filter based on user's permissions
+        """Generate MongoDB filter based on user's permissions"""
+        import re as _re
+        # Normalize whitespace in user_name (JWT may have stale data)
+        user_name = _re.sub(r'\s+', ' ', user_name).strip()
         
-        Args:
-            user_name: User's name (as shown in owner_name field)
-            org_id: Organization ID
-            entity_type: Type of entity (opportunity, account, activity, etc.)
-            user_email: User's email for RBAC lookup (more reliable than name)
-            
-        Returns:
-            MongoDB query filter dict
-        """
+        # Resolve ALL name variants from user_identity_map (single DB lookup)
+        canonical_name = user_name
+        all_names = [user_name]
+        if user_email:
+            identity = await self.app_db.user_identity_map.find_one(
+                {"email": user_email.lower().strip()}, {"_id": 0}
+            )
+            if identity:
+                canonical_name = identity.get("canonical_name", user_name)
+                all_names = list(set([user_name] + identity.get("all_names", [])))
+                logger.info(f"Identity map: {user_email} → {len(all_names)} name variants")
+            else:
+                # Fallback to old method if not in identity map
+                from libs.database import get_canonical_db
+                c_db = get_canonical_db()
+                emp = await c_db.employees.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}}, {"_id": 0, "name": 1})
+                if emp and emp.get("name") and emp["name"] != user_name:
+                    canonical_name = emp["name"]
+                    all_names.append(canonical_name)
+        
+        # Build regex pattern matching ANY name variant
+        name_pattern = "|".join([f"^{_re.escape(n)}$" for n in all_names])
+        logger.info(f"RBAC names for {user_email}: {all_names}")
+        
+        # Use canonical name for product_manager lookups, pattern for owner_name lookups
+        user_name = canonical_name
+        
         # First check for local permission override
         override_query = {
             "org_id": org_id,
@@ -163,7 +184,7 @@ class AccessRuleEngine:
                     direct_report_names = user_rbac.get("direct_report_names", []) if user_rbac else []
                     return self._build_manager_filter(user_name, team_names, direct_report_names, entity_type)
                 elif override_level == AccessLevel.USER:
-                    return self._build_owner_filter(user_name, entity_type)
+                    return self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
                 else:
                     return {"_id": {"$eq": "NO_ACCESS_RESTRICTED_BY_OVERRIDE"}}
         
@@ -209,6 +230,46 @@ class AccessRuleEngine:
             logger.info(f"User {user_name} has {len(direct_report_names)} direct reports - upgrading to MANAGER access")
             access_level = AccessLevel.MANAGER
         
+        # Check if user is a Product Director - they should see only their product data
+        # even if Odoo grants them admin-level group access
+        if user_email:
+            app_user = await self.app_db.users.find_one({"email": {"$regex": f"^{user_email}$", "$options": "i"}})
+            app_roles = app_user.get("roles", []) if app_user else []
+            
+            # Admin/System Admin gets full access regardless of Odoo groups
+            if "admin" in app_roles or "system_admin" in app_roles or "sales_admin" in app_roles:
+                logger.info(f"User {user_name} has admin role ({app_roles}) - full access")
+                return {}
+            
+            if "product_director" in app_roles or "product_manager" in app_roles:
+                # Use canonical name (resolved from Odoo employees) for PM matching
+                import re
+                normalized_name = canonical_name  # Already resolved from employees table above
+                
+                # Also check with name_pattern for broader matching
+                pm_pattern = "|".join([f"^{re.escape(n)}$" for n in all_names])
+                
+                logger.info(f"User {normalized_name} is Product Director - applying product_manager filter (pattern: {pm_pattern})")
+                if entity_type in ["opportunity", "lead"]:
+                    return {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
+                elif entity_type == "activity":
+                    from libs.database import get_canonical_db
+                    c_db = get_canonical_db()
+                    opp_ids = await c_db.opportunities.distinct(
+                        "canonical_id", {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
+                    )
+                    return {"opportunity_id": {"$in": opp_ids}} if opp_ids else {}
+                elif entity_type == "invoice":
+                    from libs.database import get_canonical_db
+                    c_db = get_canonical_db()
+                    acct_names = await c_db.opportunities.distinct(
+                        "account_name", {"product_manager": {"$regex": pm_pattern, "$options": "i"}}
+                    )
+                    acct_names = [a for a in acct_names if a]
+                    return {"account_name": {"$in": acct_names}} if acct_names else {}
+                else:
+                    return {}  # PDs see all accounts
+        
         logger.debug(f"User {user_name} has access level: {access_level.name}")
         
         if access_level == AccessLevel.ADMIN:
@@ -221,25 +282,38 @@ class AccessRuleEngine:
         
         elif access_level == AccessLevel.USER:
             # User sees only their own records
-            return self._build_owner_filter(user_name, entity_type)
+            owner_filter = self._build_owner_filter(user_name, entity_type, name_pattern=name_pattern)
+            # For invoices: resolve account names from user's opportunities
+            if owner_filter.get("_needs_account_resolve"):
+                from libs.database import get_canonical_db
+                c_db = get_canonical_db()
+                pat = owner_filter.get("owner_pattern", f"^{user_name}$")
+                acct_names = await c_db.opportunities.distinct(
+                    "account_name", {"owner_name": {"$regex": pat, "$options": "i"}}
+                )
+                acct_names = [a for a in acct_names if a]
+                return {"account_name": {"$in": acct_names}} if acct_names else {"_id": None}
+            return owner_filter
         
         else:
             # Restricted - no access (empty result)
             return {"_id": None}  # Will match nothing
     
-    def _build_owner_filter(self, user_name: str, entity_type: str) -> Dict:
-        """Build filter for own records only"""
+    def _build_owner_filter(self, user_name: str, entity_type: str, user_email: str = None, name_pattern: str = None) -> Dict:
+        """Build filter for own records only. Uses name_pattern for OR matching multiple name variants."""
+        pat = name_pattern or f"^{user_name}$"
         if entity_type in ["opportunity", "lead"]:
-            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
         elif entity_type == "activity":
-            return {"assigned_to": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"$or": [{"assigned_user": {"$regex": pat, "$options": "i"}}, {"owner_name": {"$regex": pat, "$options": "i"}}]}
         elif entity_type in ["account", "contact"]:
-            # Accounts/contacts are typically shared, but can filter by salesperson
-            return {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
         elif entity_type == "invoice":
-            return {"salesperson": {"$regex": f"^{user_name}$", "$options": "i"}}
+            # Invoices don't have salesperson/owner_name - must match by account_name
+            # Get accounts from user's opportunities
+            return {"_needs_account_resolve": True, "owner_pattern": pat}
         else:
-            return {"owner_name": {"$regex": f"^{user_name}$", "$options": "i"}}
+            return {"owner_name": {"$regex": pat, "$options": "i"}}
     
     def _build_manager_filter(
         self, 

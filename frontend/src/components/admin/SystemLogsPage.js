@@ -22,6 +22,7 @@ import {
   Filter
 } from 'lucide-react';
 import axios from 'axios';
+import DataHealthMonitor from '../crm/DataHealthMonitor';
 
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -98,7 +99,7 @@ export function SystemLogsPage() {
       const token = localStorage.getItem('access_token');
       
       // Fetch ETL runs for activity log
-      const runsRes = await axios.get(`${API_BASE_URL}/api/etl/runs`, {
+      const runsRes = await axios.get(`${API_BASE_URL}/api/runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -256,6 +257,10 @@ export function SystemLogsPage() {
               <Info className="h-4 w-4" />
               Logs ({logs.length})
             </TabsTrigger>
+            <TabsTrigger value="data-health" className="flex items-center gap-2" data-testid="data-health-tab">
+              <Database className="h-4 w-4" />
+              Data Health
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2">
@@ -400,6 +405,11 @@ export function SystemLogsPage() {
               </ScrollArea>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Data Health Tab */}
+        <TabsContent value="data-health">
+          <DataHealthMonitor />
         </TabsContent>
       </Tabs>
     </div>

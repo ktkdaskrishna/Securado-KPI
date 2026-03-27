@@ -28,7 +28,11 @@ import {
   Terminal,
   Lightbulb,
   MessageSquare,
-  Mail
+  Mail,
+  Link2,
+  Copy,
+  ArrowRight,
+  Info
 } from 'lucide-react';
 
 const HelpPage = () => {
@@ -222,6 +226,10 @@ const HelpPage = () => {
           <TabsTrigger value="roadmap" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
             <Lightbulb className="h-4 w-4 mr-2" />
             Roadmap
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="data-[state=active]:bg-[#800000] data-[state=active]:text-white">
+            <Link2 className="h-4 w-4 mr-2" />
+            Integration Guides
           </TabsTrigger>
         </TabsList>
 
@@ -496,6 +504,370 @@ const HelpPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Integration Guides Tab */}
+        <TabsContent value="integrations">
+          <div className="space-y-6">
+            {/* Microsoft SSO Integration Guide */}
+            <Card className="bg-white border-gray-200 shadow-sm" data-testid="sso-guide">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-[#0078d4]/10">
+                    <svg className="w-6 h-6" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <CardTitle className="text-gray-900 text-xl">Microsoft Azure AD SSO Setup</CardTitle>
+                    <CardDescription>Configure Single Sign-On with Microsoft 365 / Azure Active Directory</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-8">
+
+                {/* Overview */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-semibold mb-1">Overview</p>
+                      <p>This guide walks you through connecting Securado CRM to Microsoft Azure AD for Single Sign-On. Once configured, users can click "Sign in with Microsoft" on the login page and authenticate with their organizational Microsoft 365 accounts. User profiles are automatically linked to Odoo RBAC by email.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prerequisites */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">1</span>
+                    Prerequisites
+                  </h3>
+                  <ul className="space-y-2 ml-9">
+                    <li className="flex items-start gap-2 text-sm text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                      An Azure AD tenant (comes with any Microsoft 365 subscription)
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                      Admin or App Administrator role in Azure AD
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                      Your Securado CRM app URL (e.g., <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">https://perf-dashboard-fix-1.preview.emergentagent.com</code>)
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Step 1: Create Azure AD App Registration */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">2</span>
+                    Create Azure AD App Registration
+                  </h3>
+                  <div className="ml-9 space-y-3">
+                    <ol className="space-y-3 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <span className="font-semibold text-gray-500 shrink-0 w-5">a.</span>
+                        <span>Go to <a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer" className="text-[#0078d4] hover:underline font-medium">portal.azure.com</a> and sign in with your admin account.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-semibold text-gray-500 shrink-0 w-5">b.</span>
+                        <span>Navigate to <strong>Azure Active Directory</strong> &rarr; <strong>App registrations</strong> &rarr; <strong>New registration</strong>.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-semibold text-gray-500 shrink-0 w-5">c.</span>
+                        <div>
+                          <span>Fill in the registration form:</span>
+                          <div className="mt-2 bg-gray-50 rounded-lg p-3 border border-gray-200 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 w-40 shrink-0">Name:</span>
+                              <code className="px-2 py-0.5 bg-white rounded border text-xs font-mono">Securado CRM</code>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-gray-500 w-40 shrink-0">Supported accounts:</span>
+                              <span className="text-xs">Single tenant (this org only)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-gray-500 w-40 shrink-0">Redirect URI (SPA):</span>
+                              <code className="px-2 py-0.5 bg-white rounded border text-xs font-mono break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/login</code>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-semibold text-gray-500 shrink-0 w-5">d.</span>
+                        <span>Click <strong>Register</strong>. Note down the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> from the overview page.</span>
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* Step 2: Configure Redirect URIs */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">3</span>
+                    Configure Redirect URIs
+                  </h3>
+                  <div className="ml-9 space-y-3">
+                    <p className="text-sm text-gray-700">In your App Registration, go to <strong>Authentication</strong> and ensure these redirect URIs are added:</p>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                        <div className="text-sm text-amber-800">
+                          <p className="font-semibold">Important: Platform Type Matters</p>
+                          <p className="mt-1">The redirect URI must be added under the correct platform type. Using the wrong type is the #1 cause of SSO failures.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 mt-3">
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200">Single-page application (SPA)</Badge>
+                          <Badge className="bg-red-100 text-red-700 border-red-200">Required</Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">Used by the frontend MSAL library for browser-based authentication</p>
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5 border">
+                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/login</code>
+                          <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0" onClick={() => {navigator.clipboard.writeText(window.location.origin + '/login')}}>
+                            <Copy className="h-3.5 w-3.5 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-purple-100 text-purple-700 border-purple-200">Web</Badge>
+                          <Badge variant="outline" className="border-gray-300 text-gray-500">Optional (backend flow)</Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">Used if backend server-side OAuth callback is needed</p>
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2.5 border">
+                          <code className="text-xs font-mono text-gray-800 flex-1 break-all">https://perf-dashboard-fix-1.preview.emergentagent.com/api/auth/microsoft/callback</code>
+                          <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0" onClick={() => {navigator.clipboard.writeText(window.location.origin + '/api/auth/microsoft/callback')}}>
+                            <Copy className="h-3.5 w-3.5 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-3 border text-sm text-gray-600 mt-2">
+                      <p className="font-medium text-gray-700 mb-1">When your app URL changes:</p>
+                      <p>If your app moves to a new domain or preview URL, you must update the redirect URIs in both Azure AD and the CRM Settings page. This is the most common cause of the <code className="text-xs bg-white px-1 py-0.5 rounded border">AADSTS50011</code> error.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: API Permissions */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">4</span>
+                    Configure API Permissions
+                  </h3>
+                  <div className="ml-9 space-y-3">
+                    <p className="text-sm text-gray-700">Go to <strong>API permissions</strong> &rarr; <strong>Add a permission</strong> &rarr; <strong>Microsoft Graph</strong> &rarr; <strong>Delegated permissions</strong> and add:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['openid', 'profile', 'email', 'User.Read'].map(scope => (
+                        <div key={scope} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                          <code className="font-mono text-xs">{scope}</code>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-500">Click <strong>"Grant admin consent for [your org]"</strong> to approve the permissions.</p>
+                  </div>
+                </div>
+
+                {/* Step 4: Configure in CRM */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">5</span>
+                    Configure in Securado CRM
+                  </h3>
+                  <div className="ml-9 space-y-3">
+                    <p className="text-sm text-gray-700">Go to <strong>Admin &rarr; Settings</strong> in Securado CRM and enter:</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client ID</label>
+                        <p className="text-sm text-gray-700 mt-0.5">The <strong>Application (client) ID</strong> from your Azure AD App Registration overview.</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant ID</label>
+                        <p className="text-sm text-gray-700 mt-0.5">The <strong>Directory (tenant) ID</strong> from your Azure AD App Registration overview.</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Redirect URI</label>
+                        <p className="text-sm text-gray-700 mt-0.5">Your app URL + <code className="text-xs bg-white px-1 py-0.5 rounded border">/api/auth/microsoft/callback</code></p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client Secret (Optional)</label>
+                        <p className="text-sm text-gray-700 mt-0.5">Only needed for confidential client flows. The SPA flow uses PKCE and does not require a secret.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 5: Test */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-[#800000] text-white text-sm flex items-center justify-center shrink-0">6</span>
+                    Test the Integration
+                  </h3>
+                  <div className="ml-9 space-y-2">
+                    <ol className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2"><span className="font-semibold text-gray-500 shrink-0 w-5">a.</span><span>Open the login page in an <strong>incognito/private</strong> browser window.</span></li>
+                      <li className="flex items-start gap-2"><span className="font-semibold text-gray-500 shrink-0 w-5">b.</span><span>Click <strong>"Sign in with Microsoft"</strong>. You should see the Microsoft login page.</span></li>
+                      <li className="flex items-start gap-2"><span className="font-semibold text-gray-500 shrink-0 w-5">c.</span><span>Authenticate with your Microsoft 365 account. After success, you will be redirected to the CRM dashboard.</span></li>
+                      <li className="flex items-start gap-2"><span className="font-semibold text-gray-500 shrink-0 w-5">d.</span><span>If the user's email matches an Odoo RBAC profile, they get full access. Otherwise, they see a "restricted access" notice.</span></li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* Troubleshooting */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Troubleshooting
+                  </h3>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="ts-1" className="border-gray-200">
+                      <AccordionTrigger className="text-gray-900 hover:text-[#800000] text-sm text-left">
+                        AADSTS50011: Redirect URI mismatch
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-gray-600 space-y-2">
+                        <p>This means the redirect URI in the request doesn't match what's configured in Azure AD.</p>
+                        <p><strong>Fix:</strong></p>
+                        <ol className="list-decimal ml-5 space-y-1">
+                          <li>Copy the exact redirect URI from the error message.</li>
+                          <li>Go to Azure AD &rarr; App Registration &rarr; Authentication.</li>
+                          <li>Add the exact URI as a <strong>SPA</strong> redirect URI.</li>
+                          <li>Save and wait 1-2 minutes, then retry.</li>
+                        </ol>
+                        <div className="bg-amber-50 rounded p-2 mt-2 text-amber-700 text-xs">
+                          <strong>Common cause:</strong> App URL changed (e.g., after redeployment) but the Azure AD redirect URIs were not updated.
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="ts-2" className="border-gray-200">
+                      <AccordionTrigger className="text-gray-900 hover:text-[#800000] text-sm text-left">
+                        AADSTS700025: Client is public, don't send secret
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-gray-600">
+                        Remove the Client Secret from CRM Settings. SPA apps use PKCE instead of client secrets.
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="ts-3" className="border-gray-200">
+                      <AccordionTrigger className="text-gray-900 hover:text-[#800000] text-sm text-left">
+                        "Microsoft SSO not configured" message
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-gray-600">
+                        Go to Admin &rarr; Settings and enter your Client ID, Tenant ID, and Redirect URI.
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="ts-4" className="border-gray-200">
+                      <AccordionTrigger className="text-gray-900 hover:text-[#800000] text-sm text-left">
+                        User logs in but sees "Restricted Access"
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-gray-600 space-y-2">
+                        <p>The user's Microsoft email doesn't match any Odoo RBAC profile.</p>
+                        <ol className="list-decimal ml-5 space-y-1">
+                          <li>Verify the email in Odoo matches the Microsoft 365 email.</li>
+                          <li>Ensure the user has Sales groups in Odoo.</li>
+                          <li>Run an RBAC sync from Admin &rarr; Integrations.</li>
+                          <li>Or create a permission override in Admin &rarr; RBAC.</li>
+                        </ol>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="ts-5" className="border-gray-200">
+                      <AccordionTrigger className="text-gray-900 hover:text-[#800000] text-sm text-left">
+                        Popup blocked during Microsoft login
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-gray-600">
+                        The app automatically falls back to redirect-based login. If that also fails, allow popups for this site in your browser settings.
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+
+                {/* Technical: How It Works */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-gray-400" />
+                    How It Works (Technical)
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="space-y-3 text-sm text-gray-700">
+                      {[
+                        { num: '1', color: 'bg-[#0078d4]', title: 'User clicks "Sign in with Microsoft"', desc: 'Frontend MSAL library initiates OAuth 2.0 + PKCE flow with Azure AD' },
+                        { num: '2', color: 'bg-[#0078d4]', title: 'Microsoft authenticates the user', desc: 'User signs in with Microsoft 365 credentials. MFA enforced if configured.' },
+                        { num: '3', color: 'bg-[#0078d4]', title: 'Token exchange with CRM backend', desc: 'Frontend sends Microsoft access token to POST /api/auth/microsoft/complete' },
+                        { num: '4', color: 'bg-[#0078d4]', title: 'Backend validates and links user', desc: 'Calls Microsoft Graph API, matches email to Odoo RBAC, returns app JWT.' },
+                        { num: '5', color: 'bg-green-500', title: 'User is logged in with role-based access', desc: 'Dashboard loads with data scoped to RBAC permissions.' },
+                      ].map((step, i) => (
+                        <React.Fragment key={i}>
+                          {i > 0 && <div className="border-l-2 border-dashed border-gray-300 ml-3 h-3"></div>}
+                          <div className="flex items-start gap-3">
+                            <span className={`w-6 h-6 rounded-full ${step.color} text-white text-xs flex items-center justify-center shrink-0 mt-0.5`}>{step.num}</span>
+                            <div>
+                              <p className="font-medium">{step.title}</p>
+                              <p className="text-gray-500 text-xs mt-0.5">{step.desc}</p>
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* Quick Reference */}
+            <Card className="bg-white border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-gray-900">Quick Reference: Required Azure AD Values</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Value</th>
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Where to Find</th>
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Example</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700">
+                      <tr className="border-b border-gray-100">
+                        <td className="py-2.5 px-3 font-medium">Client ID</td>
+                        <td className="py-2.5 px-3">App Registration &rarr; Overview &rarr; Application (client) ID</td>
+                        <td className="py-2.5 px-3"><code className="text-xs bg-gray-50 px-1.5 py-0.5 rounded border">010dd3f4-509b-4706-...</code></td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="py-2.5 px-3 font-medium">Tenant ID</td>
+                        <td className="py-2.5 px-3">App Registration &rarr; Overview &rarr; Directory (tenant) ID</td>
+                        <td className="py-2.5 px-3"><code className="text-xs bg-gray-50 px-1.5 py-0.5 rounded border">db98eaa2-c396-4631-...</code></td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <td className="py-2.5 px-3 font-medium">SPA Redirect URI</td>
+                        <td className="py-2.5 px-3">Authentication &rarr; SPA platform</td>
+                        <td className="py-2.5 px-3"><code className="text-xs bg-gray-50 px-1.5 py-0.5 rounded border">https://your-app.../login</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium">API Permissions</td>
+                        <td className="py-2.5 px-3">API permissions tab</td>
+                        <td className="py-2.5 px-3"><code className="text-xs bg-gray-50 px-1.5 py-0.5 rounded border">openid, profile, email, User.Read</code></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
       </Tabs>
 
       {/* Contact Support */}

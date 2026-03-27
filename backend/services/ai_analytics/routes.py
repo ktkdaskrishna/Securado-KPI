@@ -155,14 +155,11 @@ async def get_analytics_overview(
             "stage_distribution": [], "filters_applied": {}
         }
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC + year filter at DB level
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
-    # Get OPPORTUNITIES only (exclude leads by filtering type='opportunity')
-    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
-    
-    # Convert time_period to specific year/quarter if not already set
+    # Convert time_period to year/quarter
     if time_period != "all" and not year and not quarter:
         from datetime import datetime
         now = datetime.now()
@@ -172,31 +169,34 @@ async def get_analytics_overview(
         if time_period == "year":
             year = current_year
         elif time_period == "quarter":
-            # Determine current quarter
-            if current_month <= 3:
-                quarter = "Q1"
-            elif current_month <= 6:
-                quarter = "Q2"
-            elif current_month <= 9:
-                quarter = "Q3"
-            else:
-                quarter = "Q4"
+            q = (current_month - 1) // 3 + 1
+            quarter = f"Q{q}"
             year = current_year
-        elif time_period == "month":
-            # For month, we'll filter to current month
-            year = current_year
-            # The apply_filters will handle month filtering
     
-    # Apply filters
+    # ODOO-MATCHING: Don't filter year at DB level for Won/Lost
+    # Fetch all, then split by stage and apply date filter per category
+    all_opps = await canonical_db.opportunities.find(query).to_list(10000)
+    
+    # Apply remaining filters (sales_rep, account, stage)
     filters = {
-        "year": year,
-        "quarter": quarter,
         "sales_rep": sales_rep,
         "team_id": team_id,
         "account": account,
         "stage": stage,
-        "time_period": time_period
     }
+    all_opps = apply_filters(all_opps, filters)
+    
+    # Apply Odoo-style year filtering
+    if year:
+        def is_won_or_lost(o):
+            s = str(o.get("stage", "")).lower()
+            return s == "won" or s == "lost" or "closed" in s
+        
+        open_filtered = [o for o in all_opps if not is_won_or_lost(o) and str(o.get("date_last_stage_update", "")).startswith(year)]
+        closed_filtered = [o for o in all_opps if is_won_or_lost(o) and str(o.get("date_last_stage_update") or "").startswith(year)]
+        all_opps = open_filtered + closed_filtered
+    
+    logger.info(f"AI Analytics overview: year={year}, found {len(all_opps)} opps (Odoo-style filter)")
     opps = apply_filters(all_opps, filters)
     
     # Get all accounts
@@ -283,11 +283,15 @@ async def get_conversion_funnel(
             "overall_conversion": 0, "lost_count": 0, "lost_value": 0, "applied_filters": {}
         }
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC - include ALL records, filter by year at DB level
+    query = {"org_id": org_id, "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
     
-    # Get all opportunities (type='opportunity' - exclude leads)
+    # Add year filter to DB query
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
+    
+    # Get all opportunities (include leads for proper funnel analysis)
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
     # Apply filters
@@ -304,27 +308,36 @@ async def get_conversion_funnel(
         stage_data[stage]["count"] += 1
         stage_data[stage]["value"] += get_opp_value(opp)
     
-    # Calculate conversion rates between stages
+    # Calculate conversion rates - each stage as % of total opportunities
     funnel = []
+    total_opps = sum(stage_data[s]["count"] for s in funnel_stages)
     prev_count = None
     for i, stage in enumerate(funnel_stages):
         data = stage_data[stage]
-        conversion_rate = 0
-        if prev_count and prev_count > 0:
-            conversion_rate = round(data["count"] / prev_count * 100, 1)
+        
+        # Funnel rate = this stage / total (what % of all opps reach this stage)
+        funnel_rate = round(data["count"] / total_opps * 100, 1) if total_opps > 0 else 0
+        
+        # Stage-to-stage rate
+        stage_rate = 0
+        if prev_count and prev_count > 0 and i > 0:
+            stage_rate = round(data["count"] / prev_count * 100, 1)
         
         funnel.append({
             "stage": stage.title(),
             "count": data["count"],
             "value": data["value"],
-            "conversion_rate": conversion_rate if i > 0 else 100
+            "conversion_rate": funnel_rate,
+            "stage_conversion_rate": stage_rate
         })
-        prev_count = data["count"] if data["count"] > 0 else prev_count
+        if data["count"] > 0:
+            prev_count = data["count"]
     
-    # Overall conversion (Lead to Won)
-    lead_count = stage_data["lead"]["count"] + stage_data["qualified"]["count"]
+    # Overall conversion: Win Rate = Won / (Won + Lost) - standard B2B metric
     won_count = stage_data["won"]["count"]
-    overall_conversion = round(won_count / lead_count * 100, 1) if lead_count > 0 else 0
+    lost_count = stage_data["lost"]["count"]
+    closed_total = won_count + lost_count
+    overall_conversion = round(won_count / closed_total * 100, 1) if closed_total > 0 else 0
     
     return {
         "stages": funnel,  # Renamed from 'funnel' to 'stages' for frontend compatibility
@@ -357,8 +370,12 @@ async def get_rep_performance(
         return {"reps": [], "top_performer": None, "avg_win_rate": 0, "applied_filters": {}}
     
     # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
+    
+    # Apply year filter at DB level (using date_last_stage_update like Odoo)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
     
     # Get opportunities only (not leads)
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
@@ -449,9 +466,15 @@ async def get_team_performance(
             "top_pm": None, "top_category": None, "applied_filters": {}
         }
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC + year filter at DB level
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
+    elif not quarter:
+        # Default to current year
+        from datetime import datetime
+        query["date_last_stage_update"] = {"$regex": f"^{datetime.now().year}"}
     
     all_opps = await canonical_db.opportunities.find(query).to_list(10000)
     
@@ -569,11 +592,16 @@ async def get_account_health(
             "applied_filters": {}
         }
     
-    # Build query with RBAC
-    query = {"org_id": org_id, "type": "opportunity"}
+    # Build query with RBAC + year filter
+    query = {"org_id": org_id, "type": "opportunity", "deleted": {"$ne": True}, "active": True}
     query.update(rbac_filter)
+    if year:
+        query["date_last_stage_update"] = {"$regex": f"^{year}"}
+    elif not quarter:
+        from datetime import datetime
+        query["date_last_stage_update"] = {"$regex": f"^{datetime.now().year}"}
     
-    account_query = {"org_id": org_id}
+    account_query = {"org_id": org_id, "deleted": {"$ne": True}}
     account_query.update(rbac_filter)
     
     accounts = await canonical_db.accounts.find(account_query).to_list(10000)
@@ -840,7 +868,7 @@ async def get_available_filters(
     teams = await canonical_db.sales_teams.find({"org_id": org_id}).to_list(100)
     
     # Get unique stages
-    stages = list(set(o.get("stage") for o in opps if o.get("stage")))
+    stages = list(set(o.get("stage") for o in opps if o.get("stage") and isinstance(o.get("stage"), str)))
     
     # Get unique owners from opportunities (not from sales_users)
     owners = list(set(o.get("owner_name") for o in opps if o.get("owner_name")))
@@ -857,27 +885,51 @@ async def get_available_filters(
     # Convert to list of objects for the frontend
     opp_accounts = [{"id": aid, "name": aname} for aid, aname in account_map.items()]
     
-    # Get years from create_date (not close_date since many don't have close dates)
+    # Get years from date_last_stage_update (standard across system)
+    # Cap at current year - no future years
+    from datetime import datetime
+    current_year = int(datetime.now().strftime("%Y"))
     years = set()
     for opp in opps:
-        # Check create_date first
-        create_date = opp.get("create_date")
-        if create_date and create_date != 'False' and isinstance(create_date, str) and len(create_date) >= 4:
-            try:
-                year = create_date[:4]
-                if year.isdigit() and 1900 < int(year) < 2100:
-                    years.add(year)
-            except:
-                pass
-        # Also check close_date
-        close_date = opp.get("close_date")
-        if close_date and close_date != 'False' and isinstance(close_date, str) and len(close_date) >= 4:
-            try:
-                year = close_date[:4]
-                if year.isdigit() and 1900 < int(year) < 2100:
-                    years.add(year)
-            except:
-                pass
+        for date_field in ["date_last_stage_update", "create_date"]:
+            date_val = opp.get(date_field)
+            if date_val and date_val != 'False' and isinstance(date_val, str) and len(date_val) >= 4:
+                try:
+                    year = date_val[:4]
+                    if year.isdigit() and 2018 <= int(year) <= current_year:
+                        years.add(year)
+                except:
+                    pass
+    
+    # Filter sales_reps to active employees/sales_users
+    active_names = set()
+    # From employees (active only)
+    async for emp in canonical_db.employees.find({"active": True}, {"_id": 0, "name": 1}):
+        if emp.get("name"):
+            active_names.add(emp["name"])
+    # From sales_users (active only, exclude system accounts)
+    system_names = {"securado erp", "administrator", "admin", "odoobot"}
+    async for su in canonical_db.sales_users.find({"active": True}, {"_id": 0, "name": 1}):
+        name = su.get("name", "")
+        if name and name.lower() not in system_names and not name.endswith("_odoo"):
+            active_names.add(name)
+    
+    # Match owners against active names using word matching
+    active_owners = []
+    for owner in owners:
+        if owner.lower() in system_names or owner.endswith("_odoo"):
+            continue
+        # Direct match
+        if owner in active_names:
+            active_owners.append(owner)
+            continue
+        # Fuzzy: at least 2 name words match any active name
+        owner_words = set(owner.lower().replace("-", " ").replace(".", " ").split())
+        for active_name in active_names:
+            active_words = set(active_name.lower().replace("-", " ").replace(".", " ").split())
+            if len(owner_words & active_words) >= 2:
+                active_owners.append(owner)
+                break
     
     return {
         "time_periods": [
@@ -890,86 +942,21 @@ async def get_available_filters(
         "years": sorted(list(years), reverse=True),
         "quarters": ["Q1", "Q2", "Q3", "Q4"],
         "stages": sorted(stages),
-        "sales_reps": sorted(owners),
+        "sales_reps": sorted(active_owners) if active_owners else sorted(owners),
         "teams": [{"id": str(t.get("source_record_id")), "name": t.get("name")} for t in teams if t.get("name")],
-        "accounts": sorted(opp_accounts, key=lambda x: x["name"])  # Return as objects with id/name
+        "accounts": sorted(opp_accounts, key=lambda x: x["name"])
     }
 
 
 def apply_filters(opps: list, filters: dict) -> list:
-    """Apply filter parameters to opportunity list"""
+    """Apply filter parameters to opportunity list.
+    NOTE: Year/quarter filtering is now done at DB query level (create_date).
+    This function only handles remaining filters (sales_rep, account, stage).
+    """
     filtered = opps
     
-    # Filter by year - use won_at for Won deals (date_last_stage_update from Odoo)
-    if filters.get("year"):
-        year = filters["year"]
-        def get_date_for_filtering(o):
-            # For Won deals, use won_at (the actual date they were marked as won)
-            # This is date_last_stage_update from Odoo which is reliable
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    if o.get(field):
-                        return str(o.get(field, ""))
-            # Otherwise use close_date (expected close)
-            if o.get("close_date"):
-                return str(o.get("close_date", ""))
-            # Fallback to create_date
-            return str(o.get("create_date", ""))
-        
-        filtered = [o for o in filtered if get_date_for_filtering(o)[:4] == year]
-    
-    # Filter by quarter
-    if filters.get("quarter"):
-        q = filters["quarter"]
-        quarter_months = {"Q1": ["01", "02", "03"], "Q2": ["04", "05", "06"], 
-                         "Q3": ["07", "08", "09"], "Q4": ["10", "11", "12"]}
-        months = quarter_months.get(q, [])
-        def get_month_for_filtering(o):
-            # For Won deals, use won_at (date_last_stage_update from Odoo)
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    if o.get(field):
-                        return str(o.get(field, ""))[5:7]
-            if o.get("close_date"):
-                return str(o.get("close_date", ""))[5:7]
-            return str(o.get("create_date", ""))[5:7]
-        
-        filtered = [o for o in filtered if get_month_for_filtering(o) in months]
-    
-    # Filter by time_period (week, month, quarter, year)
-    if filters.get("time_period") and filters.get("time_period") not in ["all", "year", "quarter"]:
-        from datetime import datetime, timedelta
-        now = datetime.now()
-        tp = filters["time_period"]
-        
-        def get_opp_date(o):
-            """Get relevant date from opportunity - use won_at for Won deals"""
-            # For Won deals, prioritize won_at
-            if is_won(o):
-                for field in ['won_at', 'stage_changed_at', 'date_closed']:
-                    date_str = o.get(field)
-                    if date_str:
-                        break
-            else:
-                date_str = o.get("close_date") or o.get("create_date")
-            
-            if not date_str:
-                return None
-            try:
-                if isinstance(date_str, str):
-                    return datetime.fromisoformat(date_str.replace('Z', '+00:00').split('+')[0])
-                return date_str
-            except:
-                return None
-        
-        if tp == "week":
-            # Last 7 days
-            cutoff = now - timedelta(days=7)
-            filtered = [o for o in filtered if (d := get_opp_date(o)) and d >= cutoff]
-        elif tp == "month":
-            # Current month
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            filtered = [o for o in filtered if (d := get_opp_date(o)) and d >= month_start]
+    # Year and quarter are now filtered at MongoDB query level
+    # No post-filtering needed for dates
     
     # Filter by sales rep
     if filters.get("sales_rep"):

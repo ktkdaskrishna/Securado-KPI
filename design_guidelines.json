@@ -1,0 +1,106 @@
+{
+  "project_identity": {
+    "name": "Odoo CRM Replica",
+    "aesthetic": "Functional Enterprise",
+    "core_principles": [
+      "High Information Density",
+      "Flat Design (No Gradients/Glassmorphism)",
+      "Direct Manipulation (Click-to-Edit)",
+      "Strict Grid Alignment (6-column)",
+      "High Contrast (White Text on Dark Cards)"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "primary": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "headings": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+    },
+    "scaling": {
+      "h1": "text-2xl font-bold tracking-tight",
+      "h2": "text-xl font-semibold tracking-tight",
+      "h3": "text-lg font-medium",
+      "body": "text-sm",
+      "small": "text-xs text-muted-foreground",
+      "kpi_value": "text-3xl font-bold text-white",
+      "kpi_label": "text-sm font-medium text-white/90"
+    }
+  },
+  "colors": {
+    "background": {
+      "app": "#f9fafb",
+      "card": "#ffffff",
+      "modal": "#ffffff"
+    },
+    "kpi_palette": [
+      { "name": "Navy", "value": "#1e3a5f", "text": "#ffffff" },
+      { "name": "Crimson", "value": "#8b1a1a", "text": "#ffffff" },
+      { "name": "Forest", "value": "#1a6b4a", "text": "#ffffff" },
+      { "name": "Orange", "value": "#b45309", "text": "#ffffff" },
+      { "name": "Purple", "value": "#5b21b6", "text": "#ffffff" },
+      { "name": "Olive", "value": "#4d5e2f", "text": "#ffffff" }
+    ],
+    "charts": {
+      "palette": ["#1e3a5f", "#8b1a1a", "#1a6b4a", "#b45309", "#5b21b6"]
+    },
+    "ui": {
+      "border": "#e5e7eb",
+      "input_bg": "#ffffff",
+      "hover": "#f3f4f6"
+    }
+  },
+  "layout_grid": {
+    "columns": 6,
+    "gap": "gap-4",
+    "row_height": "140px",
+    "breakpoints": {
+      "lg": 6,
+      "md": 3,
+      "sm": 2,
+      "xs": 1
+    }
+  },
+  "components": {
+    "kpi_card": {
+      "structure": "flex flex-col justify-between p-4 h-full relative group cursor-pointer",
+      "style": "rounded shadow-sm transition-all hover:brightness-110",
+      "hover_actions": "absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded p-1"
+    },
+    "edit_modal": {
+      "layout": "grid grid-cols-12 h-[80vh]",
+      "sidebar": "col-span-12 md:col-span-7 lg:col-span-8 border-r p-6 overflow-y-auto",
+      "preview": "col-span-12 md:col-span-5 lg:col-span-4 bg-gray-50 p-6 flex items-center justify-center",
+      "tabs": {
+        "list": "w-full justify-start border-b rounded-none h-auto p-0",
+        "trigger": "data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 py-3"
+      }
+    },
+    "chart_selector": {
+      "grid": "grid grid-cols-4 gap-2",
+      "item": "flex flex-col items-center justify-center p-2 border rounded hover:bg-accent hover:text-accent-foreground cursor-pointer data-[selected=true]:border-primary data-[selected=true]:bg-primary/5"
+    }
+  },
+  "image_urls": {
+    "icons": {
+      "edit": "lucide-react/Edit",
+      "trash": "lucide-react/Trash2",
+      "copy": "lucide-react/Copy",
+      "external_link": "lucide-react/ExternalLink",
+      "bar_chart": "lucide-react/BarChart3",
+      "pie_chart": "lucide-react/PieChart",
+      "line_chart": "lucide-react/LineChart",
+      "activity": "lucide-react/Activity"
+    }
+  },
+  "universal_guidelines": [
+    "Strictly follow the 6-column grid layout.",
+    "KPI cards must be solid flat colors from the provided palette.",
+    "Do not use gradients on KPI cards.",
+    "All interactive elements must have hover states.",
+    "The 'Edit Chart' modal must show a live preview of the component being edited.",
+    "Use Shadcn UI components for all form elements (Select, Input, Switch, Slider).",
+    "Charts must use Recharts via the Shadcn Chart component.",
+    "Ensure 'Won Top 10' and 'Lost Top 10' lists are clear and legible."
+  ],
+  "instructions_to_main_agent": "You are building a pixel-perfect replica of the Odoo CRM dashboard. Prioritize functionality and information density over artistic whitespace. The layout is dense. The 'Edit Chart' modal is the core complexity - ensure it handles all configuration state (type, color, data, title) and reflects it immediately in the preview. Use the provided color palette strictly."
+}

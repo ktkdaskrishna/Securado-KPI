@@ -98,65 +98,43 @@ async def list_roles(current_user: dict = Depends(get_current_user)):
     # Also count RBAC users
     rbac_count = await db.users_rbac.count_documents({})
     
-    # If no roles in DB, return default roles with computed counts
-    if not roles:
-        default_roles = [
-            {
-                "id": "admin",
-                "name": "Administrator",
-                "description": "Full system access",
-                "permissions": ALL_PERMISSIONS,
-                "users_count": user_role_counts.get("admin", 0)
-            },
-            {
-                "id": "etl_admin",
-                "name": "ETL Administrator",
-                "description": "Manage ETL pipelines and connections",
-                "permissions": ["view_dashboard", "manage_pipelines", "run_pipelines", "manage_connections", "manage_mappings", "view_dlq", "manage_dlq"],
-                "users_count": user_role_counts.get("etl_admin", 0)
-            },
-            {
-                "id": "sales_manager",
-                "name": "Sales Manager",
-                "description": "Sales team management",
-                "permissions": ["view_dashboard", "manage_opportunities", "view_opportunities", "manage_accounts", "view_accounts", "manage_activities", "view_activities", "manage_goals", "view_goals", "manage_teams", "view_teams"],
-                "users_count": user_role_counts.get("sales_manager", 0)
-            },
-            {
-                "id": "sales_rep",
-                "name": "Sales Representative",
-                "description": "View and manage own opportunities",
-                "permissions": ["view_dashboard", "manage_opportunities", "view_opportunities", "view_accounts", "manage_activities", "view_activities", "view_goals"],
-                "users_count": user_role_counts.get("sales_rep", 0)
-            },
-            {
-                "id": "sales_director",
-                "name": "Sales Director",
-                "description": "Full sales department access",
-                "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_invoices", "view_analytics"],
-                "users_count": user_role_counts.get("sales_director", 0)
-            },
-            {
-                "id": "system_admin",
-                "name": "System Admin",
-                "description": "ETL and system settings access",
-                "permissions": ALL_PERMISSIONS,
-                "users_count": user_role_counts.get("system_admin", 0)
-            }
-        ]
-        # Add RBAC synced users total
-        for r in default_roles:
-            if r["users_count"] == 0:
-                # Check if any users have this role string in their roles array
-                pass
-        return default_roles
+    # Always return all roles (merge defaults + stored)
+    default_roles = [
+        {"id": "admin", "name": "Administrator", "description": "Full system access", "permissions": ALL_PERMISSIONS},
+        {"id": "etl_admin", "name": "ETL Administrator", "description": "Manage ETL pipelines and connections", "permissions": ["view_dashboard", "manage_pipelines", "run_pipelines", "manage_connections", "manage_mappings", "view_dlq", "manage_dlq"]},
+        {"id": "sales_manager", "name": "Sales Manager", "description": "Sales team management", "permissions": ["view_dashboard", "manage_opportunities", "view_opportunities", "manage_accounts", "view_accounts", "manage_activities", "view_activities", "manage_goals", "view_goals", "manage_teams", "view_teams"]},
+        {"id": "sales_rep", "name": "Sales Representative", "description": "View and manage own opportunities", "permissions": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_goals", "view_profile"]},
+        {"id": "sales_director", "name": "Sales Director", "description": "Full sales department access", "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "manage_accounts", "view_activities", "manage_activities", "view_invoices", "view_analytics", "view_goals", "manage_goals", "view_teams", "view_kpis"]},
+        {"id": "product_director", "name": "Product Director", "description": "Product management, target planning, activity assignment", "permissions": ["view_dashboard", "manage_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "view_activities", "manage_activities", "view_goals", "manage_goals", "view_kpis", "manage_kpis", "view_invoices", "view_analytics", "view_teams"]},
+        {"id": "system_admin", "name": "System Admin", "description": "ETL and system settings access", "permissions": ALL_PERMISSIONS},
+        {"id": "finance", "name": "Finance Manager", "description": "Invoicing, collections, costing", "permissions": ["view_dashboard", "view_accounts", "view_invoices", "manage_invoices", "view_analytics", "view_profile"]},
+        {"id": "marketing", "name": "Marketing", "description": "Lead generation, campaigns, content", "permissions": ["view_dashboard", "view_opportunities", "view_accounts", "view_activities", "view_analytics", "view_profile"]},
+        {"id": "strategy", "name": "Strategy / New Logos", "description": "New market development, executive engagements", "permissions": ["view_dashboard", "view_opportunities", "manage_opportunities", "view_accounts", "view_activities", "view_analytics", "view_goals", "view_profile"]},
+        {"id": "operations", "name": "Operations & Delivery", "description": "Service delivery, utilization, project management", "permissions": ["view_dashboard", "view_accounts", "view_activities", "view_goals", "view_profile"]},
+        {"id": "support", "name": "Support", "description": "Customer support, SLA, incident management", "permissions": ["view_dashboard", "view_accounts", "view_activities", "view_profile"]},
+    ]
     
-    # Enrich stored roles with counts
+    # Merge: stored roles override defaults
+    stored_map = {serialize_doc(r).get("id"): serialize_doc(r) for r in roles}
     result = []
-    for r in roles:
-        doc = serialize_doc(r)
-        doc["users_count"] = user_role_counts.get(doc.get("id", ""), 0)
-        result.append(doc)
+    seen_ids = set()
+    
+    for dr in default_roles:
+        rid = dr["id"]
+        if rid in stored_map:
+            role = stored_map[rid]
+        else:
+            role = dr
+        role["users_count"] = user_role_counts.get(rid, 0)
+        result.append(role)
+        seen_ids.add(rid)
+    
+    # Add any stored roles not in defaults
+    for rid, role in stored_map.items():
+        if rid not in seen_ids:
+            role["users_count"] = user_role_counts.get(rid, 0)
+            result.append(role)
+    
     return result
 
 
@@ -219,19 +197,35 @@ async def update_role(
     role_data: RoleUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update a role"""
+    """Update a role — ADMIN ONLY"""
+    user_roles = current_user.get("roles", [])
+    if not any(r in user_roles for r in ["admin", "system_admin", "sales_admin"]):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Only administrators can modify roles")
     db = get_app_db()
+    org_id = current_user.get("org_id", "default")
     
     update_data = {k: v for k, v in role_data.model_dump().items() if v is not None}
     update_data["updated_at"] = now_utc()
     
+    # Try update first
     result = await db.roles.update_one(
-        {"id": role_id, "org_id": current_user.get("org_id", "default")},
+        {"id": role_id, "org_id": org_id},
         {"$set": update_data}
     )
     
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Role not found")
+        # Role doesn't exist in DB (it was a default) - insert it
+        role_doc = {
+            "id": role_id,
+            "org_id": org_id,
+            "name": role_data.name or role_id,
+            "description": role_data.description or "",
+            "permissions": role_data.permissions or [],
+            "created_at": now_utc(),
+            "updated_at": now_utc()
+        }
+        await db.roles.insert_one(role_doc)
     
     # Emit role updated event
     await emit_event(
@@ -243,7 +237,7 @@ async def update_role(
             "permissions": role_data.permissions or []
         },
         producer="rbac-service",
-        org_id=current_user.get("org_id", "default")
+        org_id=org_id
     )
     
     return {"success": True, "message": "Role updated"}

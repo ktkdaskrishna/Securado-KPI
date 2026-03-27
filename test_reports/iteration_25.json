@@ -1,0 +1,91 @@
+{
+  "summary": "Iteration 25 - AI Assistant Enhancements: All features verified. Voice endpoint (POST /api/ai-assistant/voice) works. Feedback-with-attachment endpoint (POST /api/ai-assistant/feedback-with-attachment) works. Inline chart rendering works. Export chat button present. MS SSO credentials verified. Backend: 10/10 tests passed. Frontend: All UI features verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_25.py",
+    "/app/test_reports/pytest/iteration_25_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_25.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  "test_credentials": {
+    "admin": "krishna@securado.net / test123456"
+  },
+  "seed_data_creation": "TEST_ prefixed feedback items created during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 25 verified all AI Assistant enhancements: 1) Voice endpoint at POST /api/ai-assistant/voice - accepts audio file uploads, returns {text: string} or {text: '', error: string}, 2) Feedback-with-attachment endpoint at POST /api/ai-assistant/feedback-with-attachment - accepts form data with question, session_id, and screenshots (image files), stores to feedback_attachments collection, 3) Inline chart rendering - AI chat returns ```chart``` JSON blocks which frontend parses and renders using Recharts (bar, pie, line charts), 4) Export chat button in AI header downloads chat as text file, 5) Voice (Mic) button uses MediaRecorder to capture audio and send to transcription endpoint, 6) Paperclip attachment button only shows in feedback mode, 7) MS SSO credentials updated in .env (MICROSOFT_CLIENT_ID=ai-assistant-test-2, MICROSOFT_TENANT_ID=ai-assistant-test-2)",
+  "features_tested": {
+    "ai_assistant_right_position": {
+      "status": "PASSED",
+      "details": "AI FAB at X=1844px (right-6 class), panel opens at X=1476px on RIGHT side"
+    },
+    "voice_endpoint": {
+      "status": "PASSED",
+      "details": "POST /api/ai-assistant/voice exists, accepts audio/webm, returns expected error format for invalid audio"
+    },
+    "feedback_with_attachment_endpoint": {
+      "status": "PASSED",
+      "details": "POST /api/ai-assistant/feedback-with-attachment accepts form data, successfully creates feedback with 0-N screenshot attachments"
+    },
+    "inline_chart_rendering": {
+      "status": "PASSED",
+      "details": "AI chat returns ```chart``` JSON blocks, frontend parses and renders using Recharts - bar chart for 'Pipeline by Stage' verified"
+    },
+    "export_chat_button": {
+      "status": "PASSED",
+      "details": "Export chat button (Download icon) present in AI Assistant header"
+    },
+    "voice_mic_button": {
+      "status": "PASSED",
+      "details": "Voice (Mic) button visible with data-testid='ai-voice-btn'"
+    },
+    "send_button": {
+      "status": "PASSED",
+      "details": "Send button visible with data-testid='ai-assistant-send'"
+    },
+    "paperclip_attachment_button": {
+      "status": "PASSED",
+      "details": "Paperclip button (data-testid='ai-attach-btn') appears in feedback mode"
+    },
+    "pipeline_chart_quick_action": {
+      "status": "PASSED",
+      "details": "Pipeline chart quick action button with chart icon found"
+    },
+    "ms_sso_credentials": {
+      "status": "PASSED",
+      "details": "MS SSO config endpoint returns correct clientId=ai-assistant-test-2 and tenantId=ai-assistant-test-2"
+    }
+  },
+  "backend_tests": {
+    "test_voice_endpoint_exists": "PASSED",
+    "test_voice_endpoint_validates_audio_format": "PASSED",
+    "test_feedback_with_no_attachment": "PASSED",
+    "test_feedback_with_screenshot_attachment": "PASSED",
+    "test_feedback_rejects_non_image_attachment": "PASSED",
+    "test_pipeline_chart_request": "PASSED",
+    "test_ms_sso_config_endpoint": "PASSED",
+    "test_chat_basic_question": "PASSED",
+    "test_chat_history_endpoint": "PASSED",
+    "test_cleanup": "PASSED"
+  },
+  "screenshots_taken": [
+    "ai_panel_open.png - AI Assistant panel with voice button, send button, and quick actions visible",
+    "ai_feedback_mode.png - Feedback mode showing paperclip attachment button",
+    "ai_chart_response.png - Inline chart rendered in AI response (Pipeline by Stage bar chart)"
+  ]
+}
